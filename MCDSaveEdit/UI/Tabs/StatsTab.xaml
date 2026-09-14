@@ -1,0 +1,105 @@
+﻿<UserControl x:Class="MCDSaveEdit.UI.StatsTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:MCDSaveEdit.UI"
+             mc:Ignorable="d"
+             d:DesignHeight="450"
+             d:DesignWidth="800">
+    <UserControl.Resources>
+        <!--
+            Search field with a placeholder. WPF has no built-in watermark, so the hint is a
+            TextBlock underneath that hides as soon as the box has content.
+        -->
+        <Style x:Key="SearchBox" TargetType="{x:Type TextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Padding" Value="7,4"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
+        <!--
+            Two keyed styles rather than one plus a local Background, because a local value
+            beats a style trigger and the row would never light up on hover.
+        -->
+        <Style x:Key="StatRowBase" TargetType="{x:Type Border}">
+            <Setter Property="CornerRadius" Value="3"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="Margin" Value="2,1"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource Brush.PanelHover}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="StatRowEven" TargetType="{x:Type Border}" BasedOn="{StaticResource StatRowBase}">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+        <Style x:Key="StatRowOdd" TargetType="{x:Type Border}" BasedOn="{StaticResource StatRowBase}">
+            <Setter Property="Background" Value="{DynamicResource Brush.Panel}"/>
+        </Style>
+    </UserControl.Resources>
+
+    <!--
+        Two star-width columns rather than the old pair of fixed 400px ones, which left most
+        of a wide window empty.
+    -->
+    <Grid Margin="10,6,10,10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="18"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ===================== Progress stat counters ===================== -->
+        <DockPanel Grid.Column="0">
+            <Grid DockPanel.Dock="Top" Margin="2,0,2,6">
+                <Label x:Name="statsLabel" Content="*Progress Stat Counters*"
+                       Style="{StaticResource SectionHeading}" FontSize="16" Padding="0,2"/>
+                <TextBlock x:Name="statsCountLabel" Text="" HorizontalAlignment="Right"
+                           VerticalAlignment="Center" FontSize="12"
+                           Foreground="{DynamicResource Brush.TextMuted}"/>
+            </Grid>
+
+            <Grid DockPanel.Dock="Top" Margin="2,0,2,6">
+                <TextBox x:Name="statsSearchBox" Style="{StaticResource SearchBox}"
+                         TextChanged="statsSearchBox_TextChanged"/>
+                <TextBlock x:Name="statsSearchHint" Text="Search…" Margin="9,0,0,0"
+                           VerticalAlignment="Center" IsHitTestVisible="False"
+                           Foreground="{DynamicResource Brush.TextDisabled}" FontSize="13"/>
+            </Grid>
+
+            <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4"
+                    Background="{DynamicResource Brush.Surface}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="2">
+                    <StackPanel x:Name="statsStack" Orientation="Vertical"/>
+                </ScrollViewer>
+            </Border>
+        </DockPanel>
+
+        <!-- ===================== Mob kills ===================== -->
+        <DockPanel Grid.Column="2">
+            <Grid DockPanel.Dock="Top" Margin="2,0,2,6">
+                <Label x:Name="mobKillsLabel" Content="*Mob Kills*"
+                       Style="{StaticResource SectionHeading}" FontSize="16" Padding="0,2"/>
+                <TextBlock x:Name="mobKillsCountLabel" Text="" HorizontalAlignment="Right"
+                           VerticalAlignment="Center" FontSize="12"
+                           Foreground="{DynamicResource Brush.TextMuted}"/>
+            </Grid>
+
+            <Grid DockPanel.Dock="Top" Margin="2,0,2,6">
+                <TextBox x:Name="mobKillsSearchBox" Style="{StaticResource SearchBox}"
+                         TextChanged="mobKillsSearchBox_TextChanged"/>
+                <TextBlock x:Name="mobKillsSearchHint" Text="Search…" Margin="9,0,0,0"
+                           VerticalAlignment="Center" IsHitTestVisible="False"
+                           Foreground="{DynamicResource Brush.TextDisabled}" FontSize="13"/>
+            </Grid>
+
+            <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4"
+                    Background="{DynamicResource Brush.Surface}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="2">
+                    <StackPanel x:Name="mobKillsStack" Orientation="Vertical"/>
+                </ScrollViewer>
+            </Border>
+        </DockPanel>
+    </Grid>
+</UserControl>

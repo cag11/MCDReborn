@@ -1,0 +1,18 @@
+﻿<Application x:Class="MCDSaveEdit.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:MCDSaveEdit">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!--
+                    The palette is NOT merged here. ThemeManager.initialize() inserts either
+                    Palette.Dark.xaml or Palette.Light.xaml at index 0 during startup, and
+                    swaps it when the user toggles. Controls.xaml resolves every colour with
+                    DynamicResource, so it does not care which one is loaded.
+                -->
+                <ResourceDictionary Source="UI/Theme/Controls.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

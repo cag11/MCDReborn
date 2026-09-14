@@ -1,0 +1,31 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <Product>DungeonTools</Product>
+        <Company>The DungeonTools Maintainers</Company>
+
+        <VersionPrefix>1.5.0</VersionPrefix>
+        <VersionSuffix>stable</VersionSuffix>
+        <VersionDungeons>1.3.2.0</VersionDungeons>
+
+        <Version Condition="'$(Configuration)' == 'Release'">$(VersionPrefix)</Version>
+        <Version Condition="'$(Configuration)' == 'Debug'">$(VersionPrefix)-$(VersionSuffix)</Version>
+        <InformationalVersion>$(Version) (MCD $(VersionDungeons))</InformationalVersion>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <TargetFramework>net5.0</TargetFramework>
+        <LangVersion>preview</LangVersion>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolsPackageFormat>snupkg</SymbolsPackageFormat>
+        <IncludeSource>true</IncludeSource>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <WarningsAsErrors>true</WarningsAsErrors>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+</Project>

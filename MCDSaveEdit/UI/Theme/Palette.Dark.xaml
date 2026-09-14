@@ -1,0 +1,51 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Dark palette, sampled from the Minecraft: Dungeons inventory screen.
+
+        The ground is a desaturated plum rather than neutral grey - that hue is what makes
+        the app read as Dungeons instead of as a generic dark theme, and it sits well behind
+        the gold/green/orange rarity frames that the item tiles bring with them from the
+        game's own art.
+
+        Every key here must also exist in Palette.Light.xaml. Controls.xaml binds to these
+        with DynamicResource, so swapping the dictionary re-themes the running app.
+    -->
+
+    <!-- Grounds, deepest first -->
+    <SolidColorBrush x:Key="Brush.Ground"        Color="#FF1E1419"/>
+    <SolidColorBrush x:Key="Brush.Surface"       Color="#FF2A1D26"/>
+    <SolidColorBrush x:Key="Brush.Panel"         Color="#FF35262F"/>
+    <SolidColorBrush x:Key="Brush.PanelHover"    Color="#FF402E39"/>
+    <SolidColorBrush x:Key="Brush.Field"         Color="#FF181015"/>
+
+    <!-- Lines -->
+    <SolidColorBrush x:Key="Brush.Border"        Color="#FF4A3542"/>
+    <SolidColorBrush x:Key="Brush.BorderStrong"  Color="#FF614757"/>
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="Brush.Text"          Color="#FFF6F2EE"/>
+    <SolidColorBrush x:Key="Brush.TextMuted"     Color="#FFC0B2B9"/>
+    <SolidColorBrush x:Key="Brush.TextDisabled"  Color="#FF6B5B64"/>
+
+    <!-- Accents. Amber is the section-header gold; teal is the in-game selection glow. -->
+    <SolidColorBrush x:Key="Brush.Accent"        Color="#FFE8A33D"/>
+    <SolidColorBrush x:Key="Brush.AccentBright"  Color="#FFF5C46B"/>
+    <SolidColorBrush x:Key="Brush.Select"        Color="#FF4ADED0"/>
+    <SolidColorBrush x:Key="Brush.Positive"      Color="#FF5FBF4A"/>
+    <SolidColorBrush x:Key="Brush.PositiveBright" Color="#FF74D65E"/>
+    <SolidColorBrush x:Key="Brush.Danger"        Color="#FFD1495B"/>
+
+    <!-- Scrollbars and other quiet chrome -->
+    <SolidColorBrush x:Key="Brush.Thumb"         Color="#FF553E4C"/>
+    <SolidColorBrush x:Key="Brush.ThumbHover"    Color="#FF7A5A6C"/>
+
+    <!-- Menus and popups sit above the page, so they get their own surface -->
+    <SolidColorBrush x:Key="Brush.Menu"          Color="#FF181015"/>
+    <SolidColorBrush x:Key="Brush.Popup"         Color="#FF35262F"/>
+
+    <Color x:Key="Color.Shadow">#FF000000</Color>
+    <sys:Double xmlns:sys="clr-namespace:System;assembly=System.Runtime" x:Key="Value.ShadowOpacity">0.55</sys:Double>
+
+</ResourceDictionary>

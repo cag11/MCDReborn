@@ -1,0 +1,98 @@
+﻿<Window x:Class="MCDSaveEdit.UI.SplashWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        mc:Ignorable="d"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        Title="*Loading*"
+        Width="470" Height="186"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="True"
+        WindowStartupLocation="CenterScreen">
+
+    <!--
+        The old splash was a 40pt title over a raw 700x700 TextBox streaming console output,
+        which read as something you would not want running on your machine. The log is still
+        captured - ControlWriter writes into the hidden TextBox below, unchanged - but only
+        the most recent line is shown, as a status caption.
+    -->
+    <Border Background="{DynamicResource Brush.Surface}"
+            BorderBrush="{DynamicResource Brush.BorderStrong}"
+            BorderThickness="1" CornerRadius="10">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="24" ShadowDepth="6" Opacity="0.5" Color="#FF000000"/>
+        </Border.Effect>
+
+        <Grid Margin="26,22,26,20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <!-- Auto, not *: the log is collapsed, so a star row would leave a dead gap. -->
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!--
+                Vector mark rather than a bitmap: it is crisp at any DPI and takes its colour
+                from the palette, so it follows the theme instead of fighting it. The hexagon
+                echoes the level badge on the inventory screen.
+            -->
+            <Viewbox Grid.Row="0" Grid.Column="0" Width="46" Height="46"
+                     VerticalAlignment="Top" Margin="0,2,16,0">
+                <Canvas Width="100" Height="100">
+                    <Path Data="M50,4 L91,27 L91,73 L50,96 L9,73 L9,27 Z"
+                          Stroke="{DynamicResource Brush.Accent}" StrokeThickness="7"
+                          StrokeLineJoin="Round"/>
+                    <Path Data="M50,30 L68,50 L50,70 L32,50 Z"
+                          Fill="{DynamicResource Brush.Accent}"/>
+                </Canvas>
+            </Viewbox>
+
+            <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Top">
+                <TextBlock x:Name="titleLabel" Text="*Minecraft Dungeons Save File Editor Reborn*"
+                           FontSize="19" FontWeight="SemiBold" TextWrapping="Wrap"
+                           Foreground="{DynamicResource Brush.Text}"/>
+                <TextBlock x:Name="versionLabel" Text="" Margin="0,3,0,0" FontSize="12"
+                           Foreground="{DynamicResource Brush.TextMuted}"/>
+            </StackPanel>
+
+            <!-- The full log still exists, just not in the user's face. -->
+            <TextBox x:Name="textbox" Grid.Row="1" Grid.ColumnSpan="2"
+                     Visibility="Collapsed" TextWrapping="NoWrap"/>
+
+            <StackPanel Grid.Row="2" Grid.ColumnSpan="2" VerticalAlignment="Bottom" Margin="0,18,0,0">
+                <TextBlock x:Name="statusLabel" Text="Starting…" FontSize="12"
+                           TextTrimming="CharacterEllipsis" Margin="0,0,0,8"
+                           Foreground="{DynamicResource Brush.TextMuted}"/>
+
+                <!-- Indeterminate: loading the paks has no measurable progress to report. -->
+                <Border Height="4" CornerRadius="2" Background="{DynamicResource Brush.Field}"
+                        ClipToBounds="True" x:Name="progressTrack">
+                    <Border x:Name="progressBar" Width="120" HorizontalAlignment="Left"
+                            CornerRadius="2" Background="{DynamicResource Brush.Accent}">
+                        <Border.RenderTransform>
+                            <TranslateTransform x:Name="progressShift" X="-120"/>
+                        </Border.RenderTransform>
+                        <Border.Triggers>
+                            <EventTrigger RoutedEvent="Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard RepeatBehavior="Forever">
+                                        <DoubleAnimation Storyboard.TargetName="progressShift"
+                                                         Storyboard.TargetProperty="X"
+                                                         From="-130" To="430" Duration="0:0:1.4"/>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </Border.Triggers>
+                    </Border>
+                </Border>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

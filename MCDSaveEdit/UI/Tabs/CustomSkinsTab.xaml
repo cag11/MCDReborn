@@ -1,0 +1,120 @@
+﻿<UserControl x:Class="MCDSaveEdit.UI.CustomSkinsTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:MCDSaveEdit.UI"
+             mc:Ignorable="d"
+             d:DesignHeight="450"
+             d:DesignWidth="900">
+    <Grid Margin="10,6,10,10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ===================== Pick a piece of gear ===================== -->
+        <DockPanel Grid.Column="0">
+            <Label x:Name="gearLabel" DockPanel.Dock="Top" Content="*Gear*"
+                   Style="{StaticResource SectionHeading}" FontSize="16" Padding="0,2" Margin="2,0,2,6"/>
+
+            <Grid DockPanel.Dock="Top" Margin="2,0,2,6">
+                <TextBox x:Name="searchBox" Padding="7,4" FontSize="13" TextChanged="searchBox_TextChanged"/>
+                <TextBlock x:Name="searchHint" Text="Search…" Margin="9,0,0,0"
+                           VerticalAlignment="Center" IsHitTestVisible="False"
+                           Foreground="{DynamicResource Brush.TextDisabled}" FontSize="13"/>
+            </Grid>
+
+            <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4"
+                    Background="{DynamicResource Brush.Surface}">
+                <ListBox x:Name="gearList" BorderThickness="0" Background="Transparent"
+                         SelectionChanged="gearList_SelectionChanged"/>
+            </Border>
+        </DockPanel>
+
+        <!-- ===================== What to do with it ===================== -->
+        <DockPanel Grid.Column="2">
+            <!-- The heading, and beside it the way in for a pak this app did not make. -->
+            <Grid DockPanel.Dock="Top" Margin="2,0,2,6">
+                <Label x:Name="selectedLabel" Content=""
+                       Style="{StaticResource SectionHeading}" FontSize="16" Padding="0,2"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button x:Name="addPakButton" Width="30" Height="26" Padding="0" Margin="0,0,6,0"
+                            Click="addPakButton_Click">
+                        <!-- An arrow going up into a tray: bringing a file in. -->
+                        <Canvas Width="16" Height="16">
+                            <Path Fill="{DynamicResource Brush.Text}"
+                                  Data="M8 1 L12 6 H9.5 V10 H6.5 V6 H4 Z"/>
+                            <Path Fill="{DynamicResource Brush.Text}"
+                                  Data="M2 12 H4 V13.5 H12 V12 H14 V15 H2 Z"/>
+                        </Canvas>
+                    </Button>
+                    <Button x:Name="openModsButton" Width="30" Height="26" Padding="0"
+                            Click="openModsButton_Click">
+                        <Canvas Width="16" Height="16">
+                            <Path Fill="{DynamicResource Brush.Text}"
+                                  Data="M1.5 3 H6.5 L8 4.5 H14.5 V13 H1.5 Z"/>
+                        </Canvas>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <TextBlock x:Name="hintLabel" DockPanel.Dock="Top" TextWrapping="Wrap"
+                       Margin="2,0,2,10" FontSize="12"
+                       Foreground="{DynamicResource Brush.TextMuted}" Text="*hint*"/>
+
+            <!-- The link round trip: the texture travels in the URL, so there is no file at all. -->
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="2,0,2,8">
+                <Button x:Name="designerButton" Content="*1. Open in Designer*" Padding="10,5" Margin="0,0,6,0"
+                        Click="designerButton_Click"/>
+                <Button x:Name="pasteButton" Content="*2. Apply from Designer*" Padding="10,5"
+                        Click="pasteButton_Click"/>
+            </StackPanel>
+
+            <!-- Still worth keeping: a PNG from somewhere else, or one kept on disk. -->
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="2,0,2,10">
+                <TextBlock x:Name="filesLabel" Text="*Or use files:*" VerticalAlignment="Center"
+                           Margin="0,0,8,0" FontSize="12"
+                           Foreground="{DynamicResource Brush.TextMuted}"/>
+                <Button x:Name="exportButton" Content="*Export PNG*" Padding="8,3" Margin="0,0,6,0"
+                        FontSize="12" Click="exportButton_Click"/>
+                <Button x:Name="applyButton" Content="*Apply PNG*" Padding="8,3"
+                        FontSize="12" Click="applyButton_Click"/>
+            </StackPanel>
+
+            <!-- The texture as it stands, so there is something to judge a change against. -->
+            <Border DockPanel.Dock="Top" Height="150" Margin="2,0,2,12"
+                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4"
+                    Background="{DynamicResource Brush.Surface}">
+                <Grid>
+                    <Image x:Name="previewImage" Margin="10" Stretch="Uniform"
+                           RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                    <TextBlock x:Name="previewEmptyLabel" Text=""
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               TextWrapping="Wrap" TextAlignment="Center" Margin="20" FontSize="12"
+                               Foreground="{DynamicResource Brush.TextDisabled}"/>
+                </Grid>
+            </Border>
+
+            <Grid DockPanel.Dock="Top" Margin="2,0,2,2">
+                <Label x:Name="installedLabel" Content="*Installed*"
+                       Style="{StaticResource SectionHeading}" FontSize="14" Padding="0,2"/>
+                <TextBlock x:Name="installedCountLabel" Text="" HorizontalAlignment="Right"
+                           VerticalAlignment="Center" FontSize="12"
+                           Foreground="{DynamicResource Brush.TextMuted}"/>
+            </Grid>
+
+            <TextBlock x:Name="modsNoteLabel" DockPanel.Dock="Top" TextWrapping="Wrap"
+                       Margin="2,0,2,6" FontSize="11" Text="*mods note*"
+                       Foreground="{DynamicResource Brush.TextDisabled}"/>
+
+            <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4"
+                    Background="{DynamicResource Brush.Surface}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="2">
+                    <StackPanel x:Name="installedStack" Orientation="Vertical"/>
+                </ScrollViewer>
+            </Border>
+        </DockPanel>
+    </Grid>
+</UserControl>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Thin wrapper that compiles just the two save-file sources out of the vendored
+    DungeonTools checkout. The checkout also contains a CLI, a server and a models
+    project that this app does not use, so default globbing is switched off and the
+    two files are listed by hand.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>DungeonTools</AssemblyName>
+    <RootNamespace>DungeonTools</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Platforms>AnyCPU;x64;x86</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="DungeonTools\src\DungeonTools.Save.File\AesEncryptionProvider.cs" />
+    <Compile Include="DungeonTools\src\DungeonTools.Save.File\SaveFileHandler.cs" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- -windows because it references MCDSaveEdit, which is a WPF project. -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <AssemblyName>MCDSaveEditTests</AssemblyName>
+    <RootNamespace>MCDSaveEditTests</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Platforms>AnyCPU;x64;x86</Platforms>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 3.x is the first line with .NET 5+ support. -->
+    <PackageReference Include="MSTest.TestAdapter" Version="3.6.4" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.6.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <!-- System.Reactive flows transitively from MCDSaveEdit; pinning it here produced
+         an NU1605 downgrade error once the app moved to 6.0.1. -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Sample saves live next to the tests, not in anyone's personal save folder. -->
+    <None Include="TestData\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DungeonTools\DungeonTools.csproj" />
+    <ProjectReference Include="..\MCDSaveEdit\MCDSaveEdit.csproj" />
+    <ProjectReference Include="..\PakReader\PakReader.csproj" />
+  </ItemGroup>
+
+</Project>

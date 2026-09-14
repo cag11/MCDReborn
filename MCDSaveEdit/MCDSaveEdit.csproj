@@ -1,0 +1,76 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <!-- The shipped file is MCDSaveEditReborn.exe. The registry key is NOT this name;
+         see Constants.APPLICATION_NAME, which deliberately stays MCDSaveEdit. -->
+    <AssemblyName>MCDSaveEditReborn</AssemblyName>
+    <RootNamespace>MCDSaveEdit</RootNamespace>
+    <StartupObject>MCDSaveEdit.App</StartupObject>
+    <ApplicationIcon>Properties\icon.ico</ApplicationIcon>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Platforms>AnyCPU;x64;x86</Platforms>
+    <!-- CS8618: non-nullable field uninitialised. The codebase predates the annotation. -->
+    <NoWarn>$(NoWarn);CS8618</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;CODE_ANALYSIS</DefineConstants>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <!-- Kept as-is: the release drop has always been bin\ReleaseFree\, not bin\Release\. -->
+    <OutputPath>bin\ReleaseFree\</OutputPath>
+    <DefineConstants>TRACE;CODE_ANALYSIS;USE_SIMPLE_SELECTION</DefineConstants>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- Costura cannot weave .NET 5+ assemblies. Single-file output comes from
+         `dotnet publish -p:PublishSingleFile=true` instead. -->
+    <DisableFody>true</DisableFody>
+    <!-- NOTE: the SDK still emits App.config as MCDSaveEditReborn.dll.config here. Setting
+         AppConfig empty does not stop it (the convention is item-based and runs later).
+         Harmless - it holds only binding redirects, which .NET ignores - so left alone. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WPF compiles these as resources; .png is not globbed by default. -->
+    <Resource Include="Images\**\*.png" />
+    <Resource Include="Properties\icon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+    </Compile>
+    <None Include="Properties\BuildOrder.txt" />
+  </ItemGroup>
+
+  <!-- ===================== packages ===================== -->
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" Version="2.88.9" />
+    <PackageReference Include="System.Reactive" Version="6.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DungeonTools\DungeonTools.csproj" />
+    <ProjectReference Include="..\PakReader\PakReader.csproj" />
+  </ItemGroup>
+
+</Project>

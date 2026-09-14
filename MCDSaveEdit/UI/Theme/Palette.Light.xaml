@@ -1,0 +1,48 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Light palette. Same keys as Palette.Dark.xaml, same roles.
+
+        Not a plain inversion: the accents are darkened so they still carry enough contrast
+        against a pale ground. The amber that reads as gold on plum turns to mud on white,
+        so it drops to a deeper bronze, and the teal and green come down to match.
+        The warm tint is kept so the two themes feel like the same product.
+    -->
+
+    <!-- Grounds, palest first -->
+    <SolidColorBrush x:Key="Brush.Ground"        Color="#FFF4EFF1"/>
+    <SolidColorBrush x:Key="Brush.Surface"       Color="#FFFAF7F8"/>
+    <SolidColorBrush x:Key="Brush.Panel"         Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="Brush.PanelHover"    Color="#FFEDE4E8"/>
+    <SolidColorBrush x:Key="Brush.Field"         Color="#FFFFFFFF"/>
+
+    <!-- Lines -->
+    <SolidColorBrush x:Key="Brush.Border"        Color="#FFD8CCD2"/>
+    <SolidColorBrush x:Key="Brush.BorderStrong"  Color="#FFB5A3AD"/>
+
+    <!-- Text -->
+    <SolidColorBrush x:Key="Brush.Text"          Color="#FF2A1D26"/>
+    <SolidColorBrush x:Key="Brush.TextMuted"     Color="#FF6E5F67"/>
+    <SolidColorBrush x:Key="Brush.TextDisabled"  Color="#FFA2949B"/>
+
+    <!-- Accents, darkened for contrast on a pale ground -->
+    <SolidColorBrush x:Key="Brush.Accent"        Color="#FFA8701A"/>
+    <SolidColorBrush x:Key="Brush.AccentBright"  Color="#FF8A5A12"/>
+    <SolidColorBrush x:Key="Brush.Select"        Color="#FF12776E"/>
+    <SolidColorBrush x:Key="Brush.Positive"      Color="#FF3B7D2C"/>
+    <SolidColorBrush x:Key="Brush.PositiveBright" Color="#FF2F6822"/>
+    <SolidColorBrush x:Key="Brush.Danger"        Color="#FFB03040"/>
+
+    <!-- Scrollbars and other quiet chrome -->
+    <SolidColorBrush x:Key="Brush.Thumb"         Color="#FFC4B5BC"/>
+    <SolidColorBrush x:Key="Brush.ThumbHover"    Color="#FF9A8792"/>
+
+    <!-- Menus and popups sit above the page, so they get their own surface -->
+    <SolidColorBrush x:Key="Brush.Menu"          Color="#FFFFFFFF"/>
+    <SolidColorBrush x:Key="Brush.Popup"         Color="#FFFFFFFF"/>
+
+    <Color x:Key="Color.Shadow">#FF6E5F67</Color>
+    <sys:Double xmlns:sys="clr-namespace:System;assembly=System.Runtime" x:Key="Value.ShadowOpacity">0.25</sys:Double>
+
+</ResourceDictionary>

@@ -1,0 +1,60 @@
+﻿<Window x:Class="MCDSaveEdit.UI.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MCDSaveEdit.UI"
+        mc:Ignorable="d"
+        Title="*About MCDSaveEditReborn*"
+        Background="{DynamicResource Brush.Ground}"
+        Foreground="{DynamicResource Brush.Text}"
+        Height="380" Width="560"
+        WindowStyle="ThreeDBorderWindow"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize"
+        ShowInTaskbar="False">
+    <!--
+        Hyperlink.RequestNavigate is attached once at the root. WPF does not open a Hyperlink
+        by itself - without a handler every link in this window is inert, which is what they
+        all were before.
+    -->
+    <DockPanel Background="Transparent" Hyperlink.RequestNavigate="hyperlink_RequestNavigate">
+
+        <!--
+            The upstream copyright notice lives in LICENSE, which is what MIT actually
+            requires be retained, and MCDSaveEdit is credited in the list below.
+        -->
+        <Grid DockPanel.Dock="Top" Margin="14,12,14,0">
+            <TextBlock>
+                Copyright © 2026 arno (<Hyperlink NavigateUri="https://github.com/cag11">cag11</Hyperlink>)<LineBreak/>
+                License: <Hyperlink NavigateUri="https://github.com/cag11/MCDSaveEditReborn/blob/main/LICENSE">MIT</Hyperlink>
+            </TextBlock>
+            <Label x:Name="versionLabel" Content="*Version: Debug 1.0*"
+                   HorizontalAlignment="Right" VerticalAlignment="Top" Padding="0"/>
+        </Grid>
+
+        <WrapPanel DockPanel.Dock="Top" HorizontalAlignment="Center" Margin="10,16,10,4">
+            <Button Content="MCD Builder"   Padding="12,6" Margin="4" Click="mcdBuilderButton_Click"/>
+            <Button Content="Dungeons Hub"  Padding="12,6" Margin="4" Click="dungeonsHubButton_Click"/>
+            <Button Content="Dungeons2 Hub" Padding="12,6" Margin="4" Click="dungeons2HubButton_Click"/>
+            <Button Content="Souls Game"    Padding="12,6" Margin="4" Click="soulsGameButton_Click"/>
+        </WrapPanel>
+
+        <!-- Scrolls, so the credit list can grow without the window clipping it. -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="14,10,8,12">
+            <TextBlock TextWrapping="Wrap">
+                <Bold>External Credits and Licenses</Bold><LineBreak/>
+                <LineBreak/>
+                <Hyperlink NavigateUri="https://github.com/CutFlame/MCDSaveEdit">MCDSaveEdit</Hyperlink> © Michael Holt (<Hyperlink NavigateUri="https://github.com/CutFlame/MCDSaveEdit/blob/master/LICENSE">MIT</Hyperlink>)<LineBreak/>
+                <LineBreak/>
+                <Hyperlink NavigateUri="https://github.com/HellPie/DungeonTools">DungeonTools</Hyperlink> © Diego Russi (<Hyperlink NavigateUri="https://github.com/HellPie/DungeonTools/blob/master/LICENSE">AGPL 3.0</Hyperlink>)<LineBreak/>
+                <LineBreak/>
+                <Hyperlink NavigateUri="https://github.com/iAmAsval/FModel">FModel</Hyperlink> © Free Software Foundation, Inc. (<Hyperlink NavigateUri="https://github.com/iAmAsval/FModel/blob/master/LICENSE">GPL 3.0</Hyperlink>)<LineBreak/>
+                <LineBreak/>
+                <Hyperlink NavigateUri="https://github.com/WorkingRobot/PakReader">PakReader</Hyperlink> © Aleks Margarian (<Hyperlink NavigateUri="https://github.com/WorkingRobot/PakReader/blob/master/LICENSE">MIT</Hyperlink>)<LineBreak/>
+                <LineBreak/>
+                <Hyperlink NavigateUri="https://game-icons.net/">Game-icons.net</Hyperlink> © Lorc, Delapouite and contributors (<Hyperlink NavigateUri="http://creativecommons.org/licenses/by/3.0/">CC BY 3.0</Hyperlink>)<LineBreak/>
+            </TextBlock>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

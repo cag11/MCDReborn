@@ -1,0 +1,648 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="ABOUT_WINDOW_TITLE" xml:space="preserve">
+    <value>About Minecraft Dungeons Save File Editor Reborn</value>
+    <comment>About Minecraft Dungeons Save File Editor Reborn</comment>
+  </data>
+  <data name="ALL_FILES" xml:space="preserve">
+    <value>All files</value>
+    <comment>All files</comment>
+  </data>
+  <data name="CUSTOM_SKINS_TAB" xml:space="preserve">
+    <value>Custom Skins</value>
+    <comment>Custom Skins</comment>
+  </data>
+  <data name="CUSTOM_SKINS_GEAR" xml:space="preserve">
+    <value>Gear</value>
+    <comment>Gear</comment>
+  </data>
+  <data name="CUSTOM_SKINS_INSTALLED" xml:space="preserve">
+    <value>Installed</value>
+    <comment>Installed</comment>
+  </data>
+  <data name="CUSTOM_SKINS_EXPORT" xml:space="preserve">
+    <value>Export PNG…</value>
+    <comment>Export PNG</comment>
+  </data>
+  <data name="CUSTOM_SKINS_DESIGNER" xml:space="preserve">
+    <value>1. Open in Designer</value>
+    <comment>1. Open in Designer</comment>
+  </data>
+  <data name="CUSTOM_SKINS_APPLY" xml:space="preserve">
+    <value>Apply PNG…</value>
+    <comment>Apply PNG</comment>
+  </data>
+  <data name="CUSTOM_SKINS_REMOVE" xml:space="preserve">
+    <value>Remove</value>
+    <comment>Remove</comment>
+  </data>
+  <data name="CUSTOM_SKINS_HINT" xml:space="preserve">
+    <value>Opening the Designer carries this texture along in the link, so there is no file to save or upload. Recolour it there, press Send to editor, then come back and apply it. Applying writes a mod pak beside the game's own; the originals are never modified, and Remove undoes it completely.</value>
+    <comment>Explains the two steps</comment>
+  </data>
+  <data name="CUSTOM_SKINS_NO_CONTENT" xml:space="preserve">
+    <value>Load the game content to use custom skins.</value>
+    <comment>Load the game content</comment>
+  </data>
+  <data name="CUSTOM_SKINS_PICK_ONE" xml:space="preserve">
+    <value>Pick a piece of gear on the left.</value>
+    <comment>Pick a piece of gear</comment>
+  </data>
+  <data name="CUSTOM_SKINS_NO_TEXTURE" xml:space="preserve">
+    <value>No colour texture found for this one.</value>
+    <comment>No colour texture found</comment>
+  </data>
+  <data name="CUSTOM_SKINS_NONE_INSTALLED" xml:space="preserve">
+    <value>Nothing installed yet.</value>
+    <comment>Nothing installed yet</comment>
+  </data>
+  <data name="CUSTOM_SKINS_EXPORTED" xml:space="preserve">
+    <value>Saved to {0}</value>
+    <comment>Saved to C:\path.png</comment>
+  </data>
+  <data name="CUSTOM_SKINS_APPLIED" xml:space="preserve">
+    <value>Installed as “{0}”. Restart the game to see it.</value>
+    <comment>Installed</comment>
+  </data>
+  <data name="CUSTOM_SKINS_PASTE" xml:space="preserve">
+    <value>2. Apply from Designer</value>
+    <comment>2. Apply from Designer</comment>
+  </data>
+  <data name="CUSTOM_SKINS_FILES" xml:space="preserve">
+    <value>Or use files:</value>
+    <comment>Or use files</comment>
+  </data>
+  <data name="CUSTOM_SKINS_NOTHING_COPIED" xml:space="preserve">
+    <value>The clipboard does not hold a texture from the Designer. Press “Send to editor” there first, then try again.</value>
+    <comment>Clipboard has no texture</comment>
+  </data>
+  <data name="CUSTOM_SKINS_LINK_COPIED" xml:space="preserve">
+    <value>The Designer could not be opened, so the link was copied to the clipboard instead. Paste it into a browser.</value>
+    <comment>Browser would not open</comment>
+  </data>
+  <data name="CUSTOM_SKINS_ADD_PAK" xml:space="preserve">
+    <value>Add a mod pak…</value>
+    <comment>Add a mod pak</comment>
+  </data>
+  <data name="CUSTOM_SKINS_OPEN_MODS" xml:space="preserve">
+    <value>Open the ~mods folder</value>
+    <comment>Open the mods folder</comment>
+  </data>
+  <data name="CUSTOM_SKINS_PAK_ADDED" xml:space="preserve">
+    <value>Added “{0}” to ~mods. Close and reopen the game to see it.</value>
+    <comment>Added to mods</comment>
+  </data>
+  <data name="CUSTOM_SKINS_PAK_REPLACE" xml:space="preserve">
+    <value>“{0}” is already in ~mods. Replace it?</value>
+    <comment>Replace existing mod</comment>
+  </data>
+  <data name="CUSTOM_SKINS_MANUAL_TAG" xml:space="preserve">
+    <value>added by you</value>
+    <comment>Manual mod tag</comment>
+  </data>
+  <data name="CUSTOM_SKINS_MODS_NOTE" xml:space="preserve">
+    <value>Mods load from the ~mods folder beside the game's own paks. Close the game before adding one, and on the Minecraft Launcher start Dungeons.exe directly – launching through the launcher removes mods.</value>
+    <comment>Explains the mods folder</comment>
+  </data>
+  <data name="ALL_ITEMS_FILTER" xml:space="preserve">
+    <value>All</value>
+    <comment>All</comment>
+  </data>
+  <data name="EQUIP" xml:space="preserve">
+    <value>Equip</value>
+    <comment>Equip</comment>
+  </data>
+  <data name="EQUIP_IN_SLOT" xml:space="preserve">
+    <value>Equip in Slot {0}</value>
+    <comment>Equip in Slot 1</comment>
+  </data>
+  <data name="OTHER_ENCHANTMENTS_FILTER" xml:space="preserve">
+    <value>Other</value>
+    <comment>Other</comment>
+  </data>
+  <data name="EQUIP_OVER" xml:space="preserve">
+    <value>Equip over</value>
+    <comment>Equip over</comment>
+  </data>
+  <data name="EQUIP_OVER_IN_SLOT" xml:space="preserve">
+    <value>Equip over Slot {0}</value>
+    <comment>Equip over Slot 1</comment>
+  </data>
+  <data name="UNEQUIP" xml:space="preserve">
+    <value>Unequip</value>
+    <comment>Unequip</comment>
+  </data>
+  <data name="INVENTORY_FULL_ERROR_MESSAGE" xml:space="preserve">
+    <value>There is no room in the inventory to unequip this: it already holds the maximum of {0} items.</value>
+    <comment>There is no room in the inventory to unequip this: it already holds the maximum of 300 items.</comment>
+  </data>
+  <data name="APPLICATION_TITLE" xml:space="preserve">
+    <value>Minecraft Dungeons Save File Editor Reborn</value>
+    <comment>Minecraft Dungeons Save File Editor Reborn</comment>
+  </data>
+  <data name="ARMOR_ITEMS_FILTER" xml:space="preserve">
+    <value>Armor</value>
+    <comment>Armor</comment>
+  </data>
+  <data name="ARROWS" xml:space="preserve">
+    <value>Arrows</value>
+    <comment>Arrows</comment>
+  </data>
+  <data name="ARTIFACT_ITEMS_FILTER" xml:space="preserve">
+    <value>Artifact</value>
+    <comment>Artifact</comment>
+  </data>
+  <data name="ATTEMPTS_LEFT" xml:space="preserve">
+    <value>Attempts Left</value>
+    <comment>Attempts Left</comment>
+  </data>
+  <data name="BETA_UPDATE_MENU_ITEM_HEADER" xml:space="preserve">
+    <value>Beta _Update</value>
+    <comment>Beta _Update</comment>
+  </data>
+  <data name="BETA_VERSION_LABEL" xml:space="preserve">
+    <value>Beta</value>
+    <comment>Beta</comment>
+  </data>
+  <data name="BOSSES_DEFEATED" xml:space="preserve">
+    <value>Bosses Defeated</value>
+    <comment>Bosses Defeated</comment>
+  </data>
+  <data name="CANCEL" xml:space="preserve">
+    <value>Cancel</value>
+    <comment>Cancel</comment>
+  </data>
+  <data name="CHARACTER_FILE_FORMAT_NOT_RECOGNIZED_ERROR_MESSAGE" xml:space="preserve">
+    <value>Character File format not recognized. Please select a valid Character File.</value>
+    <comment>Character File format not recognized. Please select a valid Character File.</comment>
+  </data>
+  <data name="CHEST" xml:space="preserve">
+    <value>Chest</value>
+    <comment>Chest</comment>
+  </data>
+  <data name="COMMON" xml:space="preserve">
+    <value>Common</value>
+    <comment>Common</comment>
+  </data>
+  <data name="COMPLETED_APOCALYPSE_PLUS" xml:space="preserve">
+    <value>Completed Apocalypse Plus:</value>
+    <comment>Completed Apocalypse Plus:</comment>
+  </data>
+  <data name="COMPLETED_DIFFICULTY" xml:space="preserve">
+    <value>Completed Difficulty:</value>
+    <comment>Completed Difficulty:</comment>
+  </data>
+  <data name="COMPLETED_THREAT_LEVEL" xml:space="preserve">
+    <value>Completed Threat Level:</value>
+    <comment>Completed Threat Level:</comment>
+  </data>
+  <data name="CREEPING_WINTER" xml:space="preserve">
+    <value>Creeping Winter</value>
+    <comment>Creeping Winter</comment>
+  </data>
+  <data name="CURRENT_FLOOR" xml:space="preserve">
+    <value>Current Floor</value>
+    <comment>Current Floor</comment>
+  </data>
+  <data name="DECRYPTED_CHARACTER_SAVE_FILES" xml:space="preserve">
+    <value>Decrypted Character Save files</value>
+    <comment>Decrypted Character Save files</comment>
+  </data>
+  <data name="DELETE" xml:space="preserve">
+    <value>Delete</value>
+    <comment>Delete</comment>
+  </data>
+  <data name="DIFFICULTY_ADVENTURE" xml:space="preserve">
+    <value>Adventure</value>
+    <comment>Adventure</comment>
+  </data>
+  <data name="DIFFICULTY_APOCALYPSE" xml:space="preserve">
+    <value>Apocalypse</value>
+    <comment>Apocalypse</comment>
+  </data>
+  <data name="DIFFICULTY_DEFAULT" xml:space="preserve">
+    <value>Default</value>
+    <comment>Default</comment>
+  </data>
+  <data name="DUPLICATE" xml:space="preserve">
+    <value>Duplicate</value>
+    <comment>Duplicate</comment>
+  </data>
+  <data name="EMERALDS" xml:space="preserve">
+    <value>Emeralds</value>
+    <comment>Emeralds</comment>
+  </data>
+  <data name="ENCHANTED_ITEMS_FILTER" xml:space="preserve">
+    <value>Enchanted</value>
+    <comment>Enchanted</comment>
+  </data>
+  <data name="ENCRYPTED_CHARACTER_SAVE_FILES" xml:space="preserve">
+    <value>Encrypted Character Save files</value>
+    <comment>Encrypted Character Save files</comment>
+  </data>
+  <data name="ERROR" xml:space="preserve">
+    <value>Error</value>
+    <comment>Error</comment>
+  </data>
+  <data name="EXIT" xml:space="preserve">
+    <value>Exit</value>
+    <comment>Exit</comment>
+  </data>
+  <data name="FAILED_TO_ENCRYPT_ERROR_MESSAGE" xml:space="preserve">
+    <value>Failed to encrypt the json data.</value>
+    <comment>Failed to encrypt the json data.</comment>
+  </data>
+  <data name="FAILED_TO_LOAD_GAME_CONTENT_ERROR_TITLE" xml:space="preserve">
+    <value>Failed to load game content.</value>
+    <comment>Failed to load game content.</comment>
+  </data>
+  <data name="FAILED_TO_PARSE_FILE_ERROR_MESSAGE" xml:space="preserve">
+    <value>File was not in an expected format.</value>
+    <comment>File was not in an expected format.</comment>
+  </data>
+  <data name="FILE_DECRYPT_ERROR_MESSAGE" xml:space="preserve">
+    <value>Content of file \"{0}\" could not be converted to a supported format.</value>
+    <comment>Content of file \"{0}\" could not be converted to a supported format.</comment>
+  </data>
+  <data name="FILE_DOESNT_EXIST_ERROR_MESSAGE" xml:space="preserve">
+    <value>File doesn't exist.</value>
+    <comment>File doesn't exist.</comment>
+  </data>
+  <data name="FILE_DROP_ERROR_MESSAGE" xml:space="preserve">
+    <value>Expected a file.</value>
+    <comment>Expected a file.</comment>
+  </data>
+  <data name="FILE_IN_UNEXPECTED_FORMAT_ERROR_MESSAGE" xml:space="preserve">
+    <value>The file \"{0}\" was in an unexpected format.</value>
+    <comment>The file \"{0}\" was in an unexpected format.</comment>
+  </data>
+  <data name="FINAL_FLOOR" xml:space="preserve">
+    <value>Final Floor</value>
+    <comment>Final Floor</comment>
+  </data>
+  <data name="FLOOR_CHALLENGES" xml:space="preserve">
+    <value>Challenges</value>
+    <comment>Challenges</comment>
+  </data>
+  <data name="FLOOR_REWARDS" xml:space="preserve">
+    <value>Rewards</value>
+    <comment>Rewards</comment>
+  </data>
+  <data name="FLOOR_TILE" xml:space="preserve">
+    <value>Tile</value>
+    <comment>Tile</comment>
+  </data>
+  <data name="FLOOR_TYPE" xml:space="preserve">
+    <value>Type</value>
+    <comment>Type</comment>
+  </data>
+  <data name="GAME_FILES_WINDOW_GROUPBOX_HEADER" xml:space="preserve">
+    <value>Game Files</value>
+    <comment>Game Files</comment>
+  </data>
+  <data name="GAME_FILES_WINDOW_MESSAGE" xml:space="preserve">
+    <value>Could not find game content files in the default install location. Please provide the path to the game files or launch with no game content and limited features.</value>
+    <comment>Could not find game content files in the default install location. Please provide the path to the game files or launch with no game content and limited features.</comment>
+  </data>
+  <data name="GAME_FILES_WINDOW_NO_CONTENT_BUTTON" xml:space="preserve">
+    <value>No game content</value>
+    <comment>No game content</comment>
+  </data>
+  <data name="GAME_FILES_WINDOW_TEXTBOX_LABEL" xml:space="preserve">
+    <value>Path</value>
+    <comment>Path</comment>
+  </data>
+  <data name="GAME_FILES_WINDOW_TITLE" xml:space="preserve">
+    <value>Launch using game content</value>
+    <comment>Launch using game content</comment>
+  </data>
+  <data name="GIFTED" xml:space="preserve">
+    <value>Gifted</value>
+    <comment>Gifted</comment>
+  </data>
+  <data name="GILDED" xml:space="preserve">
+    <value>Gilded</value>
+    <comment>Gilded</comment>
+  </data>
+  <data name="GIVE_UP_TOWER_RUN" xml:space="preserve">
+    <value>Give up Tower Run</value>
+    <comment>Give up Tower Run</comment>
+  </data>
+  <data name="HOWLING_PEAKS" xml:space="preserve">
+    <value>Howling Peaks</value>
+    <comment>Howling Peaks</comment>
+  </data>
+  <data name="INVENTORY" xml:space="preserve">
+    <value>Inventory</value>
+    <comment>Inventory</comment>
+  </data>
+  <data name="ISLAND_REALMS" xml:space="preserve">
+    <value>Island Realms</value>
+    <comment>Island Realms</comment>
+  </data>
+  <data name="ITEMS_COUNT_LABEL" xml:space="preserve">
+    <value>Items: {0}/{1} Max</value>
+    <comment>Items: {0}/{1} Max</comment>
+  </data>
+  <data name="ITEM_WAS_DELETED_ERROR_MESSAGE" xml:space="preserve">
+    <value>Item was deleted.</value>
+    <comment>Item was deleted.</comment>
+  </data>
+  <data name="JUNGLE_AWAKENS" xml:space="preserve">
+    <value>Jungle Awakens</value>
+    <comment>Jungle Awakens</comment>
+  </data>
+  <data name="LAUNCH_WITH_LIMITED_FEATURES_QUESTION" xml:space="preserve">
+    <value>Launch with no game content and limited features?</value>
+    <comment>Launch with no game content and limited features?</comment>
+  </data>
+  <data name="LEVEL" xml:space="preserve">
+    <value>Level</value>
+    <comment>Level</comment>
+  </data>
+  <data name="MAINLAND" xml:space="preserve">
+    <value>Mainland</value>
+    <comment>Mainland</comment>
+  </data>
+  <data name="MCD_VERSION_FORMAT" xml:space="preserve">
+    <value>MCD {0}</value>
+    <comment>MCD {0}</comment>
+  </data>
+  <data name="MELEE_ITEMS_FILTER" xml:space="preserve">
+    <value>Melee</value>
+    <comment>Melee</comment>
+  </data>
+  <data name="MENU_ITEM_ABOUT" xml:space="preserve">
+    <value>About</value>
+    <comment>About</comment>
+  </data>
+  <data name="MENU_ITEM_FILE" xml:space="preserve">
+    <value>File</value>
+    <comment>File</comment>
+  </data>
+  <data name="MENU_ITEM_GET_NEW_VERSION" xml:space="preserve">
+    <value>Get New Version</value>
+    <comment>Get New Version</comment>
+  </data>
+  <data name="MISSIONS" xml:space="preserve">
+    <value>Missions</value>
+    <comment>Missions</comment>
+  </data>
+  <data name="MOB_KILLS" xml:space="preserve">
+    <value>Mob Kills</value>
+    <comment>Mob Kills</comment>
+  </data>
+  <data name="MOVE_TO_INVENTORY" xml:space="preserve">
+    <value>Move to Inventory</value>
+    <comment>Move to Inventory</comment>
+  </data>
+  <data name="MOVE_TO_STORAGE" xml:space="preserve">
+    <value>Move to Storage</value>
+    <comment>Move to Storage</comment>
+  </data>
+  <data name="NEW" xml:space="preserve">
+    <value>New</value>
+    <comment>New</comment>
+  </data>
+  <data name="NEXT_LEVEL_LABEL" xml:space="preserve">
+    <value>Next Floor {0} / {1} : {2}</value>
+    <comment>Next Floor {0} / {1} : {2}</comment>
+  </data>
+  <data name="NONE" xml:space="preserve">
+    <value>None</value>
+    <comment>None</comment>
+  </data>
+  <data name="NOT_COMPLETED" xml:space="preserve">
+    <value>Not Completed</value>
+    <comment>Not Completed</comment>
+  </data>
+  <data name="NO_GAME_FILES_FOUND_ERROR_MESSAGE" xml:space="preserve">
+    <value>Could not find game content files at the given path.</value>
+    <comment>Could not find game content files at the given path.</comment>
+  </data>
+  <data name="NO_GAME_VERSION_DETECTED" xml:space="preserve">
+    <value>Unknown game version</value>
+    <comment>Unknown game version</comment>
+  </data>
+  <data name="OK" xml:space="preserve">
+    <value>OK</value>
+    <comment>OK</comment>
+  </data>
+  <data name="OLD_VERSION_LABEL" xml:space="preserve">
+    <value>Old</value>
+    <comment>Old</comment>
+  </data>
+  <data name="PLEASE_HAVE_LATEST_VERSION" xml:space="preserve">
+    <value>Please make sure you have the latest version.</value>
+    <comment>Please make sure you have the latest version.</comment>
+  </data>
+  <data name="POWER" xml:space="preserve">
+    <value>Power</value>
+    <comment>Power</comment>
+  </data>
+  <data name="POWERFUL" xml:space="preserve">
+    <value>Powerful</value>
+    <comment>Powerful</comment>
+  </data>
+  <data name="PROGRESS_STAT_COUNTERS" xml:space="preserve">
+    <value>Progress Stat Counters</value>
+    <comment>Progress Stat Counters</comment>
+  </data>
+  <data name="RANGED_ITEMS_FILTER" xml:space="preserve">
+    <value>Ranged</value>
+    <comment>Ranged</comment>
+  </data>
+  <data name="RARE" xml:space="preserve">
+    <value>Rare</value>
+    <comment>Rare</comment>
+  </data>
+  <data name="SEED" xml:space="preserve">
+    <value>Seed</value>
+    <comment>Seed</comment>
+  </data>
+  <data name="SELECT_ARMOR" xml:space="preserve">
+    <value>Select Armor</value>
+    <comment>Select Armor</comment>
+  </data>
+  <data name="SELECT_ARMOR_PROPERTY" xml:space="preserve">
+    <value>Select Armor Property</value>
+    <comment>Select Armor Property</comment>
+  </data>
+  <data name="SELECT_ARTIFACT" xml:space="preserve">
+    <value>Select Artifact</value>
+    <comment>Select Artifact</comment>
+  </data>
+  <data name="SELECT_ENCHANTMENT" xml:space="preserve">
+    <value>Select Enchantment</value>
+    <comment>Select Enchantment</comment>
+  </data>
+  <data name="SELECT_ITEM" xml:space="preserve">
+    <value>Select Item</value>
+    <comment>Select Item</comment>
+  </data>
+  <data name="SELECT_MELEE_WEAPON" xml:space="preserve">
+    <value>Select Melee Weapon</value>
+    <comment>Select Melee Weapon</comment>
+  </data>
+  <data name="SELECT_RANGED_WEAPON" xml:space="preserve">
+    <value>Select Ranged Weapon</value>
+    <comment>Select Ranged Weapon</comment>
+  </data>
+  <data name="STABLE_UPDATE_MENU_ITEM_HEADER" xml:space="preserve">
+    <value>_Update</value>
+    <comment>_Update</comment>
+  </data>
+  <data name="STABLE_VERSION_LABEL" xml:space="preserve">
+    <value>Stable</value>
+    <comment>Stable</comment>
+  </data>
+  <data name="START_TOWER_RUN" xml:space="preserve">
+    <value>Start Tower Run</value>
+    <comment>Start Tower Run</comment>
+  </data>
+  <data name="STATS_COUNTERS" xml:space="preserve">
+    <value>Stats/Counters</value>
+    <comment>Stats/Counters</comment>
+  </data>
+  <data name="THE_TOWER" xml:space="preserve">
+    <value>The Tower</value>
+    <comment>The Tower</comment>
+  </data>
+  <data name="TIER" xml:space="preserve">
+    <value>Tier</value>
+    <comment>Tier</comment>
+  </data>
+  <data name="UNIQUE" xml:space="preserve">
+    <value>Unique</value>
+    <comment>Unique</comment>
+  </data>
+  <data name="UNRELEASED_VERSION_LABEL" xml:space="preserve">
+    <value>Unreleased</value>
+    <comment>Unreleased</comment>
+  </data>
+  <data name="UPGRADED" xml:space="preserve">
+    <value>Upgraded</value>
+    <comment>Upgraded</comment>
+  </data>
+  <data name="VERSION_FORMAT" xml:space="preserve">
+    <value>Version: {0} {1}</value>
+    <comment>Version: {0} {1}</comment>
+  </data>
+</root>

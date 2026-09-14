@@ -1,0 +1,36 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+    Creeper Woods after dark and the frozen fjord: cold slate blue with icy cyan. Still a
+    dark theme, just a cold one rather than the default's warm plum.
+
+    Every key here also exists in Palette.Dark.xaml and Palette.Light.xaml. Controls.xaml
+    binds to them with DynamicResource, so swapping this in re-themes the running app.
+    -->
+
+    <SolidColorBrush x:Key="Brush.Ground"            Color="#FF0E1519"/>
+    <SolidColorBrush x:Key="Brush.Surface"           Color="#FF151F26"/>
+    <SolidColorBrush x:Key="Brush.Panel"             Color="#FF1E2B34"/>
+    <SolidColorBrush x:Key="Brush.PanelHover"        Color="#FF283945"/>
+    <SolidColorBrush x:Key="Brush.Field"             Color="#FF0A1014"/>
+    <SolidColorBrush x:Key="Brush.Border"            Color="#FF2F404C"/>
+    <SolidColorBrush x:Key="Brush.BorderStrong"      Color="#FF435A6B"/>
+    <SolidColorBrush x:Key="Brush.Text"              Color="#FFF0F6FA"/>
+    <SolidColorBrush x:Key="Brush.TextMuted"         Color="#FFACBDC8"/>
+    <SolidColorBrush x:Key="Brush.TextDisabled"      Color="#FF5B6B77"/>
+    <SolidColorBrush x:Key="Brush.Accent"            Color="#FF57C4D9"/>
+    <SolidColorBrush x:Key="Brush.AccentBright"      Color="#FF83DCEC"/>
+    <SolidColorBrush x:Key="Brush.Select"            Color="#FFF0B24A"/>
+    <SolidColorBrush x:Key="Brush.Positive"          Color="#FF5CBF7E"/>
+    <SolidColorBrush x:Key="Brush.PositiveBright"    Color="#FF74D695"/>
+    <SolidColorBrush x:Key="Brush.Danger"            Color="#FFD95F5F"/>
+    <SolidColorBrush x:Key="Brush.Thumb"             Color="#FF31434F"/>
+    <SolidColorBrush x:Key="Brush.ThumbHover"        Color="#FF4B6577"/>
+    <SolidColorBrush x:Key="Brush.Menu"              Color="#FF0A1014"/>
+    <SolidColorBrush x:Key="Brush.Popup"             Color="#FF1E2B34"/>
+
+    <Color x:Key="Color.Shadow">#FF000000</Color>
+    <sys:Double xmlns:sys="clr-namespace:System;assembly=System.Runtime" x:Key="Value.ShadowOpacity">0.55</sys:Double>
+
+</ResourceDictionary>

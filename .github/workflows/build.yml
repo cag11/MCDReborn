@@ -1,0 +1,81 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    # WPF needs the Windows image.
+    runs-on: windows-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Release]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+
+      # MCDSaveEdit/Data/Secrets.cs is .gitignored on purpose (it holds the Minecraft
+      # Dungeons .pak AES key). CI only needs the file to exist so the solution compiles;
+      # set the PAKS_AES_KEY repository secret if a job ever needs to actually read .pak files.
+      - name: Generate Secrets.cs
+        shell: pwsh
+        env:
+          PAKS_AES_KEY: ${{ secrets.PAKS_AES_KEY }}
+        run: |
+          $key = if ($env:PAKS_AES_KEY) { $env:PAKS_AES_KEY } else { "" }
+          @"
+          namespace MCDSaveEdit.Data
+          {
+              public static class Secrets
+              {
+                  public static AesKey[] PAKS_AES_KEYS = new AesKey[] {
+                      new AesKey("$key", ""),
+                  };
+
+                  public const string GAME_ANALYTICS_GAME_KEY = "";
+                  public const string GAME_ANALYTICS_SECRET_KEY = "";
+              }
+          }
+          "@ | Out-File -Encoding utf8 MCDSaveEdit/Data/Secrets.cs
+
+      - name: Restore
+        run: dotnet restore MCDSaveEdit.sln
+
+      - name: Build
+        run: dotnet build MCDSaveEdit.sln -c ${{ matrix.configuration }} --no-restore -v minimal
+
+      # AppTests reads real .pak files, so these only pass when PAKS_AES_KEY is set.
+      - name: Test
+        run: |
+          vstest.console.exe MCDSaveEditTests\bin\${{ matrix.configuration }}\MCDSaveEditTests.dll
+        continue-on-error: true
+
+      # Single self-contained exe - the replacement for Costura.Fody.
+      - name: Publish single-file (.NET 10)
+        if: matrix.configuration == 'Release'
+        run: >
+          dotnet publish MCDSaveEdit/MCDSaveEdit.csproj -c Release
+          -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true -p:DebugType=none
+          -o publish
+
+      - name: Upload artifact
+        if: matrix.configuration == 'Release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: MCDSaveEditReborn
+          path: publish/MCDSaveEditReborn.exe
+          if-no-files-found: error
