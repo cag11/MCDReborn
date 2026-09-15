@@ -335,6 +335,19 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PRINT_VERSION_STATUS - what the update check found and how this build compares.
+            if (_startupArguments.Contains("PRINT_VERSION_STATUS"))
+            {
+                Services.Config.instance.downloadAsync().GetAwaiter().GetResult();
+                Console.WriteLine($"[version] this build      = {Constants.CURRENT_VERSION}");
+                Console.WriteLine($"[version] latest stable   = {Services.Config.instance.stableReleaseVersionString ?? "(none)"}");
+                Console.WriteLine($"[version] latest beta     = {(string.IsNullOrWhiteSpace(Services.Config.instance.betaReleaseVersionString) ? "(none)" : Services.Config.instance.betaReleaseVersionString)}");
+                Console.WriteLine($"[version] label           = {Services.Config.instance.versionLabel()}");
+                Console.WriteLine($"[version] update offered  = {Services.Config.instance.isNewStableVersionAvailable()}");
+                this.Shutdown();
+                return;
+            }
+
             //TEST_ARMOR_DEFAULTS - proves a type change leaves properties alone and that the
             //defaults table still produces the right ones on demand.
             if (_startupArguments.Contains("TEST_ARMOR_DEFAULTS"))
