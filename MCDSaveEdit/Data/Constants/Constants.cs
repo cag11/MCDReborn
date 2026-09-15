@@ -8,23 +8,23 @@ namespace MCDSaveEdit.Data
     {
         //Continuing upstream's numbering rather than restarting at 1.0 - this is a
         //fork, not a new product. AssemblyInfo.cs derives AssemblyVersion from this.
-        public const string CURRENT_VERSION_NUMBER = "1.6.2.0";
+        public const string CURRENT_VERSION_NUMBER = "1.6.3.0";
         //This fork's releases. Config.downloadAsync() follows the redirect and takes
         //the version from the last path segment, so the tag must parse as a Version.
-        public const string LATEST_RELEASE_GITHUB_URL = "https://github.com/cag11/MCDSaveEditReborn/releases/latest";
+        public const string LATEST_RELEASE_GITHUB_URL = "https://github.com/cag11/MCDReborn/releases/latest";
         public const string UPSTREAM_GITHUB_URL = "https://github.com/CutFlame/MCDSaveEdit";
         public const string LATEST_RELEASE_MOD_URL_FORMAT = "https://www.nexusmods.com/minecraftdungeons/mods/{0}?tab=files";
 
         // The application's name used for identification in the registry.
         // Deliberately still "MCDSaveEdit" even though the project is now
-        // MCDSaveEditReborn: renaming it would orphan every existing user's settings
+        // MCD Reborn: renaming it would orphan every existing user's settings
         // under HKCU\Software\MCDSaveEdit - pak path, language and recent files.
         public const string APPLICATION_NAME = "MCDSaveEdit";
 
         // What the product is called: the assembly title, and so what Windows shows in the
         // exe's file properties. Separate from APPLICATION_NAME above precisely because that
         // one is a registry path and cannot move.
-        public const string PRODUCT_NAME = "MCDSaveEditReborn";
+        public const string PRODUCT_NAME = "MCD Reborn";
         public const string PAK_FILE_LOCATION_REGISTRY_KEY = "PakFilesPath";
         public const string LANG_SPECIFIER_REGISTRY_KEY = "LangSpecifier";
         public const int MAX_RECENT_FILES = 10;

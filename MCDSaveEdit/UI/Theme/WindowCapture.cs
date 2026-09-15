@@ -67,6 +67,25 @@ namespace MCDSaveEdit.UI.Theme
             if (found != null) { found.Text = term; }
         }
 
+        /// <summary>
+        /// Type into a window's search box, for shooting a filtered state.
+        ///
+        /// Two shapes to find: the shared SearchBox control, and the older bound TextBox that
+        /// SelectionWindow uses for its item list.
+        /// </summary>
+        public static void typeInto(FrameworkElement root, string term)
+        {
+            var search = findVisualChild<MCDSaveEdit.UI.SearchBox>(root);
+            if (search != null) { search.setTerm(term); return; }
+
+            var box = findVisualChildByName<System.Windows.Controls.TextBox>(root, "textBox");
+            if (box != null) { box.Text = term; }
+        }
+
+        /// <summary>Locate the first element of a type, for windows built without names.</summary>
+        public static T? findFirst<T>(DependencyObject root) where T : DependencyObject
+            => findVisualChild<T>(root);
+
         /// <summary>Locate any named element in a window, for diagnostics.</summary>
         public static FrameworkElement? findByName(FrameworkElement root, string name)
             => root.FindName(name) as FrameworkElement ?? findVisualChildByName<FrameworkElement>(root, name);

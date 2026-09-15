@@ -57,20 +57,24 @@
         </Menu>
 
         <TabControl x:Name="mainTabControl" DockPanel.Dock="Bottom">
+            <TabItem x:Name="heroTabItem" Header="*Custom Skins*" Selector.Selected="OnTabSelected">
+                <local:HeroSkinTab x:Name="heroTab"/>
+            </TabItem>
+
             <TabItem x:Name="inventoryTabItem" Header="*Inventory*" Selector.Selected="OnTabSelected">
                 <local:InventoryTab x:Name="inventoryTab"/>
             </TabItem>
 
-            <TabItem x:Name="statsTabItem" Header="*Stats/Counters*" Selector.Selected="OnTabSelected">
-                <local:StatsTab x:Name="statsTab"/>
+            <TabItem x:Name="chestTabItem" Header="*Chest*" Selector.Selected="OnTabSelected">
+                <local:ChestTab x:Name="chestTab"/>
             </TabItem>
 
-            <TabItem x:Name="customSkinsTabItem" Header="*Custom Skins*" Selector.Selected="OnTabSelected">
+            <TabItem x:Name="customSkinsTabItem" Header="*Recolor Gear*" Selector.Selected="OnTabSelected">
                 <local:CustomSkinsTab x:Name="customSkinsTab"/>
             </TabItem>
 
-            <TabItem x:Name="chestTabItem" Header="*Chest*" Selector.Selected="OnTabSelected">
-                <local:ChestTab x:Name="chestTab"/>
+            <TabItem x:Name="statsTabItem" Header="*Stats/Counters*" Selector.Selected="OnTabSelected">
+                <local:StatsTab x:Name="statsTab"/>
             </TabItem>
 
         </TabControl>

@@ -62,6 +62,19 @@ namespace MCDSaveEdit.Logic
             /// <summary>True for a pak the user brought themselves rather than one made here.</summary>
             public bool Manual { get; }
 
+            /// <summary>
+            /// A pak this app manages on the user's behalf rather than one they installed.
+            ///
+            /// The armour switch is the case: it is written and deleted by a checkbox, so listing
+            /// it beside hand-installed mods invites someone to remove it there and wonder why
+            /// the checkbox still says armour is hidden. The "~" that makes it load last is also
+            /// what marks it, so anything named that way is ours.
+            ///
+            /// A mod the user brought themselves is never internal, whatever it is called - they
+            /// put it there, so they get to see it and remove it.
+            /// </summary>
+            public bool Internal => !Manual && Name.StartsWith("~", StringComparison.Ordinal);
+
             public InstalledMod(string path, bool manual = false)
             {
                 Path = path;
@@ -155,7 +168,7 @@ namespace MCDSaveEdit.Logic
         /// everything that reads an asset wants it dropped. Handing the raw entry onwards makes
         /// every lookup miss, silently, and look like the asset is not there.
         /// </summary>
-        private static string assetPath(string indexEntry)
+        internal static string assetPath(string indexEntry)
         {
             var start = indexEntry.IndexOf("//", StringComparison.Ordinal);
             return start < 0 ? indexEntry : indexEntry.Substring(start + 1);
@@ -192,9 +205,51 @@ namespace MCDSaveEdit.Logic
         /// link, with no file ever written.
         /// </summary>
         public static InstalledMod apply(string assetPath, BitmapSource replacementImage, string modName)
+            => writePak(modName, patchTexture(assetPath, (w, h) => toBgra(replacementImage, w, h)));
+
+        /// <summary>
+        /// Pixels that make a texture render as nothing.
+        ///
+        /// All four channels zero, so every pixel is fully transparent. Armour materials honour
+        /// alpha - that is why a Wolf Armour sheet is 77% clear and the hero shows through it -
+        /// so a sheet that is entirely clear leaves the armour with nothing to draw.
+        /// </summary>
+        public static byte[] invisiblePixels(int width, int height) => new byte[width * height * 4];
+
+        /// <summary>
+        /// One pak holding several patched textures.
+        ///
+        /// Everything the engine should load has to arrive together: a hero skin and the armour
+        /// hidden to reveal it are one change, and splitting them across two paks would let a
+        /// user end up with half of it.
+        /// </summary>
+        public static InstalledMod applyMany(
+            IEnumerable<(string assetPath, Func<int, int, byte[]> pixels)> textures, string modName)
+        {
+            var entries = new List<PakWriter.Entry>();
+            foreach (var (assetPath, pixels) in textures)
+            {
+                entries.AddRange(patchTexture(assetPath, pixels));
+            }
+            return writePak(modName, entries);
+        }
+
+        private static InstalledMod writePak(string modName, IEnumerable<PakWriter.Entry> entries)
+        {
+            var folder = paksFolder ?? throw new InvalidOperationException("No paks folder.");
+            var pakPath = System.IO.Path.Combine(folder, MOD_PREFIX + safeName(modName) + MOD_SUFFIX);
+            PakWriter.write(pakPath, entries.ToList());
+            return new InstalledMod(pakPath);
+        }
+
+        /// <summary>
+        /// The files of one asset, with its pixels replaced by whatever the caller supplies for
+        /// that texture's size. The size is not known until the asset has been read, which is
+        /// why this takes a function rather than the bytes.
+        /// </summary>
+        private static List<PakWriter.Entry> patchTexture(string assetPath, Func<int, int, byte[]> makePixels)
         {
             var paks = index ?? throw new InvalidOperationException("Game content is not loaded.");
-            var folder = paksFolder ?? throw new InvalidOperationException("No paks folder.");
 
             var package = paks.extractPackage(assetPath)
                 ?? throw new InvalidOperationException($"Could not read {assetPath}.");
@@ -212,7 +267,7 @@ namespace MCDSaveEdit.Logic
 
             var original = platform.Mips[0].BulkData.Data
                 ?? throw new InvalidOperationException("That texture has no pixel data.");
-            var replacement = toBgra(replacementImage, platform.SizeX, platform.SizeY);
+            var replacement = makePixels(platform.SizeX, platform.SizeY);
             if (replacement.Length != original.Length)
             {
                 throw new InvalidOperationException(
@@ -236,10 +291,7 @@ namespace MCDSaveEdit.Logic
             {
                 entries.Add(new PakWriter.Entry(insidePak + ".ubulk", package.UBulk.Value.ToArray()));
             }
-
-            var pakPath = System.IO.Path.Combine(folder, MOD_PREFIX + safeName(modName) + MOD_SUFFIX);
-            PakWriter.write(pakPath, entries);
-            return new InstalledMod(pakPath);
+            return entries;
         }
 
         /// <summary>The ~mods folder for this install, or null when the paks folder is unknown.</summary>
@@ -349,10 +401,17 @@ namespace MCDSaveEdit.Logic
         /// </summary>
         public static void remove(InstalledMod mod) => File.Delete(mod.Path);
 
-        /// <summary>Keeps a user-typed name usable as a filename.</summary>
+        /// <summary>
+        /// Keeps a user-typed name usable as a filename.
+        ///
+        /// "~" survives because it carries meaning here: the engine mounts paks in alphabetical
+        /// order and the last one wins, and "~" sorts after every letter. A mod that has to beat
+        /// the others is named with one, which is the same reason the community's mods folder is
+        /// called "~mods".
+        /// </summary>
         public static string safeName(string name)
         {
-            var cleaned = new string(name.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray()).Trim('_');
+            var cleaned = new string(name.Select(c => char.IsLetterOrDigit(c) || c == '~' ? c : '_').ToArray()).Trim('_');
             return cleaned.Length == 0 ? "Skin" : cleaned;
         }
 

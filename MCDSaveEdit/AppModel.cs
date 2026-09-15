@@ -8,6 +8,7 @@ using PakReader.Parsers.Objects;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 #nullable enable
@@ -112,6 +113,28 @@ namespace MCDSaveEdit
             RegistryTools.SaveSetting(Constants.APPLICATION_NAME, Constants.LANG_SPECIFIER_REGISTRY_KEY, lang);
         }
 
+        /// <summary>
+        /// The game's own paks, leaving out the skins this app installed.
+        ///
+        /// Two reasons, and both were bugs. Mounting a pak opens a FileStream and holds it for
+        /// as long as the app runs, so Remove could not delete a skin it had mounted at startup -
+        /// "the process cannot access the file because it is being used by another process", the
+        /// process being this one. And a mounted mod competes with the game's pak for the same
+        /// asset path, so whichever the reader happened to find first decided what a texture
+        /// looked like: open a skin you had already applied and you would be editing your own
+        /// work while believing it was the original.
+        ///
+        /// Skipping them fixes both. Nothing is lost - this app wants the original art, and the
+        /// game is what should be reading the mods. Paks in ~mods were never affected: that scan
+        /// does not descend into subfolders.
+        /// </summary>
+        private static IEnumerable<string> gamePaksIn(string paksFolderPath)
+        {
+            return Directory.EnumerateFiles(paksFolderPath, "*.pak")
+                .Where(path => !System.IO.Path.GetFileName(path)
+                    .StartsWith(Logic.CustomSkins.MOD_PREFIX, StringComparison.OrdinalIgnoreCase));
+        }
+
         private Task<PakIndex?> loadPakIndex(string paksFolderPath)
         {
             var tcs = new TaskCompletionSource<PakIndex?>();
@@ -120,7 +143,7 @@ namespace MCDSaveEdit
                 try
                 {
                     var filter = new PakFilter(new[] { Constants.PAKS_FILTER_STRING }, false);
-                    var pakIndex = new PakIndex(path: paksFolderPath, cacheFiles: true, caseSensitive: true, filter: filter);
+                    var pakIndex = new PakIndex(files: gamePaksIn(paksFolderPath), cacheFiles: true, caseSensitive: true, filter: filter);
                     if (pakIndex.PakFileCount == 0)
                     {
                         throw new FileNotFoundException($"No files were found at {paksFolderPath}");

@@ -1,0 +1,117 @@
+<UserControl x:Class="MCDSaveEdit.UI.HeroSkinTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:MCDSaveEdit.UI"
+             mc:Ignorable="d"
+             d:DesignHeight="450"
+             d:DesignWidth="900">
+    <Grid Margin="10,6,10,10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260"/>
+            <ColumnDefinition Width="16"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ===================== Which hero ===================== -->
+        <DockPanel Grid.Column="0">
+            <Label x:Name="heroesLabel" DockPanel.Dock="Top" Content="*Heroes*"
+                   Style="{StaticResource SectionHeading}" FontSize="16" Padding="0,2" Margin="2,0,2,6"/>
+
+            <Grid DockPanel.Dock="Top" Margin="2,0,2,6">
+                <TextBox x:Name="searchBox" Padding="7,4" FontSize="13" TextChanged="searchBox_TextChanged"/>
+                <TextBlock x:Name="searchHint" Text="Search…" Margin="9,0,0,0"
+                           VerticalAlignment="Center" IsHitTestVisible="False"
+                           Foreground="{DynamicResource Brush.TextDisabled}" FontSize="13"/>
+            </Grid>
+
+            <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4"
+                    Background="{DynamicResource Brush.Surface}">
+                <ListBox x:Name="heroList" BorderThickness="0" Background="Transparent"
+                         SelectionChanged="heroList_SelectionChanged"/>
+            </Border>
+        </DockPanel>
+
+        <!-- ===================== What to do with it ===================== -->
+        <DockPanel Grid.Column="2">
+            <Label x:Name="selectedLabel" DockPanel.Dock="Top" Content=""
+                   Style="{StaticResource SectionHeading}" FontSize="16" Padding="0,2" Margin="2,0,2,6"/>
+
+            <!-- Who you are right now, and the two ways to change it back or over. -->
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="2,0,2,10">
+                <Border Width="52" Height="52" Margin="0,0,10,0" CornerRadius="4"
+                        BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                        Background="{DynamicResource Brush.Surface}">
+                    <Image x:Name="currentLookImage" Margin="3" Stretch="Uniform"
+                           RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+                </Border>
+                <StackPanel Orientation="Vertical" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <TextBlock x:Name="currentHeroLabel" Text="" FontSize="13"/>
+                    <TextBlock x:Name="currentModLabel" Text="" FontSize="11" Margin="0,2,0,0"
+                               Foreground="{DynamicResource Brush.TextDisabled}"/>
+                </StackPanel>
+                <Button x:Name="useButton" Content="*Play as this hero*" Padding="10,5" Margin="0,0,6,0"
+                        VerticalAlignment="Center" Click="useButton_Click"/>
+                <Button x:Name="resetButton" Content="*Reset*" Padding="10,5"
+                        VerticalAlignment="Center" Click="resetButton_Click"/>
+            </StackPanel>
+
+            <Border DockPanel.Dock="Top" Height="300" Margin="2,0,2,12"
+                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4"
+                    Background="{DynamicResource Brush.Surface}">
+                <Grid>
+                    <local:SkinViewer3D x:Name="preview3D"/>
+
+                    <!-- The flat sheet, for the rare look at the unwrap itself. -->
+                    <Image x:Name="previewImage" Margin="10" Stretch="Uniform" Visibility="Collapsed"
+                           RenderOptions.BitmapScalingMode="NearestNeighbor"/>
+
+                    <TextBlock x:Name="previewEmptyLabel" Text=""
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               TextWrapping="Wrap" TextAlignment="Center" Margin="20" FontSize="12"
+                               Foreground="{DynamicResource Brush.TextDisabled}"/>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                Margin="6">
+                        <Button x:Name="viewToggleButton" Content="*Texture*" Padding="8,2" FontSize="11"
+                                Margin="0,0,4,0" Click="viewToggleButton_Click"/>
+                        <Button x:Name="viewResetButton" Content="*Recentre*" Padding="8,2" FontSize="11"
+                                Click="viewResetButton_Click"/>
+                    </StackPanel>
+
+                    <TextBlock x:Name="previewHintLabel" Text="*drag to turn*"
+                               HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="8,0,0,6"
+                               FontSize="11" IsHitTestVisible="False"
+                               Foreground="{DynamicResource Brush.TextDisabled}"/>
+                </Grid>
+            </Border>
+
+            <!-- ===================== Wearing your own skin ===================== -->
+            <Label x:Name="ownSkinLabel" DockPanel.Dock="Top" Content="*Wear your own skin*"
+                   Style="{StaticResource SectionHeading}" FontSize="14" Padding="0,2" Margin="2,0,2,4"/>
+
+            <TextBlock x:Name="ownSkinHintLabel" DockPanel.Dock="Top" TextWrapping="Wrap"
+                       Margin="2,0,2,8" FontSize="11" Text="*own skin hint*"
+                       Foreground="{DynamicResource Brush.TextDisabled}"/>
+
+            <!-- A PNG both ways, which is the only shape a Minecraft skin ever comes in. The
+                 Designer is for recolouring gear, and has nothing to add to a skin someone
+                 downloaded whole. -->
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="2,0,2,10">
+                <Button x:Name="importButton" Content="*Import skin PNG*" Padding="14,6" FontSize="13"
+                        Margin="0,0,8,0" Click="importButton_Click"/>
+                <Button x:Name="exportButton" Content="*Export PNG*" Padding="14,6" FontSize="13"
+                        Margin="0,0,8,0" Click="exportButton_Click"/>
+                <Button x:Name="removeButton" Content="*Forget*" Padding="14,6" FontSize="13"
+                        Visibility="Collapsed" Click="removeButton_Click"/>
+            </StackPanel>
+
+            <TextBlock x:Name="statusLabel" DockPanel.Dock="Top" TextWrapping="Wrap"
+                       Margin="2,0,2,0" FontSize="11" Text=""
+                       Foreground="{DynamicResource Brush.TextMuted}"/>
+
+            <Grid/>
+        </DockPanel>
+    </Grid>
+</UserControl>

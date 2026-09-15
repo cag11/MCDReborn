@@ -21,6 +21,11 @@ namespace MCDSaveEdit.UI
     /// its own, off to begin with, so an ordinary choice is not padded out with enchantments
     /// no gear can roll.
     ///
+    /// A search box sits under the toggles, because the categories narrow a hundred and
+    /// eighteen enchantments to perhaps forty and knowing the name is faster than scrolling.
+    /// It narrows within whatever the toggles let through, so the two compose rather than
+    /// fight, and it matches the displayed name.
+    ///
     /// Both selection windows host this, so the behaviour cannot drift between them.
     /// </summary>
     public class EnchantmentFilterBar : Border
@@ -37,10 +42,15 @@ namespace MCDSaveEdit.UI
         private readonly Dictionary<EnchantmentCategory, ToggleButton> _toggles =
             new Dictionary<EnchantmentCategory, ToggleButton>();
 
+        private readonly SearchBox _search = new SearchBox(R.SEARCH_HINT);
+
         private bool _isProcessing;
 
-        /// <summary>Raised when the user turns a category on or off.</summary>
+        /// <summary>Raised when the user turns a category on or off, or types in the search box.</summary>
         public event Action? changed;
+
+        /// <summary>Raised on Down or Enter in the search box, for focusing the list below.</summary>
+        public event Action? advance;
 
         public EnchantmentCategory selected { get; private set; } = EnchantmentCategory.All;
 
@@ -55,7 +65,15 @@ namespace MCDSaveEdit.UI
 
             _row.Orientation = Orientation.Horizontal;
             _row.HorizontalAlignment = HorizontalAlignment.Center;
-            Child = _row;
+
+            _search.Margin = new Thickness(3, 7, 3, 0);
+            _search.changed += () => changed?.Invoke();
+            _search.advance += () => advance?.Invoke();
+
+            var column = new StackPanel { Orientation = Orientation.Vertical };
+            column.Children.Add(_row);
+            column.Children.Add(_search);
+            Child = column;
 
             foreach (var (category, label) in BUTTONS)
             {
@@ -93,6 +111,21 @@ namespace MCDSaveEdit.UI
             }
             _isProcessing = false;
         }
+
+        /// <summary>
+        /// Whether an enchantment survives both the toggles and the search box.
+        ///
+        /// One call rather than two checks at each site, so neither window can apply half of
+        /// the filter.
+        /// </summary>
+        public bool allows(string? enchantmentId)
+        {
+            if (!EnchantmentCategories.matches(enchantmentId, selected)) { return false; }
+            if (enchantmentId == null) { return true; }
+            return _search.matches(R.enchantmentName(enchantmentId));
+        }
+
+        public void focusSearch() => _search.focus();
 
         private void onToggled(EnchantmentCategory category, bool on)
         {

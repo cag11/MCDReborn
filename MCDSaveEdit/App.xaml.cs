@@ -70,7 +70,7 @@ namespace MCDSaveEdit
 
         private async void startAsync(string[] args)
         {
-            MainThreadConsoleWriteLine($"{Constants.APPLICATION_NAME} {Constants.CURRENT_VERSION}");
+            MainThreadConsoleWriteLine($"{Constants.PRODUCT_NAME} {Constants.CURRENT_VERSION}");
             
             string? fileName = args.LastOrDefault();
             if(!string.IsNullOrWhiteSpace(fileName) && File.Exists(fileName))
@@ -123,7 +123,7 @@ namespace MCDSaveEdit
                     //Clear the path saved in the registry because it might be the cause of the exception
                     _model.unloadGameContent();
 
-                    var title = $"{Constants.APPLICATION_NAME} {Constants.CURRENT_VERSION} - {R.ERROR}";
+                    var title = $"{Constants.PRODUCT_NAME} {Constants.CURRENT_VERSION} - {R.ERROR}";
                     var message = $"{R.FAILED_TO_LOAD_GAME_CONTENT_ERROR_TITLE}\n\n{e.Message}\n\n{R.PLEASE_HAVE_LATEST_VERSION}\n\n{R.LAUNCH_WITH_LIMITED_FEATURES_QUESTION}";
                     var result = MessageBox.Show(message, title, MessageBoxButton.YesNo);
                     canContinue = result == MessageBoxResult.Yes || result == MessageBoxResult.OK;
@@ -335,6 +335,95 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PRINT_VERSION_STATUS - what the update check found and how this build compares.
+            if (_startupArguments.Contains("PRINT_VERSION_STATUS"))
+            {
+                Services.Config.instance.downloadAsync().GetAwaiter().GetResult();
+                Console.WriteLine($"[version] this build      = {Constants.CURRENT_VERSION}");
+                Console.WriteLine($"[version] latest stable   = {Services.Config.instance.stableReleaseVersionString ?? "(none)"}");
+                Console.WriteLine($"[version] latest beta     = {(string.IsNullOrWhiteSpace(Services.Config.instance.betaReleaseVersionString) ? "(none)" : Services.Config.instance.betaReleaseVersionString)}");
+                Console.WriteLine($"[version] label           = {Services.Config.instance.versionLabel()}");
+                Console.WriteLine($"[version] update offered  = {Services.Config.instance.isNewStableVersionAvailable()}");
+                this.Shutdown();
+                return;
+            }
+
+            //TEST_ARMOR_DEFAULTS - proves a type change leaves properties alone and that the
+            //defaults table still produces the right ones on demand.
+            if (_startupArguments.Contains("TEST_ARMOR_DEFAULTS"))
+            {
+                var armor = _model.mainModel.profileModel.profile.value?.Items
+                    ?.FirstOrDefault(x => Data.ArmorDefaults.forItemType(x.Type) != null);
+                if (armor == null)
+                {
+                    Console.WriteLine("[armor] no armor in this save");
+                }
+                else
+                {
+                    string show(Save.Models.Profiles.Armorproperty[]? p)
+                        => p == null ? "(none)" : string.Join(", ", p.Select(x => x.Id));
+
+                    Console.WriteLine($"[armor] {armor.Type}  before        = {show(armor.Armorproperties)}");
+
+                    //What the UI does now when a different type is chosen: the type, nothing else.
+                    var before = show(armor.Armorproperties);
+                    armor.Type = "WolfArmor";
+                    Console.WriteLine($"[armor] after type change       = {show(armor.Armorproperties)}");
+                    Console.WriteLine($"[armor] properties untouched    = {show(armor.Armorproperties) == before}");
+
+                    //What the Defaults button does.
+                    armor.Armorproperties = Data.ArmorDefaults.forItemType(armor.Type)!;
+                    Console.WriteLine($"[armor] after Defaults button   = {show(armor.Armorproperties)}");
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //SCREENSHOT_PICKER=<png>|items|enchantments[|<term>] - opens a selection window,
+            //optionally types a search term, and captures it. The pickers are modal dialogs, so
+            //they cannot be reached by the main-window capture path.
+            var pickerShot = _startupArguments.FirstOrDefault(a => a.StartsWith("SCREENSHOT_PICKER="));
+            if (pickerShot != null)
+            {
+                var parts = pickerShot.Substring("SCREENSHOT_PICKER=".Length).Trim('"').Split('|');
+                var window = UI.WindowFactory.createSelectionWindow();
+                //Every entry point, not just the two easy ones: the filtered pickers are what a
+                //gear slot opens, and they were the ones missing a search box.
+                switch (parts.Length > 1 ? parts[1] : "items")
+                {
+                    case "enchantments": window.loadEnchantments(null, null); break;
+                    case "props": window.loadArmorProperties(null); break;
+                    case "armor": window.loadFilteredItems(Save.Models.Enums.ItemFilterEnum.Armor, null); break;
+                    case "melee": window.loadFilteredItems(Save.Models.Enums.ItemFilterEnum.MeleeWeapons, null); break;
+                    case "ranged": window.loadFilteredItems(Save.Models.Enums.ItemFilterEnum.RangedWeapons, null); break;
+                    case "artifacts": window.loadFilteredItems(Save.Models.Enums.ItemFilterEnum.Artifacts, null); break;
+                    default: window.loadItems(null); break;
+                }
+
+                if (window is Window shown)
+                {
+                    shown.Show();
+                    shown.UpdateLayout();
+                    Console.WriteLine($"[picker] window = {shown.GetType().Name}");
+                    if (parts.Length > 2 && parts[2].Length > 0)
+                    {
+                        UI.Theme.WindowCapture.typeInto(shown, parts[2]);
+                        shown.UpdateLayout();
+                    }
+                    //A bound list rebuilds its containers on a later dispatcher pass, so a
+                    //capture taken right after UpdateLayout still shows the old rows.
+                    Dispatcher.Invoke(new Action(() => { }), DispatcherPriority.ContextIdle);
+                    shown.UpdateLayout();
+
+                    var list = UI.Theme.WindowCapture.findFirst<System.Windows.Controls.ListBox>(shown);
+                    Console.WriteLine($"[picker] listBox items = {list?.Items.Count.ToString() ?? "not found"}");
+                    UI.Theme.WindowCapture.captureThenExit(shown, parts[0]);
+                    return;
+                }
+                this.Shutdown();
+                return;
+            }
+
             //ADD_MOD=<pak file> - the manual mod path, exactly as the upload button runs it.
             var addMod = _startupArguments.FirstOrDefault(a => a.StartsWith("ADD_MOD="));
             if (addMod != null)
@@ -357,6 +446,103 @@ namespace MCDSaveEdit
                 {
                     Console.WriteLine($"[mod] FAILED: {e.Message}");
                 }
+                this.Shutdown();
+                return;
+            }
+
+            //APPLY_HERO=<heroId>|<png>|<none|equipped|all> - the Hero tab's apply, headless.
+            var applyHero = _startupArguments.FirstOrDefault(a => a.StartsWith("APPLY_HERO="));
+            if (applyHero != null)
+            {
+                var parts = applyHero.Substring("APPLY_HERO=".Length).Trim('"').Split('|');
+                try
+                {
+                    var hero = Logic.HeroSkins.all()
+                        .FirstOrDefault(h => string.Equals(h.Id, parts[0], StringComparison.OrdinalIgnoreCase))
+                        ?? throw new InvalidOperationException($"No hero called {parts[0]}");
+
+                    var decoder = new System.Windows.Media.Imaging.PngBitmapDecoder(
+                        new Uri(System.IO.Path.GetFullPath(parts[1])),
+                        System.Windows.Media.Imaging.BitmapCreateOptions.PreservePixelFormat,
+                        System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+
+                    var mode = parts.Length > 2 ? parts[2] : "none";
+                    var hide = new List<string>();
+                    if (mode == "all")
+                    {
+                        hide.AddRange(Services.ItemDatabase.armor
+                            .Select(Logic.CustomSkins.textureFor)
+                            .Where(x => x != null).Select(x => x!)
+                            .Distinct(StringComparer.OrdinalIgnoreCase));
+                    }
+                    else if (mode == "equipped")
+                    {
+                        var slot = Save.Models.Enums.EquipmentSlotEnum.ArmorGear.ToString();
+                        hide.AddRange((_model.mainModel.profileModel.profile.value?.Items ?? Array.Empty<Item>())
+                            .Where(i => i.EquipmentSlot == slot)
+                            .Select(i => Logic.CustomSkins.textureFor(i.Type))
+                            .Where(x => x != null).Select(x => x!));
+                    }
+
+                    var watch = System.Diagnostics.Stopwatch.StartNew();
+                    var mod = Logic.HeroSkins.apply(hero, decoder.Frames[0]);
+                    watch.Stop();
+                    Console.WriteLine($"[hero] skin  -> {mod.Path} ({mod.Size:N0} bytes, {watch.ElapsedMilliseconds} ms)");
+
+                    //Armour visibility is its own pak now, so the test drives it separately.
+                    if (hide.Count > 0)
+                    {
+                        watch.Restart();
+                        Logic.ArmourVisibility.setHidden(true);
+                        watch.Stop();
+                        var hidden = Logic.ArmourVisibility.installed();
+                        Console.WriteLine($"[hero] hide  -> {hidden?.Path} ({hidden?.Size:N0} bytes, {watch.ElapsedMilliseconds} ms)");
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"[hero] FAILED: {e.Message}");
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PRINT_HEROES - the hero skins the loaded content carries, and which the save uses.
+            if (_startupArguments.Contains("PRINT_HEROES"))
+            {
+                var heroes = Logic.HeroSkins.all();
+                var current = _model.mainModel.profileModel.profile.value?.Skin;
+                Console.WriteLine($"[hero] save says: {current ?? "(none)"}");
+                Console.WriteLine($"[hero] {heroes.Count} hero skins in content");
+                foreach (var hero in heroes)
+                {
+                    var picture = Logic.HeroSkins.preview(hero);
+                    var size = picture == null ? "-" : $"{picture.PixelWidth}x{picture.PixelHeight}";
+                    var mark = string.Equals(hero.Id, current, StringComparison.OrdinalIgnoreCase) ? " <-- current" : "";
+                    Console.WriteLine($"[hero]   {hero.Name,-24} {size,-8} {hero.Id}{mark}");
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //FIND_ASSET=<substring> - pak entries whose path contains it, with the size of any
+            //that decode as a texture. For finding what the game keeps and where.
+            var findAsset = _startupArguments.FirstOrDefault(a => a.StartsWith("FIND_ASSET="));
+            if (findAsset != null)
+            {
+                var term = findAsset.Substring("FIND_ASSET=".Length).Trim('"');
+                var paks = Logic.CustomSkins.index;
+                int shown = 0;
+                foreach (var entry in paks ?? Enumerable.Empty<string>())
+                {
+                    if (entry.IndexOf(term, StringComparison.OrdinalIgnoreCase) < 0) { continue; }
+                    if (++shown > 60) { Console.WriteLine("[find] ..."); break; }
+                    var clean = entry.Substring(entry.IndexOf("//", StringComparison.Ordinal) + 1);
+                    var picture = Services.ImageResolver.instance.imageSource(clean);
+                    var size = picture == null ? "-" : $"{picture.PixelWidth}x{picture.PixelHeight}";
+                    Console.WriteLine($"[find] {size,-9} {clean}");
+                }
+                Console.WriteLine($"[find] {shown} shown");
                 this.Shutdown();
                 return;
             }

@@ -1,24 +1,27 @@
-# &nbsp;[![icon](MCDSaveEdit/Properties/icon.ico)]() MCDSaveEditReborn
+# &nbsp;[![icon](MCDSaveEdit/Properties/icon.ico)]() MCD Reborn
 
-[![GitHub](https://img.shields.io/github/license/cag11/MCDSaveEditReborn)](https://github.com/cag11/MCDSaveEditReborn/blob/main/LICENSE)
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/cag11/MCDSaveEditReborn?label=latest)](https://github.com/cag11/MCDSaveEditReborn/releases/latest)
-[![GitHub Release Date](https://img.shields.io/github/release-date/cag11/MCDSaveEditReborn)](https://github.com/cag11/MCDSaveEditReborn/releases/latest)
-[![GitHub all releases](https://img.shields.io/github/downloads/cag11/MCDSaveEditReborn/total)](https://github.com/cag11/MCDSaveEditReborn/releases)
+[![GitHub](https://img.shields.io/github/license/cag11/MCDReborn)](https://github.com/cag11/MCDReborn/blob/main/LICENSE)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/cag11/MCDReborn?label=latest)](https://github.com/cag11/MCDReborn/releases/latest)
+[![GitHub Release Date](https://img.shields.io/github/release-date/cag11/MCDReborn)](https://github.com/cag11/MCDReborn/releases/latest)
+[![GitHub all releases](https://img.shields.io/github/downloads/cag11/MCDReborn/total)](https://github.com/cag11/MCDReborn/releases)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 
- Windows application for modifying [Minecraft: Dungeons](https://www.minecraft.net/en-us/about-dungeons/) save files, ported to .NET 10.
- This is new and upgraded Reborn version of [MCDSaveEdit](https://github.com/CutFlame/MCDSaveEdit) by [CutFlame](https://github.com/CutFlame).
+ Windows application for adding custom skins and modifying [Minecraft: Dungeons](https://www.minecraft.net/en-us/about-dungeons/) save files.
+ This is new and upgraded Reborn version of [MCDSaveEdit](https://github.com/CutFlame/MCDSaveEdit) by CutFlame.
 
 ### Features
 
-* **Everything [MCDSaveEdit](https://github.com/CutFlame/MCDSaveEdit) already did**: editing items, enchantments, stats, counters and currencies; reading and writing the encrypted save format
+* **Everything MCDSaveEdit already did**: editing items, enchantments, stats, counters and currencies; reading and writing the encrypted save format
 * Ported from .NET Framework 4.8 to **.NET 10**, every package updated, the known advisories cleared
+* **Custom Skins tab**: play as any of the game's 67 hero skins, written to the save for you, no mod needed
+* Wear any 64×64 Minecraft skin as your hero; import any skin from your favorite skin website
 * Five themes in the **View** menu (Dark, Light, Nether, End and Frost), swapped live and remembered between runs
 * Item search across the whole inventory, filtering as you type, without covering the UI
+* A search box on every picker (items, armor, melee, ranged, artifacts, armor properties and enchantments), narrowing within whatever the filters already allow
+* A **Defaults** button fills in the properties an armor drops with in game; changing an armor's type no longer replaces them by itself
 * Right-click an inventory item to equip it; artifacts offer all three hotbar slots
 * Right-click an equipment slot to unequip
 * Every save backs the file up first, keeping one timestamped `.bak` beside it
-* Changing an armor's type fills in the properties that armor drops with in game
 * The enchantment picker opens on the gear type being enchanted, with **Melee / Armor / Ranged / Other** toggles
 * A loading screen that is a themed card with a vector mark, version and status line
 
@@ -28,10 +31,9 @@
 
 https://github.com/user-attachments/assets/509496fd-7186-4422-a639-9d10272be407
 
-#### Custom Skins Feature
-* **Custom Skins**: put your own artwork on a piece of gear, installed as a mod pak beside the game's own; the originals are never modified and Remove undoes it completely
-* The texture travels to [mcddesigner.vercel.app](https://mcddesigner.vercel.app/) and back inside the link itself, with no PNG to export, find, upload and download again
-* Install any `.pak` mod from the same tab; it creates the `~mods` folder the game loads from and copies the file in, on Steam, the Launcher or the Xbox app alike
+#### Recolor Gear Feature
+* **Recolor Gear**: put your own artwork on a piece of gear, installed as a mod pak beside the game's own; the originals are never modified and Remove undoes it completely
+* The texture travels to [mcddesigner.vercel.app](https://mcddesigner.vercel.app/) and back. Find, upload and download again
 
 https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 
@@ -45,7 +47,7 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 
 For full features and functionality you need Minecraft: Dungeons installed and preferably in the default install location.
 
-1. Download the latest release from [the releases section](https://github.com/cag11/MCDSaveEditReborn/releases). It is a single self-contained `.exe` with no prerequisites.
+1. Download the latest release from [the releases section](https://github.com/cag11/MCDReborn/releases). It is a single self-contained `MCDReborn.exe` with no prerequisites.
 
 ### How to Use
 

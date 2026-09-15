@@ -48,6 +48,9 @@ namespace MCDSaveEdit.UI
             filesLabel.Text = R.CUSTOM_SKINS_FILES;
             hintLabel.Text = R.CUSTOM_SKINS_HINT;
             modsNoteLabel.Text = R.CUSTOM_SKINS_MODS_NOTE;
+            showArmourCheckBox.Content = R.ARMOUR_SHOW;
+            ArmourVisibility.changed += refreshArmourBox;
+            Unloaded += (s, e) => ArmourVisibility.changed -= refreshArmourBox;
             addPakButton.ToolTip = R.CUSTOM_SKINS_ADD_PAK;
             openModsButton.ToolTip = R.CUSTOM_SKINS_OPEN_MODS;
         }
@@ -56,6 +59,7 @@ namespace MCDSaveEdit.UI
         {
             fillGearList();
             fillInstalled();
+            refreshArmourBox();
             updateSelection();
         }
 
@@ -273,6 +277,45 @@ namespace MCDSaveEdit.UI
 
         #endregion
 
+
+        #region Show armours
+
+        //One switch backed by one pak, shown on two screens. Each listens so they cannot
+        //disagree: flipping it here has to tick the box over there too.
+        private bool _settingArmourBox;
+
+        private void refreshArmourBox()
+        {
+            _settingArmourBox = true;
+            showArmourCheckBox.IsEnabled = CustomSkins.ready;
+            showArmourCheckBox.IsChecked = !ArmourVisibility.armourHidden;
+            showArmourHintLabel.Text = ArmourVisibility.armourHidden
+                ? R.ARMOUR_HIDDEN_HINT
+                : R.ARMOUR_SHOWN_HINT;
+            _settingArmourBox = false;
+        }
+
+        private void showArmourCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_settingArmourBox) { return; }
+
+            var show = showArmourCheckBox.IsChecked == true;
+            EventLogger.logEvent("showArmour", new Dictionary<string, object>() { { "show", show } });
+            try
+            {
+                ArmourVisibility.setHidden(!show);
+            }
+            catch (Exception exception)
+            {
+                //Writing into the game's folder can fail: the game is running, or it needs
+                //elevation. Put the box back rather than leave it lying about the state.
+                MessageBox.Show(exception.Message, R.ERROR);
+                refreshArmourBox();
+            }
+        }
+
+        #endregion
+
         #region Mods brought from elsewhere
 
         /// <summary>
@@ -361,7 +404,9 @@ namespace MCDSaveEdit.UI
 
             if (!CustomSkins.ready) { installedCountLabel.Text = string.Empty; return; }
 
-            var mods = CustomSkins.installed();
+            //Anything this app drives from a checkbox is left out: it is managed there, and a
+            //Remove button beside it would just be a second, contradictory control.
+            var mods = CustomSkins.installed().Where(mod => !mod.Internal).ToList();
             installedCountLabel.Text = mods.Count.ToString();
 
             if (mods.Count == 0)

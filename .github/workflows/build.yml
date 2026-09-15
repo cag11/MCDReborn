@@ -76,6 +76,6 @@ jobs:
         if: matrix.configuration == 'Release'
         uses: actions/upload-artifact@v4
         with:
-          name: MCDSaveEditReborn
-          path: publish/MCDSaveEditReborn.exe
+          name: MCDReborn
+          path: publish/MCDReborn.exe
           if-no-files-found: error

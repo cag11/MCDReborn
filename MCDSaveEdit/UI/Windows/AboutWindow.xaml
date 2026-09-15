@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MCDSaveEdit.UI"
         mc:Ignorable="d"
-        Title="*About MCDSaveEditReborn*"
+        Title="*About MCD Reborn*"
         Background="{DynamicResource Brush.Ground}"
         Foreground="{DynamicResource Brush.Text}"
         Height="380" Width="560"
@@ -27,7 +27,7 @@
         <Grid DockPanel.Dock="Top" Margin="14,12,14,0">
             <TextBlock>
                 Copyright © 2026 arno (<Hyperlink NavigateUri="https://github.com/cag11">cag11</Hyperlink>)<LineBreak/>
-                License: <Hyperlink NavigateUri="https://github.com/cag11/MCDSaveEditReborn/blob/main/LICENSE">MIT</Hyperlink>
+                License: <Hyperlink NavigateUri="https://github.com/cag11/MCDReborn/blob/main/LICENSE">MIT</Hyperlink>
             </TextBlock>
             <Label x:Name="versionLabel" Content="*Version: Debug 1.0*"
                    HorizontalAlignment="Right" VerticalAlignment="Top" Padding="0"/>
