@@ -1679,5 +1679,95 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("VERSION_FORMAT", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Delete items....
+        /// </summary>
+        public static string ITEMS_DELETE_START {
+            get {
+                return ResourceManager.GetString("ITEMS_DELETE_START", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Cancel.
+        /// </summary>
+        public static string ITEMS_DELETE_CANCEL {
+            get {
+                return ResourceManager.GetString("ITEMS_DELETE_CANCEL", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to All.
+        /// </summary>
+        public static string ITEMS_DELETE_SELECT_ALL {
+            get {
+                return ResourceManager.GetString("ITEMS_DELETE_SELECT_ALL", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to None.
+        /// </summary>
+        public static string ITEMS_DELETE_SELECT_NONE {
+            get {
+                return ResourceManager.GetString("ITEMS_DELETE_SELECT_NONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Delete {0}.
+        /// </summary>
+        public static string ITEMS_DELETE_CONFIRM_BUTTON {
+            get {
+                return ResourceManager.GetString("ITEMS_DELETE_CONFIRM_BUTTON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pick the items to delete..
+        /// </summary>
+        public static string ITEMS_DELETE_PROMPT {
+            get {
+                return ResourceManager.GetString("ITEMS_DELETE_PROMPT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} chosen.
+        /// </summary>
+        public static string ITEMS_DELETE_CHOSEN {
+            get {
+                return ResourceManager.GetString("ITEMS_DELETE_CHOSEN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Delete {0} items?.
+        /// </summary>
+        public static string ITEMS_DELETE_CONFIRM {
+            get {
+                return ResourceManager.GetString("ITEMS_DELETE_CONFIRM", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Delete items.
+        /// </summary>
+        public static string ITEMS_DELETE_TITLE {
+            get {
+                return ResourceManager.GetString("ITEMS_DELETE_TITLE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} items deleted..
+        /// </summary>
+        public static string ITEMS_DELETED {
+            get {
+                return ResourceManager.GetString("ITEMS_DELETED", resourceCulture);
+            }
+        }
     }
 }

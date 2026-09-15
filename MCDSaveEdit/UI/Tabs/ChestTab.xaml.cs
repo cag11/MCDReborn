@@ -3,6 +3,7 @@ using MCDSaveEdit.Save.Models.Enums;
 using MCDSaveEdit.Save.Models.Profiles;
 using MCDSaveEdit.Services;
 using MCDSaveEdit.ViewModels;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -71,6 +72,7 @@ namespace MCDSaveEdit.UI
             selectedItemScreen.saveChanges = new RelayCommand<Item>(equipmentModel.saveItem);
             selectedItemScreen.duplicateItem = new RelayCommand<Item>(duplicateItem);
             selectedItemScreen.deleteItem = new RelayCommand<Item>(removeItem);
+            itemListScreen.deleteItems = new RelayCommand<IEnumerable<Item>>(removeItems);
             selectedItemScreen.moveItemToInventory = new RelayCommand<Item>(moveItemToInventory);
             selectedItemScreen.addEnchantmentSlot = new RelayCommand<object>(equipmentModel.addEnchantmentSlot);
             selectedEnchantmentScreen.close = new RelayCommand<Enchantment>(equipmentModel.selectEnchantment);
@@ -86,6 +88,21 @@ namespace MCDSaveEdit.UI
             model?.storageChestEquipmentModel?.selectEnchantment(null);
             model?.storageChestEquipmentModel?.addItemToList(item);
             model?.storageChestEquipmentModel?.selectItem(item);
+        }
+
+        /// <summary>
+        /// Deletes a run of items chosen in the grid.
+        ///
+        /// The editor on the right is cleared first, once: it may be showing one of the items
+        /// about to go, and a screen editing something that no longer exists is worse than an
+        /// empty one. The model then removes them in a single pass rather than one at a time.
+        /// </summary>
+        private void removeItems(IEnumerable<Item> items)
+        {
+            if (items == null) { return; }
+            model?.storageChestEquipmentModel?.selectEnchantment(null);
+            model?.storageChestEquipmentModel?.selectItem(null);
+            model?.storageChestEquipmentModel?.removeItems(items);
         }
 
         private void removeItem(Item item)

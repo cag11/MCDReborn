@@ -83,6 +83,8 @@ namespace MCDSaveEdit.UI
             armorItemsButton.Content = R.getString("ItemTag_Armor") ?? R.ARMOR_ITEMS_FILTER;
             artifactItemsButton.Content = R.getString("ItemTag_Items") ?? R.ARTIFACT_ITEMS_FILTER;
             enchantedItemsButton.Content = R.getString("ItemTag_Enchanted") ?? R.ENCHANTED_ITEMS_FILTER;
+            deleteModeButton.Content = R.ITEMS_DELETE_START;
+            deleteCancelButton.Content = R.ITEMS_DELETE_CANCEL;
         }
 
         private void setupCommands()
@@ -92,6 +94,10 @@ namespace MCDSaveEdit.UI
 
             model.filteredItemList.subscribe(updateGridItemsUIReloadingAll);
             model.filteredItemList.subscribe(updateSearchCount);
+
+            //A different save means the items being chosen from are gone. Holding on to them
+            //would leave a count that no longer refers to anything on screen.
+            model.profile.subscribe(_ => stopChoosing());
         }
 
         private void itemSearchBox_TextChanged(object sender, TextChangedEventArgs e)
@@ -132,6 +138,8 @@ namespace MCDSaveEdit.UI
                 inventoryCountLabel.Content = string.Empty;
                 itemsGrid.RowDefinitions.Clear();
                 itemsGrid.Children.Clear();
+                _marks.Clear();
+                deleteModeButton.IsEnabled = false;
                 return;
             }
 
@@ -143,6 +151,11 @@ namespace MCDSaveEdit.UI
 
             itemsGrid.RowDefinitions.Clear();
             itemsGrid.Children.Clear();
+
+            //The frames belong to the tiles that are about to be thrown away. What is chosen is
+            //deliberately kept: a search run while choosing narrows what is on screen, and losing
+            //the picks behind it would make choosing across two searches impossible.
+            _marks.Clear();
 
             int itemCount = 0;
             foreach (var item in items!)
@@ -159,9 +172,16 @@ namespace MCDSaveEdit.UI
                 itemButton.Height = INVENTORY_ITEM_SIDE_LENGTH;
                 itemButton.Width = INVENTORY_ITEM_SIDE_LENGTH;
                 itemButton.Margin = new Thickness(0);
-                itemButton.Content = itemControl;
-                itemButton.Command = new RelayCommand<Item>(_model!.selectItem);
+                itemButton.Content = _choosing ? chooseableTile(item, itemControl) : (object)itemControl;
+
+                //While choosing, a tile picks itself rather than opening in the editor. The
+                //editor is a different job, and a click that did both would be a click that
+                //did the wrong one half the time.
+                itemButton.Command = _choosing
+                    ? new RelayCommand<Item>(toggleChosen)
+                    : new RelayCommand<Item>(_model!.selectItem);
                 itemButton.CommandParameter = item;
+
                 //A ContextMenu has one logical parent, so every tile needs its own rather
                 //than sharing one. They stay empty - and cost nothing to render - until the
                 //handler below fills one in on opening.
@@ -182,7 +202,10 @@ namespace MCDSaveEdit.UI
                 itemCount++;
             }
 
-            var currentFilter = _model?.filter.value;
+            //No "add one" tile while choosing what to delete: the two are opposite jobs, and
+            //an add button among a grid of checkboxes is one misclick away from undoing the
+            //point of the mode.
+            var currentFilter = _choosing ? (ItemFilterEnum?)null : _model?.filter.value;
             if (currentFilter != null && currentFilter != ItemFilterEnum.Enchanted && currentFilter != ItemFilterEnum.All)
             {
                 var newItemButton = new Button();
@@ -221,7 +244,185 @@ namespace MCDSaveEdit.UI
                 gameContentString = R.formatITEMS_COUNT_LABEL(slotsUsed, Constants.MAXIMUM_INVENTORY_ITEM_COUNT);
             }
             inventoryCountLabel.Content = gameContentString;
+
+            //Nothing to pick from, nothing to offer.
+            deleteModeButton.IsEnabled = itemCount > 0;
         }
+
+        #region Deleting several at once
+
+        /// <summary>
+        /// Deleting a run of items, set by whichever tab owns this list. The list is handed over
+        /// whole rather than one at a time: the tab clears the editor once and the model rebuilds
+        /// the inventory once, instead of both happening per item.
+        /// </summary>
+        public System.Windows.Input.ICommand? deleteItems { get; set; }
+
+        //Reference identity, which is what a HashSet gives for Item: two items can match in
+        //every recorded field and still be two separate things in the inventory.
+        private readonly HashSet<Item> _chosen = new HashSet<Item>();
+        private readonly Dictionary<Item, Border> _marks = new Dictionary<Item, Border>();
+        private bool _choosing;
+
+        /// <summary>
+        /// A tile in choosing mode: the item as usual, under a frame that shows whether it is
+        /// picked. The frame is not hit testable, so the one click the tile has still belongs to
+        /// the button, and there is no second target to aim at.
+        /// </summary>
+        private UIElement chooseableTile(Item item, ItemControl itemControl)
+        {
+            var danger = (Brush)FindResource("Brush.Danger");
+
+            //The badge sits bottom left, the one corner of a tile that carries nothing: the
+            //gilded mark is top left, the inventory number top right and the power bottom right.
+            //A tick rather than a cross, because this says chosen; the red frame around it is
+            //what says what happens to the chosen ones.
+            var badge = new Border {
+                Width = 22,
+                Height = 22,
+                CornerRadius = new CornerRadius(11),
+                Background = danger,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Bottom,
+                Margin = new Thickness(5),
+                Child = new TextBlock {
+                    Text = "✓",
+                    FontSize = 13,
+                    FontWeight = FontWeights.Bold,
+                    Foreground = Brushes.White,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+            };
+
+            var mark = new Border {
+                BorderThickness = new Thickness(3),
+                CornerRadius = new CornerRadius(3),
+                IsHitTestVisible = false,
+                BorderBrush = danger,
+                //Light enough to read the item through. The point is to show what is picked,
+                //not to hide what it was.
+                Background = chosenTint(),
+                Visibility = _chosen.Contains(item) ? Visibility.Visible : Visibility.Collapsed,
+                Child = badge,
+            };
+            _marks[item] = mark;
+
+            var tile = new Grid();
+            tile.Children.Add(itemControl);
+            tile.Children.Add(mark);
+            return tile;
+        }
+
+        /// <summary>
+        /// A wash over a picked tile, so it reads as picked from across the grid rather than
+        /// only at its edges. Taken from the theme's own danger colour so it follows the theme.
+        /// </summary>
+        private Brush chosenTint()
+        {
+            var colour = (FindResource("Brush.Danger") as SolidColorBrush)?.Color ?? Colors.Red;
+            var danger = colour;
+            var wash = new SolidColorBrush(Color.FromArgb(0x33, danger.R, danger.G, danger.B));
+            wash.Freeze();
+            return wash;
+        }
+
+        private void deleteModeButton_Click(object sender, RoutedEventArgs e)
+        {
+            EventLogger.logEvent("deleteItemsMode");
+            setChoosing(true);
+        }
+
+        private void deleteCancelButton_Click(object sender, RoutedEventArgs e) => setChoosing(false);
+
+        /// <summary>
+        /// One button for both, because with a filter or a search running "all" means the ones
+        /// on screen, and having picked them the next thing anyone wants is to let them go again.
+        /// </summary>
+        private void deleteSelectAllButton_Click(object sender, RoutedEventArgs e)
+        {
+            var shown = _model?.filteredItemList.value?.ToList() ?? new List<Item>();
+            var everythingShownIsChosen = shown.Count > 0 && shown.All(_chosen.Contains);
+
+            if (everythingShownIsChosen) { foreach (var item in shown) { _chosen.Remove(item); } }
+            else { foreach (var item in shown) { _chosen.Add(item); } }
+
+            foreach (var pair in _marks)
+            {
+                pair.Value.Visibility = _chosen.Contains(pair.Key) ? Visibility.Visible : Visibility.Collapsed;
+            }
+            updateDeleteBar();
+        }
+
+        private void toggleChosen(Item item)
+        {
+            if (item == null) { return; }
+            if (!_chosen.Remove(item)) { _chosen.Add(item); }
+
+            //Just this tile. Rebuilding the grid for one checkbox would throw away the scroll
+            //position, which on three hundred items is most of the work someone just did.
+            if (_marks.TryGetValue(item, out var mark))
+            {
+                mark.Visibility = _chosen.Contains(item) ? Visibility.Visible : Visibility.Collapsed;
+            }
+            updateDeleteBar();
+        }
+
+        private void deleteConfirmButton_Click(object sender, RoutedEventArgs e)
+        {
+            var doomed = _chosen.ToList();
+            if (doomed.Count == 0) { return; }
+
+            //Asked once, and worth asking: this is the one action here that destroys something,
+            //and by design it destroys a lot of it at a time. The answer says what the undo is -
+            //the file on disk is untouched until someone saves.
+            var answer = MessageBox.Show(
+                R.formatITEMS_DELETE_CONFIRM(doomed.Count), R.ITEMS_DELETE_TITLE, MessageBoxButton.YesNo);
+            if (answer != MessageBoxResult.Yes) { return; }
+
+            EventLogger.logEvent("deleteItemsConfirmed", new Dictionary<string, object>() { { "count", doomed.Count } });
+            setChoosing(false);
+            deleteItems?.Execute(doomed);
+        }
+
+        private void setChoosing(bool choosing)
+        {
+            _choosing = choosing;
+            _chosen.Clear();
+            _marks.Clear();
+
+            countBar.Visibility = choosing ? Visibility.Collapsed : Visibility.Visible;
+            deleteBar.Visibility = choosing ? Visibility.Visible : Visibility.Collapsed;
+            updateDeleteBar();
+
+            //Forced, because the tiles themselves are built differently in each mode and the
+            //usual "same number of items, nothing to do" shortcut cannot see that.
+            updateGridItemsUI(_model?.filteredItemList.value, true);
+        }
+
+        private void updateDeleteBar()
+        {
+            var count = _chosen.Count;
+            deleteChosenLabel.Text = count == 0 ? R.ITEMS_DELETE_PROMPT : R.formatITEMS_DELETE_CHOSEN(count);
+            deleteConfirmButton.Content = R.formatITEMS_DELETE_CONFIRM_BUTTON(count);
+            deleteConfirmButton.IsEnabled = count > 0;
+
+            var shown = _model?.filteredItemList.value?.ToList() ?? new List<Item>();
+            var everythingShownIsChosen = shown.Count > 0 && shown.All(_chosen.Contains);
+            deleteSelectAllButton.Content = everythingShownIsChosen ? R.ITEMS_DELETE_SELECT_NONE : R.ITEMS_DELETE_SELECT_ALL;
+            deleteSelectAllButton.IsEnabled = shown.Count > 0;
+        }
+
+        /// <summary>
+        /// Leaves choosing mode from outside, for when the list underneath is no longer the one
+        /// that was being chosen from - a different save opened, or the tab switched away.
+        /// </summary>
+        public void stopChoosing()
+        {
+            if (_choosing) { setChoosing(false); }
+        }
+
+        #endregion
 
         #region Equipping
 
@@ -242,6 +443,11 @@ namespace MCDSaveEdit.UI
         /// </summary>
         private void itemButton_ContextMenuOpening(object sender, ContextMenuEventArgs e)
         {
+            //While choosing what to delete, a tile has one job. The equip menu offers to do
+            //something else to the very item being marked for deletion, and the grid it is
+            //equipped out of is the grid being chosen from.
+            if (_choosing) { e.Handled = true; return; }
+
             if (!(sender is Button button) || !(button.ContextMenu is ContextMenu menu)
                 || !(button.CommandParameter is Item item)
                 || !(_model is IEquipItems equipper))
