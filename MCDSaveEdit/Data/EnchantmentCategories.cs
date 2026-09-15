@@ -170,6 +170,46 @@ namespace MCDSaveEdit.Data
                 ["VoidTouchedRanged"] = R,
                 ["Weakening"] = M | R,            //WeakeningRanged shares the icon
                 ["WildRage"] = R,
+
+                //The ones the game carries but never offers - see HiddenEnchantments. Unknown
+                //ids already fall to Other, so these change nothing; they are written out so
+                //this table lists everything the pickers can show rather than most of it.
+                ["Blind"] = O,
+                ["BowsBoon"] = O,
+                ["CaveSpiderPoisonEnchantment"] = O,
+                ["ChargingAcceleration"] = O,
+                ["CogCrossbowEnchantment"] = O,
+                ["CurrentImmunity"] = O,
+                ["DamageCounter"] = O,
+                ["DoubleDamage"] = O,
+                ["FastAttack"] = O,
+                ["FreezingAoe"] = O,
+                ["FreezingRanged"] = O,
+                ["HeavyweightEnchantment"] = O,
+                ["Huge"] = O,
+                ["HuntingBowEnchantment"] = O,
+                ["HuntingBowTaggedEnchantment"] = O,
+                ["Invisible"] = O,
+                ["PassiveRegen"] = O,
+                ["ProjectileCounter"] = O,
+                ["PushVolumeImmunity"] = O,
+                ["Quick"] = O,
+                ["ResurrectSurroundingMobs"] = O,
+                ["ShadowBarbRanged"] = O,
+                ["ShulkerSentry"] = O,
+                ["SlowBowEnchantment"] = O,
+                ["SlowBowFreezing"] = O,
+                ["SlowImmunity"] = O,
+                ["SlowResistance"] = O,
+                ["SpongeStrike"] = O,
+                ["UnderwaterImmunity"] = O,
+                ["VoidBlast"] = O,
+                ["VoidStrikeImmunity"] = O,
+                ["WindBowEnchantment"] = O,
+                ["WindImmunity"] = O,
+                ["WindResistance"] = O,
+                ["WitherEnchantmentMelee"] = O,
+                ["WitherEnchantmentRanged"] = O,
             };
 
         /// <summary>
