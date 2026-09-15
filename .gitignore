@@ -266,3 +266,6 @@ MCDSaveEdit/Data/Secrets.cs
 # Local-only working notes (not for the remote)
 docs/
 changelog.md
+
+# Research items, wont be committed to the repo
+research/
