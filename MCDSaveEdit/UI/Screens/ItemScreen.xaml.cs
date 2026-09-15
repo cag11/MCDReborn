@@ -39,6 +39,8 @@ namespace MCDSaveEdit.UI
             giftedButtonCheckBox.Content = R.getString("item_gifted") ?? R.GIFTED;
 
             duplicateItemButton.Content = R.DUPLICATE;
+            armorDefaultsButton.Content = R.ARMOR_DEFAULTS;
+            armorDefaultsButton.ToolTip = R.ARMOR_DEFAULTS_TOOLTIP;
             deleteItemButton.Content = R.getString("Delete_Nav_Button") ?? R.DELETE;
 
             updateUI();
@@ -133,6 +135,7 @@ namespace MCDSaveEdit.UI
                 giftedButtonCheckBox.IsChecked = false;
                 duplicateItemButton.IsEnabled = false;
                 deleteItemButton.IsEnabled = false;
+                armorDefaultsButton.IsEnabled = false;
             }
             else
             {
@@ -144,6 +147,9 @@ namespace MCDSaveEdit.UI
                 giftedButton.IsEnabled = true;
                 duplicateItemButton.IsEnabled = true;
                 deleteItemButton.IsEnabled = true;
+                //Only where there is something to apply: a weapon has no armor properties, and
+                //a type the table has not heard of would give an empty list rather than defaults.
+                armorDefaultsButton.IsEnabled = ArmorDefaults.forItemType(_item.Type) != null;
             }
         }
 
@@ -535,22 +541,25 @@ namespace MCDSaveEdit.UI
         }
 
         /// <summary>
-        /// Gives a newly chosen armor the properties it drops with in game, so picking a type
-        /// hands you the real thing rather than whatever the previous armor happened to carry.
+        /// Gives the armor the properties it drops with in game, replacing whatever it carries.
         ///
-        /// Only on an actual change of type, and only where the table knows the type: keeping
-        /// the old properties is better than blanking them for a type that was added after
-        /// this build. Editing them afterwards works exactly as before.
+        /// This used to happen by itself whenever the type changed, which was wrong: changing a
+        /// type is often how you keep a set of properties you have just built and move it onto
+        /// a different armor, and doing that silently threw the work away. It is a button now,
+        /// so the same thing is available on demand and never as a surprise - including on an
+        /// armor whose type has not changed at all, which the automatic version could not do.
         /// </summary>
-        private void applyArmorDefaults(string? previousType, string newType)
+        private void armorDefaultsButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_item == null || previousType == newType) { return; }
+            if (_item == null) { return; }
 
-            var defaults = ArmorDefaults.forItemType(newType);
+            var defaults = ArmorDefaults.forItemType(_item.Type);
             if (defaults == null) { return; }
 
-            EventLogger.logEvent("applyArmorDefaults", new Dictionary<string, object>() { { "itemType", newType } });
+            EventLogger.logEvent("applyArmorDefaults", new Dictionary<string, object>() { { "itemType", _item.Type } });
             _item.Armorproperties = defaults;
+            this.saveChanges?.Execute(_item);
+            updateUI();
         }
 
         private void selectedItemType(string? itemType)
@@ -568,9 +577,9 @@ namespace MCDSaveEdit.UI
                 }
                 else
                 {
-                    var previousType = _item.Type;
+                    //Deliberately only the type. The properties stay as they are; the Defaults
+                    //button is how they get replaced.
                     _item.Type = itemType!;
-                    applyArmorDefaults(previousType, itemType!);
                 }
                 this.saveChanges?.Execute(_item);
             }

@@ -22,6 +22,16 @@ namespace MCDSaveEdit.UI
         private readonly EnchantmentFilterBar _enchantmentFilterBar = new EnchantmentFilterBar();
         private string? _selectedEnchantment;
 
+        //One search box for the window, whatever it is showing. The icon row above the item
+        //list is a single choice rather than toggles, so the chosen category has to be
+        //remembered too, or typing would silently throw it away and show everything again.
+        private readonly SearchBox _search = new SearchBox(R.SEARCH_HINT);
+        private ItemFilterEnum _itemFilter = ItemFilterEnum.All;
+
+        //What to rebuild when the term changes. Each load path sets it, because the three lists
+        //are built from different sources.
+        private Action? _rebuild;
+
         public Action<string?>? onSelection { get; set; }
 
         public string? selectedItem {
@@ -61,12 +71,20 @@ namespace MCDSaveEdit.UI
         public void loadArmorProperties(string? selectedArmorProperty = null)
         {
             Title = R.SELECT_ARMOR_PROPERTY;
-            Content = _listBox;
+            _rebuild = () => buildArmorPropertyList(selectedArmorProperty);
+            layout(header: null, withSearch: true);
+            buildArmorPropertyList(selectedArmorProperty);
+        }
+
+        private void buildArmorPropertyList(string? selectedArmorProperty)
+        {
             _isProcessing = true;
             _listBox.Items.Clear();
 
             foreach (var armorProperty in ItemDatabase.armorProperties.OrderBy(str => str))
             {
+                if (!_search.matches(R.armorProperty(armorProperty))) { continue; }
+
                 var itemView = new BaseSelectionWindow.ArmorPropertyView { titleContent = R.armorProperty(armorProperty) };
                 if (Config.instance.showIDsInSelectionWindow)
                 {
@@ -93,15 +111,14 @@ namespace MCDSaveEdit.UI
             _enchantmentFilterBar.selectForItem(EnchantmentCategories.categoryForItem(forItem));
             _enchantmentFilterBar.changed -= buildEnchantmentList;
             _enchantmentFilterBar.changed += buildEnchantmentList;
+            _enchantmentFilterBar.advance -= focusList;
+            _enchantmentFilterBar.advance += focusList;
 
-            var mainStack = new DockPanel();
-            DockPanel.SetDock(_enchantmentFilterBar, Dock.Top);
-            mainStack.Children.Add(_enchantmentFilterBar);
-            DockPanel.SetDock(_listBox, Dock.Bottom);
-            mainStack.Children.Add(_listBox);
-            Content = mainStack;
+            _rebuild = buildEnchantmentList;
+            layout(header: _enchantmentFilterBar, withSearch: false);
 
             buildEnchantmentList();
+            _enchantmentFilterBar.focusSearch();
         }
 
         private void buildEnchantmentList()
@@ -111,9 +128,11 @@ namespace MCDSaveEdit.UI
 
             foreach (var enchantment in EnchantmentDatabase.allEnchantments.OrderBy(str => str).Concat(new[] { Constants.DEFAULT_ENCHANTMENT_ID }))
             {
-                //Unset is how a slot is cleared, so it is never filtered away.
+                //Unset is how a slot is cleared, so it is never filtered away - not by a
+                //category and not by a search either. It is the clear action rather than an
+                //enchantment, and it sits last in the list where it reads as one.
                 if (enchantment != Constants.DEFAULT_ENCHANTMENT_ID
-                    && !EnchantmentCategories.matches(enchantment, _enchantmentFilterBar.selected))
+                    && !_enchantmentFilterBar.allows(enchantment))
                 {
                     continue;
                 }
@@ -146,7 +165,9 @@ namespace MCDSaveEdit.UI
         public void loadFilteredItems(ItemFilterEnum filter, string? selectedItem = null)
         {
             Title = getTitleForFilter(filter);
-            Content = _listBox;
+            //No icon row here: the category is already decided by the slot that opened this.
+            _rebuild = rebuildItemList;
+            layout(header: null, withSearch: true);
 
             buildItemList(filter, selectedItem: selectedItem);
 
@@ -186,13 +207,8 @@ namespace MCDSaveEdit.UI
             toolStack.Children.Add(armorButton);
             toolStack.Children.Add(artifactButton);
 
-            var mainStack = new DockPanel();
-            DockPanel.SetDock(toolStack, Dock.Top);
-            mainStack.Children.Add(toolStack);
-            DockPanel.SetDock(_listBox, Dock.Bottom);
-            mainStack.Children.Add(_listBox);
-
-            Content = mainStack;
+            _rebuild = rebuildItemList;
+            layout(header: toolStack, withSearch: true);
 
             buildItemList(selectedItem: selectedItem);
         }
@@ -232,13 +248,79 @@ namespace MCDSaveEdit.UI
             }
         }
 
+        /// <summary>
+        /// The window's one layout: an optional header, the search box, then the list.
+        ///
+        /// Every load path goes through this. Two of them used to set Content to the bare list
+        /// instead, which is how the filtered item picker - the one a gear slot opens, and so
+        /// the one actually used most - ended up as the only list without a search box.
+        ///
+        /// The enchantment list passes withSearch: false because its filter bar carries a
+        /// search of its own, and two boxes stacked would be worse than none.
+        /// </summary>
+        private void layout(UIElement? header, bool withSearch)
+        {
+            _search.Margin = new Thickness(8, header == null ? 8 : 0, 8, 8);
+            _search.changed -= onSearchChanged;
+            _search.changed += onSearchChanged;
+            _search.advance -= focusList;
+            _search.advance += focusList;
+
+            //These are fields reused across calls, and a logical child has exactly one parent.
+            detach(header as FrameworkElement);
+            detach(_search);
+            detach(_listBox);
+
+            var panel = new DockPanel();
+            if (header != null)
+            {
+                DockPanel.SetDock(header, Dock.Top);
+                panel.Children.Add(header);
+            }
+            if (withSearch)
+            {
+                DockPanel.SetDock(_search, Dock.Top);
+                panel.Children.Add(_search);
+            }
+            DockPanel.SetDock(_listBox, Dock.Bottom);
+            panel.Children.Add(_listBox);
+
+            Content = panel;
+            if (withSearch) { _search.focus(); }
+        }
+
+        private static void detach(FrameworkElement? element)
+        {
+            switch (element?.Parent)
+            {
+                case Panel panel: panel.Children.Remove(element); break;
+                case ContentControl host when ReferenceEquals(host.Content, element): host.Content = null; break;
+            }
+        }
+
+        private void onSearchChanged() => _rebuild?.Invoke();
+
+        private void rebuildItemList() => buildItemList(_itemFilter);
+
+        private void focusList()
+        {
+            if (_listBox.Items.Count == 0) { return; }
+            _listBox.SelectedIndex = _listBox.SelectedIndex < 0 ? 0 : _listBox.SelectedIndex;
+            (_listBox.ItemContainerGenerator.ContainerFromIndex(_listBox.SelectedIndex) as ListBoxItem)?.Focus();
+        }
+
         private void buildItemList(ItemFilterEnum filter = ItemFilterEnum.All, string? selectedItem = null)
         {
             _isProcessing = true;
+            _itemFilter = filter;
             _listBox.Items.Clear();
 
             foreach (var item in itemsForFilter(filter).OrderBy(str => str))
             {
+                //By display name only. Matching ids as well looked like a bug: searching
+                //"wolf" turned up Fox Armor, whose id happens to be WolfArmor_Unique1.
+                if (!_search.matches(R.itemName(item))) { continue; }
+
                 var imageSource = ImageResolver.instance.imageSourceForItem(item);
                 if (imageSource == null)
                 {

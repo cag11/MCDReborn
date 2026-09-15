@@ -268,6 +268,33 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Search….
+        /// </summary>
+        public static string SEARCH_HINT {
+            get {
+                return ResourceManager.GetString("SEARCH_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Defaults.
+        /// </summary>
+        public static string ARMOR_DEFAULTS {
+            get {
+                return ResourceManager.GetString("ARMOR_DEFAULTS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Replace this armor's properties with the ones it drops with in game.
+        /// </summary>
+        public static string ARMOR_DEFAULTS_TOOLTIP {
+            get {
+                return ResourceManager.GetString("ARMOR_DEFAULTS_TOOLTIP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Nothing installed yet..
         /// </summary>
         public static string CUSTOM_SKINS_NONE_INSTALLED {

@@ -221,6 +221,18 @@
     <value>Mods load from the ~mods folder beside the game's own paks. Close the game before adding one, and on the Minecraft Launcher start Dungeons.exe directly – launching through the launcher removes mods.</value>
     <comment>Explains the mods folder</comment>
   </data>
+  <data name="SEARCH_HINT" xml:space="preserve">
+    <value>Search…</value>
+    <comment>Search placeholder</comment>
+  </data>
+  <data name="ARMOR_DEFAULTS" xml:space="preserve">
+    <value>Defaults</value>
+    <comment>Armor defaults button</comment>
+  </data>
+  <data name="ARMOR_DEFAULTS_TOOLTIP" xml:space="preserve">
+    <value>Replace this armor's properties with the ones it drops with in game</value>
+    <comment>Armor defaults tooltip</comment>
+  </data>
   <data name="ALL_ITEMS_FILTER" xml:space="preserve">
     <value>All</value>
     <comment>All</comment>

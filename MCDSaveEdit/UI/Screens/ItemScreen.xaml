@@ -16,7 +16,12 @@
                     <Button x:Name="duplicateItemButton" Content="*Duplicate*" Width="65" Margin="5,0" IsEnabled="false" Click="duplicateItemButton_Click"/>
                     <Button x:Name="deleteItemButton" Content="*Delete*" Width="65" Margin="5,0" IsEnabled="false" Click="deleteItemButton_Click"/>
                 </StackPanel>
-                <Label HorizontalContentAlignment="Center" Height="26"></Label>
+                <!-- Replacing an armor's properties with the ones it drops with in game. Under
+                     Duplicate and Delete because it belongs with them: the three are the actions
+                     that change the whole item rather than one field of it. -->
+                <Button x:Name="armorDefaultsButton" Content="*Defaults*" Height="27" Margin="5,4,5,2"
+                        IsEnabled="false" Click="armorDefaultsButton_Click"/>
+                <Label HorizontalContentAlignment="Center" Height="8"></Label>
                 <Button x:Name="moveItemButton" Content="*Transfer to Inventory*" Height="27" Margin="5,2" IsEnabled="false" Click="moveItemButton_Click"/>
                 <Button x:Name="moveItemButtonExtra" Content="*Transfer to Storage*" Height="27" Margin="5,2" IsEnabled="false" Click="moveItemButton_Click"/>
             </StackPanel>

@@ -15,10 +15,11 @@
 * Ported from .NET Framework 4.8 to **.NET 10**, every package updated, the known advisories cleared
 * Five themes in the **View** menu (Dark, Light, Nether, End and Frost), swapped live and remembered between runs
 * Item search across the whole inventory, filtering as you type, without covering the UI
+* A search box on every picker (items, armor, melee, ranged, artifacts, armor properties and enchantments), narrowing within whatever the filters already allow
+* A **Defaults** button fills in the properties an armor drops with in game; changing an armor's type no longer replaces them by itself
 * Right-click an inventory item to equip it; artifacts offer all three hotbar slots
 * Right-click an equipment slot to unequip
 * Every save backs the file up first, keeping one timestamped `.bak` beside it
-* Changing an armor's type fills in the properties that armor drops with in game
 * The enchantment picker opens on the gear type being enchanted, with **Melee / Armor / Ranged / Other** toggles
 * A loading screen that is a themed card with a vector mark, version and status line
 

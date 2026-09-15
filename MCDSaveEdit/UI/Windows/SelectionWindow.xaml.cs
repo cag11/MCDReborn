@@ -141,6 +141,10 @@ namespace MCDSaveEdit.UI
                 }
             }
 
+            //The ListBox binds to filteredItems, which is computed from `items`. Rebuilding
+            //`items` raises nothing on its own, so without this the filters changed the list
+            //behind the binding and the window carried on showing the old one.
+            OnPropertyChanged("filteredItems");
             _isProcessing = false;
         }
 
@@ -154,6 +158,10 @@ namespace MCDSaveEdit.UI
             _enchantmentFilterBar.changed += buildEnchantmentList;
             filterBarHost.Content = _enchantmentFilterBar;
 
+            //The filter bar brings its own search, so this window's one would be a second box
+            //doing the same job directly above it.
+            textBox.Visibility = Visibility.Collapsed;
+
             buildEnchantmentList();
         }
 
@@ -164,9 +172,11 @@ namespace MCDSaveEdit.UI
 
             foreach (var enchantment in EnchantmentDatabase.allEnchantments.OrderBy(str => str).Concat(new[] { Constants.DEFAULT_ENCHANTMENT_ID }))
             {
-                //Unset is how a slot is cleared, so it is never filtered away.
+                //Unset is how a slot is cleared, so it is never filtered away - not by a
+                //category and not by a search either. It is the clear action rather than an
+                //enchantment, and it sits last in the list where it reads as one.
                 if (enchantment != Constants.DEFAULT_ENCHANTMENT_ID
-                    && !EnchantmentCategories.matches(enchantment, _enchantmentFilterBar.selected))
+                    && !_enchantmentFilterBar.allows(enchantment))
                 {
                     continue;
                 }
@@ -205,6 +215,10 @@ namespace MCDSaveEdit.UI
 
             buildItemList(filter, selectedItem: selectedItem);
 
+            //The ListBox binds to filteredItems, which is computed from `items`. Rebuilding
+            //`items` raises nothing on its own, so without this the filters changed the list
+            //behind the binding and the window carried on showing the old one.
+            OnPropertyChanged("filteredItems");
             _isProcessing = false;
         }
 
@@ -241,13 +255,12 @@ namespace MCDSaveEdit.UI
             toolStack.Children.Add(armorButton);
             toolStack.Children.Add(artifactButton);
 
-            var mainStack = new DockPanel();
-            DockPanel.SetDock(toolStack, Dock.Top);
-            mainStack.Children.Add(toolStack);
-            DockPanel.SetDock(listBox, Dock.Bottom);
-            mainStack.Children.Add(listBox);
-
-            Content = mainStack;
+            //Into the host the XAML already provides, rather than a new panel. Building one
+            //here and adding `listBox` to it moved an element that the Grid already owns, which
+            //WPF refuses - a logical child has exactly one parent - so opening the item picker
+            //threw every time. The search box below it is the window's own, and works as it is.
+            filterBarHost.Content = toolStack;
+            textBox.Visibility = Visibility.Visible;
 
             buildItemList(selectedItem: selectedItem);
         }
@@ -321,6 +334,10 @@ namespace MCDSaveEdit.UI
                     _selectedListBoxItem = listItem;
                 }
             }
+            //The ListBox binds to filteredItems, which is computed from `items`. Rebuilding
+            //`items` raises nothing on its own, so without this the filters changed the list
+            //behind the binding and the window carried on showing the old one.
+            OnPropertyChanged("filteredItems");
             _isProcessing = false;
         }
 

@@ -335,6 +335,82 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //TEST_ARMOR_DEFAULTS - proves a type change leaves properties alone and that the
+            //defaults table still produces the right ones on demand.
+            if (_startupArguments.Contains("TEST_ARMOR_DEFAULTS"))
+            {
+                var armor = _model.mainModel.profileModel.profile.value?.Items
+                    ?.FirstOrDefault(x => Data.ArmorDefaults.forItemType(x.Type) != null);
+                if (armor == null)
+                {
+                    Console.WriteLine("[armor] no armor in this save");
+                }
+                else
+                {
+                    string show(Save.Models.Profiles.Armorproperty[]? p)
+                        => p == null ? "(none)" : string.Join(", ", p.Select(x => x.Id));
+
+                    Console.WriteLine($"[armor] {armor.Type}  before        = {show(armor.Armorproperties)}");
+
+                    //What the UI does now when a different type is chosen: the type, nothing else.
+                    var before = show(armor.Armorproperties);
+                    armor.Type = "WolfArmor";
+                    Console.WriteLine($"[armor] after type change       = {show(armor.Armorproperties)}");
+                    Console.WriteLine($"[armor] properties untouched    = {show(armor.Armorproperties) == before}");
+
+                    //What the Defaults button does.
+                    armor.Armorproperties = Data.ArmorDefaults.forItemType(armor.Type)!;
+                    Console.WriteLine($"[armor] after Defaults button   = {show(armor.Armorproperties)}");
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //SCREENSHOT_PICKER=<png>|items|enchantments[|<term>] - opens a selection window,
+            //optionally types a search term, and captures it. The pickers are modal dialogs, so
+            //they cannot be reached by the main-window capture path.
+            var pickerShot = _startupArguments.FirstOrDefault(a => a.StartsWith("SCREENSHOT_PICKER="));
+            if (pickerShot != null)
+            {
+                var parts = pickerShot.Substring("SCREENSHOT_PICKER=".Length).Trim('"').Split('|');
+                var window = UI.WindowFactory.createSelectionWindow();
+                //Every entry point, not just the two easy ones: the filtered pickers are what a
+                //gear slot opens, and they were the ones missing a search box.
+                switch (parts.Length > 1 ? parts[1] : "items")
+                {
+                    case "enchantments": window.loadEnchantments(null, null); break;
+                    case "props": window.loadArmorProperties(null); break;
+                    case "armor": window.loadFilteredItems(Save.Models.Enums.ItemFilterEnum.Armor, null); break;
+                    case "melee": window.loadFilteredItems(Save.Models.Enums.ItemFilterEnum.MeleeWeapons, null); break;
+                    case "ranged": window.loadFilteredItems(Save.Models.Enums.ItemFilterEnum.RangedWeapons, null); break;
+                    case "artifacts": window.loadFilteredItems(Save.Models.Enums.ItemFilterEnum.Artifacts, null); break;
+                    default: window.loadItems(null); break;
+                }
+
+                if (window is Window shown)
+                {
+                    shown.Show();
+                    shown.UpdateLayout();
+                    Console.WriteLine($"[picker] window = {shown.GetType().Name}");
+                    if (parts.Length > 2 && parts[2].Length > 0)
+                    {
+                        UI.Theme.WindowCapture.typeInto(shown, parts[2]);
+                        shown.UpdateLayout();
+                    }
+                    //A bound list rebuilds its containers on a later dispatcher pass, so a
+                    //capture taken right after UpdateLayout still shows the old rows.
+                    Dispatcher.Invoke(new Action(() => { }), DispatcherPriority.ContextIdle);
+                    shown.UpdateLayout();
+
+                    var list = UI.Theme.WindowCapture.findFirst<System.Windows.Controls.ListBox>(shown);
+                    Console.WriteLine($"[picker] listBox items = {list?.Items.Count.ToString() ?? "not found"}");
+                    UI.Theme.WindowCapture.captureThenExit(shown, parts[0]);
+                    return;
+                }
+                this.Shutdown();
+                return;
+            }
+
             //ADD_MOD=<pak file> - the manual mod path, exactly as the upload button runs it.
             var addMod = _startupArguments.FirstOrDefault(a => a.StartsWith("ADD_MOD="));
             if (addMod != null)
