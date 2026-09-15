@@ -75,7 +75,7 @@ namespace MCDSaveEdit.Logic
             foreach (var slot in ARTIFACT_SLOTS)
             {
                 var item = itemInSlot(items, slot);
-                artifacts.Add(item?.Type == null ? null : JsonValue.Create(R.itemName(item.Type)));
+                artifacts.Add(item?.Type == null ? null : JsonValue.Create(builderItem(item.Type)));
             }
 
             var build = new JsonObject {
@@ -83,6 +83,20 @@ namespace MCDSaveEdit.Logic
                 ["g"] = gear,
                 ["a"] = artifacts,
             };
+
+            //Mystery Armor is the one armor whose properties are rolled rather than fixed, so it
+            //is the one armor a name does not fully describe. Carried only when it is equipped
+            //and something actually rolled, which is what MCD Builder does with it too.
+            var mystery = MysteryAttributes.effectsFor(itemInSlot(items, EquipmentSlotEnum.ArmorGear));
+            if (mystery.Any(effect => effect != null))
+            {
+                var rolled = new JsonArray();
+                foreach (var effect in mystery)
+                {
+                    rolled.Add(effect == null ? null : JsonValue.Create(effect));
+                }
+                build["m"] = rolled;
+            }
             return build.ToJsonString(new JsonSerializerOptions {
                 WriteIndented = false,
                 //Default escaping turns ' into ', which MCD Builder never emits
@@ -116,7 +130,7 @@ namespace MCDSaveEdit.Logic
             else { enchantments.Add(enchantmentSlot(gild.Value)); }
 
             var node = new JsonObject { ["e"] = enchantments };
-            if (item?.Type != null) { node["i"] = R.itemName(item.Type); }
+            if (item?.Type != null) { node["i"] = builderItem(item.Type); }
 
             //The flag that says the gear is gilded, which is what actually reveals the fourth
             //slot. Without it the builder reads the gear as ungilded and never draws that slot,
@@ -142,7 +156,7 @@ namespace MCDSaveEdit.Logic
             var netherite = item?.NetheriteEnchant;
             if (netherite == null) { return null; }
             if (string.IsNullOrEmpty(netherite.Id) || netherite.Level <= 0) { return null; }
-            return (builderName(R.enchantmentName(netherite.Id)), netherite.Level);
+            return (builderEnchantment(netherite.Id), netherite.Level);
         }
 
         private static IEnumerable<(string name, long tier)> investedEnchantments(Item? item)
@@ -155,7 +169,7 @@ namespace MCDSaveEdit.Logic
             {
                 if (enchantment == null || enchantment.Level <= 0) { continue; }
                 if (string.IsNullOrEmpty(enchantment.Id)) { continue; }
-                yield return (builderName(R.enchantmentName(enchantment.Id)), enchantment.Level);
+                yield return (builderEnchantment(enchantment.Id), enchantment.Level);
             }
         }
 
@@ -170,6 +184,17 @@ namespace MCDSaveEdit.Logic
             var bracket = name.IndexOf(" (", StringComparison.Ordinal);
             return bracket > 0 ? name.Substring(0, bracket) : name;
         }
+
+        /// <summary>
+        /// An enchantment as MCD Builder names it. The map is consulted first, for the few the
+        /// two apps genuinely call different things; everything else is this app's display name
+        /// with its own bracketed suffix taken off.
+        /// </summary>
+        private static string builderEnchantment(string id)
+            => BuilderNames.enchantmentName(id) ?? builderName(R.enchantmentName(id));
+
+        private static string builderItem(string type)
+            => BuilderNames.itemName(type) ?? R.itemName(type);
 
         private static Item? itemInSlot(IEnumerable<Item> items, EquipmentSlotEnum slot)
         {
@@ -204,6 +229,22 @@ namespace MCDSaveEdit.Logic
                 {
                     var item = itemFromGearNode(gear[i] as JsonObject, GEAR_SLOTS[i], power);
                     if (item != null) { items.Add(item!); }
+                }
+            }
+
+            //The rolled attributes belong to the build rather than to the gear node, because only
+            //one armor can ever have them. They are applied after the gear is built, to the armor
+            //that came with it, and only when that armor is the one they can belong to.
+            if (build["m"] is JsonArray mystery)
+            {
+                var armour = items.FirstOrDefault(MysteryAttributes.isMysteryArmor);
+                if (armour != null)
+                {
+                    var effects = mystery.Select(node => {
+                        try { return node?.GetValue<string>(); } catch (Exception) { return null; }
+                    });
+                    var properties = MysteryAttributes.propertiesFrom(effects);
+                    if (properties.Count > 0) { armour.Armorproperties = properties.ToArray(); }
                 }
             }
 
@@ -334,6 +375,11 @@ namespace MCDSaveEdit.Logic
         private static string? itemTypeForDisplayName(string? name)
         {
             if (string.IsNullOrWhiteSpace(name)) { return null; }
+
+            //The map first: these are names this app's own list does not hold at all.
+            var mapped = BuilderNames.itemType(name);
+            if (mapped != null) { return mapped; }
+
             _itemsByName ??= buildLookup(ItemDatabase.all, R.itemName);
             var trimmed = name!.Trim();
             if (_itemsByName!.TryGetValue(trimmed, out var exact)) { return exact; }
@@ -343,6 +389,10 @@ namespace MCDSaveEdit.Logic
         private static string? enchantmentIdForDisplayName(string? name)
         {
             if (string.IsNullOrWhiteSpace(name)) { return null; }
+
+            var mapped = BuilderNames.enchantmentId(name);
+            if (mapped != null) { return mapped; }
+
             _enchantmentsByName ??= buildLookup(EnchantmentDatabase.allEnchantments, R.enchantmentName);
             var trimmed = name!.Trim();
             if (_enchantmentsByName!.TryGetValue(trimmed, out var exact)) { return exact; }
