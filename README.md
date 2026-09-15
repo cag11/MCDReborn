@@ -29,6 +29,7 @@
 #### Custom Builds Feature
 * **Open in MCD Builder**: send the equipped loadout straight to [mcdbuilder.vercel.app](https://mcdbuilder.vercel.app/)
 * **Import Build** and **Import and Equip** from the clipboard, refused up front if the inventory has no room for it
+* Gilded gear crosses over gilded, with its fourth enchantment in the gilded slot, in both directions
 
 https://github.com/user-attachments/assets/509496fd-7186-4422-a639-9d10272be407
 
