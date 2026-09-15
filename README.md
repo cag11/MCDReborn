@@ -13,6 +13,8 @@
 
 * **Everything MCDSaveEdit already did**: editing items, enchantments, stats, counters and currencies; reading and writing the encrypted save format
 * Ported from .NET Framework 4.8 to **.NET 10**, every package updated, the known advisories cleared
+* **Custom Skins tab**: play as any of the game's 67 hero skins, written to the save for you, no mod needed
+* Wear any 64×64 Minecraft skin as your hero; import any skin from your favorite skin website
 * Five themes in the **View** menu (Dark, Light, Nether, End and Frost), swapped live and remembered between runs
 * Item search across the whole inventory, filtering as you type, without covering the UI
 * A search box on every picker (items, armor, melee, ranged, artifacts, armor properties and enchantments), narrowing within whatever the filters already allow
@@ -29,18 +31,9 @@
 
 https://github.com/user-attachments/assets/509496fd-7186-4422-a639-9d10272be407
 
-#### Custom Skins Feature
+#### Recolor Gear Feature
 * **Recolor Gear**: put your own artwork on a piece of gear, installed as a mod pak beside the game's own; the originals are never modified and Remove undoes it completely
-* The texture travels to [mcddesigner.vercel.app](https://mcddesigner.vercel.app/) and back inside the link itself, with no PNG to export, find, upload and download again
-* **Custom Skins tab**: play as any of the game's 67 hero skins, written to the save for you, no mod needed
-* Wear any 64×64 Minecraft skin as your hero; the hero is the Minecraft shape, so a skin fits it where it never fits armour
-* Wearing a skin hides every armour so it can actually be seen; a **Show armours** switch on Recolor Gear puts it all back
-* A 3D Minecraft figure of the hero, turned by dragging, with the flat sheet one click away
-* Imported skins are kept under their own name and listed beside the game's heroes, so a collection builds up
-* Shows what your character looks like now, and a Reset that undoes both the skin and the hero change
-* The hiding pak is named to load last, so a gear skin cannot put back the armour it hides
-* Install any `.pak` mod from the same tab; it creates the `~mods` folder the game loads from and copies the file in, on Steam, the Launcher or the Xbox app alike
-* Installed mods are listed with a Remove button each; paks the app manages itself stay out of that list, so a checkbox and a Remove button never disagree
+* The texture travels to [mcddesigner.vercel.app](https://mcddesigner.vercel.app/) and back. Find, upload and download again
 
 https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 
