@@ -49,7 +49,12 @@ namespace MCDSaveEdit.UI
             hintLabel.Text = R.CUSTOM_SKINS_HINT;
             modsNoteLabel.Text = R.CUSTOM_SKINS_MODS_NOTE;
             showArmourCheckBox.Content = R.ARMOUR_SHOW;
-            ArmourVisibility.changed += refreshArmourBox;
+
+            //Loaded, not the constructor. A TabControl unloads the content of whichever tab is
+            //not selected, so an Unloaded that unsubscribes without a Loaded that subscribes
+            //again lasts exactly until the first time someone looks at another tab - after which
+            //the hint below the box froze while the box itself still worked.
+            Loaded += (s, e) => { ArmourVisibility.changed += refreshArmourBox; refreshArmourBox(); };
             Unloaded += (s, e) => ArmourVisibility.changed -= refreshArmourBox;
             addPakButton.ToolTip = R.CUSTOM_SKINS_ADD_PAK;
             openModsButton.ToolTip = R.CUSTOM_SKINS_OPEN_MODS;
@@ -304,6 +309,9 @@ namespace MCDSaveEdit.UI
             try
             {
                 ArmourVisibility.setHidden(!show);
+                //Directly, as well as through the event. The event is what keeps the other screen
+                //in step; the screen being clicked should not need it to describe its own state.
+                refreshArmourBox();
             }
             catch (Exception exception)
             {

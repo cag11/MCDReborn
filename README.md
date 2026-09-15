@@ -15,6 +15,7 @@
 * Ported from .NET Framework 4.8 to **.NET 10**, every package updated, the known advisories cleared
 * **Custom Skins tab**: play as any of the game's 67 hero skins, written to the save for you, no mod needed
 * Wear any 64×64 Minecraft skin as your hero; import any skin from your favorite skin website
+* A **Show armours** switch on both the Custom Skins and Recolor Gear tabs: wearing a skin hides armour so the skin can be seen, and one tick puts it all back
 * Five themes in the **View** menu (Dark, Light, Nether, End and Frost), swapped live and remembered between runs
 * Item search across the whole inventory, filtering as you type, without covering the UI
 * A search box on every picker (items, armor, melee, ranged, artifacts, armor properties and enchantments), narrowing within whatever the filters already allow

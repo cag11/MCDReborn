@@ -92,7 +92,55 @@ namespace MCDSaveEdit.UI
             previewHintLabel.Text = R.HERO_DRAG_HINT;
             updateViewToggle();
             ownSkinHintLabel.Text = R.HERO_OWN_SKIN_HINT;
+            showArmourCheckBox.Content = R.ARMOUR_SHOW;
+
+            //Loaded rather than here, because a TabControl unloads the tab you are not looking
+            //at: subscribing once in the constructor and unsubscribing on Unloaded leaves the
+            //hint frozen the moment anyone visits another tab.
+            Loaded += (s, e) => { ArmourVisibility.changed += refreshArmourBox; refreshArmourBox(); };
+            Unloaded += (s, e) => ArmourVisibility.changed -= refreshArmourBox;
         }
+
+        #region Show armours
+
+        //The same switch as the one on Recolor Gear, backed by the same single pak. Both screens
+        //listen to the same event, so throwing it on one ticks the box on the other.
+        private bool _settingArmourBox;
+
+        private void refreshArmourBox()
+        {
+            _settingArmourBox = true;
+            showArmourCheckBox.IsEnabled = CustomSkins.ready;
+            showArmourCheckBox.IsChecked = !ArmourVisibility.armourHidden;
+            showArmourHintLabel.Text = ArmourVisibility.armourHidden
+                ? R.ARMOUR_HIDDEN_HINT
+                : R.ARMOUR_SHOWN_HINT;
+            _settingArmourBox = false;
+        }
+
+        private void showArmourCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_settingArmourBox) { return; }
+
+            var show = showArmourCheckBox.IsChecked == true;
+            EventLogger.logEvent("showArmour", new Dictionary<string, object>() { { "show", show } });
+            try
+            {
+                ArmourVisibility.setHidden(!show);
+                refreshArmourBox();
+            }
+            catch (Exception exception)
+            {
+                //Writing into the game's folder can fail: the game is running, or it needs
+                //elevation. Put the box back rather than leave it lying about the state.
+                MessageBox.Show(exception.Message, R.ERROR);
+                refreshArmourBox();
+            }
+            //Reset becomes available once armour is hidden, and stops being the moment it is not.
+            updateSelection();
+        }
+
+        #endregion
 
         public void updateUI()
         {
@@ -103,6 +151,7 @@ namespace MCDSaveEdit.UI
                 .ToList();
             rememberOriginalHero();
             fillHeroList();
+            refreshArmourBox();
             updateSelection();
         }
 

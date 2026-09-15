@@ -38,24 +38,38 @@
             <Label x:Name="selectedLabel" DockPanel.Dock="Top" Content=""
                    Style="{StaticResource SectionHeading}" FontSize="16" Padding="0,2" Margin="2,0,2,6"/>
 
-            <!-- Who you are right now, and the two ways to change it back or over. -->
-            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="2,0,2,10">
-                <Border Width="52" Height="52" Margin="0,0,10,0" CornerRadius="4"
+            <!-- Who you are right now, and the two ways to change it back or over. The armour
+                 switch sits at the far right of the same row: it belongs to how the character
+                 looks, which is what this row is, and the space was going spare. -->
+            <DockPanel DockPanel.Dock="Top" Margin="2,0,2,10" LastChildFill="False">
+                <Border DockPanel.Dock="Left" Width="52" Height="52" Margin="0,0,10,0" CornerRadius="4"
                         BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
                         Background="{DynamicResource Brush.Surface}">
                     <Image x:Name="currentLookImage" Margin="3" Stretch="Uniform"
                            RenderOptions.BitmapScalingMode="NearestNeighbor"/>
                 </Border>
-                <StackPanel Orientation="Vertical" VerticalAlignment="Center" Margin="0,0,12,0">
+                <StackPanel DockPanel.Dock="Left" Orientation="Vertical" VerticalAlignment="Center" Margin="0,0,12,0">
                     <TextBlock x:Name="currentHeroLabel" Text="" FontSize="13"/>
                     <TextBlock x:Name="currentModLabel" Text="" FontSize="11" Margin="0,2,0,0"
                                Foreground="{DynamicResource Brush.TextDisabled}"/>
                 </StackPanel>
-                <Button x:Name="useButton" Content="*Play as this hero*" Padding="10,5" Margin="0,0,6,0"
+                <Button x:Name="useButton" DockPanel.Dock="Left" Content="*Play as this hero*"
+                        Padding="10,5" Margin="0,0,6,0"
                         VerticalAlignment="Center" Click="useButton_Click"/>
-                <Button x:Name="resetButton" Content="*Reset*" Padding="10,5"
+                <Button x:Name="resetButton" DockPanel.Dock="Left" Content="*Reset*" Padding="10,5"
                         VerticalAlignment="Center" Click="resetButton_Click"/>
-            </StackPanel>
+
+                <StackPanel DockPanel.Dock="Right" Orientation="Vertical" VerticalAlignment="Center"
+                            HorizontalAlignment="Right" Margin="12,0,0,0">
+                    <CheckBox x:Name="showArmourCheckBox" Content="*Show armours*" FontSize="12"
+                              HorizontalAlignment="Right"
+                              Checked="showArmourCheckBox_Changed" Unchecked="showArmourCheckBox_Changed"/>
+                    <TextBlock x:Name="showArmourHintLabel" TextWrapping="Wrap" FontSize="11"
+                               MaxWidth="260" TextAlignment="Right" HorizontalAlignment="Right"
+                               Margin="0,3,0,0" Text=""
+                               Foreground="{DynamicResource Brush.TextDisabled}"/>
+                </StackPanel>
+            </DockPanel>
 
             <Border DockPanel.Dock="Top" Height="300" Margin="2,0,2,12"
                     BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4"
