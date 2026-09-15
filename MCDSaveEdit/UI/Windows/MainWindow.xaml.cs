@@ -65,6 +65,8 @@ namespace MCDSaveEdit.UI
 
             inventoryTab.model = _model.profileModel;
             statsTab.model = _model.profileModel;
+            heroTab.model = _model.profileModel;
+            heroTab.requestSave = () => handleFileSaveAsync(_model.profileModel.filePath);
             _model.profileModel.profile.subscribe(_ => this.updateUI());
 
             //Clear out design/testing values
@@ -80,6 +82,7 @@ namespace MCDSaveEdit.UI
             updateTitleUI();
             statsTab.updateUI();
             customSkinsTab.updateUI();
+            heroTab.updateUI();
             inventoryTab.updateUI();
             chestTab.updateUI();
             closeBusyIndicator();
@@ -138,6 +141,7 @@ namespace MCDSaveEdit.UI
             inventoryTabItem.Header = R.getString("Quickaction_inventory") ?? R.INVENTORY;
             statsTabItem.Header = R.STATS_COUNTERS;
             customSkinsTabItem.Header = R.CUSTOM_SKINS_TAB;
+            heroTabItem.Header = R.HERO_TAB;
             chestTabItem.Header = R.getString("StorageChest") ?? R.CHEST;
         }
 

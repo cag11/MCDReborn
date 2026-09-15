@@ -79,7 +79,7 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Custom Skins.
+        ///   Looks up a localized string similar to Recolor Gear.
         /// </summary>
         public static string CUSTOM_SKINS_TAB {
             get {
@@ -291,6 +291,411 @@ namespace MCDSaveEdit.Properties {
         public static string ARMOR_DEFAULTS_TOOLTIP {
             get {
                 return ResourceManager.GetString("ARMOR_DEFAULTS_TOOLTIP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Custom Skins.
+        /// </summary>
+        public static string HERO_TAB {
+            get {
+                return ResourceManager.GetString("HERO_TAB", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Heroes.
+        /// </summary>
+        public static string HERO_HEROES {
+            get {
+                return ResourceManager.GetString("HERO_HEROES", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Pick a hero on the left..
+        /// </summary>
+        public static string HERO_PICK_ONE {
+            get {
+                return ResourceManager.GetString("HERO_PICK_ONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Play as this hero.
+        /// </summary>
+        public static string HERO_PLAY_AS {
+            get {
+                return ResourceManager.GetString("HERO_PLAY_AS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Currently: {0}.
+        /// </summary>
+        public static string HERO_CURRENT {
+            get {
+                return ResourceManager.GetString("HERO_CURRENT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Now playing as “{0}”. Save the file to keep it..
+        /// </summary>
+        public static string HERO_NOW_PLAYING {
+            get {
+                return ResourceManager.GetString("HERO_NOW_PLAYING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Wear your own skin.
+        /// </summary>
+        public static string HERO_OWN_SKIN {
+            get {
+                return ResourceManager.GetString("HERO_OWN_SKIN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Hide the armour I have equipped, so the skin shows.
+        /// </summary>
+        public static string HERO_HIDE_ARMOUR {
+            get {
+                return ResourceManager.GetString("HERO_HIDE_ARMOUR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Hide equipped armour (nothing equipped).
+        /// </summary>
+        public static string HERO_NO_ARMOUR_EQUIPPED {
+            get {
+                return ResourceManager.GetString("HERO_NO_ARMOUR_EQUIPPED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Installed as “{0}”, with {1} armour texture(s) hidden. Close and re....
+        /// </summary>
+        public static string HERO_APPLIED_HIDDEN {
+            get {
+                return ResourceManager.GetString("HERO_APPLIED_HIDDEN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The save records which hero you play as; changing it here needs no ....
+        /// </summary>
+        public static string HERO_HINT {
+            get {
+                return ResourceManager.GetString("HERO_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Any 64×64 Minecraft skin works. This writes a mod pak beside the ga....
+        /// </summary>
+        public static string HERO_OWN_SKIN_HINT {
+            get {
+                return ResourceManager.GetString("HERO_OWN_SKIN_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Armour:.
+        /// </summary>
+        public static string HERO_ARMOUR {
+            get {
+                return ResourceManager.GetString("HERO_ARMOUR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Leave armour as it is.
+        /// </summary>
+        public static string HERO_ARMOUR_KEEP {
+            get {
+                return ResourceManager.GetString("HERO_ARMOUR_KEEP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Hide the armour I have equipped.
+        /// </summary>
+        public static string HERO_ARMOUR_EQUIPPED {
+            get {
+                return ResourceManager.GetString("HERO_ARMOUR_EQUIPPED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Hide all armour, whatever I wear.
+        /// </summary>
+        public static string HERO_ARMOUR_ALL {
+            get {
+                return ResourceManager.GetString("HERO_ARMOUR_ALL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Hides {0} armour textures in one pak, so the skin shows whatever yo....
+        /// </summary>
+        public static string HERO_ARMOUR_ALL_NOTE {
+            get {
+                return ResourceManager.GetString("HERO_ARMOUR_ALL_NOTE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Open a character save first.
+        /// </summary>
+        public static string HERO_NO_SAVE {
+            get {
+                return ResourceManager.GetString("HERO_NO_SAVE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Reset.
+        /// </summary>
+        public static string HERO_RESET {
+            get {
+                return ResourceManager.GetString("HERO_RESET", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A skin of your own is installed.
+        /// </summary>
+        public static string HERO_CUSTOM_INSTALLED {
+            get {
+                return ResourceManager.GetString("HERO_CUSTOM_INSTALLED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Removed the installed skin and brought the armour back..
+        /// </summary>
+        public static string HERO_RESET_SKIN {
+            get {
+                return ResourceManager.GetString("HERO_RESET_SKIN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Put the hero back to how the save had it..
+        /// </summary>
+        public static string HERO_RESET_HERO {
+            get {
+                return ResourceManager.GetString("HERO_RESET_HERO", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing to put back..
+        /// </summary>
+        public static string HERO_RESET_NOTHING {
+            get {
+                return ResourceManager.GetString("HERO_RESET_NOTHING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Applying a skin makes every armour invisible.
+        /// </summary>
+        public static string HERO_ARMOUR_WARNING {
+            get {
+                return ResourceManager.GetString("HERO_ARMOUR_WARNING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show armours.
+        /// </summary>
+        public static string ARMOUR_SHOW {
+            get {
+                return ResourceManager.GetString("ARMOUR_SHOW", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Armour is drawn normally..
+        /// </summary>
+        public static string ARMOUR_SHOWN_HINT {
+            get {
+                return ResourceManager.GetString("ARMOUR_SHOWN_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Every armour is invisible, so a hero skin can be seen. Your gear is....
+        /// </summary>
+        public static string ARMOUR_HIDDEN_HINT {
+            get {
+                return ResourceManager.GetString("ARMOUR_HIDDEN_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Armours are visible again..
+        /// </summary>
+        public static string HERO_RESET_ARMOUR {
+            get {
+                return ResourceManager.GetString("HERO_RESET_ARMOUR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Installed as “{0}”. Armour is still drawn over it - untick Show arm....
+        /// </summary>
+        public static string HERO_APPLIED_ARMOUR_SHOWN {
+            get {
+                return ResourceManager.GetString("HERO_APPLIED_ARMOUR_SHOWN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Texture.
+        /// </summary>
+        public static string HERO_VIEW_TEXTURE {
+            get {
+                return ResourceManager.GetString("HERO_VIEW_TEXTURE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Model.
+        /// </summary>
+        public static string HERO_VIEW_MODEL {
+            get {
+                return ResourceManager.GetString("HERO_VIEW_MODEL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Recentre.
+        /// </summary>
+        public static string HERO_RECENTRE {
+            get {
+                return ResourceManager.GetString("HERO_RECENTRE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Drag to turn.
+        /// </summary>
+        public static string HERO_DRAG_HINT {
+            get {
+                return ResourceManager.GetString("HERO_DRAG_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Import skin PNG….
+        /// </summary>
+        public static string HERO_IMPORT_SKIN {
+            get {
+                return ResourceManager.GetString("HERO_IMPORT_SKIN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Open in Designer.
+        /// </summary>
+        public static string HERO_OPEN_DESIGNER {
+            get {
+                return ResourceManager.GetString("HERO_OPEN_DESIGNER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Apply from Designer.
+        /// </summary>
+        public static string HERO_APPLY_DESIGNER {
+            get {
+                return ResourceManager.GetString("HERO_APPLY_DESIGNER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Or edit first:.
+        /// </summary>
+        public static string HERO_OR_EDIT {
+            get {
+                return ResourceManager.GetString("HERO_OR_EDIT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Wear this skin.
+        /// </summary>
+        public static string HERO_WEAR_THIS {
+            get {
+                return ResourceManager.GetString("HERO_WEAR_THIS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A skin you imported.
+        /// </summary>
+        public static string HERO_YOUR_SKIN {
+            get {
+                return ResourceManager.GetString("HERO_YOUR_SKIN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Forget.
+        /// </summary>
+        public static string HERO_FORGET {
+            get {
+                return ResourceManager.GetString("HERO_FORGET", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Forget “{0}”? The file is removed from your skins; anything already....
+        /// </summary>
+        public static string HERO_FORGET_SKIN {
+            get {
+                return ResourceManager.GetString("HERO_FORGET_SKIN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Imported {0}. Pick it on the left to wear it..
+        /// </summary>
+        public static string HERO_IMPORTED {
+            get {
+                return ResourceManager.GetString("HERO_IMPORTED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Now wearing “{0}”. Restart the game to see it..
+        /// </summary>
+        public static string HERO_NOW_WEARING {
+            get {
+                return ResourceManager.GetString("HERO_NOW_WEARING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Now wearing “{0}”, but armour is still drawn over it - untick Show ....
+        /// </summary>
+        public static string HERO_NOW_WEARING_COVERED {
+            get {
+                return ResourceManager.GetString("HERO_NOW_WEARING_COVERED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Your skin, on {0}.
+        /// </summary>
+        public static string HERO_WORN_ON {
+            get {
+                return ResourceManager.GetString("HERO_WORN_ON", resourceCulture);
             }
         }
         

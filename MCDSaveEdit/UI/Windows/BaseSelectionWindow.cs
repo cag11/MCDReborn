@@ -27,7 +27,6 @@ namespace MCDSaveEdit.UI
 
     public class BaseSelectionWindow
     {
-        public static readonly BitmapImage? powerfulImageSource = ImageResolver.instance.imageSource("/Dungeons/Content/UI/Materials/Inventory2/Enchantment/Inspector/element_powerful");
         public static readonly BitmapImage? bulletImageSource = ImageResolver.instance.imageSource("/Dungeons/Content/UI/Materials/Inventory2/Inspector/regular_bullit");
 
         public static void preload()
@@ -49,26 +48,6 @@ namespace MCDSaveEdit.UI
                 image.Height = 25;
                 image.Width = 25;
                 image.Source = bulletImageSource;
-            }
-        }
-
-        public class EnchantmentView : ItemView
-        {
-            public readonly Image powerfulImage;
-            public bool powerful {
-                get { return powerfulImage.Visibility == Visibility.Visible; }
-                set { powerfulImage.Visibility = value ? Visibility.Visible : Visibility.Collapsed; }
-            }
-
-            public EnchantmentView()
-            {
-                powerfulImage = new Image {
-                    Height = 25,
-                    Width = 25,
-                    Source = powerfulImageSource,
-                    Visibility = Visibility.Collapsed,
-                };
-                Children.Add(powerfulImage);
             }
         }
 

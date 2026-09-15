@@ -126,7 +126,7 @@
     <comment>All files</comment>
   </data>
   <data name="CUSTOM_SKINS_TAB" xml:space="preserve">
-    <value>Custom Skins</value>
+    <value>Recolor Gear</value>
     <comment>Custom Skins</comment>
   </data>
   <data name="CUSTOM_SKINS_GEAR" xml:space="preserve">
@@ -232,6 +232,186 @@
   <data name="ARMOR_DEFAULTS_TOOLTIP" xml:space="preserve">
     <value>Replace this armor's properties with the ones it drops with in game</value>
     <comment>Armor defaults tooltip</comment>
+  </data>
+  <data name="HERO_TAB" xml:space="preserve">
+    <value>Custom Skins</value>
+    <comment>Hero tab</comment>
+  </data>
+  <data name="HERO_HEROES" xml:space="preserve">
+    <value>Skins</value>
+    <comment>Heroes list heading</comment>
+  </data>
+  <data name="HERO_PICK_ONE" xml:space="preserve">
+    <value>Pick a skin on the left.</value>
+    <comment>Pick a hero</comment>
+  </data>
+  <data name="HERO_PLAY_AS" xml:space="preserve">
+    <value>Play as this hero</value>
+    <comment>Play as this hero</comment>
+  </data>
+  <data name="HERO_CURRENT" xml:space="preserve">
+    <value>Currently: {0}</value>
+    <comment>Currently playing as</comment>
+  </data>
+  <data name="HERO_NOW_PLAYING" xml:space="preserve">
+    <value>Now playing as “{0}”. Save the file to keep it.</value>
+    <comment>Now playing as</comment>
+  </data>
+  <data name="HERO_OWN_SKIN" xml:space="preserve">
+    <value>Wear your own skin</value>
+    <comment>Own skin heading</comment>
+  </data>
+  <data name="HERO_HIDE_ARMOUR" xml:space="preserve">
+    <value>Hide the armour I have equipped, so the skin shows</value>
+    <comment>Hide armour</comment>
+  </data>
+  <data name="HERO_NO_ARMOUR_EQUIPPED" xml:space="preserve">
+    <value>Hide equipped armour (nothing equipped)</value>
+    <comment>No armour equipped</comment>
+  </data>
+  <data name="HERO_APPLIED_HIDDEN" xml:space="preserve">
+    <value>Installed as “{0}”, with {1} armour texture(s) hidden. Close and reopen the game to see it.</value>
+    <comment>Applied with armour hidden</comment>
+  </data>
+  <data name="HERO_HINT" xml:space="preserve">
+    <value>The save records which hero you play as; changing it here needs no mod at all. A skin of your own does need one, and this is the only place in the game a Minecraft skin fits - the hero is the Minecraft shape, so a 64×64 skin lands correctly on it. Armour is sculpted geometry and a skin lands broken on that, which is why the option below hides the armour rather than reshaping it.</value>
+    <comment>Hero tab hint</comment>
+  </data>
+  <data name="HERO_OWN_SKIN_HINT" xml:space="preserve">
+    <value>Import any 64×64 Minecraft skin - the PNG every skin site hands you - and it is kept under its own name, in the list on the left beside the game's heroes.</value>
+    <comment>Own skin hint</comment>
+  </data>
+  <data name="HERO_ARMOUR" xml:space="preserve">
+    <value>Armour:</value>
+    <comment>Armour option label</comment>
+  </data>
+  <data name="HERO_ARMOUR_KEEP" xml:space="preserve">
+    <value>Leave armour as it is</value>
+    <comment>Keep armour</comment>
+  </data>
+  <data name="HERO_ARMOUR_EQUIPPED" xml:space="preserve">
+    <value>Hide the armour I have equipped</value>
+    <comment>Hide equipped armour</comment>
+  </data>
+  <data name="HERO_ARMOUR_ALL" xml:space="preserve">
+    <value>Hide all armour, whatever I wear</value>
+    <comment>Hide all armour</comment>
+  </data>
+  <data name="HERO_ARMOUR_ALL_NOTE" xml:space="preserve">
+    <value>Hides {0} armour textures in one pak, so the skin shows whatever you equip. Remove the pak to get every armour back.</value>
+    <comment>Hide all note</comment>
+  </data>
+  <data name="HERO_NO_SAVE" xml:space="preserve">
+    <value>Open a character save first - this changes which hero that character plays as.</value>
+    <comment>No save open</comment>
+  </data>
+  <data name="HERO_RESET" xml:space="preserve">
+    <value>Reset</value>
+    <comment>Reset button</comment>
+  </data>
+  <data name="HERO_CUSTOM_INSTALLED" xml:space="preserve">
+    <value>A skin of your own is installed</value>
+    <comment>Custom skin installed</comment>
+  </data>
+  <data name="HERO_RESET_SKIN" xml:space="preserve">
+    <value>Removed the installed skin and brought the armour back.</value>
+    <comment>Reset removed skin</comment>
+  </data>
+  <data name="HERO_RESET_HERO" xml:space="preserve">
+    <value>Put the hero back to how the save had it.</value>
+    <comment>Reset restored hero</comment>
+  </data>
+  <data name="HERO_RESET_NOTHING" xml:space="preserve">
+    <value>Nothing to put back.</value>
+    <comment>Nothing to reset</comment>
+  </data>
+  <data name="HERO_ARMOUR_WARNING" xml:space="preserve">
+    <value>Applying a skin makes every armour invisible, so the skin can be seen. Your gear is still equipped and still counts - it simply stops being drawn. Reset brings it all back.</value>
+    <comment>Armour warning</comment>
+  </data>
+  <data name="ARMOUR_SHOW" xml:space="preserve">
+    <value>Show armours</value>
+    <comment>Show armours checkbox</comment>
+  </data>
+  <data name="ARMOUR_SHOWN_HINT" xml:space="preserve">
+    <value>Armour is drawn normally.</value>
+    <comment>Armour shown hint</comment>
+  </data>
+  <data name="ARMOUR_HIDDEN_HINT" xml:space="preserve">
+    <value>Every armour is invisible, so a hero skin can be seen.</value>
+    <comment>Armour hidden hint</comment>
+  </data>
+  <data name="HERO_RESET_ARMOUR" xml:space="preserve">
+    <value>Armours are visible again.</value>
+    <comment>Reset showed armour</comment>
+  </data>
+  <data name="HERO_APPLIED_ARMOUR_SHOWN" xml:space="preserve">
+    <value>Installed as “{0}”. Armour is still drawn over it - untick Show armours to see the skin. Close and reopen the game to see it.</value>
+    <comment>Applied while armour shown</comment>
+  </data>
+  <data name="HERO_VIEW_TEXTURE" xml:space="preserve">
+    <value>Texture</value>
+    <comment>Show the flat sheet</comment>
+  </data>
+  <data name="HERO_VIEW_MODEL" xml:space="preserve">
+    <value>Model</value>
+    <comment>Show the figure</comment>
+  </data>
+  <data name="HERO_RECENTRE" xml:space="preserve">
+    <value>Recentre</value>
+    <comment>Reset the 3D view</comment>
+  </data>
+  <data name="HERO_DRAG_HINT" xml:space="preserve">
+    <value>Drag to turn</value>
+    <comment>3D drag hint</comment>
+  </data>
+  <data name="HERO_IMPORT_SKIN" xml:space="preserve">
+    <value>Import skin PNG…</value>
+    <comment>Primary skin import</comment>
+  </data>
+  <data name="HERO_OPEN_DESIGNER" xml:space="preserve">
+    <value>Open in Designer</value>
+    <comment>Open designer</comment>
+  </data>
+  <data name="HERO_APPLY_DESIGNER" xml:space="preserve">
+    <value>Apply from Designer</value>
+    <comment>Apply from designer</comment>
+  </data>
+  <data name="HERO_OR_EDIT" xml:space="preserve">
+    <value>Or edit first:</value>
+    <comment>Secondary row label</comment>
+  </data>
+  <data name="HERO_WEAR_THIS" xml:space="preserve">
+    <value>Wear this skin</value>
+    <comment>Apply a custom skin</comment>
+  </data>
+  <data name="HERO_YOUR_SKIN" xml:space="preserve">
+    <value>A skin you imported</value>
+    <comment>Custom skin tooltip</comment>
+  </data>
+  <data name="HERO_FORGET" xml:space="preserve">
+    <value>Forget</value>
+    <comment>Remove an imported skin</comment>
+  </data>
+  <data name="HERO_FORGET_SKIN" xml:space="preserve">
+    <value>Forget “{0}”? The file is removed from your skins; anything already applied stays until you Reset.</value>
+    <comment>Confirm forget</comment>
+  </data>
+  <data name="HERO_IMPORTED" xml:space="preserve">
+    <value>Imported {0}. Pick it on the left to wear it.</value>
+    <comment>Imported message</comment>
+  </data>
+  <data name="HERO_NOW_WEARING" xml:space="preserve">
+    <value>Now wearing “{0}”. Restart the game to see it.</value>
+    <comment>Now wearing a skin</comment>
+  </data>
+  <data name="HERO_NOW_WEARING_COVERED" xml:space="preserve">
+    <value>Now wearing “{0}”, but armour is still drawn over it - untick Show armours to see it. Restart the game to see it.</value>
+    <comment>Now wearing, armour shown</comment>
+  </data>
+  <data name="HERO_WORN_ON" xml:space="preserve">
+    <value>Changing hero hides it.</value>
+    <comment>Skin worn on a hero</comment>
   </data>
   <data name="ALL_ITEMS_FILTER" xml:space="preserve">
     <value>All</value>

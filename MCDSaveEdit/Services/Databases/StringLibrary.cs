@@ -85,6 +85,15 @@ namespace MCDSaveEdit.Services
         internal static string formatITEMS_COUNT_LABEL(int items, int max) { return string.Format(ITEMS_COUNT_LABEL, items, max); }
         internal static string formatCUSTOM_SKINS_EXPORTED(string path) { return string.Format(CUSTOM_SKINS_EXPORTED, path); }
         internal static string formatCUSTOM_SKINS_APPLIED(string name) { return string.Format(CUSTOM_SKINS_APPLIED, name); }
+        internal static string formatHERO_CURRENT(string name) { return string.Format(HERO_CURRENT, name); }
+        internal static string formatHERO_NOW_WEARING(string name) { return string.Format(HERO_NOW_WEARING, name); }
+        internal static string formatHERO_NOW_WEARING_COVERED(string name) { return string.Format(HERO_NOW_WEARING_COVERED, name); }
+        internal static string formatHERO_IMPORTED(string names) { return string.Format(HERO_IMPORTED, names); }
+        internal static string formatHERO_FORGET_SKIN(string name) { return string.Format(HERO_FORGET_SKIN, name); }
+        internal static string formatHERO_APPLIED_ARMOUR_SHOWN(string name) { return string.Format(HERO_APPLIED_ARMOUR_SHOWN, name); }
+        internal static string formatHERO_ARMOUR_ALL_NOTE(int count) { return string.Format(HERO_ARMOUR_ALL_NOTE, count); }
+        internal static string formatHERO_NOW_PLAYING(string name) { return string.Format(HERO_NOW_PLAYING, name); }
+        internal static string formatHERO_APPLIED_HIDDEN(string name, int hidden) { return string.Format(HERO_APPLIED_HIDDEN, name, hidden); }
         internal static string formatCUSTOM_SKINS_PAK_ADDED(string name) { return string.Format(CUSTOM_SKINS_PAK_ADDED, name); }
         internal static string formatCUSTOM_SKINS_PAK_REPLACE(string name) { return string.Format(CUSTOM_SKINS_PAK_REPLACE, name); }
         internal static string formatEQUIP_IN_SLOT(int slotNumber) { return string.Format(EQUIP_IN_SLOT, slotNumber); }

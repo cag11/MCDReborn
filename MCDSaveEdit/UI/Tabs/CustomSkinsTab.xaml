@@ -83,6 +83,15 @@
                         FontSize="12" Click="applyButton_Click"/>
             </StackPanel>
 
+            <!-- The same switch as the Custom Skins tab, backed by the same pak. -->
+            <StackPanel DockPanel.Dock="Top" Orientation="Vertical" Margin="2,0,2,10">
+                <CheckBox x:Name="showArmourCheckBox" Content="*Show armours*" FontSize="12"
+                          Checked="showArmourCheckBox_Changed" Unchecked="showArmourCheckBox_Changed"/>
+                <TextBlock x:Name="showArmourHintLabel" TextWrapping="Wrap" FontSize="11"
+                           Margin="22,3,0,0" Text="*armour hint*"
+                           Foreground="{DynamicResource Brush.TextDisabled}"/>
+            </StackPanel>
+
             <!-- The texture as it stands, so there is something to judge a change against. -->
             <Border DockPanel.Dock="Top" Height="150" Margin="2,0,2,12"
                     BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4"

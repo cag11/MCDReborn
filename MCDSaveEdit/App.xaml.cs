@@ -450,6 +450,103 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //APPLY_HERO=<heroId>|<png>|<none|equipped|all> - the Hero tab's apply, headless.
+            var applyHero = _startupArguments.FirstOrDefault(a => a.StartsWith("APPLY_HERO="));
+            if (applyHero != null)
+            {
+                var parts = applyHero.Substring("APPLY_HERO=".Length).Trim('"').Split('|');
+                try
+                {
+                    var hero = Logic.HeroSkins.all()
+                        .FirstOrDefault(h => string.Equals(h.Id, parts[0], StringComparison.OrdinalIgnoreCase))
+                        ?? throw new InvalidOperationException($"No hero called {parts[0]}");
+
+                    var decoder = new System.Windows.Media.Imaging.PngBitmapDecoder(
+                        new Uri(System.IO.Path.GetFullPath(parts[1])),
+                        System.Windows.Media.Imaging.BitmapCreateOptions.PreservePixelFormat,
+                        System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+
+                    var mode = parts.Length > 2 ? parts[2] : "none";
+                    var hide = new List<string>();
+                    if (mode == "all")
+                    {
+                        hide.AddRange(Services.ItemDatabase.armor
+                            .Select(Logic.CustomSkins.textureFor)
+                            .Where(x => x != null).Select(x => x!)
+                            .Distinct(StringComparer.OrdinalIgnoreCase));
+                    }
+                    else if (mode == "equipped")
+                    {
+                        var slot = Save.Models.Enums.EquipmentSlotEnum.ArmorGear.ToString();
+                        hide.AddRange((_model.mainModel.profileModel.profile.value?.Items ?? Array.Empty<Item>())
+                            .Where(i => i.EquipmentSlot == slot)
+                            .Select(i => Logic.CustomSkins.textureFor(i.Type))
+                            .Where(x => x != null).Select(x => x!));
+                    }
+
+                    var watch = System.Diagnostics.Stopwatch.StartNew();
+                    var mod = Logic.HeroSkins.apply(hero, decoder.Frames[0]);
+                    watch.Stop();
+                    Console.WriteLine($"[hero] skin  -> {mod.Path} ({mod.Size:N0} bytes, {watch.ElapsedMilliseconds} ms)");
+
+                    //Armour visibility is its own pak now, so the test drives it separately.
+                    if (hide.Count > 0)
+                    {
+                        watch.Restart();
+                        Logic.ArmourVisibility.setHidden(true);
+                        watch.Stop();
+                        var hidden = Logic.ArmourVisibility.installed();
+                        Console.WriteLine($"[hero] hide  -> {hidden?.Path} ({hidden?.Size:N0} bytes, {watch.ElapsedMilliseconds} ms)");
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"[hero] FAILED: {e.Message}");
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PRINT_HEROES - the hero skins the loaded content carries, and which the save uses.
+            if (_startupArguments.Contains("PRINT_HEROES"))
+            {
+                var heroes = Logic.HeroSkins.all();
+                var current = _model.mainModel.profileModel.profile.value?.Skin;
+                Console.WriteLine($"[hero] save says: {current ?? "(none)"}");
+                Console.WriteLine($"[hero] {heroes.Count} hero skins in content");
+                foreach (var hero in heroes)
+                {
+                    var picture = Logic.HeroSkins.preview(hero);
+                    var size = picture == null ? "-" : $"{picture.PixelWidth}x{picture.PixelHeight}";
+                    var mark = string.Equals(hero.Id, current, StringComparison.OrdinalIgnoreCase) ? " <-- current" : "";
+                    Console.WriteLine($"[hero]   {hero.Name,-24} {size,-8} {hero.Id}{mark}");
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //FIND_ASSET=<substring> - pak entries whose path contains it, with the size of any
+            //that decode as a texture. For finding what the game keeps and where.
+            var findAsset = _startupArguments.FirstOrDefault(a => a.StartsWith("FIND_ASSET="));
+            if (findAsset != null)
+            {
+                var term = findAsset.Substring("FIND_ASSET=".Length).Trim('"');
+                var paks = Logic.CustomSkins.index;
+                int shown = 0;
+                foreach (var entry in paks ?? Enumerable.Empty<string>())
+                {
+                    if (entry.IndexOf(term, StringComparison.OrdinalIgnoreCase) < 0) { continue; }
+                    if (++shown > 60) { Console.WriteLine("[find] ..."); break; }
+                    var clean = entry.Substring(entry.IndexOf("//", StringComparison.Ordinal) + 1);
+                    var picture = Services.ImageResolver.instance.imageSource(clean);
+                    var size = picture == null ? "-" : $"{picture.PixelWidth}x{picture.PixelHeight}";
+                    Console.WriteLine($"[find] {size,-9} {clean}");
+                }
+                Console.WriteLine($"[find] {shown} shown");
+                this.Shutdown();
+                return;
+            }
+
             //PROBE_ASSET=<asset path> - calls the two readers in both orders, because the tab
             //previews with one and applies with the other.
             var probe = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_ASSET="));

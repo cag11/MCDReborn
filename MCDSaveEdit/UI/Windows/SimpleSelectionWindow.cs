@@ -143,8 +143,7 @@ namespace MCDSaveEdit.UI
                     continue;
                 }
 
-                var itemView = new BaseSelectionWindow.EnchantmentView { imageSource = imageSource, titleContent = R.enchantmentName(enchantment) };
-                itemView.powerful = Constants.powerful.Contains(enchantment);
+                var itemView = new BaseSelectionWindow.ItemView { imageSource = imageSource, titleContent = R.enchantmentName(enchantment) };
                 if(Config.instance.showIDsInSelectionWindow)
                 {
                     itemView.subtitleContent = enchantment;

@@ -188,8 +188,7 @@ namespace MCDSaveEdit.UI
                 }
 
                 var title = R.enchantmentName(enchantment);
-                var itemView = new BaseSelectionWindow.EnchantmentView { imageSource = imageSource, titleContent = title, filterableText = title };
-                itemView.powerful = Constants.powerful.Contains(enchantment);
+                var itemView = new BaseSelectionWindow.ItemView { imageSource = imageSource, titleContent = title, filterableText = title };
                 if (Config.instance.showIDsInSelectionWindow)
                 {
                     itemView.subtitleContent = enchantment;
