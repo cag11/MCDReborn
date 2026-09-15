@@ -41,6 +41,10 @@ namespace MCDSaveEdit.Logic
         private const string QUERY_PARAMETER = "b";
         private const int SCHEMA_VERSION = 1;
         private const int ENCHANTMENT_SLOTS = 4;
+        //Three ordinary enchantments; the fourth slot belongs to the gild and is shown only
+        //on gilded gear.
+        private const int BASE_ENCHANTMENT_SLOTS = 3;
+        private const int GILD_SLOT_INDEX = 3;
 
         //The order MCD Builder expects in "g".
         private static readonly EquipmentSlotEnum[] GEAR_SLOTS = {
@@ -96,39 +100,62 @@ namespace MCDSaveEdit.Logic
         private static JsonObject gearNode(Item? item)
         {
             var enchantments = new JsonArray();
-            foreach (var applied in appliedEnchantments(item).Take(ENCHANTMENT_SLOTS))
+            foreach (var applied in investedEnchantments(item).Take(BASE_ENCHANTMENT_SLOTS))
             {
-                enchantments.Add(new JsonArray { JsonValue.Create(applied.name), JsonValue.Create(applied.tier) });
+                enchantments.Add(enchantmentSlot(applied));
             }
-            //MCD Builder always writes four slots and uses 0 for an empty one.
-            while (enchantments.Count < ENCHANTMENT_SLOTS) { enchantments.Add(JsonValue.Create(0)); }
+            //MCD Builder always writes four slots and uses 0 for an empty one. The first three
+            //are padded out before the gild is added, because the gild IS the fourth slot rather
+            //than the next free one: an item wearing two enchantments and a gild still has to
+            //put that gild in slot four, or the builder shows it as an ordinary third
+            //enchantment and leaves the gilded slot empty.
+            while (enchantments.Count < BASE_ENCHANTMENT_SLOTS) { enchantments.Add(JsonValue.Create(0)); }
+
+            var gild = gildEnchantment(item);
+            if (gild == null) { enchantments.Add(JsonValue.Create(0)); }
+            else { enchantments.Add(enchantmentSlot(gild.Value)); }
 
             var node = new JsonObject { ["e"] = enchantments };
             if (item?.Type != null) { node["i"] = R.itemName(item.Type); }
+
+            //The flag that says the gear is gilded, which is what actually reveals the fourth
+            //slot. Without it the builder reads the gear as ungilded and never draws that slot,
+            //whatever was sent in it - the enchantment crossed over and simply could not be seen.
+            if (isGilded(item)) { node["f"] = 1; }
             return node;
         }
 
-        private static IEnumerable<(string name, long tier)> appliedEnchantments(Item? item)
+        private static JsonArray enchantmentSlot((string name, long tier) applied)
+            => new JsonArray { JsonValue.Create(applied.name), JsonValue.Create(applied.tier) };
+
+        /// <summary>
+        /// Gilded means the item carries a netherite enchantment at all, which is the same test
+        /// the gilded badge on an item tile uses. An item gilded but not yet given an
+        /// enchantment still counts: it is gilded gear with an empty fourth slot, and saying so
+        /// is more truthful than sending it across as ordinary gear.
+        /// </summary>
+        private static bool isGilded(Item? item) => item?.NetheriteEnchant != null;
+
+        /// <summary>The gild's enchantment, when one has actually been chosen and invested in.</summary>
+        private static (string name, long tier)? gildEnchantment(Item? item)
         {
-            if (item == null) { yield break; }
+            var netherite = item?.NetheriteEnchant;
+            if (netherite == null) { return null; }
+            if (string.IsNullOrEmpty(netherite.Id) || netherite.Level <= 0) { return null; }
+            return (builderName(R.enchantmentName(netherite.Id)), netherite.Level);
+        }
+
+        private static IEnumerable<(string name, long tier)> investedEnchantments(Item? item)
+        {
+            if (item?.Enchantments == null) { yield break; }
 
             //Saves hold every option the item could have had; only the ones with a level
             //above zero were actually invested in.
-            if (item.Enchantments != null)
+            foreach (var enchantment in item.Enchantments)
             {
-                foreach (var enchantment in item.Enchantments)
-                {
-                    if (enchantment == null || enchantment.Level <= 0) { continue; }
-                    if (string.IsNullOrEmpty(enchantment.Id)) { continue; }
-                    yield return (builderName(R.enchantmentName(enchantment.Id)), enchantment.Level);
-                }
-            }
-
-            //The gilded/netherite enchantment occupies the fourth slot in the builder.
-            var netherite = item.NetheriteEnchant;
-            if (netherite != null && !string.IsNullOrEmpty(netherite.Id) && netherite.Level > 0)
-            {
-                yield return (builderName(R.enchantmentName(netherite.Id)), netherite.Level);
+                if (enchantment == null || enchantment.Level <= 0) { continue; }
+                if (string.IsNullOrEmpty(enchantment.Id)) { continue; }
+                yield return (builderName(R.enchantmentName(enchantment.Id)), enchantment.Level);
             }
         }
 
@@ -218,22 +245,69 @@ namespace MCDSaveEdit.Logic
 
             var item = newItem(type!, power, slot);
 
+            //Gilded gear is flagged rather than implied, and the builder itself only shows the
+            //fourth slot when the flag is set. So the flag decides what the fourth entry means:
+            //under gilded gear it is the gild, and under ordinary gear it is stale data the
+            //builder is not showing either, so it is left where it is.
+            var gilded = isGildedNode(node!);
+
             var enchantments = new List<Enchantment>();
             if (node!["e"] is JsonArray slots)
             {
-                foreach (var entry in slots)
+                for (int i = 0; i < slots.Count; i++)
                 {
-                    //Empty slots are the number 0 rather than null.
-                    if (entry is not JsonArray pair || pair.Count < 2) { continue; }
-                    var id = enchantmentIdForDisplayName(pair[0]?.GetValue<string>());
-                    if (id == null) { continue; }
-                    long tier = 0;
-                    try { tier = pair[1]!.GetValue<long>(); } catch (Exception) { }
-                    enchantments.Add(new Enchantment { Id = id!, Level = Math.Max(0, tier) });
+                    var parsed = enchantmentFromSlot(slots[i]);
+                    if (i == GILD_SLOT_INDEX)
+                    {
+                        if (gilded && parsed != null) { item.NetheriteEnchant = parsed; }
+                        continue;
+                    }
+                    if (parsed != null) { enchantments.Add(parsed!); }
                 }
             }
             if (enchantments.Count > 0) { item.Enchantments = enchantments.ToArray(); }
+
+            //Gilded, but with nothing chosen for the slot. The item is still gilded, so it is
+            //marked the same way the Gilded button marks one: an unset enchantment, which is
+            //what shows the badge and leaves the slot waiting to be filled.
+            if (gilded && item.NetheriteEnchant == null)
+            {
+                item.NetheriteEnchant = new Enchantment { Id = Constants.DEFAULT_ENCHANTMENT_ID, Level = 0 };
+            }
             return item;
+        }
+
+        /// <summary>One "e" entry: ["Display Name", tier], or the number 0 for an empty slot.</summary>
+        private static Enchantment? enchantmentFromSlot(JsonNode? entry)
+        {
+            if (entry is not JsonArray pair || pair.Count < 2) { return null; }
+            var id = enchantmentIdForDisplayName(pair[0]?.GetValue<string>());
+            if (id == null) { return null; }
+
+            long tier = 0;
+            try { tier = pair[1]!.GetValue<long>(); } catch (Exception) { }
+            return new Enchantment { Id = id!, Level = Math.Max(0, tier) };
+        }
+
+        /// <summary>
+        /// The gilded flag, read without trusting its type. It is written as the number 1, but
+        /// a hand-edited link can hold anything, and a build that is merely odd should import
+        /// as ungilded rather than throw.
+        /// </summary>
+        private static bool isGildedNode(JsonObject node)
+        {
+            var flag = node["f"];
+            if (flag == null) { return false; }
+            try
+            {
+                return flag.GetValueKind() switch {
+                    JsonValueKind.Number => flag.GetValue<long>() == 1,
+                    JsonValueKind.True => true,
+                    JsonValueKind.String => flag.GetValue<string>() == "1",
+                    _ => false,
+                };
+            }
+            catch (Exception) { return false; }
         }
 
         /// <summary>
