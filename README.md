@@ -1,17 +1,17 @@
-# &nbsp;[![icon](MCDSaveEdit/Properties/icon.ico)]() MCDSaveEditReborn
+# &nbsp;[![icon](MCDSaveEdit/Properties/icon.ico)]() MCD Reborn
 
-[![GitHub](https://img.shields.io/github/license/cag11/MCDSaveEditReborn)](https://github.com/cag11/MCDSaveEditReborn/blob/main/LICENSE)
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/cag11/MCDSaveEditReborn?label=latest)](https://github.com/cag11/MCDSaveEditReborn/releases/latest)
-[![GitHub Release Date](https://img.shields.io/github/release-date/cag11/MCDSaveEditReborn)](https://github.com/cag11/MCDSaveEditReborn/releases/latest)
-[![GitHub all releases](https://img.shields.io/github/downloads/cag11/MCDSaveEditReborn/total)](https://github.com/cag11/MCDSaveEditReborn/releases)
+[![GitHub](https://img.shields.io/github/license/cag11/MCDReborn)](https://github.com/cag11/MCDReborn/blob/main/LICENSE)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/cag11/MCDReborn?label=latest)](https://github.com/cag11/MCDReborn/releases/latest)
+[![GitHub Release Date](https://img.shields.io/github/release-date/cag11/MCDReborn)](https://github.com/cag11/MCDReborn/releases/latest)
+[![GitHub all releases](https://img.shields.io/github/downloads/cag11/MCDReborn/total)](https://github.com/cag11/MCDReborn/releases)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 
- Windows application for modifying [Minecraft: Dungeons](https://www.minecraft.net/en-us/about-dungeons/) save files, ported to .NET 10.
- This is new and upgraded Reborn version of [MCDSaveEdit](https://github.com/CutFlame/MCDSaveEdit) by [CutFlame](https://github.com/CutFlame).
+ Windows application for adding custom skins and modifying [Minecraft: Dungeons](https://www.minecraft.net/en-us/about-dungeons/) save files.
+ This is new and upgraded Reborn version of [MCDSaveEdit](https://github.com/CutFlame/MCDSaveEdit) by CutFlame.
 
 ### Features
 
-* **Everything [MCDSaveEdit](https://github.com/CutFlame/MCDSaveEdit) already did**: editing items, enchantments, stats, counters and currencies; reading and writing the encrypted save format
+* **Everything MCDSaveEdit already did**: editing items, enchantments, stats, counters and currencies; reading and writing the encrypted save format
 * Ported from .NET Framework 4.8 to **.NET 10**, every package updated, the known advisories cleared
 * Five themes in the **View** menu (Dark, Light, Nether, End and Frost), swapped live and remembered between runs
 * Item search across the whole inventory, filtering as you type, without covering the UI
@@ -54,7 +54,7 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 
 For full features and functionality you need Minecraft: Dungeons installed and preferably in the default install location.
 
-1. Download the latest release from [the releases section](https://github.com/cag11/MCDSaveEditReborn/releases). It is a single self-contained `.exe` with no prerequisites.
+1. Download the latest release from [the releases section](https://github.com/cag11/MCDReborn/releases). It is a single self-contained `MCDReborn.exe` with no prerequisites.
 
 ### How to Use
 

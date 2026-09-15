@@ -61,7 +61,7 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to About Minecraft Dungeons Save File Editor.
+        ///   Looks up a localized string similar to About MCD Reborn.
         /// </summary>
         public static string ABOUT_WINDOW_TITLE {
             get {
@@ -799,7 +799,7 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Minecraft Dungeons Save File Editor.
+        ///   Looks up a localized string similar to MCD Reborn.
         /// </summary>
         public static string APPLICATION_TITLE {
             get {

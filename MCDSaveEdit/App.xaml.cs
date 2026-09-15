@@ -70,7 +70,7 @@ namespace MCDSaveEdit
 
         private async void startAsync(string[] args)
         {
-            MainThreadConsoleWriteLine($"{Constants.APPLICATION_NAME} {Constants.CURRENT_VERSION}");
+            MainThreadConsoleWriteLine($"{Constants.PRODUCT_NAME} {Constants.CURRENT_VERSION}");
             
             string? fileName = args.LastOrDefault();
             if(!string.IsNullOrWhiteSpace(fileName) && File.Exists(fileName))
@@ -123,7 +123,7 @@ namespace MCDSaveEdit
                     //Clear the path saved in the registry because it might be the cause of the exception
                     _model.unloadGameContent();
 
-                    var title = $"{Constants.APPLICATION_NAME} {Constants.CURRENT_VERSION} - {R.ERROR}";
+                    var title = $"{Constants.PRODUCT_NAME} {Constants.CURRENT_VERSION} - {R.ERROR}";
                     var message = $"{R.FAILED_TO_LOAD_GAME_CONTENT_ERROR_TITLE}\n\n{e.Message}\n\n{R.PLEASE_HAVE_LATEST_VERSION}\n\n{R.LAUNCH_WITH_LIMITED_FEATURES_QUESTION}";
                     var result = MessageBox.Show(message, title, MessageBoxButton.YesNo);
                     canContinue = result == MessageBoxResult.Yes || result == MessageBoxResult.OK;

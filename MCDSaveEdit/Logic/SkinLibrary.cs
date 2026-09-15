@@ -33,13 +33,58 @@ namespace MCDSaveEdit.Logic
             }
         }
 
-        public static string folder => System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "MCDSaveEditReborn", "Skins");
+        private static string appData => System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MCDReborn");
+
+        public static string folder => System.IO.Path.Combine(appData, "Skins");
+
+        /// <summary>
+        /// Brings a collection across from the folder the app used before it was renamed.
+        ///
+        /// A rebrand should not cost anyone their skins. Files are moved one at a time rather
+        /// than the whole folder in one go: the new folder may already exist - something as small
+        /// as writing the worn record creates it - and a single Directory.Move refuses outright
+        /// when it does, which is exactly how the first attempt at this left an empty folder
+        /// beside a full one.
+        ///
+        /// Anything already in the new folder wins, so this can run twice without overwriting
+        /// something newer. The old folder is left where it is: a migration that also deletes is
+        /// a migration with nothing to fall back on.
+        /// </summary>
+        private static void migrateOldFolder()
+        {
+            try
+            {
+                var oldRoot = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MCDSaveEditReborn");
+                if (!Directory.Exists(oldRoot)) { return; }
+
+                var oldSkins = System.IO.Path.Combine(oldRoot, "Skins");
+                if (Directory.Exists(oldSkins))
+                {
+                    Directory.CreateDirectory(folder);
+                    foreach (var file in Directory.EnumerateFiles(oldSkins, "*.png"))
+                    {
+                        var target = System.IO.Path.Combine(folder, System.IO.Path.GetFileName(file));
+                        if (!File.Exists(target)) { File.Copy(file, target); }
+                    }
+                }
+
+                var oldWorn = System.IO.Path.Combine(oldRoot, "worn.txt");
+                if (File.Exists(oldWorn) && !File.Exists(recordPath))
+                {
+                    Directory.CreateDirectory(appData);
+                    File.Copy(oldWorn, recordPath);
+                }
+            }
+            catch { }
+        }
 
         /// <summary>Everything imported, by name.</summary>
         public static IReadOnlyList<CustomSkin> all()
         {
+            migrateOldFolder();
             if (!Directory.Exists(folder)) { return Array.Empty<CustomSkin>(); }
 
             return Directory.EnumerateFiles(folder, "*.png")
@@ -65,6 +110,7 @@ namespace MCDSaveEdit.Logic
                     $"That image is {image.PixelWidth}×{image.PixelHeight}. A Minecraft skin is 64×64.");
             }
 
+            migrateOldFolder();
             Directory.CreateDirectory(folder);
             var name = safeName(System.IO.Path.GetFileNameWithoutExtension(pngPath));
             var target = System.IO.Path.Combine(folder, name + ".png");
@@ -100,9 +146,7 @@ namespace MCDSaveEdit.Logic
         /// only believed while that hero's pak is still installed - a record without a pak is a
         /// leftover, not a fact.
         /// </summary>
-        private static string recordPath => System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "MCDSaveEditReborn", "worn.txt");
+        private static string recordPath => System.IO.Path.Combine(appData, "worn.txt");
 
         public static void recordWorn(string heroId, string skinName)
         {
@@ -129,6 +173,7 @@ namespace MCDSaveEdit.Logic
             var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             try
             {
+                migrateOldFolder();
                 if (!File.Exists(recordPath)) { return map; }
                 foreach (var line in File.ReadAllLines(recordPath))
                 {

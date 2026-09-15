@@ -15,7 +15,7 @@ namespace MCDSaveEditTests
         [TestInitialize]
         public void Setup()
         {
-            _directory = Path.Combine(Path.GetTempPath(), "MCDSaveEditReborn_backup_" + Guid.NewGuid().ToString("N"));
+            _directory = Path.Combine(Path.GetTempPath(), "MCDReborn_backup_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_directory);
         }
 
