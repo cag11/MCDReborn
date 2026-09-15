@@ -25,6 +25,7 @@
 * **Delete items...** on the inventory and storage chest grids: pick as many as you like, with All taking everything the filter or search is showing, then delete them in one go
 * Every save backs the file up first, keeping one timestamped `.bak` beside it
 * The enchantment picker opens on the gear type being enchanted, with **Melee / Armor / Ranged / Other** toggles
+* 36 enchantments the game carries but never offers, under the **Other** toggle: the ones with no icon, which is why nothing could list them before
 * A loading screen that is a themed card with a vector mark, version and status line
 
 #### Custom Builds Feature

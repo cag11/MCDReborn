@@ -236,6 +236,11 @@ namespace MCDSaveEdit.Services
             Console.WriteLine($"Found {ItemDatabase.armorProperties.Count()} armor properties");
             Console.WriteLine($"Found {_equipment.Count()} equipment images");
             Console.WriteLine($"Found {_enchantments.Count()} enchantment images");
+
+            //After the count above, which is about what the game drew. These have no icon by
+            //definition, so they are added once the looking is done rather than during it.
+            Data.HiddenEnchantments.register();
+            Console.WriteLine($"Added {Data.HiddenEnchantments.ids.Count()} enchantments the game never offers");
             if (preloadBitmaps)
             {
                 Console.WriteLine($"Preloaded {_bitmaps.Count()} bitmaps");

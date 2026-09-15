@@ -1,4 +1,5 @@
 ﻿using MCDSaveEdit.Data;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 #nullable enable
@@ -142,14 +143,29 @@ namespace MCDSaveEdit.Services
             {
                 key = Constants.stringMismatches[key];
             }
-            if (_enchantment.TryGetValue(key, out string value))
+            //A few of the enchantments the game never offers have a locres entry that is just
+            //the id spelled out - "CogCrossbowEnchantment" - which is a placeholder rather than
+            //a name. The readable name wins over that, and only that: real game text still wins
+            //over anything this app would call something.
+            if (_enchantment.TryGetValue(key, out string value)
+                && string.Equals(value, enchantment, StringComparison.Ordinal))
             {
-                if(enchantment.ToLowerInvariant().Contains("ranged"))
+                var readable = Data.HiddenEnchantments.nameFor(enchantment);
+                if (readable != null) { return readable; }
+            }
+
+            if (_enchantment.TryGetValue(key, out value))
+            {
+                //Not when the name already ends in it. The game calls one of these "Freezing
+                //Ranged", and the suffix would have made that "Freezing Ranged (Ranged)".
+                if(enchantment.ToLowerInvariant().Contains("ranged")
+                    && !value.EndsWith("Ranged", StringComparison.OrdinalIgnoreCase))
                 {
                     var classification = R.getString("ItemTag_Ranged") ?? R.RANGED_ITEMS_FILTER;
                     return $"{value} ({classification})";
                 }
-                else if (enchantment.ToLowerInvariant().Contains("melee"))
+                else if (enchantment.ToLowerInvariant().Contains("melee")
+                    && !value.EndsWith("Melee", StringComparison.OrdinalIgnoreCase))
                 {
                     var classification = R.getString("ItemTag_Melee") ?? R.MELEE_ITEMS_FILTER;
                     return $"{value} ({classification})";
@@ -159,6 +175,11 @@ namespace MCDSaveEdit.Services
                     return value;
                 }
             }
+            //The ones the game never shows have no text of their own to find, so this is not a
+            //failure worth logging - it is the expected answer for them.
+            var hidden = Data.HiddenEnchantments.nameFor(enchantment);
+            if (hidden != null) { return hidden; }
+
             EventLogger.logError($"Could not find string for enchantment {key}");
             return enchantment;
         }
