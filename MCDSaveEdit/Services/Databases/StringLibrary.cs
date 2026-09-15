@@ -96,6 +96,10 @@ namespace MCDSaveEdit.Services
         internal static string formatHERO_APPLIED_HIDDEN(string name, int hidden) { return string.Format(HERO_APPLIED_HIDDEN, name, hidden); }
         internal static string formatCUSTOM_SKINS_PAK_ADDED(string name) { return string.Format(CUSTOM_SKINS_PAK_ADDED, name); }
         internal static string formatCUSTOM_SKINS_PAK_REPLACE(string name) { return string.Format(CUSTOM_SKINS_PAK_REPLACE, name); }
+        internal static string formatITEMS_DELETE_CONFIRM_BUTTON(int count) { return string.Format(ITEMS_DELETE_CONFIRM_BUTTON, count); }
+        internal static string formatITEMS_DELETE_CHOSEN(int count) { return string.Format(ITEMS_DELETE_CHOSEN, count); }
+        internal static string formatITEMS_DELETE_CONFIRM(int count) { return string.Format(ITEMS_DELETE_CONFIRM, count); }
+        internal static string formatITEMS_DELETED(int count) { return string.Format(ITEMS_DELETED, count); }
         internal static string formatEQUIP_IN_SLOT(int slotNumber) { return string.Format(EQUIP_IN_SLOT, slotNumber); }
         internal static string formatEQUIP_OVER_IN_SLOT(int slotNumber) { return string.Format(EQUIP_OVER_IN_SLOT, slotNumber); }
         internal static string formatINVENTORY_FULL_ERROR_MESSAGE(int maximum) { return string.Format(INVENTORY_FULL_ERROR_MESSAGE, maximum); }

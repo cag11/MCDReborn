@@ -170,6 +170,32 @@ namespace MCDSaveEdit.ViewModels
             triggerSubscribersForItem(item);
         }
 
+        /// <summary>
+        /// Removes several items in one pass.
+        ///
+        /// Not a loop over removeItem: that rebuilds the whole collection and pushes a new value
+        /// to every subscriber once per item, so clearing out eighty of them would rebuild the
+        /// inventory eighty times and redraw the grid as many. One pass, one refresh.
+        ///
+        /// Items are matched by reference, which is what a HashSet does with them since Item
+        /// declares no equality of its own. That is the behaviour this needs: two items can be
+        /// identical in every field a save records - same type, same power, same enchantments -
+        /// and deleting one duplicate must not take the other with it.
+        /// </summary>
+        public void removeItems(IEnumerable<Item> itemsToRemove)
+        {
+            if (itemsToRemove == null || profile.value == null) { return; }
+
+            var doomed = new HashSet<Item>(itemsToRemove.Where(x => x != null));
+            if (doomed.Count == 0) { return; }
+
+            this.items = this.items.Where(item => !doomed.Contains(item)).ToList();
+
+            //Any one of them will do: both subclasses refresh the grid off InventoryIndex being
+            //set, and every item that can be picked here came out of that grid.
+            triggerSubscribersForItem(doomed.First());
+        }
+
         public override void saveItem(Item item)
         {
             if (item == null || profile.value == null || selectedItem.value == null) { return; }

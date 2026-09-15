@@ -42,8 +42,33 @@
                            Foreground="{DynamicResource Brush.TextMuted}"/>
             </Grid>
 
+            <!--
+                The bottom bar does double duty: the slot count at rest, and the delete bar while
+                items are being picked. One bar rather than two, because the count and the delete
+                controls are never both wanted, and a 350px column has no room to spare.
+            -->
             <Grid DockPanel.Dock="Bottom" Height="35" HorizontalAlignment="Stretch" Margin="0">
-                <Label x:Name="inventoryCountLabel" Content="*Items: 130/180 Max*" HorizontalContentAlignment="Center"/>
+                <Grid x:Name="countBar">
+                    <Label x:Name="inventoryCountLabel" Content="*Items: 130/180 Max*" HorizontalContentAlignment="Center"/>
+                    <Button x:Name="deleteModeButton" Content="*Delete items*" FontSize="11" Padding="8,0"
+                            HorizontalAlignment="Right" VerticalAlignment="Center" Height="22" Margin="0,0,6,0"
+                            Click="deleteModeButton_Click"/>
+                </Grid>
+
+                <Grid x:Name="deleteBar" Visibility="Collapsed" Margin="6,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                        <Button x:Name="deleteCancelButton" Content="*Cancel*" FontSize="11" Padding="7,0"
+                                Height="22" Margin="0,0,4,0" Click="deleteCancelButton_Click"/>
+                        <Button x:Name="deleteSelectAllButton" Content="*All*" FontSize="11" Padding="7,0"
+                                Height="22" Margin="0,0,6,0" Click="deleteSelectAllButton_Click"/>
+                        <TextBlock x:Name="deleteChosenLabel" Text="" FontSize="11" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                    </StackPanel>
+                    <Button x:Name="deleteConfirmButton" Content="*Delete*" FontSize="11" Padding="8,0"
+                            HorizontalAlignment="Right" VerticalAlignment="Center" Height="22"
+                            Foreground="{DynamicResource Brush.Danger}"
+                            Click="deleteConfirmButton_Click"/>
+                </Grid>
             </Grid>
 
             <ScrollViewer DockPanel.Dock="Left" Margin="10" HorizontalAlignment="Stretch">

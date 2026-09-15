@@ -837,4 +837,46 @@
     <value>Version: {0} {1}</value>
     <comment>Version: {0} {1}</comment>
   </data>
+  <data name="ITEMS_DELETE_START" xml:space="preserve">
+    <value>Delete items...</value>
+    <comment>Start choosing items to delete</comment>
+  </data>
+  <data name="ITEMS_DELETE_CANCEL" xml:space="preserve">
+    <value>Cancel</value>
+    <comment>Leave delete mode</comment>
+  </data>
+  <data name="ITEMS_DELETE_SELECT_ALL" xml:space="preserve">
+    <value>All</value>
+    <comment>Choose every item shown</comment>
+  </data>
+  <data name="ITEMS_DELETE_SELECT_NONE" xml:space="preserve">
+    <value>None</value>
+    <comment>Clear the chosen items</comment>
+  </data>
+  <data name="ITEMS_DELETE_CONFIRM_BUTTON" xml:space="preserve">
+    <value>Delete {0}</value>
+    <comment>Delete the chosen items</comment>
+  </data>
+  <data name="ITEMS_DELETE_PROMPT" xml:space="preserve">
+    <value>Pick the items to delete.</value>
+    <comment>Nothing chosen yet</comment>
+  </data>
+  <data name="ITEMS_DELETE_CHOSEN" xml:space="preserve">
+    <value>{0} chosen</value>
+    <comment>How many are chosen</comment>
+  </data>
+  <data name="ITEMS_DELETE_CONFIRM" xml:space="preserve">
+    <value>Delete {0} items?
+
+The save file is not changed until you save it.</value>
+    <comment>Confirm a mass delete</comment>
+  </data>
+  <data name="ITEMS_DELETE_TITLE" xml:space="preserve">
+    <value>Delete items</value>
+    <comment>Title of the delete confirmation</comment>
+  </data>
+  <data name="ITEMS_DELETED" xml:space="preserve">
+    <value>{0} items deleted.</value>
+    <comment>Result of a mass delete</comment>
+  </data>
 </root>
