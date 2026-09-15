@@ -32,11 +32,15 @@ namespace MCDSaveEdit.UI
     {
         private readonly StackPanel _row = new StackPanel();
 
+        //The game's own words where it has them, which is what makes these follow the language
+        //someone picked in the Language menu. The row of item filters beside this one has always
+        //done that; this row was reading from the English resource alone, so it stayed English
+        //in every language. Even "Other" has one, under ItemTag_Other.
         private static readonly (EnchantmentCategory category, Func<string> label)[] BUTTONS = {
-            (EnchantmentCategory.Melee,  () => R.MELEE_ITEMS_FILTER),
-            (EnchantmentCategory.Armor,  () => R.ARMOR_ITEMS_FILTER),
-            (EnchantmentCategory.Ranged, () => R.RANGED_ITEMS_FILTER),
-            (EnchantmentCategory.Other,  () => R.OTHER_ENCHANTMENTS_FILTER),
+            (EnchantmentCategory.Melee,  () => R.getString("ItemTag_Melee") ?? R.MELEE_ITEMS_FILTER),
+            (EnchantmentCategory.Armor,  () => R.getString("ItemTag_Armor") ?? R.ARMOR_ITEMS_FILTER),
+            (EnchantmentCategory.Ranged, () => R.getString("ItemTag_Ranged") ?? R.RANGED_ITEMS_FILTER),
+            (EnchantmentCategory.Other,  () => R.getString("ItemTag_Other") ?? R.OTHER_ENCHANTMENTS_FILTER),
         };
 
         private readonly Dictionary<EnchantmentCategory, ToggleButton> _toggles =

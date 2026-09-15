@@ -17,6 +17,7 @@
 * Wear any 64×64 Minecraft skin as your hero; import any skin from your favorite skin website
 * A **Show armours** switch on both the Custom Skins and Recolor Gear tabs: wearing a skin hides armour so the skin can be seen, and one tick puts it all back
 * Five themes in the **View** menu (Dark, Light, Nether, End and Frost), swapped live and remembered between runs
+* The **Language** menu covers the game's fifteen languages, and the newer screens follow it too: filters, Delete, Cancel, All, None, Selected, Defaults and Equip all use the game's own words
 * Item search across the whole inventory, filtering as you type, without covering the UI
 * A search box on every picker (items, armor, melee, ranged, artifacts, armor properties and enchantments), narrowing within whatever the filters already allow
 * A **Defaults** button fills in the properties an armor drops with in game; changing an armor's type no longer replaces them by itself
@@ -52,7 +53,7 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 
 For full features and functionality you need Minecraft: Dungeons installed and preferably in the default install location.
 
-1. Download the latest release from [the releases section](https://github.com/cag11/MCDReborn/releases). It is a single self-contained `MCDReborn.exe` with no prerequisites.
+1. Download the latest release from [the releases section](https://github.com/cag11/MCDReborn/releases). It is a single self-contained `MCDReborn.exe` with no prerequisites. A smaller framework-dependent build is also published; that one needs the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 ### How to Use
 

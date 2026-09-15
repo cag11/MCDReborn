@@ -39,7 +39,7 @@ namespace MCDSaveEdit.UI
             giftedButtonCheckBox.Content = R.getString("item_gifted") ?? R.GIFTED;
 
             duplicateItemButton.Content = R.DUPLICATE;
-            armorDefaultsButton.Content = R.ARMOR_DEFAULTS;
+            armorDefaultsButton.Content = R.getString("nav_defaults") ?? R.ARMOR_DEFAULTS;
             armorDefaultsButton.ToolTip = R.ARMOR_DEFAULTS_TOOLTIP;
             deleteItemButton.Content = R.getString("Delete_Nav_Button") ?? R.DELETE;
 
