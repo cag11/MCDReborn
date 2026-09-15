@@ -83,8 +83,12 @@ namespace MCDSaveEdit.UI
             armorItemsButton.Content = R.getString("ItemTag_Armor") ?? R.ARMOR_ITEMS_FILTER;
             artifactItemsButton.Content = R.getString("ItemTag_Items") ?? R.ARTIFACT_ITEMS_FILTER;
             enchantedItemsButton.Content = R.getString("ItemTag_Enchanted") ?? R.ENCHANTED_ITEMS_FILTER;
-            deleteModeButton.Content = R.ITEMS_DELETE_START;
-            deleteCancelButton.Content = R.ITEMS_DELETE_CANCEL;
+            //The game's own words, so the delete bar follows the Language menu like the filter
+            //row above it. Only the single words exist in the game's text - it has no sentence
+            //for any of this - so the rest stays in English, which is the same bargain every
+            //other screen here makes.
+            deleteModeButton.Content = deleteWord() + "…";
+            deleteCancelButton.Content = R.getString("HUD_Cancel") ?? R.ITEMS_DELETE_CANCEL;
         }
 
         private void setupCommands()
@@ -400,16 +404,28 @@ namespace MCDSaveEdit.UI
             updateGridItemsUI(_model?.filteredItemList.value, true);
         }
 
+        /// <summary>The game's word for Delete, which the item screen's own button already uses.</summary>
+        private static string deleteWord() => R.getString("Delete_Nav_Button") ?? R.DELETE;
+
         private void updateDeleteBar()
         {
             var count = _chosen.Count;
-            deleteChosenLabel.Text = count == 0 ? R.ITEMS_DELETE_PROMPT : R.formatITEMS_DELETE_CHOSEN(count);
-            deleteConfirmButton.Content = R.formatITEMS_DELETE_CONFIRM_BUTTON(count);
+
+            //A count beside the game's own word rather than a sentence of this app's own, so it
+            //reads in whatever language the rest of the window is in.
+            var selectedWord = R.getString("slot_selected");
+            deleteChosenLabel.Text = count == 0
+                ? R.ITEMS_DELETE_PROMPT
+                : selectedWord == null ? R.formatITEMS_DELETE_CHOSEN(count) : $"{count} {selectedWord}";
+
+            deleteConfirmButton.Content = $"{deleteWord()} {count}";
             deleteConfirmButton.IsEnabled = count > 0;
 
             var shown = _model?.filteredItemList.value?.ToList() ?? new List<Item>();
             var everythingShownIsChosen = shown.Count > 0 && shown.All(_chosen.Contains);
-            deleteSelectAllButton.Content = everythingShownIsChosen ? R.ITEMS_DELETE_SELECT_NONE : R.ITEMS_DELETE_SELECT_ALL;
+            deleteSelectAllButton.Content = everythingShownIsChosen
+                ? R.getString("rebind_none") ?? R.ITEMS_DELETE_SELECT_NONE
+                : R.getString("ItemTag_All") ?? R.ITEMS_DELETE_SELECT_ALL;
             deleteSelectAllButton.IsEnabled = shown.Count > 0;
         }
 
@@ -493,7 +509,7 @@ namespace MCDSaveEdit.UI
             string header;
             if (slotNumber == null)
             {
-                header = occupant == null ? R.EQUIP : R.EQUIP_OVER;
+                header = occupant == null ? (R.getString("TowerRewardEquip") ?? R.EQUIP) : R.EQUIP_OVER;
             }
             else
             {
