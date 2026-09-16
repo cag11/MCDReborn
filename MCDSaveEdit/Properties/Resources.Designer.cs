@@ -1769,5 +1769,248 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("ITEMS_DELETED", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Tower runs.
+        /// </summary>
+        public static string TOWER_RUNS {
+            get {
+                return ResourceManager.GetString("TOWER_RUNS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Items carried in the tower.
+        /// </summary>
+        public static string TOWER_ITEMS {
+            get {
+                return ResourceManager.GetString("TOWER_ITEMS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Floor.
+        /// </summary>
+        public static string TOWER_FLOOR {
+            get {
+                return ResourceManager.GetString("TOWER_FLOOR", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Bosses beaten.
+        /// </summary>
+        public static string TOWER_BOSSES {
+            get {
+                return ResourceManager.GetString("TOWER_BOSSES", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Lives lost.
+        /// </summary>
+        public static string TOWER_LIVES {
+            get {
+                return ResourceManager.GetString("TOWER_LIVES", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Arrows.
+        /// </summary>
+        public static string TOWER_ARROWS {
+            get {
+                return ResourceManager.GetString("TOWER_ARROWS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Enchantment points.
+        /// </summary>
+        public static string TOWER_POINTS {
+            get {
+                return ResourceManager.GetString("TOWER_POINTS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Run {0}.
+        /// </summary>
+        public static string TOWER_RUN_NUMBER {
+            get {
+                return ResourceManager.GetString("TOWER_RUN_NUMBER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to in progress.
+        /// </summary>
+        public static string TOWER_IN_PROGRESS {
+            get {
+                return ResourceManager.GetString("TOWER_IN_PROGRESS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to completed.
+        /// </summary>
+        public static string TOWER_COMPLETED {
+            get {
+                return ResourceManager.GetString("TOWER_COMPLETED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to over.
+        /// </summary>
+        public static string TOWER_ABANDONED {
+            get {
+                return ResourceManager.GetString("TOWER_ABANDONED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No tower runs in this save. Start one in game and it will show up here..
+        /// </summary>
+        public static string TOWER_NONE {
+            get {
+                return ResourceManager.GetString("TOWER_NONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pick a run on the left..
+        /// </summary>
+        public static string TOWER_PICK_ONE {
+            get {
+                return ResourceManager.GetString("TOWER_PICK_ONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to This run is over, so the game has thrown away everything about it except that it happened. Only a run still being played can be edited..
+        /// </summary>
+        public static string TOWER_OVER {
+            get {
+                return ResourceManager.GetString("TOWER_OVER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to of {0}.
+        /// </summary>
+        public static string TOWER_OF_FLOORS {
+            get {
+                return ResourceManager.GetString("TOWER_OF_FLOORS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Each block is a floor: combat, merchant, boss. The outlined one is where you are..
+        /// </summary>
+        public static string TOWER_FLOOR_KEY {
+            get {
+                return ResourceManager.GetString("TOWER_FLOOR_KEY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Player {0}.
+        /// </summary>
+        public static string TOWER_PLAYER {
+            get {
+                return ResourceManager.GetString("TOWER_PLAYER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to “{0}” was moved to the inventory and is no longer in the tower..
+        /// </summary>
+        public static string TOWER_MOVED_INVENTORY {
+            get {
+                return ResourceManager.GetString("TOWER_MOVED_INVENTORY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to “{0}” was moved to the storage chest and is no longer in the tower..
+        /// </summary>
+        public static string TOWER_MOVED_CHEST {
+            get {
+                return ResourceManager.GetString("TOWER_MOVED_CHEST", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Floors.
+        /// </summary>
+        public static string TOWER_FLOORS {
+            get {
+                return ResourceManager.GetString("TOWER_FLOORS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Type.
+        /// </summary>
+        public static string TOWER_TYPE {
+            get {
+                return ResourceManager.GetString("TOWER_TYPE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Reward slots offered when this floor is cleared.
+        /// </summary>
+        public static string TOWER_REWARDS {
+            get {
+                return ResourceManager.GetString("TOWER_REWARDS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Floor {0}.
+        /// </summary>
+        public static string TOWER_FLOOR_NUMBER {
+            get {
+                return ResourceManager.GetString("TOWER_FLOOR_NUMBER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to here.
+        /// </summary>
+        public static string TOWER_YOU_ARE_HERE {
+            get {
+                return ResourceManager.GetString("TOWER_YOU_ARE_HERE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Seed {0}.
+        /// </summary>
+        public static string TOWER_SEED {
+            get {
+                return ResourceManager.GetString("TOWER_SEED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Built from: {0}.
+        /// </summary>
+        public static string TOWER_TILE {
+            get {
+                return ResourceManager.GetString("TOWER_TILE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Encounter: {0}.
+        /// </summary>
+        public static string TOWER_CHALLENGE {
+            get {
+                return ResourceManager.GetString("TOWER_CHALLENGE", resourceCulture);
+            }
+        }
     }
 }

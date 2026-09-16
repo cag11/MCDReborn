@@ -69,6 +69,10 @@
                 <local:ChestTab x:Name="chestTab"/>
             </TabItem>
 
+            <TabItem x:Name="towerTabItem" Header="*Tower*" Selector.Selected="OnTabSelected">
+                <local:TowerTab x:Name="towerTab"/>
+            </TabItem>
+
             <TabItem x:Name="customSkinsTabItem" Header="*Recolor Gear*" Selector.Selected="OnTabSelected">
                 <local:CustomSkinsTab x:Name="customSkinsTab"/>
             </TabItem>

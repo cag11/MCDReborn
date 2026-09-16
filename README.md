@@ -23,6 +23,7 @@
 * A **Defaults** button fills in the properties an armor drops with in game; changing an armor's type no longer replaces them by itself
 * Right-click an inventory item to equip it; artifacts offer all three hotbar slots
 * Right-click an equipment slot to unequip
+* **The Tower** tab: tower runs read straight out of the save, with the floor you are on, lives, bosses, arrows and points, each floor's kind and its five reward slots, and the gear carried inside the run, which can be moved to the inventory or the chest
 * **Delete items...** on the inventory and storage chest grids: pick as many as you like, with All taking everything the filter or search is showing, then delete them in one go
 * Every save backs the file up first, keeping one timestamped `.bak` beside it
 * The enchantment picker opens on the gear type being enchanted, with **Melee / Armor / Ranged / Other** toggles

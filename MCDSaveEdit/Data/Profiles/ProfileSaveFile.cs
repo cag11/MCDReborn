@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace MCDSaveEdit.Save.Models.Profiles
@@ -57,8 +58,12 @@ namespace MCDSaveEdit.Save.Models.Profiles
         [JsonPropertyName("merchantData")]
         public Dictionary<string, MerchantDef> MerchantData { get; set; }
 
+        //A live node rather than an opaque object, so the Tower inside it can be read and
+        //edited. Everything this app does not understand still round trips untouched, which is
+        //the reason it stays a node instead of becoming a tree of models: the map holds mission
+        //state for content this app has never heard of, and a model would quietly drop it.
         [JsonPropertyName("missionStatesMap")]
-        public object? MissionStatesMap { get; set; }
+        public JsonObject? MissionStatesMap { get; set; }
 
         [JsonPropertyName("mob_kills")]
         public Dictionary<string, long> MobKills { get; set; }
