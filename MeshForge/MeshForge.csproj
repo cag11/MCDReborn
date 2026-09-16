@@ -25,6 +25,12 @@
     <Compile Include="..\MCDSaveEdit\Data\Models\AesKey.cs" Link="Linked\AesKey.cs" />
     <Compile Include="..\MCDSaveEdit\Data\Secrets.cs" Link="Linked\Secrets.cs" />
     <Compile Include="..\MCDSaveEdit\Logic\PakWriter.cs" Link="Linked\PakWriter.cs" />
+    <Compile Include="..\MCDSaveEdit\Logic\MeshGeometry.cs" Link="Linked\MeshGeometry.cs" />
+    <Compile Include="..\MCDSaveEdit\Logic\MeshEdit.cs" Link="Linked\MeshEdit.cs" />
+    <Compile Include="..\MCDSaveEdit\Logic\MeshBounds.cs" Link="Linked\MeshBounds.cs" />
+    <Compile Include="..\MCDSaveEdit\Logic\VertexPacking.cs" Link="Linked\VertexPacking.cs" />
+    <Compile Include="..\MCDSaveEdit\Logic\CookedMesh.cs" Link="Linked\CookedMesh.cs" />
+    <Compile Include="..\MCDSaveEdit\Logic\GlbModel.cs" Link="Linked\GlbModel.cs" />
   </ItemGroup>
 
 </Project>

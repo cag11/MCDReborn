@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace MeshForge
+namespace MCDSaveEdit.Logic
 {
     /// <summary>
     /// Finding the vertices and triangles in a cooked mesh, by looking for them rather than by
@@ -24,7 +24,7 @@ namespace MeshForge
     /// The index buffers are then checked against the vertex count, which is what turns a good
     /// guess into a settled fact: the triangles have to point at vertices that exist.
     /// </summary>
-    public static class Geometry
+    public static class MeshGeometry
     {
         /// <summary>Three floats, one vertex.</summary>
         public readonly struct Position
@@ -340,6 +340,83 @@ namespace MeshForge
         {
             if (float.IsNaN(value) || float.IsInfinity(value)) { return false; }
             return Math.Abs(value) <= absurd;
+        }
+
+
+        /// <summary>
+        /// The tangents and texture coordinates, which sit immediately after the positions.
+        ///
+        /// Unlike the positions, these are not searched for. They do not need to be: the vertex
+        /// buffer follows the position buffer directly, its header is a fixed twenty six bytes,
+        /// and every number in it can be checked against something already known. A vertex count
+        /// that does not match the positions, or an element size that contradicts the precision
+        /// flags, means the layout is not this one and nothing is returned - which is the useful
+        /// answer, because a wrong guess here would be read as geometry rather than refused.
+        /// </summary>
+        public sealed class Attributes
+        {
+            public int HeaderOffset { get; set; }
+            public int TexCoords { get; set; }
+            public int Count { get; set; }
+            public bool FullPrecisionUVs { get; set; }
+            public bool HighPrecisionTangents { get; set; }
+
+            public int TangentsOffset { get; set; }
+            public int TangentStride { get; set; }
+            public int UVsOffset { get; set; }
+            public int UVStride { get; set; }
+
+            public int TangentsLength => Count * TangentStride;
+            public int UVsLength => Count * TexCoords * UVStride;
+            public int DataEnd => UVsOffset + UVsLength;
+        }
+
+        public static Attributes? findAttributes(byte[] uexp, Vertices positions)
+        {
+            //Two bytes of strip flags sit between the position data and this header.
+            var header = positions.DataEnd + 2;
+            if (header + 24 > uexp.Length) { return null; }
+
+            var texCoords = BitConverter.ToInt32(uexp, header);
+            var count = BitConverter.ToInt32(uexp, header + 4);
+            var fullPrecisionUVs = BitConverter.ToInt32(uexp, header + 8);
+            var highPrecisionTangents = BitConverter.ToInt32(uexp, header + 12);
+
+            //The checks that make this safe to trust without searching for it.
+            if (count != positions.Count) { return null; }
+            if (texCoords < 1 || texCoords > 8) { return null; }
+            if (fullPrecisionUVs != 0 && fullPrecisionUVs != 1) { return null; }
+            if (highPrecisionTangents != 0 && highPrecisionTangents != 1) { return null; }
+
+            var tangentStride = highPrecisionTangents == 1 ? 16 : 8;
+            var uvStride = fullPrecisionUVs == 1 ? 8 : 4;
+
+            var tangentElement = BitConverter.ToInt32(uexp, header + 16);
+            var tangentCount = BitConverter.ToInt32(uexp, header + 20);
+            if (tangentElement != tangentStride || tangentCount != count) { return null; }
+
+            var tangentsOffset = header + 24;
+            var uvHeader = tangentsOffset + count * tangentStride;
+            if (uvHeader + 8 > uexp.Length) { return null; }
+
+            var uvElement = BitConverter.ToInt32(uexp, uvHeader);
+            var uvCount = BitConverter.ToInt32(uexp, uvHeader + 4);
+            if (uvElement != uvStride || uvCount != count * texCoords) { return null; }
+
+            var uvsOffset = uvHeader + 8;
+            if (uvsOffset + uvCount * uvStride > uexp.Length) { return null; }
+
+            return new Attributes {
+                HeaderOffset = header,
+                TexCoords = texCoords,
+                Count = count,
+                FullPrecisionUVs = fullPrecisionUVs == 1,
+                HighPrecisionTangents = highPrecisionTangents == 1,
+                TangentsOffset = tangentsOffset,
+                TangentStride = tangentStride,
+                UVsOffset = uvsOffset,
+                UVStride = uvStride,
+            };
         }
 
         /// <summary>The positions, once the buffer has been settled on.</summary>

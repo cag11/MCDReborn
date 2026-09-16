@@ -1027,4 +1027,124 @@ The save file is not changed until you save it.</value>
     <value>Interface and HUD</value>
     <comment>UI texture category</comment>
   </data>
+  <data name="WEAPON_SKINS_TAB" xml:space="preserve">
+    <value>Weapon Import</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="WEAPON_SKINS_WEAPON" xml:space="preserve">
+    <value>Weapon</value>
+    <comment>Which weapon to reshape</comment>
+  </data>
+  <data name="WEAPON_SKINS_PREVIEW" xml:space="preserve">
+    <value>Preview</value>
+    <comment>3D preview heading</comment>
+  </data>
+  <data name="WEAPON_SKINS_SHAPE" xml:space="preserve">
+    <value>Shape</value>
+    <comment>Transform controls heading</comment>
+  </data>
+  <data name="WEAPON_SKINS_SIZE" xml:space="preserve">
+    <value>Size</value>
+    <comment>Scale group heading</comment>
+  </data>
+  <data name="WEAPON_SKINS_MOVE" xml:space="preserve">
+    <value>Move</value>
+    <comment>Offset group heading</comment>
+  </data>
+  <data name="WEAPON_SKINS_TURN" xml:space="preserve">
+    <value>Turn</value>
+    <comment>Rotation group heading</comment>
+  </data>
+  <data name="WEAPON_SKINS_SCALE" xml:space="preserve">
+    <value>Scale</value>
+    <comment>Scale slider caption</comment>
+  </data>
+  <data name="WEAPON_SKINS_APPLY" xml:space="preserve">
+    <value>Apply to game</value>
+    <comment>Writes the mod pak</comment>
+  </data>
+  <data name="WEAPON_SKINS_RESET" xml:space="preserve">
+    <value>Reset shape</value>
+    <comment>Clears the transform</comment>
+  </data>
+  <data name="WEAPON_SKINS_GHOST" xml:space="preserve">
+    <value>Show original behind</value>
+    <comment>Ghost toggle</comment>
+  </data>
+  <data name="WEAPON_SKINS_GHOST_HINT" xml:space="preserve">
+    <value>The outline is the weapon as the game knows it. Keep the handle end of your shape sitting on the handle end of the outline, or it will be held in the wrong place.</value>
+    <comment>Explains the ghost</comment>
+  </data>
+  <data name="WEAPON_SKINS_SPIN" xml:space="preserve">
+    <value>Drag to turn · scroll to zoom</value>
+    <comment>Preview controls hint</comment>
+  </data>
+  <data name="WEAPON_SKINS_SEARCH" xml:space="preserve">
+    <value>Search weapons</value>
+    <comment>Search box tooltip</comment>
+  </data>
+  <data name="WEAPON_SKINS_COUNT" xml:space="preserve">
+    <value>{0} meshes</value>
+    <comment>How many are listed</comment>
+  </data>
+  <data name="WEAPON_SKINS_NO_CONTENT" xml:space="preserve">
+    <value>Game content is not loaded, so there are no meshes to show.</value>
+    <comment>No paks</comment>
+  </data>
+  <data name="WEAPON_SKINS_PICK_ONE" xml:space="preserve">
+    <value>Pick a weapon to see its shape.</value>
+    <comment>Nothing selected</comment>
+  </data>
+  <data name="WEAPON_SKINS_NO_GEOMETRY" xml:space="preserve">
+    <value>This mesh does not declare its bounds, so its geometry cannot be found and it cannot be reshaped.</value>
+    <comment>Unreadable mesh</comment>
+  </data>
+  <data name="WEAPON_SKINS_MEASUREMENTS" xml:space="preserve">
+    <value>{0} vertices, {1} triangles · {2} × {3} × {4} units</value>
+    <comment>Size readout</comment>
+  </data>
+  <data name="WEAPON_SKINS_NOTHING_TO_DO" xml:space="preserve">
+    <value>Nothing has been changed yet.</value>
+    <comment>Apply with no transform</comment>
+  </data>
+  <data name="WEAPON_SKINS_APPLIED" xml:space="preserve">
+    <value>Written to {0}. Restart the game to see it.</value>
+    <comment>Applied confirmation</comment>
+  </data>
+  <data name="WEAPON_SKINS_MODS_NOTE" xml:space="preserve">
+    <value>This replaces the weapon's shape, not its textures or how it behaves. Deleting the pak from ~mods undoes it. Close the game before applying, and start Dungeons.exe directly – launching through the Minecraft Launcher removes mods.</value>
+    <comment>Explains what reshaping does</comment>
+  </data>
+  <data name="WEAPON_SKINS_MODEL" xml:space="preserve">
+    <value>Your model</value>
+    <comment>Import group heading</comment>
+  </data>
+  <data name="WEAPON_SKINS_IMPORT" xml:space="preserve">
+    <value>Import a .glb model…</value>
+    <comment>Opens the file picker</comment>
+  </data>
+  <data name="WEAPON_SKINS_CLEAR_MODEL" xml:space="preserve">
+    <value>Remove model</value>
+    <comment>Goes back to reshaping</comment>
+  </data>
+  <data name="WEAPON_SKINS_IMPORT_HINT" xml:space="preserve">
+    <value>A .glb carries the model and its texture in one file. Export one from Blender with File → Export → glTF Binary.</value>
+    <comment>Explains the format</comment>
+  </data>
+  <data name="WEAPON_SKINS_MODEL_FILTER" xml:space="preserve">
+    <value>glTF Binary (*.glb)|*.glb|All files (*.*)|*.*</value>
+    <comment>File picker filter</comment>
+  </data>
+  <data name="WEAPON_SKINS_MODEL_LOADED" xml:space="preserve">
+    <value>{0} · {1:N0} vertices, {2:N0} triangles · {3}</value>
+    <comment>Describes the loaded model</comment>
+  </data>
+  <data name="WEAPON_SKINS_WITH_TEXTURE" xml:space="preserve">
+    <value>texture included</value>
+    <comment>Model has a base colour map</comment>
+  </data>
+  <data name="WEAPON_SKINS_NO_TEXTURE" xml:space="preserve">
+    <value>no texture, the weapon keeps its own</value>
+    <comment>Model has no base colour map</comment>
+  </data>
 </root>
