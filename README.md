@@ -17,24 +17,21 @@
 * Wear any 64×64 Minecraft skin as your hero; import any skin from your favorite skin website
 * A **Show armours** switch on both the Custom Skins and Recolor Gear tabs: wearing a skin hides armour so the skin can be seen, and one tick puts it all back
 * Five themes in the **View** menu (Dark, Light, Nether, End and Frost), swapped live and remembered between runs
-* The **Language** menu covers the game's fifteen languages, and the newer screens follow it too: filters, Delete, Cancel, All, None, Selected, Defaults and Equip all use the game's own words
 * Item search across the whole inventory, filtering as you type, without covering the UI
 * A search box on every picker (items, armor, melee, ranged, artifacts, armor properties and enchantments), narrowing within whatever the filters already allow
 * A **Defaults** button fills in the properties an armor drops with in game; changing an armor's type no longer replaces them by itself
 * Right-click an inventory item to equip it; artifacts offer all three hotbar slots
 * Right-click an equipment slot to unequip
-* **The Tower** tab: tower runs read straight out of the save, with the floor you are on, lives, bosses, arrows and points, each floor's five reward slots, the level it builds picked from every one the game has, and the gear carried inside the run, which can be moved to the inventory or the chest
-* **Delete items...** on the inventory and storage chest grids: pick as many as you like, with All taking everything the filter or search is showing, then delete them in one go
 * Every save backs the file up first, keeping one timestamped `.bak` beside it
 * The enchantment picker opens on the gear type being enchanted, with **Melee / Armor / Ranged / Other** toggles
-* 36 enchantments the game carries but never offers, under the **Other** toggle: the ones with no icon, which is why nothing could list them before
 * A loading screen that is a themed card with a vector mark, version and status line
+* **The Tower** tab: tower runs that you have started and saved will show here, allow modifying gear and floor progress
+* 36 new enchantments the game carries but never offers, under the **Other** toggle
+* Bulk Delete items on the inventory and storage chest tabs
 
 #### Custom Builds Feature
 * **Open in MCD Builder**: send the equipped loadout straight to [mcdbuilder.vercel.app](https://mcdbuilder.vercel.app/)
 * **Import Build** and **Import and Equip** from the clipboard, refused up front if the inventory has no room for it
-* Gilded gear crosses over gilded, with its fourth enchantment in the gilded slot, in both directions
-* Mystery Armor's three rolled attributes travel with the build, in both directions, mapped name by name against the builder's own list
 
 https://github.com/user-attachments/assets/509496fd-7186-4422-a639-9d10272be407
 
