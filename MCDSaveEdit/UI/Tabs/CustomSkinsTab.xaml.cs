@@ -62,6 +62,7 @@ namespace MCDSaveEdit.UI
 
         public void updateUI()
         {
+            fillCategories();
             fillGearList();
             fillInstalled();
             refreshArmourBox();
@@ -70,22 +71,86 @@ namespace MCDSaveEdit.UI
 
         #region Gear
 
+        /// <summary>
+        /// What can be recoloured, in the groups someone would look for.
+        ///
+        /// Capes and pets are here for the same reason the rest is: their textures sit in a
+        /// folder named after them, exactly as armour's does. They were missing because this list
+        /// was built from the items a save can carry, and a cape is worn rather than carried, so
+        /// it was never in any list this app had.
+        /// </summary>
+        private enum GearCategory { Armor, Melee, Ranged, Artifacts, Capes, Pets, Enchantments, Interface }
+
+        private static readonly (GearCategory category, Func<string> label)[] CATEGORIES = {
+            (GearCategory.Armor, () => R.getString("ItemTag_Armor") ?? R.ARMOR_ITEMS_FILTER),
+            (GearCategory.Melee, () => R.getString("ItemTag_Melee") ?? R.MELEE_ITEMS_FILTER),
+            (GearCategory.Ranged, () => R.getString("ItemTag_Ranged") ?? R.RANGED_ITEMS_FILTER),
+            (GearCategory.Artifacts, () => R.getString("ItemTag_Items") ?? R.ARTIFACT_ITEMS_FILTER),
+            (GearCategory.Capes, () => R.CUSTOM_SKINS_CAPES),
+            (GearCategory.Pets, () => R.CUSTOM_SKINS_PETS),
+            (GearCategory.Enchantments, () => R.CUSTOM_SKINS_ENCHANTMENTS),
+            (GearCategory.Interface, () => R.CUSTOM_SKINS_INTERFACE),
+        };
+
+        private void fillCategories()
+        {
+            categoryCombo.Items.Clear();
+            foreach (var (category, label) in CATEGORIES)
+            {
+                categoryCombo.Items.Add(new ComboBoxItem { Content = label(), Tag = category });
+            }
+            categoryCombo.SelectedIndex = 0;
+        }
+
+        private GearCategory selectedCategory
+            => (categoryCombo.SelectedItem as ComboBoxItem)?.Tag as GearCategory? ?? GearCategory.Armor;
+
+        private void categoryCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            fillGearList();
+        }
+
         private void fillGearList()
         {
             gearList.Items.Clear();
             if (!CustomSkins.ready) { return; }
 
-            //Armour first because that is what people replace, then the weapons.
-            var everything = ItemDatabase.armor
-                .Concat(ItemDatabase.meleeWeapons)
-                .Concat(ItemDatabase.rangedWeapons)
-                .Distinct()
-                .OrderBy(id => R.itemName(id), StringComparer.CurrentCultureIgnoreCase);
-
             var search = searchBox.Text;
-            foreach (var id in everything)
+
+            //Capes and pets are not items and have no name in the game's text, so they carry the
+            //one worked out from the folder they live in.
+            if (selectedCategory == GearCategory.Capes
+                || selectedCategory == GearCategory.Pets
+                || selectedCategory == GearCategory.Enchantments
+                || selectedCategory == GearCategory.Interface)
             {
-                if (!matches(id, search)) { continue; }
+                var cosmetics = selectedCategory == GearCategory.Capes ? CosmeticSkins.capes()
+                    : selectedCategory == GearCategory.Pets ? CosmeticSkins.pets()
+                    : selectedCategory == GearCategory.Enchantments ? CosmeticSkins.enchantmentIcons()
+                    : CosmeticSkins.userInterface();
+
+                foreach (var entry in cosmetics)
+                {
+                    if (!matchesText(entry.Name, entry.Id, search)) { continue; }
+                    gearList.Items.Add(new ListBoxItem {
+                        Content = entry.Name,
+                        Tag = entry.Id,
+                        ToolTip = entry.TexturePath,
+                    });
+                }
+                return;
+            }
+
+            var items = selectedCategory switch {
+                GearCategory.Melee => ItemDatabase.meleeWeapons,
+                GearCategory.Ranged => ItemDatabase.rangedWeapons,
+                GearCategory.Artifacts => ItemDatabase.artifacts,
+                _ => ItemDatabase.armor,
+            };
+
+            foreach (var id in items.Distinct().OrderBy(id => R.itemName(id), StringComparer.CurrentCultureIgnoreCase))
+            {
+                if (!matchesText(R.itemName(id), id, search)) { continue; }
                 gearList.Items.Add(new ListBoxItem {
                     Content = R.itemName(id),
                     Tag = id,
@@ -94,11 +159,11 @@ namespace MCDSaveEdit.UI
             }
         }
 
-        private static bool matches(string id, string? search)
+        private static bool matchesText(string name, string id, string? search)
         {
             if (string.IsNullOrWhiteSpace(search)) { return true; }
             var term = search!.Trim();
-            return R.itemName(id).IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0
+            return name.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0
                 || id.IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
@@ -111,7 +176,13 @@ namespace MCDSaveEdit.UI
         private void gearList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             _selectedItem = (gearList.SelectedItem as ListBoxItem)?.Tag as string;
-            _selectedTexture = _selectedItem == null ? null : CustomSkins.textureFor(_selectedItem);
+
+            //A cape or a pet was found by its texture in the first place, so it carries the path
+            //rather than being searched for again.
+            var cosmetic = CosmeticSkins.find(_selectedItem);
+            _selectedTexture = cosmetic != null ? cosmetic.TexturePath
+                : _selectedItem == null ? null
+                : CustomSkins.textureFor(_selectedItem);
             updateSelection();
         }
 
@@ -140,7 +211,12 @@ namespace MCDSaveEdit.UI
                 return;
             }
 
-            selectedLabel.Content = R.itemName(_selectedItem);
+            //A cape or a pet has no name in the game's text, so R.itemName would hand back the
+            //folder it lives in. The readable one worked out when it was found is used instead.
+            //Doubled underscores, because a Label reads a single one as the marker for a keyboard
+            //shortcut and swallows it: "icon_emerald" was being shown as "iconemerald".
+            var title = CosmeticSkins.find(_selectedItem)?.Name ?? R.itemName(_selectedItem);
+            selectedLabel.Content = title.Replace("_", "__");
             setPreview(image, hasTexture ? null : R.CUSTOM_SKINS_NO_TEXTURE);
         }
 

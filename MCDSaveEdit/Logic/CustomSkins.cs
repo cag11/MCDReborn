@@ -151,7 +151,7 @@ namespace MCDSaveEdit.Logic
         /// and matching the stricter spelling let a 256x256 inventory sprite through as if it
         /// were the armour.
         /// </summary>
-        private static bool isColourMap(string name)
+        internal static bool isColourMap(string name)
         {
             if (name.IndexOf("icon", StringComparison.OrdinalIgnoreCase) >= 0) { return false; }
 
@@ -233,6 +233,16 @@ namespace MCDSaveEdit.Logic
             }
             return writePak(modName, entries);
         }
+
+        /// <summary>
+        /// A mod pak from files somebody else assembled.
+        ///
+        /// Reshaped meshes are built elsewhere but installed exactly like a recoloured texture -
+        /// same folder, same naming, same list of installed mods - so they share this rather than
+        /// growing a second way to write a pak that would drift from this one.
+        /// </summary>
+        public static InstalledMod writeModPak(string modName, IEnumerable<PakWriter.Entry> entries)
+            => writePak(modName, entries);
 
         private static InstalledMod writePak(string modName, IEnumerable<PakWriter.Entry> entries)
         {
@@ -413,6 +423,96 @@ namespace MCDSaveEdit.Logic
         {
             var cleaned = new string(name.Select(c => char.IsLetterOrDigit(c) || c == '~' ? c : '_').ToArray()).Trim('_');
             return cleaned.Length == 0 ? "Skin" : cleaned;
+        }
+
+
+        /// <summary>
+        /// The files that put an imported model's own artwork onto the texture its weapon uses.
+        ///
+        /// An imported mesh brings its own texture coordinates, which have nothing to do with how
+        /// the game's artist laid theirs out. So the new shape wearing the old texture is not a
+        /// slightly wrong result, it is a meaningless one - the two have to travel together, which
+        /// is why this returns pak entries to be written alongside the mesh rather than a pak of
+        /// its own.
+        ///
+        /// The image is rescaled to the texture it replaces. That is the opposite of the rule for
+        /// recolouring, where a resample of somebody's pixel art would be an unwanted favour and a
+        /// size mismatch is worth refusing over. Here the source is a photograph-sized render from
+        /// a modelling tool and the target is whatever the game happens to use, so the sizes will
+        /// essentially never match and refusing would mean refusing every model.
+        /// </summary>
+        public static IEnumerable<PakWriter.Entry> texturePatchFor(string meshAssetPath, byte[] png)
+        {
+            var texture = textureBeside(meshAssetPath);
+            if (texture == null) { return Array.Empty<PakWriter.Entry>(); }
+
+            var image = decodePng(png);
+            return patchTexture(texture, (width, height) => toBgra(scaled(image, width, height), width, height));
+        }
+
+        /// <summary>
+        /// The colour texture kept in the same folder as a mesh.
+        ///
+        /// Found by looking rather than by building a name, for the same reason the item version
+        /// of this does: a weapon's texture is not reliably named after its mesh. The maps that
+        /// are not colour - specular, the inventory icon - are skipped.
+        /// </summary>
+        public static string? textureBeside(string meshAssetPath)
+        {
+            var paks = index;
+            if (paks == null) { return null; }
+
+            var cut = meshAssetPath.LastIndexOf('/');
+            if (cut <= 0) { return null; }
+            var folder = meshAssetPath.Substring(0, cut + 1);
+
+            var candidates = new List<string>();
+            foreach (var entry in paks)
+            {
+                var path = assetPath(entry);
+                if (!path.StartsWith(folder, StringComparison.OrdinalIgnoreCase)) { continue; }
+
+                var name = System.IO.Path.GetFileName(path);
+                if (!name.StartsWith("T_", StringComparison.OrdinalIgnoreCase)) { continue; }
+                if (!isColourMap(name)) { continue; }
+                candidates.Add(path);
+            }
+
+            //The shortest name is the one carrying no extra suffix, and ordering by name as a
+            //tiebreak keeps the choice the same from one run to the next.
+            return candidates
+                .OrderBy(path => System.IO.Path.GetFileName(path).Length)
+                .ThenBy(path => path, StringComparer.Ordinal)
+                .FirstOrDefault();
+        }
+
+        /// <summary>An image out of PNG bytes, for artwork that never touches the disk.</summary>
+        public static BitmapSource imageFromPng(byte[] png) => decodePng(png);
+
+        private static BitmapSource decodePng(byte[] png)
+        {
+            using var stream = new MemoryStream(png);
+            var decoder = BitmapDecoder.Create(stream,
+                BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+            return decoder.Frames[0];
+        }
+
+        private static BitmapSource scaled(BitmapSource image, int width, int height)
+        {
+            if (image.PixelWidth == width && image.PixelHeight == height) { return image; }
+
+            var scale = new TransformedBitmap(image,
+                new System.Windows.Media.ScaleTransform(
+                    (double)width / image.PixelWidth,
+                    (double)height / image.PixelHeight));
+
+            //Rounding can leave the result a pixel out, and the texture wants exactly its own
+            //size, so anything left over is cropped rather than allowed through.
+            if (scale.PixelWidth == width && scale.PixelHeight == height) { return scale; }
+
+            var cropWidth = Math.Min(width, scale.PixelWidth);
+            var cropHeight = Math.Min(height, scale.PixelHeight);
+            return new CroppedBitmap(scale, new System.Windows.Int32Rect(0, 0, cropWidth, cropHeight));
         }
 
         private static BitmapSource decodePng(string pngPath)

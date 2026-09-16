@@ -2066,5 +2066,329 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("TOWER_ADD_ITEM", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Capes.
+        /// </summary>
+        public static string CUSTOM_SKINS_CAPES {
+            get {
+                return ResourceManager.GetString("CUSTOM_SKINS_CAPES", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pets.
+        /// </summary>
+        public static string CUSTOM_SKINS_PETS {
+            get {
+                return ResourceManager.GetString("CUSTOM_SKINS_PETS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Enchantment icons.
+        /// </summary>
+        public static string CUSTOM_SKINS_ENCHANTMENTS {
+            get {
+                return ResourceManager.GetString("CUSTOM_SKINS_ENCHANTMENTS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Interface and HUD.
+        /// </summary>
+        public static string CUSTOM_SKINS_INTERFACE {
+            get {
+                return ResourceManager.GetString("CUSTOM_SKINS_INTERFACE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Weapon Shape.
+        /// </summary>
+        public static string WEAPON_SKINS_TAB {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_TAB", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Weapon.
+        /// </summary>
+        public static string WEAPON_SKINS_WEAPON {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_WEAPON", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Preview.
+        /// </summary>
+        public static string WEAPON_SKINS_PREVIEW {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_PREVIEW", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Shape.
+        /// </summary>
+        public static string WEAPON_SKINS_SHAPE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_SHAPE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Size.
+        /// </summary>
+        public static string WEAPON_SKINS_SIZE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_SIZE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Move.
+        /// </summary>
+        public static string WEAPON_SKINS_MOVE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_MOVE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Turn.
+        /// </summary>
+        public static string WEAPON_SKINS_TURN {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_TURN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Scale.
+        /// </summary>
+        public static string WEAPON_SKINS_SCALE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_SCALE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Apply to game.
+        /// </summary>
+        public static string WEAPON_SKINS_APPLY {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_APPLY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Reset shape.
+        /// </summary>
+        public static string WEAPON_SKINS_RESET {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_RESET", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show original behind.
+        /// </summary>
+        public static string WEAPON_SKINS_GHOST {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_GHOST", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The outline is the weapon as the game knows it. Keep the handle end of your shape sitting on the handle end....
+        /// </summary>
+        public static string WEAPON_SKINS_GHOST_HINT {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_GHOST_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Drag to turn · scroll to zoom.
+        /// </summary>
+        public static string WEAPON_SKINS_SPIN {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_SPIN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Search weapons.
+        /// </summary>
+        public static string WEAPON_SKINS_SEARCH {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_SEARCH", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} meshes.
+        /// </summary>
+        public static string WEAPON_SKINS_COUNT {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_COUNT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Game content is not loaded, so there are no meshes to show..
+        /// </summary>
+        public static string WEAPON_SKINS_NO_CONTENT {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_NO_CONTENT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Pick a weapon to see its shape..
+        /// </summary>
+        public static string WEAPON_SKINS_PICK_ONE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_PICK_ONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This mesh does not declare its bounds, so its geometry cannot be found and it cannot be reshaped..
+        /// </summary>
+        public static string WEAPON_SKINS_NO_GEOMETRY {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_NO_GEOMETRY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} vertices, {1} triangles · {2} × {3} × {4} units.
+        /// </summary>
+        public static string WEAPON_SKINS_MEASUREMENTS {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_MEASUREMENTS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing has been changed yet..
+        /// </summary>
+        public static string WEAPON_SKINS_NOTHING_TO_DO {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_NOTHING_TO_DO", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Written to {0}. Restart the game to see it..
+        /// </summary>
+        public static string WEAPON_SKINS_APPLIED {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_APPLIED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This replaces the weapon's shape, not its textures or how it behaves. Deleting the pak from ~mods undoes it....
+        /// </summary>
+        public static string WEAPON_SKINS_MODS_NOTE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_MODS_NOTE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Your model.
+        /// </summary>
+        public static string WEAPON_SKINS_MODEL {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_MODEL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Import a .glb model….
+        /// </summary>
+        public static string WEAPON_SKINS_IMPORT {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_IMPORT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove model.
+        /// </summary>
+        public static string WEAPON_SKINS_CLEAR_MODEL {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_CLEAR_MODEL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A .glb carries the model and its texture in one file. Export one from Blender with File → Export → glTF Bin....
+        /// </summary>
+        public static string WEAPON_SKINS_IMPORT_HINT {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_IMPORT_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to glTF Binary (*.glb)|*.glb|All files (*.*)|*.*.
+        /// </summary>
+        public static string WEAPON_SKINS_MODEL_FILTER {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_MODEL_FILTER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} · {1:N0} vertices, {2:N0} triangles · {3}.
+        /// </summary>
+        public static string WEAPON_SKINS_MODEL_LOADED {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_MODEL_LOADED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to texture included.
+        /// </summary>
+        public static string WEAPON_SKINS_WITH_TEXTURE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_WITH_TEXTURE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to no texture, the weapon keeps its own.
+        /// </summary>
+        public static string WEAPON_SKINS_NO_TEXTURE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_NO_TEXTURE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show texture.
+        /// </summary>
+        public static string WEAPON_SKINS_TEXTURED {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_TEXTURED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Melee only for now. Bows change shape as they are drawn, and armour is several pieces that have to match..
+        /// </summary>
+        public static string WEAPON_SKINS_MELEE_ONLY {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_MELEE_ONLY", resourceCulture);
+            }
+        }
     }
 }

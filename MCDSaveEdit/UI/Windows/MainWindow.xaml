@@ -77,6 +77,10 @@
                 <local:CustomSkinsTab x:Name="customSkinsTab"/>
             </TabItem>
 
+            <TabItem x:Name="weaponSkinsTabItem" Header="*Weapon Import*" Selector.Selected="OnTabSelected">
+                <local:WeaponSkinsTab x:Name="weaponSkinsTab"/>
+            </TabItem>
+
             <TabItem x:Name="statsTabItem" Header="*Stats/Counters*" Selector.Selected="OnTabSelected">
                 <local:StatsTab x:Name="statsTab"/>
             </TabItem>

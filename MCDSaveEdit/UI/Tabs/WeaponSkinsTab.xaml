@@ -1,0 +1,162 @@
+﻿<UserControl x:Class="MCDSaveEdit.UI.WeaponSkinsTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             mc:Ignorable="d"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             d:DesignHeight="640" d:DesignWidth="1100">
+
+    <Grid Margin="8">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="300"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Which weapon -->
+        <DockPanel Grid.Column="0" Margin="0,0,8,0">
+            <Label x:Name="weaponLabel" DockPanel.Dock="Top" Content="*Weapon*" Padding="0,0,0,4"/>
+            <ComboBox x:Name="categoryCombo" DockPanel.Dock="Top" Margin="0,0,0,4"
+                      SelectionChanged="categoryCombo_SelectionChanged"/>
+            <TextBox x:Name="searchBox" DockPanel.Dock="Top" Margin="0,0,0,4"
+                     TextChanged="searchBox_TextChanged"/>
+            <TextBlock x:Name="countLabel" DockPanel.Dock="Bottom" Margin="0,4,0,0"
+                       Foreground="Gray" TextWrapping="Wrap"/>
+            <ListBox x:Name="weaponList" SelectionChanged="weaponList_SelectionChanged"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+        </DockPanel>
+
+        <!-- What it looks like -->
+        <Grid Grid.Column="1" Margin="0,0,8,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Label x:Name="previewLabel" Grid.Row="0" Content="*Preview*" Padding="0,0,0,4"/>
+
+            <Border Grid.Row="1" BorderBrush="#40000000" BorderThickness="1" Background="#FF23272E">
+                <Grid>
+                    <Viewport3D x:Name="viewport" ClipToBounds="True">
+                        <Viewport3D.Camera>
+                            <PerspectiveCamera x:Name="camera" Position="0,0,400" LookDirection="0,0,-1"
+                                               UpDirection="0,1,0" FieldOfView="45"/>
+                        </Viewport3D.Camera>
+                        <ModelVisual3D>
+                            <ModelVisual3D.Content>
+                                <Model3DGroup x:Name="scene"/>
+                            </ModelVisual3D.Content>
+                        </ModelVisual3D>
+                    </Viewport3D>
+
+                    <TextBlock x:Name="previewMessage" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="#FF9AA4B2" TextWrapping="Wrap" TextAlignment="Center"
+                               MaxWidth="360"/>
+
+                    <TextBlock x:Name="spinHint" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                               Margin="8" Foreground="#FF6B7684"/>
+                </Grid>
+            </Border>
+
+            <TextBlock x:Name="measurementLabel" Grid.Row="2" Margin="0,4,0,0"
+                       Foreground="Gray" TextWrapping="Wrap"/>
+        </Grid>
+
+        <!-- How it is changed -->
+        <DockPanel Grid.Column="2">
+            <Label x:Name="shapeLabel" DockPanel.Dock="Top" Content="*Shape*" Padding="0,0,0,4"/>
+
+            <StackPanel DockPanel.Dock="Bottom">
+                <Button x:Name="applyButton" Content="*Apply*" Height="30" Margin="0,8,0,0"
+                        Click="applyButton_Click"/>
+                <TextBlock x:Name="statusLabel" Margin="0,6,0,0" TextWrapping="Wrap" Foreground="Gray"/>
+            </StackPanel>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <TextBlock x:Name="modelHeader" FontWeight="Bold" Margin="0,4,0,2"/>
+                    <Button x:Name="importButton" Content="*Import*" Height="28" Click="importButton_Click"/>
+                    <TextBlock x:Name="modelLabel" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                    <Button x:Name="clearModelButton" Content="*Clear*" Height="24" Margin="0,4,0,0"
+                            Click="clearModelButton_Click" Visibility="Collapsed"/>
+                    <TextBlock x:Name="importHint" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
+                    <TextBlock x:Name="sizeHeader" FontWeight="Bold" Margin="0,14,0,2"/>
+                    <DockPanel Margin="0,2">
+                        <TextBlock x:Name="scaleCaption" Width="70" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="scaleValue" DockPanel.Dock="Right" Width="56"
+                                   TextAlignment="Right" VerticalAlignment="Center"/>
+                        <Slider x:Name="scaleSlider" Minimum="0.1" Maximum="8" Value="1"
+                                TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                ValueChanged="transform_Changed"/>
+                    </DockPanel>
+
+                    <TextBlock x:Name="moveHeader" FontWeight="Bold" Margin="0,12,0,2"/>
+                    <DockPanel Margin="0,2">
+                        <TextBlock Width="70" Text="X" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="offsetXValue" DockPanel.Dock="Right" Width="56"
+                                   TextAlignment="Right" VerticalAlignment="Center"/>
+                        <Slider x:Name="offsetXSlider" Minimum="-100" Maximum="100" Value="0"
+                                TickFrequency="0.5" IsSnapToTickEnabled="True"
+                                ValueChanged="transform_Changed"/>
+                    </DockPanel>
+                    <DockPanel Margin="0,2">
+                        <TextBlock Width="70" Text="Y" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="offsetYValue" DockPanel.Dock="Right" Width="56"
+                                   TextAlignment="Right" VerticalAlignment="Center"/>
+                        <Slider x:Name="offsetYSlider" Minimum="-100" Maximum="100" Value="0"
+                                TickFrequency="0.5" IsSnapToTickEnabled="True"
+                                ValueChanged="transform_Changed"/>
+                    </DockPanel>
+                    <DockPanel Margin="0,2">
+                        <TextBlock Width="70" Text="Z" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="offsetZValue" DockPanel.Dock="Right" Width="56"
+                                   TextAlignment="Right" VerticalAlignment="Center"/>
+                        <Slider x:Name="offsetZSlider" Minimum="-100" Maximum="100" Value="0"
+                                TickFrequency="0.5" IsSnapToTickEnabled="True"
+                                ValueChanged="transform_Changed"/>
+                    </DockPanel>
+
+                    <TextBlock x:Name="turnHeader" FontWeight="Bold" Margin="0,12,0,2"/>
+                    <DockPanel Margin="0,2">
+                        <TextBlock Width="70" Text="X" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="rotateXValue" DockPanel.Dock="Right" Width="56"
+                                   TextAlignment="Right" VerticalAlignment="Center"/>
+                        <Slider x:Name="rotateXSlider" Minimum="-180" Maximum="180" Value="0"
+                                TickFrequency="5" IsSnapToTickEnabled="True"
+                                ValueChanged="transform_Changed"/>
+                    </DockPanel>
+                    <DockPanel Margin="0,2">
+                        <TextBlock Width="70" Text="Y" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="rotateYValue" DockPanel.Dock="Right" Width="56"
+                                   TextAlignment="Right" VerticalAlignment="Center"/>
+                        <Slider x:Name="rotateYSlider" Minimum="-180" Maximum="180" Value="0"
+                                TickFrequency="5" IsSnapToTickEnabled="True"
+                                ValueChanged="transform_Changed"/>
+                    </DockPanel>
+                    <DockPanel Margin="0,2">
+                        <TextBlock Width="70" Text="Z" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="rotateZValue" DockPanel.Dock="Right" Width="56"
+                                   TextAlignment="Right" VerticalAlignment="Center"/>
+                        <Slider x:Name="rotateZSlider" Minimum="-180" Maximum="180" Value="0"
+                                TickFrequency="5" IsSnapToTickEnabled="True"
+                                ValueChanged="transform_Changed"/>
+                    </DockPanel>
+
+                    <CheckBox x:Name="texturedCheckBox" Margin="0,14,0,0" IsChecked="True"
+                              Checked="ghostCheckBox_Changed" Unchecked="ghostCheckBox_Changed"/>
+
+                    <CheckBox x:Name="ghostCheckBox" Margin="0,8,0,0" IsChecked="True"
+                              Checked="ghostCheckBox_Changed" Unchecked="ghostCheckBox_Changed"/>
+                    <TextBlock x:Name="ghostHint" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
+                    <Button x:Name="resetButton" Content="*Reset*" Height="26" Margin="0,12,0,0"
+                            Click="resetButton_Click"/>
+
+                    <TextBlock x:Name="modsNoteLabel" Foreground="Gray" TextWrapping="Wrap" Margin="0,12,0,0"/>
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+    </Grid>
+</UserControl>
