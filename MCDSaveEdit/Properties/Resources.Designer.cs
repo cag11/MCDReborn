@@ -349,7 +349,7 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Wear your own skin.
+        ///   Looks up a localized string similar to Wear a custom skin.
         /// </summary>
         public static string HERO_OWN_SKIN {
             get {
@@ -2010,6 +2010,51 @@ namespace MCDSaveEdit.Properties {
         public static string TOWER_CHALLENGE {
             get {
                 return ResourceManager.GetString("TOWER_CHALLENGE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Built from.
+        /// </summary>
+        public static string TOWER_BUILT_FROM {
+            get {
+                return ResourceManager.GetString("TOWER_BUILT_FROM", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Encounter.
+        /// </summary>
+        public static string TOWER_ENCOUNTER {
+            get {
+                return ResourceManager.GetString("TOWER_ENCOUNTER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to This kind of floor has no encounter..
+        /// </summary>
+        public static string TOWER_NO_ENCOUNTER {
+            get {
+                return ResourceManager.GetString("TOWER_NO_ENCOUNTER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to This run has no {0} floor to copy, so there is nothing to build here..
+        /// </summary>
+        public static string TOWER_NO_BUILD {
+            get {
+                return ResourceManager.GetString("TOWER_NO_BUILD", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Double click to move the run to this floor..
+        /// </summary>
+        public static string TOWER_GO_HINT {
+            get {
+                return ResourceManager.GetString("TOWER_GO_HINT", resourceCulture);
             }
         }
     }

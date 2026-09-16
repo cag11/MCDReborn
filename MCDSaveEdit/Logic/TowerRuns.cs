@@ -133,6 +133,47 @@ namespace MCDSaveEdit.Logic
             }
 
             public Player? Owner => Players.FirstOrDefault(player => player.IsOwner) ?? Players.FirstOrDefault();
+
+            /// <summary>
+            /// Every floor build this run contains, one of each, grouped by kind.
+            ///
+            /// The run itself is the source rather than a list written here, because everything
+            /// in it is something the game generated for this tower: every tile exists, every
+            /// encounter exists, and each is already paired with the other correctly. A list of
+            /// names invented here could not promise any of that.
+            /// </summary>
+            public IReadOnlyList<Layout> layouts()
+            {
+                var found = new List<Layout>();
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var floor in Floors)
+                {
+                    if (string.IsNullOrEmpty(floor.Type) || string.IsNullOrEmpty(floor.Tile)) { continue; }
+                    var layout = new Layout(floor.Type, floor.Tile, floor.Challenges);
+                    if (seen.Add(layout.key)) { found.Add(layout); }
+                }
+                return found;
+            }
+
+            /// <summary>The builds available for one kind of floor.</summary>
+            public IReadOnlyList<Layout> layoutsFor(string type)
+                => layouts().Where(layout => string.Equals(layout.Type, type, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            /// <summary>The levels this run builds for one kind of floor.</summary>
+            public IReadOnlyList<string> tilesFor(string type)
+                => layoutsFor(type).Select(layout => layout.Tile)
+                    .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+            /// <summary>
+            /// The encounters this run runs on one kind of floor.
+            ///
+            /// Empty for merchants and for the entrance, which is the point: those floors have no
+            /// encounter at all, so there is nothing to offer and nothing to pick.
+            /// </summary>
+            public IReadOnlyList<string> encountersFor(string type)
+                => layoutsFor(type).SelectMany(layout => layout.Challenges)
+                    .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         }
 
         /// <summary>
@@ -181,12 +222,73 @@ namespace MCDSaveEdit.Logic
                 }
             }
 
+            /// <summary>
+            /// Makes this floor into another kind of floor, properly.
+            ///
+            /// The type on its own is only a label. What the game actually builds is the tile,
+            /// and what it runs there is the challenge, so a Combat floor relabelled Merchant
+            /// still loaded an arena and still made you fight. All three move together now.
+            /// </summary>
+            public void apply(Layout layout)
+            {
+                Type = layout.Type;
+                setTile(layout.Tile);
+                setChallenges(layout.Challenges);
+            }
+
+            public void setTile(string tile)
+            {
+                if (_config == null) { return; }
+                _config["tile"] = JsonValue.Create(tile);
+            }
+
+            /// <summary>
+            /// Sets the encounter, or takes the key away entirely when there is none.
+            ///
+            /// Removed rather than emptied because that is what the game writes: a merchant floor
+            /// and the entrance have no "challenges" key at all, while every fighting floor has
+            /// one. An empty array would be this app inventing a shape the game never produces.
+            /// </summary>
+            public void setChallenges(IReadOnlyList<string> challenges)
+            {
+                if (_config == null) { return; }
+
+                if (challenges.Count == 0) { _config.Remove("challenges"); return; }
+
+                var array = new JsonArray();
+                foreach (var challenge in challenges) { array.Add(JsonValue.Create(challenge)); }
+                _config["challenges"] = array;
+            }
+
             public void setReward(int slot, string value)
             {
                 if (!(_config?["rewards"] is JsonArray rewards)) { return; }
                 if (slot < 0 || slot >= rewards.Count) { return; }
                 rewards[slot] = JsonValue.Create(value);
             }
+        }
+
+        /// <summary>
+        /// What a floor is made of: the kind, the level built for it, and the encounter run there.
+        ///
+        /// The three belong together. A merchant tile with a boss encounter is not something the
+        /// game ever writes, and there is no way to know from outside whether it would even load,
+        /// so the pieces are only ever offered in the combinations the game itself produced.
+        /// </summary>
+        public sealed class Layout
+        {
+            public Layout(string type, string tile, IReadOnlyList<string> challenges)
+            {
+                Type = type; Tile = tile; Challenges = challenges;
+            }
+
+            public string Type { get; }
+            public string Tile { get; }
+            public IReadOnlyList<string> Challenges { get; }
+
+            public string Encounter => string.Join(", ", Challenges);
+
+            internal string key => Type + "|" + Tile + "|" + Encounter;
         }
 
         /// <summary>The kinds a floor can be, as the save spells them.</summary>
@@ -302,50 +404,68 @@ namespace MCDSaveEdit.Logic
             return runs;
         }
 
-        /// <summary>The run still being played, if there is one.</summary>
+        /// <summary>
+        /// The run being played, which is the newest one that still has its detail.
+        ///
+        /// The last rather than the first, because more than one can look live at once. A run
+        /// that was walked out of rather than finished keeps its towerInfo, so the game leaves it
+        /// sitting there looking exactly like a run in progress, and starting another one appends
+        /// rather than replaces. Taking the first meant opening on a run abandoned weeks ago.
+        ///
+        /// Both are still listed. One of them being stale is a guess from the outside - the save
+        /// gives no field that says so - and quietly hiding a run someone might want back is
+        /// worse than showing one they will ignore.
+        /// </summary>
         public static Run? liveRun(ProfileSaveFile? profile)
-            => runsIn(profile).FirstOrDefault(run => run.InProgress);
+        {
+            var runs = runsIn(profile);
+            return runs.LastOrDefault(run => run.InProgress) ?? runs.LastOrDefault();
+        }
 
         #region Reading a node without trusting it
 
+        /// <summary>
+        /// Reading a value has to cope with two kinds of node.
+        ///
+        /// A node parsed from the file is backed by a JsonElement and will convert between number
+        /// types on demand. A node this app has written is backed by the CLR value it was made
+        /// from, and asking it for a different type throws - so an int written here and read back
+        /// as a double failed, was swallowed, and came back as zero. Everything edited on this
+        /// screen then showed 0 the moment it was set, and the next edit would have saved that.
+        ///
+        /// TryGetValue handles both, so each reader asks for the types the value might be in.
+        /// </summary>
         private static string text(JsonObject? owner, string key)
         {
-            var value = owner?[key];
-            if (value == null) { return string.Empty; }
-            try { return value.GetValueKind() == JsonValueKind.String ? value.GetValue<string>() : value.ToJsonString(); }
+            if (!(owner?[key] is JsonValue value)) { return string.Empty; }
+            if (value.TryGetValue<string>(out var s)) { return s ?? string.Empty; }
+            try { return value.ToJsonString().Trim('"'); }
             catch (Exception) { return string.Empty; }
         }
 
         private static bool? readBool(JsonObject? owner, string key)
         {
-            var value = owner?[key];
-            if (value == null) { return null; }
-            try
-            {
-                return value.GetValueKind() switch {
-                    JsonValueKind.True => true,
-                    JsonValueKind.False => false,
-                    JsonValueKind.Number => value.GetValue<double>() != 0,
-                    _ => (bool?)null,
-                };
-            }
-            catch (Exception) { return null; }
+            if (!(owner?[key] is JsonValue value)) { return null; }
+            if (value.TryGetValue<bool>(out var b)) { return b; }
+            if (value.TryGetValue<int>(out var i)) { return i != 0; }
+            if (value.TryGetValue<double>(out var d)) { return d != 0; }
+            return null;
         }
 
         private static int? readInt(JsonObject? owner, string key)
         {
-            var value = owner?[key];
-            if (value == null || value.GetValueKind() != JsonValueKind.Number) { return null; }
-            try { return (int)value.GetValue<double>(); }
-            catch (Exception) { return null; }
+            var number = readLong(owner, key);
+            return number == null ? (int?)null : (int)number.Value;
         }
 
         private static long? readLong(JsonObject? owner, string key)
         {
-            var value = owner?[key];
-            if (value == null || value.GetValueKind() != JsonValueKind.Number) { return null; }
-            try { return (long)value.GetValue<double>(); }
-            catch (Exception) { return null; }
+            if (!(owner?[key] is JsonValue value)) { return null; }
+            if (value.TryGetValue<long>(out var l)) { return l; }
+            if (value.TryGetValue<int>(out var i)) { return i; }
+            if (value.TryGetValue<double>(out var d)) { return (long)d; }
+            if (value.TryGetValue<decimal>(out var m)) { return (long)m; }
+            return null;
         }
 
         //Only ever over a key that is already there. Inventing one would be inventing a field the

@@ -258,7 +258,7 @@
     <comment>Now playing as</comment>
   </data>
   <data name="HERO_OWN_SKIN" xml:space="preserve">
-    <value>Wear your own skin</value>
+    <value>Wear a custom skin</value>
     <comment>Own skin heading</comment>
   </data>
   <data name="HERO_HIDE_ARMOUR" xml:space="preserve">
@@ -986,5 +986,25 @@ The save file is not changed until you save it.</value>
   <data name="TOWER_CHALLENGE" xml:space="preserve">
     <value>Encounter: {0}</value>
     <comment>The floor's challenge</comment>
+  </data>
+  <data name="TOWER_BUILT_FROM" xml:space="preserve">
+    <value>Built from</value>
+    <comment>Which level the floor builds</comment>
+  </data>
+  <data name="TOWER_ENCOUNTER" xml:space="preserve">
+    <value>Encounter</value>
+    <comment>What the floor runs</comment>
+  </data>
+  <data name="TOWER_NO_ENCOUNTER" xml:space="preserve">
+    <value>This kind of floor has no encounter.</value>
+    <comment>Merchant and empty floors</comment>
+  </data>
+  <data name="TOWER_NO_BUILD" xml:space="preserve">
+    <value>This run has no {0} floor to copy, so there is nothing to build here.</value>
+    <comment>No layout of that type</comment>
+  </data>
+  <data name="TOWER_GO_HINT" xml:space="preserve">
+    <value>Double click to move the run to this floor.</value>
+    <comment>Floor row tooltip</comment>
   </data>
 </root>

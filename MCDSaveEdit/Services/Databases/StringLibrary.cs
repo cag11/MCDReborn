@@ -101,6 +101,7 @@ namespace MCDSaveEdit.Services
         internal static string formatITEMS_DELETE_CHOSEN(int count) { return string.Format(ITEMS_DELETE_CHOSEN, count); }
         internal static string formatITEMS_DELETE_CONFIRM(int count) { return string.Format(ITEMS_DELETE_CONFIRM, count); }
         internal static string formatITEMS_DELETED(int count) { return string.Format(ITEMS_DELETED, count); }
+        internal static string formatTOWER_NO_BUILD(string type) { return string.Format(TOWER_NO_BUILD, type); }
         internal static string formatTOWER_FLOOR_NUMBER(int number) { return string.Format(TOWER_FLOOR_NUMBER, number); }
         internal static string formatTOWER_SEED(int seed) { return string.Format(TOWER_SEED, seed); }
         internal static string formatTOWER_TILE(string tile) { return string.Format(TOWER_TILE, tile); }
