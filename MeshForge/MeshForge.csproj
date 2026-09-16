@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>MeshForge</AssemblyName>
+    <RootNamespace>MeshForge</RootNamespace>
+    <!-- Plain console, no WPF: this is a workbench, not part of the app. -->
+    <UseWindowsForms>false</UseWindowsForms>
+    <UseWPF>false</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PakReader\PakReader.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Linked, not copied. Both files already exist and having a second copy of either is how
+      two implementations drift apart - and in Secrets' case, how a git-ignored key ends up
+      somewhere that is not ignored.
+    -->
+    <Compile Include="..\MCDSaveEdit\Data\Models\AesKey.cs" Link="Linked\AesKey.cs" />
+    <Compile Include="..\MCDSaveEdit\Data\Secrets.cs" Link="Linked\Secrets.cs" />
+    <Compile Include="..\MCDSaveEdit\Logic\PakWriter.cs" Link="Linked\PakWriter.cs" />
+  </ItemGroup>
+
+</Project>
