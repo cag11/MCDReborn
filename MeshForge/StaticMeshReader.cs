@@ -74,6 +74,60 @@ namespace MeshForge
         }
 
         /// <summary>
+        /// The bounds as numbers rather than as printed text, for the geometry search to aim at.
+        ///
+        /// The box is what makes finding the vertices possible at all: it came out of the same
+        /// export and was written to contain exactly the points being looked for, so it is the one
+        /// piece of ground truth available before anything untagged has been decoded.
+        /// </summary>
+        public static bool tryReadBounds(PakPackage package, out Geometry.Position origin, out Geometry.Position extent)
+        {
+            origin = default;
+            extent = default;
+
+            foreach (var export in package.Exports)
+            {
+                if (!(export is UObject properties)) { continue; }
+                if (!properties.TryGetValue("ExtendedBounds", out var boundsRaw)) { continue; }
+                if (!(unwrap(boundsRaw) is UObject bounds)) { continue; }
+
+                //The extent has to be there. The origin does not: a tagged property list leaves
+                //out anything equal to its default, so a mesh centred on nothing has no Origin
+                //key at all. Treating that as a failure loses meshes that are simply centred.
+                if (!tryReadVector(bounds, "BoxExtent", out extent)) { continue; }
+                if (!tryReadVector(bounds, "Origin", out origin)) { origin = new Geometry.Position(0, 0, 0); }
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// One FVector out of a struct, by reflection.
+        ///
+        /// The parser hands back its own vector type rather than anything this project declares,
+        /// so the three floats are reached the same way everything else here is: by asking the
+        /// object what it holds instead of naming a type that would have to be kept in step.
+        /// </summary>
+        private static bool tryReadVector(UObject owner, string key, out Geometry.Position vector)
+        {
+            vector = default;
+            if (!owner.TryGetValue(key, out var raw)) { return false; }
+
+            var value = unwrap(raw);
+            if (value == null) { return false; }
+
+            var numbers = new List<float>();
+            foreach (var field in value.GetType().GetFields())
+            {
+                if (field.GetValue(value) is float number) { numbers.Add(number); }
+            }
+            if (numbers.Count < 3) { return false; }
+
+            vector = new Geometry.Position(numbers[0], numbers[1], numbers[2]);
+            return true;
+        }
+
+        /// <summary>
         /// The value inside a property wrapper.
         ///
         /// Every parsed property is a BaseProperty&lt;T&gt; holding what was read, so the useful

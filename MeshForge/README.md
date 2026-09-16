@@ -55,25 +55,59 @@ Drop the result in `Dungeons/Content/Paks/~mods` and start the game. The weapon 
 as it always did is the answer being looked for; a crash or an invisible weapon would have meant
 packing was the problem rather than the geometry.
 
-**2. Read the geometry. Half done.** The tagged property list at the front of the export reads,
-and with it the bounds - which is the half that has to be corrected whenever geometry changes, or
-the weapon is culled and turns invisible. On the vanilla Claymore:
+**2. Read the geometry. DONE.** Both halves read. The tagged property list at the front gives the
+bounds - the half that has to be corrected whenever geometry changes, or the weapon is culled and
+turns invisible - and the untagged `FStaticMeshRenderData` behind it now gives up its vertices and
+triangles.
+
+Not by walking the layout. Those are raw structs written in the order the engine reads them, so
+walking from the front means getting every field of every version check right before anything can
+be found at all. The buffers are found by their contents instead, and the export's own properties
+are the answer key: the real position buffer is the one whose bounding box reproduces the declared
+`ExtendedBounds`. On the vanilla Claymore:
 
 ```
-ExtendedBounds:
-  Origin      = (0, -50.82, 0)
-  BoxExtent   = (26.52, 90.6, 3.13)
-  SphereRadius = 90.76
+674 vertices, data 1,441..9,529
+  spans (-26.516, -141.421, -3.125) to (26.517, 39.775, 3.125)
+  which is the declared box to within 0 units
+
+504 triangles - the mesh
+504 triangles - a reversed copy, for mirrored meshes
+504 triangles - a depth only copy, for shadows
+504 triangles - a depth only copy, for shadows
+6,048 indices - adjacency, 12 indices per triangle, for tessellation
+
+The triangles use all 674 vertices and none beyond them, which agrees with the header.
 ```
 
-Which is a claymore: about 181 units long, 53 across, 6 thick. A blade. Numbers that describe the
-right shape are the evidence that the list is being read correctly rather than plausibly.
+Three independent facts about one file, in agreement: the header says 674, the box says 674
+vertices' worth of space, and the triangles reach vertex 673 while touching exactly 674 distinct
+ones. That agreement is the evidence - a reader that is merely plausible does not produce it.
 
-The offset origin is also the first sight of the pivot problem - the mesh does not sit centred on
-its own handle, so a model imported centred on nothing in particular will be held by the wrong end.
+Checked across the whole game rather than one weapon, with `survey`:
 
-What is left of this step is the untagged half: `FStaticMeshRenderData` in the `.uexp`, where the
-vertices actually are.
+```
+2,730 matching assets
+  not meshes      130      (SM_ is also SoundMix and Skeleton)
+  cross check ok  2600
+  cross check off    0
+
+  2,536,080 vertices and 1,442,207 triangles read in total
+  worst disagreement with the declared bounds: 0.00081 units
+```
+
+Two things worth knowing, because both cost an afternoon:
+
+- **Index data is an array of bytes, not of indices.** A header count of 3,024 is 1,512 indices and
+  504 triangles.
+- **Nothing is aligned.** The Claymore's indices start on an odd byte. Scanning every second or
+  fourth byte finds no geometry at all, which is what the first few passes concluded.
+
+The offset origin is the first sight of the pivot problem: the mesh does not sit centred on its own
+handle, so a model imported centred on nothing in particular gets held by the wrong end.
+
+Still unread is the stretch between the positions and the indices - 10,832 bytes on the Claymore of
+packed tangents and UVs, none of it float, so none of it findable the same way. Step three needs it.
 
 **3. Write the geometry back unchanged.** Re-serialise what was just read and get a byte identical
 file. Until this holds, nothing written by hand can be trusted.
@@ -84,13 +118,16 @@ This is the first point at which anything is proven.
 **5. Import a model.** Only now does reading a `.obj` matter, along with the two problems that come
 with it: the pivot, so the weapon is held by the handle rather than the blade, and the scale.
 
-Step 2 is now the one that decides whether the rest is possible.
+Step 3 is now the one that decides whether the rest is possible.
 
 ## Commands
 
 ```
 find <text>                   asset paths containing that text
 dump <asset path>             what the cooked asset is made of
+geometry <asset path>         find the vertices and triangles in the cooked mesh
+survey <text>                 read the geometry of every matching mesh, and tally it
+extract <asset> <folder>      write the raw .uasset and .uexp out to look at
 roundtrip <asset> <out.pak>   pack it back unchanged, to prove the loop
 ```
 
