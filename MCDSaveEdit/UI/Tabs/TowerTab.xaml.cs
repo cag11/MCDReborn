@@ -550,25 +550,125 @@ namespace MCDSaveEdit.UI
 
         private const double TILE = 90;
 
+        /// <summary>A hero carries three artifacts, in the tower as anywhere else.</summary>
+        private const int ARTIFACT_SLOTS = 3;
+
+        /// <summary>
+        /// The three pieces of gear along the top, the three artifacts under them.
+        ///
+        /// Fixed slots rather than a list of whatever happens to be carried. A list showed three
+        /// weapons and nothing else on a run that started without artifacts, which left no way to
+        /// add one and no sign that anything was missing. Slots say what a hero has room for, so
+        /// an empty one is an offer rather than an absence.
+        ///
+        /// Anything that fits none of the six - a second sword, say - is still shown, on a row of
+        /// its own underneath. It is in the run whether or not this screen has a place for it,
+        /// and hiding it would be losing it.
+        /// </summary>
         private void fillItems()
         {
             itemsPanel.Children.Clear();
-            foreach (var item in _items)
+
+            var placed = new List<Item>();
+
+            var gear = new[] {
+                (ItemFilterEnum.MeleeWeapons, (Func<Item, bool>)(item => item.isMeleeWeapon())),
+                (ItemFilterEnum.Armor, item => item.isArmor()),
+                (ItemFilterEnum.RangedWeapons, item => item.isRangedWeapon()),
+            };
+
+            var gearRow = row();
+            foreach (var (filter, matches) in gear)
             {
-                var control = new ItemControl { item = item, Width = TILE, Height = TILE };
-                itemsPanel.Children.Add(new Button {
-                    Content = control,
-                    Width = TILE,
-                    Height = TILE,
-                    Margin = new Thickness(0, 0, 4, 4),
-                    Background = null,
-                    Command = new RelayCommand<Item>(selectItem),
-                    CommandParameter = item,
-                });
+                var carried = _items.FirstOrDefault(item => matches(item) && !placed.Contains(item));
+                if (carried != null) { placed.Add(carried); }
+                gearRow.Children.Add(carried == null ? emptySlot(filter) : itemTile(carried));
+            }
+            itemsPanel.Children.Add(gearRow);
+
+            var artifacts = _items.Where(item => item.isArtifact()).ToList();
+            var artifactRow = row();
+            for (int slot = 0; slot < ARTIFACT_SLOTS; slot++)
+            {
+                var carried = slot < artifacts.Count ? artifacts[slot] : null;
+                if (carried != null) { placed.Add(carried); }
+                artifactRow.Children.Add(carried == null ? emptySlot(ItemFilterEnum.Artifacts) : itemTile(carried));
+            }
+            itemsPanel.Children.Add(artifactRow);
+
+            var spare = _items.Where(item => !placed.Contains(item)).ToList();
+            if (spare.Count > 0)
+            {
+                var spareRow = row();
+                foreach (var item in spare) { spareRow.Children.Add(itemTile(item)); }
+                itemsPanel.Children.Add(spareRow);
             }
 
             if (_selected != null && !_items.Contains(_selected)) { _selected = null; }
             selectedItemScreen.item = _selected;
+        }
+
+        private static StackPanel row() => new StackPanel { Orientation = Orientation.Horizontal };
+
+        private Button itemTile(Item item)
+        {
+            return new Button {
+                Content = new ItemControl { item = item, Width = TILE, Height = TILE },
+                Width = TILE,
+                Height = TILE,
+                Margin = new Thickness(0, 0, 4, 4),
+                Background = null,
+                Command = new RelayCommand<Item>(selectItem),
+                CommandParameter = item,
+            };
+        }
+
+        private Button emptySlot(ItemFilterEnum filter)
+        {
+            var slot = new Button {
+                Content = new TextBlock {
+                    Text = "+",
+                    FontSize = 24,
+                    Foreground = (Brush)FindResource("Brush.TextDisabled"),
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                },
+                Width = TILE,
+                Height = TILE,
+                Margin = new Thickness(0, 0, 4, 4),
+                ToolTip = R.TOWER_ADD_ITEM,
+                IsEnabled = AppModel.gameContentLoaded,
+            };
+            slot.Click += (s, e) => addItem(filter);
+            return slot;
+        }
+
+        /// <summary>
+        /// Puts something into the run, chosen from the app's own picker.
+        ///
+        /// It is given the power of the strongest thing already being carried rather than the
+        /// power of one, which is what a new item starts at elsewhere: a piece of gear arriving
+        /// at power one in a run of level three hundred gear is not what anyone was adding.
+        /// </summary>
+        private void addItem(ItemFilterEnum filter)
+        {
+            if (_player == null || !AppModel.gameContentLoaded) { return; }
+
+            var window = WindowFactory.createSelectionWindow();
+            window.loadFilteredItems(filter, null);
+            window.onSelection = type => {
+                if (string.IsNullOrEmpty(type)) { return; }
+
+                var added = Constants.createDefaultItemForFilter(filter);
+                added.Type = type!;
+                added.Power = _items.Count > 0 ? _items.Max(item => item.Power) : added.Power;
+
+                _items.Add(added);
+                _selected = added;
+                commit();
+                selectedItemScreen.item = added;
+            };
+            window.Show();
         }
 
         private void selectItem(Item item)

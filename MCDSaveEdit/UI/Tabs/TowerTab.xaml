@@ -144,7 +144,9 @@
                 <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4"
                         Background="{DynamicResource Brush.Surface}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="6">
-                        <WrapPanel x:Name="itemsPanel" Orientation="Horizontal"/>
+                        <!-- Rows, not a run of tiles: gear along the top and artifacts under it,
+                             which is the shape a hero is carried in. -->
+                        <StackPanel x:Name="itemsPanel" Orientation="Vertical"/>
                     </ScrollViewer>
                 </Border>
             </DockPanel>
