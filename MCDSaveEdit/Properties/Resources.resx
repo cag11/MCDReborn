@@ -1011,4 +1011,12 @@ The save file is not changed until you save it.</value>
     <value>Add something to the run.</value>
     <comment>Empty slot tooltip</comment>
   </data>
+  <data name="CUSTOM_SKINS_CAPES" xml:space="preserve">
+    <value>Capes</value>
+    <comment>Cape category</comment>
+  </data>
+  <data name="CUSTOM_SKINS_PETS" xml:space="preserve">
+    <value>Pets</value>
+    <comment>Pet category</comment>
+  </data>
 </root>

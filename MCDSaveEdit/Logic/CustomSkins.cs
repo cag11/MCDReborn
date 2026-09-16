@@ -151,7 +151,7 @@ namespace MCDSaveEdit.Logic
         /// and matching the stricter spelling let a 256x256 inventory sprite through as if it
         /// were the armour.
         /// </summary>
-        private static bool isColourMap(string name)
+        internal static bool isColourMap(string name)
         {
             if (name.IndexOf("icon", StringComparison.OrdinalIgnoreCase) >= 0) { return false; }
 

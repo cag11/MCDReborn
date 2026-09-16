@@ -2066,5 +2066,23 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("TOWER_ADD_ITEM", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Capes.
+        /// </summary>
+        public static string CUSTOM_SKINS_CAPES {
+            get {
+                return ResourceManager.GetString("CUSTOM_SKINS_CAPES", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pets.
+        /// </summary>
+        public static string CUSTOM_SKINS_PETS {
+            get {
+                return ResourceManager.GetString("CUSTOM_SKINS_PETS", resourceCulture);
+            }
+        }
     }
 }
