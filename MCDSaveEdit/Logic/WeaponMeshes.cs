@@ -50,13 +50,15 @@ namespace MCDSaveEdit.Logic
         public sealed class Shape
         {
             public Shape(IReadOnlyList<MeshGeometry.Position> positions, IReadOnlyList<int> indices,
-                MeshGeometry.Position origin, MeshGeometry.Position extent, float radius)
+                MeshGeometry.Position origin, MeshGeometry.Position extent, float radius,
+                IReadOnlyList<(float u, float v)>? texCoords = null)
             {
                 Positions = positions;
                 Indices = indices;
                 Origin = origin;
                 Extent = extent;
                 Radius = radius;
+                TexCoords = texCoords ?? Array.Empty<(float, float)>();
             }
 
             public IReadOnlyList<MeshGeometry.Position> Positions { get; }
@@ -65,6 +67,8 @@ namespace MCDSaveEdit.Logic
             public MeshGeometry.Position Origin { get; }
             public MeshGeometry.Position Extent { get; }
             public float Radius { get; }
+            /// <summary>One pair per vertex, the artwork channel only.</summary>
+            public IReadOnlyList<(float u, float v)> TexCoords { get; }
             public int TriangleCount => Indices.Count / 3;
 
             /// <summary>The longest side, which is the number a scale has to be judged against.</summary>
@@ -156,7 +160,23 @@ namespace MCDSaveEdit.Logic
                 }
             }
 
-            return new Shape(MeshGeometry.readPositions(uexp, vertices, vertices.Count), indices, origin, extent, radius);
+            //Channel zero is the artwork. The second channel a weapon carries is the reserved
+            //lightmap one, which paints nothing.
+            var attributes = MeshGeometry.findAttributes(uexp, vertices);
+            var texCoords = new List<(float, float)>(vertices.Count);
+            if (attributes != null && !attributes.FullPrecisionUVs)
+            {
+                for (int i = 0; i < vertices.Count; i++)
+                {
+                    var at = attributes.UVsOffset + i * attributes.TexCoords * attributes.UVStride;
+                    texCoords.Add((
+                        VertexPacking.unpackHalf(BitConverter.ToUInt16(uexp, at)),
+                        VertexPacking.unpackHalf(BitConverter.ToUInt16(uexp, at + 2))));
+                }
+            }
+
+            return new Shape(MeshGeometry.readPositions(uexp, vertices, vertices.Count), indices,
+                origin, extent, radius, texCoords);
         }
 
         /// <summary>
@@ -334,6 +354,24 @@ namespace MCDSaveEdit.Logic
             }
 
             return CustomSkins.writeModPak(modName, entries);
+        }
+
+
+        /// <summary>
+        /// The artwork a weapon is painted with, for showing the preview as it really looks.
+        ///
+        /// A flat grey model says where a shape is but not which way round it is: a sword with its
+        /// grip wrapping at one end is obvious the moment it is textured and guesswork before
+        /// that. Since aligning the handle is the whole job this tab asks of somebody, showing the
+        /// texture is not decoration.
+        /// </summary>
+        public static System.Windows.Media.Imaging.BitmapSource? textureFor(string meshAssetPath)
+        {
+            var texture = CustomSkins.textureBeside(meshAssetPath);
+            if (texture == null) { return null; }
+
+            try { return CustomSkins.preview(texture); }
+            catch (Exception) { return null; }
         }
 
         private static PakPackage? readPackage(string assetPath)

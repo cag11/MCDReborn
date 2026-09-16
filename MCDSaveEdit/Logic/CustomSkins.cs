@@ -486,6 +486,9 @@ namespace MCDSaveEdit.Logic
                 .FirstOrDefault();
         }
 
+        /// <summary>An image out of PNG bytes, for artwork that never touches the disk.</summary>
+        public static BitmapSource imageFromPng(byte[] png) => decodePng(png);
+
         private static BitmapSource decodePng(byte[] png)
         {
             using var stream = new MemoryStream(png);

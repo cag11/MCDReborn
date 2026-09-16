@@ -144,7 +144,10 @@
                                 ValueChanged="transform_Changed"/>
                     </DockPanel>
 
-                    <CheckBox x:Name="ghostCheckBox" Margin="0,14,0,0" IsChecked="True"
+                    <CheckBox x:Name="texturedCheckBox" Margin="0,14,0,0" IsChecked="True"
+                              Checked="ghostCheckBox_Changed" Unchecked="ghostCheckBox_Changed"/>
+
+                    <CheckBox x:Name="ghostCheckBox" Margin="0,8,0,0" IsChecked="True"
                               Checked="ghostCheckBox_Changed" Unchecked="ghostCheckBox_Changed"/>
                     <TextBlock x:Name="ghostHint" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
 

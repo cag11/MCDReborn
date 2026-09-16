@@ -2372,5 +2372,14 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("WEAPON_SKINS_NO_TEXTURE", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show texture.
+        /// </summary>
+        public static string WEAPON_SKINS_TEXTURED {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_TEXTURED", resourceCulture);
+            }
+        }
     }
 }

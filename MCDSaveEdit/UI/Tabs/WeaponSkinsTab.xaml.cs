@@ -42,6 +42,10 @@ namespace MCDSaveEdit.UI
         //the weapon rather than reshaping it, and almost everything else behaves the same way.
         private GlbModel? _imported;
 
+        //The artwork the preview is painted with: the weapon's own, or the imported model's when
+        //one has been brought.
+        private System.Windows.Media.Imaging.BitmapSource? _texture;
+
         //Remembered per weapon, so flicking through the list to compare does not throw away the
         //alignment somebody has just spent a minute getting right.
         private readonly Dictionary<string, MeshEdit.Transform> _transforms =
@@ -86,6 +90,7 @@ namespace MCDSaveEdit.UI
             importButton.Content = R.WEAPON_SKINS_IMPORT;
             clearModelButton.Content = R.WEAPON_SKINS_CLEAR_MODEL;
             importHint.Text = R.WEAPON_SKINS_IMPORT_HINT;
+            texturedCheckBox.Content = R.WEAPON_SKINS_TEXTURED;
         }
 
         public void updateUI()
@@ -174,6 +179,10 @@ namespace MCDSaveEdit.UI
         {
             _selected = (weaponList.SelectedItem as ListBoxItem)?.Tag as WeaponMeshes.Mesh;
             _shape = _selected == null ? null : WeaponMeshes.read(_selected.AssetPath);
+            if (_imported == null)
+            {
+                _texture = _selected == null ? null : WeaponMeshes.textureFor(_selected.AssetPath);
+            }
 
             showTransform(_selected == null
                 ? MeshEdit.Transform.none
@@ -289,14 +298,32 @@ namespace MCDSaveEdit.UI
             }
 
             var edited = build(showing, transform);
+            var painted = texturedCheckBox.IsChecked == true
+                && _texture != null
+                && showing.TexCoords.Count > 0;
+
+            //An ImageBrush stretches over the whole coordinate space by default, which is what a
+            //texture wants. Tiling is left off: a coordinate outside nought to one is a fault in
+            //the model, and showing it repeated would hide that.
+            Brush front = painted
+                ? new ImageBrush(_texture) { ViewportUnits = BrushMappingMode.Absolute }
+                : new SolidColorBrush(Color.FromRgb(214, 220, 228));
+            Brush back = painted
+                ? new ImageBrush(_texture) { ViewportUnits = BrushMappingMode.Absolute, Opacity = 0.6 }
+                : new SolidColorBrush(Color.FromRgb(120, 128, 140));
+
             scene.Children.Add(new GeometryModel3D {
                 Geometry = edited,
-                Material = new DiffuseMaterial(new SolidColorBrush(Color.FromRgb(214, 220, 228))),
-                BackMaterial = new DiffuseMaterial(new SolidColorBrush(Color.FromRgb(120, 128, 140))),
+                Material = new DiffuseMaterial(front),
+                BackMaterial = new DiffuseMaterial(back),
             });
 
-            scene.Children.Add(new AmbientLight(Color.FromRgb(90, 90, 96)));
-            scene.Children.Add(new DirectionalLight(Colors.White, new Vector3D(-0.4, -0.7, -1)));
+            //Brighter and flatter when textured, so the artwork is seen rather than the lighting;
+            //more directional when plain, because with no texture the shading is the only thing
+            //describing the shape.
+            scene.Children.Add(new AmbientLight(painted ? Color.FromRgb(170, 170, 176) : Color.FromRgb(90, 90, 96)));
+            scene.Children.Add(new DirectionalLight(
+                painted ? Color.FromRgb(140, 140, 146) : Colors.White, new Vector3D(-0.4, -0.7, -1)));
             scene.Children.Add(new DirectionalLight(Color.FromRgb(70, 80, 100), new Vector3D(0.6, 0.4, 1)));
 
             scene.Transform = spin();
@@ -317,6 +344,20 @@ namespace MCDSaveEdit.UI
 
             mesh.Positions = points;
             mesh.TriangleIndices = new Int32Collection(shape.Indices);
+
+            //Both the engine and WPF put the origin of a texture at its top left, so the
+            //coordinates go across unchanged. There has to be one per vertex or WPF ignores the
+            //lot, which is why a short list is padded rather than handed over as it is.
+            if (shape.TexCoords.Count > 0)
+            {
+                var uvs = new PointCollection(shape.Positions.Count);
+                for (int i = 0; i < shape.Positions.Count; i++)
+                {
+                    var pair = i < shape.TexCoords.Count ? shape.TexCoords[i] : (u: 0f, v: 0f);
+                    uvs.Add(new Point(pair.u, pair.v));
+                }
+                mesh.TextureCoordinates = uvs;
+            }
             //Normals are left for WPF to work out. The packed tangents in the file are exactly the
             //part that has not been decoded, so inventing them here would be inventing them.
             return mesh;
@@ -437,6 +478,11 @@ namespace MCDSaveEdit.UI
                 var model = GlbModel.read(picker.FileName);
                 _imported = model;
 
+                //Its own artwork, which is the only thing that makes the preview worth looking at:
+                //an imported model wearing the weapon's texture would be painted with somebody
+                //else's layout, so the picture would be misleading rather than merely plain.
+                _texture = model.BaseColourPng == null ? null : safeImage(model.BaseColourPng);
+
                 //Fitted on arrival rather than dropped at its own scale. A model is usually built
                 //a few units long where a weapon here is a couple of hundred, so without this the
                 //first sight of it is either a speck or a wall.
@@ -484,9 +530,18 @@ namespace MCDSaveEdit.UI
             scaleSlider.TickFrequency = 0.05;
         }
 
+        private static System.Windows.Media.Imaging.BitmapSource? safeImage(byte[] png)
+        {
+            //A model can carry an image in a format the decoder does not know. That costs the
+            //preview its texture and nothing else, so it is caught rather than thrown.
+            try { return CustomSkins.imageFromPng(png); }
+            catch (Exception) { return null; }
+        }
+
         private void clearModelButton_Click(object sender, RoutedEventArgs e)
         {
             _imported = null;
+            _texture = _selected == null ? null : WeaponMeshes.textureFor(_selected.AssetPath);
             resetScaleRange();
             modelLabel.Text = string.Empty;
             clearModelButton.Visibility = Visibility.Collapsed;
