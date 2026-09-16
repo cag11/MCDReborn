@@ -1007,4 +1007,8 @@ The save file is not changed until you save it.</value>
     <value>Double click to move the run to this floor.</value>
     <comment>Floor row tooltip</comment>
   </data>
+  <data name="TOWER_ADD_ITEM" xml:space="preserve">
+    <value>Add something to the run.</value>
+    <comment>Empty slot tooltip</comment>
+  </data>
 </root>

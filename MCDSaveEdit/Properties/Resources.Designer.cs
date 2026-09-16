@@ -2057,5 +2057,14 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("TOWER_GO_HINT", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Add something to the run..
+        /// </summary>
+        public static string TOWER_ADD_ITEM {
+            get {
+                return ResourceManager.GetString("TOWER_ADD_ITEM", resourceCulture);
+            }
+        }
     }
 }
