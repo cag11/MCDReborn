@@ -87,7 +87,7 @@
                         <TextBlock x:Name="scaleCaption" Width="70" VerticalAlignment="Center"/>
                         <TextBlock x:Name="scaleValue" DockPanel.Dock="Right" Width="56"
                                    TextAlignment="Right" VerticalAlignment="Center"/>
-                        <Slider x:Name="scaleSlider" Minimum="0.1" Maximum="4" Value="1"
+                        <Slider x:Name="scaleSlider" Minimum="0.1" Maximum="8" Value="1"
                                 TickFrequency="0.05" IsSnapToTickEnabled="True"
                                 ValueChanged="transform_Changed"/>
                     </DockPanel>

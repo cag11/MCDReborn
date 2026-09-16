@@ -1151,4 +1151,8 @@ The save file is not changed until you save it.</value>
     <value>Show texture</value>
     <comment>Textured preview toggle</comment>
   </data>
+  <data name="WEAPON_SKINS_MELEE_ONLY" xml:space="preserve">
+    <value>Melee only for now. Bows change shape as they are drawn, and armour is several pieces that have to match.</value>
+    <comment>Why ranged and armour are absent</comment>
+  </data>
 </root>

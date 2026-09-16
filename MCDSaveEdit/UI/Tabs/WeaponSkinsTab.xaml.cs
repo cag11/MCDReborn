@@ -102,10 +102,12 @@ namespace MCDSaveEdit.UI
 
         #region Choosing
 
+        //Melee only. Ranged weapons are driven through animation states, so replacing the one mesh
+        //a model would land on changes the weapon's shape partway through being fired; armour is
+        //several meshes per set that have to agree with each other and with the body. Both are
+        //left out rather than offered and quietly broken.
         private static readonly (WeaponMeshes.Category category, Func<string> label)[] CATEGORIES = {
             (WeaponMeshes.Category.Melee, () => R.getString("ItemTag_Melee") ?? R.MELEE_ITEMS_FILTER),
-            (WeaponMeshes.Category.Ranged, () => R.getString("ItemTag_Ranged") ?? R.RANGED_ITEMS_FILTER),
-            (WeaponMeshes.Category.Armor, () => R.getString("ItemTag_Armor") ?? R.ARMOR_ITEMS_FILTER),
         };
 
         private void fillCategories()
@@ -116,6 +118,11 @@ namespace MCDSaveEdit.UI
                 categoryCombo.Items.Add(new ComboBoxItem { Content = label(), Tag = category });
             }
             categoryCombo.SelectedIndex = 0;
+
+            //A list of one is not a choice, so it is not shown as one. Written against the list
+            //rather than against the fact that it currently holds melee, so putting a category
+            //back brings the box back with it.
+            categoryCombo.Visibility = CATEGORIES.Length > 1 ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private WeaponMeshes.Category selectedCategory =>
@@ -163,6 +170,7 @@ namespace MCDSaveEdit.UI
             }
 
             countLabel.Text = string.Format(R.WEAPON_SKINS_COUNT, matching.Count);
+            if (CATEGORIES.Length == 1) { countLabel.Text += "\n" + R.WEAPON_SKINS_MELEE_ONLY; }
             _filling = false;
 
             if (weaponList.Items.Count > 0) { weaponList.SelectedIndex = 0; }
@@ -517,16 +525,22 @@ namespace MCDSaveEdit.UI
         /// <summary>Lets the scale slider reach a fitted value, and stay usable around it.</summary>
         private void widenScaleAround(double fitted)
         {
-            var top = Math.Max(4.0, fitted * 4.0);
+            var top = Math.Max(BIGGEST_PLAIN_SCALE, fitted * 4.0);
             scaleSlider.Minimum = Math.Min(0.1, fitted / 8.0);
             scaleSlider.Maximum = top;
             scaleSlider.TickFrequency = Math.Max(0.01, top / 400.0);
         }
 
+        //Eight rather than four, which is past anything sensible on purpose. A weapon at twice
+        //the size it should be is a mistake; at eight times it is obviously deliberate, and people
+        //will want that. Nothing downstream cares - the bounds are measured from wherever the
+        //vertices end up - so the only thing the old limit protected was somebody's taste.
+        private const double BIGGEST_PLAIN_SCALE = 8.0;
+
         private void resetScaleRange()
         {
             scaleSlider.Minimum = 0.1;
-            scaleSlider.Maximum = 4;
+            scaleSlider.Maximum = BIGGEST_PLAIN_SCALE;
             scaleSlider.TickFrequency = 0.05;
         }
 

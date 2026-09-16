@@ -2381,5 +2381,14 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("WEAPON_SKINS_TEXTURED", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Melee only for now. Bows change shape as they are drawn, and armour is several pieces that have to match..
+        /// </summary>
+        public static string WEAPON_SKINS_MELEE_ONLY {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_MELEE_ONLY", resourceCulture);
+            }
+        }
     }
 }

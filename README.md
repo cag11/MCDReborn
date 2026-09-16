@@ -37,17 +37,16 @@ https://github.com/user-attachments/assets/509496fd-7186-4422-a639-9d10272be407
 
 #### Recolor Gear Feature
 * **Recolor Gear**: put your own artwork on a piece of gear, installed as a mod pak beside the game's own; the originals are never modified and Remove undoes it completely
-* Armor, melee, ranged, artifacts, **capes, pets, enchantment icons and the interface and HUD**, picked one category at a time; all of it read out of the paks, so the list follows whatever game and DLC are installed
+* Armor, melee, ranged, artifacts, **capes, pets, enchantment icons and the interface and HUD**, picked one category at a time
 * The texture travels to [mcddesigner.vercel.app](https://mcddesigner.vercel.app/) and back. Find, upload and download again
 
 https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 
 #### Weapon Import Feature
-* **Import your own model** onto any weapon: export a `.glb` from Blender (File -> Export -> glTF Binary) and the weapon comes out wearing it, mesh and texture together, installed as a mod pak beside the game's own so deleting it undoes everything
-* **Or just reshape the game's own model**: resize, move and rotate it - a claymore at half size, a dagger the length of a spear, a bow turned on its side
+* **Import your own model** onto any weapon: export a `.glb` from Blender (File -> Export -> glTF Binary) and the weapon comes out wearing it, mesh and texture together, weapons installed as a mod pak beside the game's own so deleting it undoes everything
+* **Or just reshape the game's own model**: resize from a tenth up to **8x**, move and rotate it - a claymore at half size, a dagger the length of a spear, or something absurd
 * A live 3D preview **painted with the real texture**, which you can drag to turn and scroll to zoom, with the **original ghosted behind your model**. That outline is where the game already knows how to hold the weapon, so keeping the handle end of your model on the handle end of the outline is all there is to aligning it
 * Imported models are **fitted on arrival** - scaled to the weapon's size and centred on it - so the sliders start somewhere sensible instead of at a speck or a wall
-* Melee, ranged and armour, read out of the paks so the list follows whatever game and DLC are installed
 * It replaces the weapon's model and texture - not its stats, and not how it behaves. A weapon using several materials is refused rather than mangled, and the three whips are skeletal so they are out entirely
 
 #### DISCLAIMER: Please keep backups of your save files! This app does not guarantee your save file to be playable after editing!

@@ -75,10 +75,24 @@ namespace MCDSaveEdit.Logic
             public float LongestSide => Math.Max(Extent.X, Math.Max(Extent.Y, Extent.Z)) * 2f;
         }
 
+        /// <summary>
+        /// Where the meshes that can be imported onto live.
+        ///
+        /// Melee only, for now, and the two that are missing are missing for reasons rather than
+        /// for want of time:
+        ///
+        /// - **Ranged weapons are animated.** A bow is not one static shape - the game drives it
+        ///   through draw states, and the mesh a new model would replace is only one of them. Swap
+        ///   that one and the weapon changes shape halfway through being fired.
+        /// - **Armour comes in sets.** A single piece is several meshes - helmet, shoulders, arms,
+        ///   legs - that have to agree with each other and with the body underneath. Replacing one
+        ///   of them leaves a character wearing a mismatch.
+        ///
+        /// Both are solvable and neither is solved, so they are left out rather than offered and
+        /// quietly broken. The categories they used are still here, so restoring one is a line.
+        /// </summary>
         private static readonly (string folder, Category category)[] PLACES = {
             ("/actors/equipment/meleeweapons/", Category.Melee),
-            ("/actors/equipment/rangedweapons/", Category.Ranged),
-            ("/actors/equipment/armor/", Category.Armor),
         };
 
         private static List<Mesh>? _catalogue;
