@@ -1019,4 +1019,12 @@ The save file is not changed until you save it.</value>
     <value>Pets</value>
     <comment>Pet category</comment>
   </data>
+  <data name="CUSTOM_SKINS_ENCHANTMENTS" xml:space="preserve">
+    <value>Enchantment icons</value>
+    <comment>Enchantment icon category</comment>
+  </data>
+  <data name="CUSTOM_SKINS_INTERFACE" xml:space="preserve">
+    <value>Interface and HUD</value>
+    <comment>UI texture category</comment>
+  </data>
 </root>

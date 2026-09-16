@@ -2084,5 +2084,23 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("CUSTOM_SKINS_PETS", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Enchantment icons.
+        /// </summary>
+        public static string CUSTOM_SKINS_ENCHANTMENTS {
+            get {
+                return ResourceManager.GetString("CUSTOM_SKINS_ENCHANTMENTS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Interface and HUD.
+        /// </summary>
+        public static string CUSTOM_SKINS_INTERFACE {
+            get {
+                return ResourceManager.GetString("CUSTOM_SKINS_INTERFACE", resourceCulture);
+            }
+        }
     }
 }

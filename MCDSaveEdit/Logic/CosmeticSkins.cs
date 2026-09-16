@@ -56,13 +56,128 @@ namespace MCDSaveEdit.Logic
         public static IReadOnlyList<Entry> pets() => _pets ??= scan(PETS);
 
         /// <summary>Forgets what was found, for when different game content is loaded.</summary>
-        public static void reset() { _capes = null; _pets = null; }
+        public static void reset() { _capes = null; _pets = null; _enchantments = null; _ui = null; }
 
         public static Entry? find(string? id)
         {
             if (id == null) { return null; }
-            return capes().Concat(pets())
+            return capes().Concat(pets()).Concat(enchantmentIcons()).Concat(userInterface())
                 .FirstOrDefault(entry => string.Equals(entry.Id, id, StringComparison.OrdinalIgnoreCase));
+        }
+
+        //Only the folders the game keeps its interface art in. The rest of /UI/ is widgets and
+        //logic that happen to sit beside it, and listing those meant most of a very long list
+        //being things that cannot be opened at all.
+        private const string UI = "/content/ui/materials/";
+
+        private static IReadOnlyList<Entry>? _ui;
+
+        //Everything under UI that is not a picture: widgets, materials, blueprints, enums. Sorted
+        //out by name because the alternative is opening eighteen hundred assets to find out, and
+        //that takes long enough to be felt every time the tab is opened.
+        private static readonly string[] NOT_PICTURES = {
+            "UMG_", "WBP_", "BP_", "BPL_", "MI_", "M_", "MPC_", "MF_", "PS_", "SM_", "SK_",
+            "AnimBP", "E_", "S_", "Cue_", "DT_",
+        };
+
+        private static readonly string[] NOT_PICTURE_FOLDERS = {
+            "/enums/", "/materialfunctions/", "/blueprints/", "/structs/",
+        };
+
+        /// <summary>
+        /// The game's own interface art: the hotbar, the inventory, chests, the map, status
+        /// effects, loading screens and the rest.
+        ///
+        /// The same textures as anything else here, and in the same folders the game draws them
+        /// from, so repainting one repaints the interface. Names are kept as the game has them
+        /// and shown with the folder they came from, since "hotbar_slot" on its own says less
+        /// than "HotBar2 · hotbar_slot".
+        ///
+        /// Not all of them open. A few, the mouse cursors among them, are stored in a form this
+        /// reader cannot decode, and those say so when they are picked rather than being hunted
+        /// down and removed from the list at load, which would mean opening every one of them
+        /// first.
+        /// </summary>
+        public static IReadOnlyList<Entry> userInterface()
+        {
+            if (_ui != null) { return _ui; }
+
+            var found = new List<Entry>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var entry in CustomSkins.index ?? Enumerable.Empty<string>())
+            {
+                var path = entry.Replace('\\', '/');
+                var lower = path.ToLowerInvariant();
+                if (lower.IndexOf(UI, StringComparison.Ordinal) < 0) { continue; }
+                if (NOT_PICTURE_FOLDERS.Any(folder => lower.Contains(folder))) { continue; }
+
+                var name = path.Substring(path.LastIndexOf('/') + 1);
+                if (NOT_PICTURES.Any(prefix => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))) { continue; }
+
+                var asset = CustomSkins.assetPath(path);
+                if (!seen.Add(asset)) { continue; }
+
+                found.Add(new Entry(asset, label(asset), asset));
+            }
+
+            return _ui = found
+                .OrderBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+        }
+
+        /// <summary>The folder it is drawn from, then its own name.</summary>
+        private static string label(string assetPath)
+        {
+            var parts = assetPath.Split('/');
+            if (parts.Length < 2) { return assetPath; }
+            return parts[parts.Length - 2] + "  \u00b7  " + parts[parts.Length - 1];
+        }
+
+        private const string ENCHANTMENTS = "/enchantments/";
+
+        private static IReadOnlyList<Entry>? _enchantments;
+
+        /// <summary>
+        /// The picture on an enchantment, which is a texture like any other.
+        ///
+        /// Not found the way gear is. The gear search skips anything ending in "_Icon" on purpose,
+        /// because for a weapon that is the little inventory sprite rather than the skin on the
+        /// model - but an enchantment has no model, and that sprite is the whole of what it looks
+        /// like. So it is looked up by the name the game gives it, T_&lt;Name&gt;_Icon, and the
+        /// "Shine" beside it is left alone: that is the glow drawn over the top, not the icon.
+        ///
+        /// Only the enchantments the game actually draws have one. The ones it never offers have
+        /// no icon at all, which is exactly why this app could not list them until they were named
+        /// outright, and why there is nothing here to repaint for them.
+        /// </summary>
+        public static IReadOnlyList<Entry> enchantmentIcons()
+        {
+            if (_enchantments != null) { return _enchantments; }
+
+            var found = new List<Entry>();
+            foreach (var entry in CustomSkins.index ?? Enumerable.Empty<string>())
+            {
+                var path = entry.Replace('\\', '/');
+                var at = path.ToLowerInvariant().IndexOf(ENCHANTMENTS, StringComparison.Ordinal);
+                if (at < 0) { continue; }
+
+                var rest = path.Substring(at + ENCHANTMENTS.Length).Trim('/');
+                var parts = rest.Split('/');
+                if (parts.Length < 2) { continue; }
+
+                var folder = parts[0];
+                var file = parts[parts.Length - 1];
+                if (!string.Equals(file, "T_" + folder + "_Icon", StringComparison.OrdinalIgnoreCase)) { continue; }
+
+                found.Add(new Entry(folder, Services.R.enchantmentName(folder), CustomSkins.assetPath(path)));
+            }
+
+            return _enchantments = found
+                .GroupBy(entry => entry.Id, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .OrderBy(entry => entry.Name, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
         }
 
         /// <summary>

@@ -79,7 +79,7 @@ namespace MCDSaveEdit.UI
         /// was built from the items a save can carry, and a cape is worn rather than carried, so
         /// it was never in any list this app had.
         /// </summary>
-        private enum GearCategory { Armor, Melee, Ranged, Artifacts, Capes, Pets }
+        private enum GearCategory { Armor, Melee, Ranged, Artifacts, Capes, Pets, Enchantments, Interface }
 
         private static readonly (GearCategory category, Func<string> label)[] CATEGORIES = {
             (GearCategory.Armor, () => R.getString("ItemTag_Armor") ?? R.ARMOR_ITEMS_FILTER),
@@ -88,6 +88,8 @@ namespace MCDSaveEdit.UI
             (GearCategory.Artifacts, () => R.getString("ItemTag_Items") ?? R.ARTIFACT_ITEMS_FILTER),
             (GearCategory.Capes, () => R.CUSTOM_SKINS_CAPES),
             (GearCategory.Pets, () => R.CUSTOM_SKINS_PETS),
+            (GearCategory.Enchantments, () => R.CUSTOM_SKINS_ENCHANTMENTS),
+            (GearCategory.Interface, () => R.CUSTOM_SKINS_INTERFACE),
         };
 
         private void fillCategories()
@@ -117,11 +119,15 @@ namespace MCDSaveEdit.UI
 
             //Capes and pets are not items and have no name in the game's text, so they carry the
             //one worked out from the folder they live in.
-            if (selectedCategory == GearCategory.Capes || selectedCategory == GearCategory.Pets)
+            if (selectedCategory == GearCategory.Capes
+                || selectedCategory == GearCategory.Pets
+                || selectedCategory == GearCategory.Enchantments
+                || selectedCategory == GearCategory.Interface)
             {
-                var cosmetics = selectedCategory == GearCategory.Capes
-                    ? CosmeticSkins.capes()
-                    : CosmeticSkins.pets();
+                var cosmetics = selectedCategory == GearCategory.Capes ? CosmeticSkins.capes()
+                    : selectedCategory == GearCategory.Pets ? CosmeticSkins.pets()
+                    : selectedCategory == GearCategory.Enchantments ? CosmeticSkins.enchantmentIcons()
+                    : CosmeticSkins.userInterface();
 
                 foreach (var entry in cosmetics)
                 {
@@ -207,7 +213,10 @@ namespace MCDSaveEdit.UI
 
             //A cape or a pet has no name in the game's text, so R.itemName would hand back the
             //folder it lives in. The readable one worked out when it was found is used instead.
-            selectedLabel.Content = CosmeticSkins.find(_selectedItem)?.Name ?? R.itemName(_selectedItem);
+            //Doubled underscores, because a Label reads a single one as the marker for a keyboard
+            //shortcut and swallows it: "icon_emerald" was being shown as "iconemerald".
+            var title = CosmeticSkins.find(_selectedItem)?.Name ?? R.itemName(_selectedItem);
+            selectedLabel.Content = title.Replace("_", "__");
             setPreview(image, hasTexture ? null : R.CUSTOM_SKINS_NO_TEXTURE);
         }
 
