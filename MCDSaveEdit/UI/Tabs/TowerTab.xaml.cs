@@ -194,8 +194,10 @@ namespace MCDSaveEdit.UI
             }
             _filling = false;
 
-            //The one still being played is what anybody opening this tab came for.
-            var live = _runs.FirstOrDefault(run => run.InProgress) ?? _runs.FirstOrDefault();
+            //The newest one is what anybody opening this tab came for. Not merely the first that
+            //looks live: an abandoned run keeps its detail and goes on looking live forever, so
+            //the first can be one from months ago while the real one sits below it.
+            var live = _runs.LastOrDefault(run => run.InProgress) ?? _runs.LastOrDefault();
             _run = live;
             var entry = runCombo.Items.OfType<ComboBoxItem>().FirstOrDefault(x => ReferenceEquals(x.Tag, live));
             if (entry != null) { runCombo.SelectedItem = entry; }
@@ -230,8 +232,7 @@ namespace MCDSaveEdit.UI
             floorPanel.Visibility = live ? Visibility.Visible : Visibility.Collapsed;
             playerPanel.Visibility = live ? Visibility.Visible : Visibility.Collapsed;
             itemsLabel.Visibility = live ? Visibility.Visible : Visibility.Collapsed;
-            floorBox.IsEnabled = live;
-            bossesBox.IsEnabled = live;
+            floorCombo.IsEnabled = live;
             livesBox.IsEnabled = live;
 
             emptyLabel.Text = _runs.Count == 0 ? R.TOWER_NONE
@@ -240,9 +241,9 @@ namespace MCDSaveEdit.UI
                 : R.TOWER_OVER;
 
             _filling = true;
-            floorBox.Text = live ? _run!.CurrentFloor.ToString() : string.Empty;
+            fillFloorCombo(live);
             floorTotalLabel.Text = live ? R.formatTOWER_OF_FLOORS(_run!.FloorCount) : string.Empty;
-            bossesBox.Text = live ? _run!.BossesKilled.ToString() : string.Empty;
+            bossesLabel.Text = live ? _run!.BossesKilled.ToString() : string.Empty;
             livesBox.Text = live ? _run!.LivesLost.ToString() : string.Empty;
             seedLabel.Text = live ? R.formatTOWER_SEED(_run!.Seed) : string.Empty;
             _filling = false;
@@ -304,11 +305,17 @@ namespace MCDSaveEdit.UI
                     });
                 }
 
-                floorList.Items.Add(new ListBoxItem {
+                var listItem = new ListBoxItem {
                     Content = row,
                     Tag = floor,
                     Padding = new Thickness(8, 4, 8, 4),
-                });
+                    ToolTip = R.TOWER_GO_HINT,
+                };
+                //Single click picks a floor to look at, double click moves the run to it. Two
+                //different questions about the same row, and the double click is the one that
+                //changes the save.
+                listItem.MouseDoubleClick += floorEntry_DoubleClick;
+                floorList.Items.Add(listItem);
             }
 
             var wanted = _floor?.Index ?? current;
@@ -329,6 +336,12 @@ namespace MCDSaveEdit.UI
             return (Brush)FindResource(key);
         }
 
+        private void floorEntry_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (!((sender as ListBoxItem)?.Tag is TowerRuns.Floor floor)) { return; }
+            goToFloor(floor.Index);
+        }
+
         private void floorList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             _floor = (floorList.SelectedItem as ListBoxItem)?.Tag as TowerRuns.Floor;
@@ -344,13 +357,7 @@ namespace MCDSaveEdit.UI
 
             floorTitleLabel.Text = R.formatTOWER_FLOOR_NUMBER(_floor.Index);
 
-            typeCombo.Items.Clear();
-            foreach (var type in TowerRuns.FLOOR_TYPES)
-            {
-                typeCombo.Items.Add(new ComboBoxItem { Content = type, Tag = type });
-            }
-            typeCombo.SelectedItem = typeCombo.Items.OfType<ComboBoxItem>()
-                .FirstOrDefault(x => (string?)x.Tag == _floor.Type);
+            typeLabel.Text = _floor.Type;
 
             //Five slots, each deciding what kind of gear that slot offers when the floor is
             //cleared. Built here rather than in the markup because a floor with no reward array
@@ -375,31 +382,35 @@ namespace MCDSaveEdit.UI
                 rewardRow.Children.Add(combo);
             }
 
-            //What the game will actually build here. Shown because it explains the floor, and
-            //left alone because a tile or an encounter the game does not have is a floor it
-            //cannot load.
-            var detail = R.formatTOWER_TILE(_floor.Tile);
-            if (_floor.Challenges.Count > 0)
-            {
-                detail += Environment.NewLine + R.formatTOWER_CHALLENGE(string.Join(", ", _floor.Challenges));
-            }
-            floorDetailLabel.Text = detail;
+            fillBuild();
 
             _filling = false;
         }
 
-        private void typeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        /// <summary>
+        /// What the floor is built from, as a statement rather than a choice.
+        ///
+        /// The level and the encounter were both editable for a while and both crash the game on
+        /// load, as does the kind. They are shown because they explain what the floor is - a boss
+        /// tile tells you more than the word Boss does - and left alone because the tower's shape
+        /// is settled when the run is generated.
+        /// </summary>
+        private void fillBuild()
         {
-            if (_filling || _floor == null) { return; }
+            if (_floor == null) { buildLabel.Text = string.Empty; return; }
 
-            var type = (typeCombo.SelectedItem as ComboBoxItem)?.Tag as string;
-            if (type == null || type == _floor.Type) { return; }
-
-            _floor.Type = type;
-            requestSave?.Invoke();
-            fillFloorList();
+            var lines = new List<string> { R.formatTOWER_TILE(_floor.Tile) };
+            lines.Add(_floor.Challenges.Count > 0
+                ? R.formatTOWER_CHALLENGE(string.Join(", ", _floor.Challenges))
+                : R.TOWER_NO_ENCOUNTER);
+            buildLabel.Text = string.Join(Environment.NewLine, lines);
         }
 
+        /// <summary>
+        /// One of the five reward slots, which decide what kind of gear the floor offers when it
+        /// is cleared. Plain data rather than a reference to a level, which is why these are
+        /// still a choice when the rest of the floor is not.
+        /// </summary>
         private void reward_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_filling || _floor == null) { return; }
@@ -412,11 +423,52 @@ namespace MCDSaveEdit.UI
             requestSave?.Invoke();
         }
 
-        private void floorBox_TextChanged(object sender, TextChangedEventArgs e)
-            => applyNumber(floorBox, value => { _run!.CurrentFloor = value; fillFloorList(); });
+        /// <summary>Every floor of the run, named the way the list on the left names them.</summary>
+        private void fillFloorCombo(bool live)
+        {
+            floorCombo.Items.Clear();
+            if (!live || _run == null) { return; }
 
-        private void bossesBox_TextChanged(object sender, TextChangedEventArgs e)
-            => applyNumber(bossesBox, value => _run!.BossesKilled = value);
+            foreach (var floor in _run.Floors)
+            {
+                floorCombo.Items.Add(new ComboBoxItem {
+                    Content = floor.Index.ToString("00") + "  " + floor.Type,
+                    Tag = floor.Index,
+                });
+            }
+            floorCombo.SelectedItem = floorCombo.Items.OfType<ComboBoxItem>()
+                .FirstOrDefault(x => (int?)x.Tag == _run.CurrentFloor);
+        }
+
+        private void floorCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling || _run == null) { return; }
+
+            var index = (floorCombo.SelectedItem as ComboBoxItem)?.Tag as int?;
+            if (index == null || index == _run.CurrentFloor) { return; }
+
+            goToFloor(index.Value);
+        }
+
+        /// <summary>
+        /// Moves the run to a floor.
+        ///
+        /// One route for both ways of asking - the list at the top and a double click on the left
+        /// - so the two cannot drift apart, and so the marker, the dropdown and the save all move
+        /// together whichever was used.
+        /// </summary>
+        private void goToFloor(int index)
+        {
+            if (_run == null) { return; }
+
+            _run.CurrentFloor = index;
+            requestSave?.Invoke();
+
+            _filling = true;
+            fillFloorCombo(true);
+            _filling = false;
+            fillFloorList();
+        }
 
         private void livesBox_TextChanged(object sender, TextChangedEventArgs e)
             => applyNumber(livesBox, value => _run!.LivesLost = value);

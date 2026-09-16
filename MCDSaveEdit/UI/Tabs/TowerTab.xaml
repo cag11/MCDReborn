@@ -36,19 +36,26 @@
 
                     <TextBlock x:Name="floorCaption" Text="*Floor*" FontSize="12" VerticalAlignment="Center"
                                Foreground="{DynamicResource Brush.TextMuted}"/>
-                    <TextBox x:Name="floorBox" Width="44" Margin="6,0,3,0" FontSize="13"
-                             VerticalContentAlignment="Center" TextChanged="floorBox_TextChanged"/>
+                    <!-- A list rather than a number to type. Every floor is one of thirty one
+                         known things, and picking "16 Boss" is the question being asked; typing
+                         16 and hoping is not. -->
+                    <ComboBox x:Name="floorCombo" MinWidth="96" Margin="6,0,3,0" FontSize="12"
+                              VerticalContentAlignment="Center"
+                              SelectionChanged="floorCombo_SelectionChanged"/>
                     <TextBlock x:Name="floorTotalLabel" Text="" FontSize="12" VerticalAlignment="Center"
-                               Margin="0,0,16,0" Foreground="{DynamicResource Brush.TextMuted}"/>
+                               Margin="0,0,12,0" Foreground="{DynamicResource Brush.TextMuted}"/>
 
                     <TextBlock x:Name="bossesCaption" Text="*Bosses*" FontSize="12" VerticalAlignment="Center"
                                Foreground="{DynamicResource Brush.TextMuted}"/>
-                    <TextBox x:Name="bossesBox" Width="44" Margin="6,0,16,0" FontSize="13"
-                             VerticalContentAlignment="Center" TextChanged="bossesBox_TextChanged"/>
+                    <!-- Counted by the game as you beat them, and shown here rather than set:
+                         it is a record of what happened, not a setting. -->
+                    <TextBlock x:Name="bossesLabel" Text="" FontSize="13" Margin="6,0,12,0"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource Brush.Text}"/>
 
                     <TextBlock x:Name="livesCaption" Text="*Lives lost*" FontSize="12" VerticalAlignment="Center"
                                Foreground="{DynamicResource Brush.TextMuted}"/>
-                    <TextBox x:Name="livesBox" Width="44" Margin="6,0,16,0" FontSize="13"
+                    <TextBox x:Name="livesBox" Width="44" Margin="6,0,12,0" FontSize="13"
                              VerticalContentAlignment="Center" TextChanged="livesBox_TextChanged"/>
 
                     <TextBlock x:Name="seedLabel" Text="" FontSize="12" VerticalAlignment="Center"
@@ -83,17 +90,30 @@
                                        Foreground="{DynamicResource Brush.Text}"/>
                             <TextBlock x:Name="typeCaption" Text="*Type*" FontSize="12" VerticalAlignment="Center"
                                        Foreground="{DynamicResource Brush.TextMuted}"/>
-                            <ComboBox x:Name="typeCombo" Width="118" Margin="6,0,0,0" FontSize="12"
-                                      VerticalContentAlignment="Center"
-                                      SelectionChanged="typeCombo_SelectionChanged"/>
+                            <!-- Shown, not chosen. The game builds the tower's shape when the run
+                                 is generated and crashes on load if a floor's kind is changed
+                                 under it, so this says what the floor is and the two lists below
+                                 change what it is made of. -->
+                            <TextBlock x:Name="typeLabel" Text="" FontSize="12" Margin="6,0,0,0"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource Brush.Text}"/>
                         </StackPanel>
 
                         <TextBlock x:Name="rewardsCaption" Text="*Rewards*" FontSize="12" Margin="0,0,0,4"
                                    Foreground="{DynamicResource Brush.TextMuted}"/>
                         <StackPanel x:Name="rewardRow" Orientation="Horizontal"/>
 
+                        <!-- Shown, not chosen, and the second thing on this screen to end up
+                             that way. The kind of floor cannot be changed without the game
+                             crashing on load, and neither can the level or the encounter: both
+                             were tried and both crashed. Nothing in the paks pairs a level with
+                             an encounter either, so there is no way to offer a combination that
+                             is known to work. What the floor is made of is decided when the run
+                             is generated. -->
+                        <TextBlock x:Name="buildLabel" Text="" TextWrapping="Wrap" FontSize="11"
+                                   Margin="0,10,0,0" Foreground="{DynamicResource Brush.TextMuted}"/>
                         <TextBlock x:Name="floorDetailLabel" Text="" TextWrapping="Wrap" FontSize="11"
-                                   Margin="0,8,0,0" Foreground="{DynamicResource Brush.TextDisabled}"/>
+                                   Margin="0,6,0,0" Foreground="{DynamicResource Brush.TextDisabled}"/>
                     </StackPanel>
                 </Border>
 
