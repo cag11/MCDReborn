@@ -67,6 +67,10 @@ namespace MCDSaveEdit.UI
             statsTab.model = _model.profileModel;
             heroTab.model = _model.profileModel;
             heroTab.requestSave = () => handleFileSaveAsync(_model.profileModel.filePath);
+            towerTab.model = _model.profileModel;
+            //A tower edit is a save edit with nothing to review, same as changing hero: it goes
+            //to disk through the window's own save, which keeps the backup that comes with it.
+            towerTab.requestSave = () => handleFileSaveAsync(_model.profileModel.filePath);
             _model.profileModel.profile.subscribe(_ => this.updateUI());
 
             //Clear out design/testing values
@@ -85,6 +89,7 @@ namespace MCDSaveEdit.UI
             heroTab.updateUI();
             inventoryTab.updateUI();
             chestTab.updateUI();
+            towerTab.updateUI();
             closeBusyIndicator();
         }
 
@@ -143,6 +148,7 @@ namespace MCDSaveEdit.UI
             customSkinsTabItem.Header = R.CUSTOM_SKINS_TAB;
             heroTabItem.Header = R.HERO_TAB;
             chestTabItem.Header = R.getString("StorageChest") ?? R.CHEST;
+            towerTabItem.Header = R.getString("TheTower") ?? R.THE_TOWER;
         }
 
         private void createLangMenuItems()

@@ -879,4 +879,112 @@ The save file is not changed until you save it.</value>
     <value>{0} items deleted.</value>
     <comment>Result of a mass delete</comment>
   </data>
+  <data name="TOWER_RUNS" xml:space="preserve">
+    <value>Tower runs</value>
+    <comment>Tower runs list heading</comment>
+  </data>
+  <data name="TOWER_ITEMS" xml:space="preserve">
+    <value>Items carried in the tower</value>
+    <comment>Tower items heading</comment>
+  </data>
+  <data name="TOWER_FLOOR" xml:space="preserve">
+    <value>Floor</value>
+    <comment>Current floor</comment>
+  </data>
+  <data name="TOWER_BOSSES" xml:space="preserve">
+    <value>Bosses beaten</value>
+    <comment>Bosses killed</comment>
+  </data>
+  <data name="TOWER_LIVES" xml:space="preserve">
+    <value>Lives lost</value>
+    <comment>Lives lost</comment>
+  </data>
+  <data name="TOWER_ARROWS" xml:space="preserve">
+    <value>Arrows</value>
+    <comment>Arrow count</comment>
+  </data>
+  <data name="TOWER_POINTS" xml:space="preserve">
+    <value>Enchantment points</value>
+    <comment>Points granted in the tower</comment>
+  </data>
+  <data name="TOWER_RUN_NUMBER" xml:space="preserve">
+    <value>Run {0}</value>
+    <comment>Name of one run</comment>
+  </data>
+  <data name="TOWER_IN_PROGRESS" xml:space="preserve">
+    <value>in progress</value>
+    <comment>A run still being played</comment>
+  </data>
+  <data name="TOWER_COMPLETED" xml:space="preserve">
+    <value>completed</value>
+    <comment>A run that was finished</comment>
+  </data>
+  <data name="TOWER_ABANDONED" xml:space="preserve">
+    <value>over</value>
+    <comment>A run that ended without being completed</comment>
+  </data>
+  <data name="TOWER_NONE" xml:space="preserve">
+    <value>No tower runs in this save. Start one in game and it will show up here.</value>
+    <comment>No runs at all</comment>
+  </data>
+  <data name="TOWER_PICK_ONE" xml:space="preserve">
+    <value>Pick a run on the left.</value>
+    <comment>Nothing selected</comment>
+  </data>
+  <data name="TOWER_OVER" xml:space="preserve">
+    <value>This run is over, so the game has thrown away everything about it except that it happened. Only a run still being played can be edited.</value>
+    <comment>A finished run</comment>
+  </data>
+  <data name="TOWER_OF_FLOORS" xml:space="preserve">
+    <value>of {0}</value>
+    <comment>Total floors</comment>
+  </data>
+  <data name="TOWER_FLOOR_KEY" xml:space="preserve">
+    <value>Each block is a floor: combat, merchant, boss. The outlined one is where you are.</value>
+    <comment>Floor strip key</comment>
+  </data>
+  <data name="TOWER_PLAYER" xml:space="preserve">
+    <value>Player {0}</value>
+    <comment>One hero in the run</comment>
+  </data>
+  <data name="TOWER_MOVED_INVENTORY" xml:space="preserve">
+    <value>“{0}” was moved to the inventory and is no longer in the tower.</value>
+    <comment>Moved out of the tower</comment>
+  </data>
+  <data name="TOWER_MOVED_CHEST" xml:space="preserve">
+    <value>“{0}” was moved to the storage chest and is no longer in the tower.</value>
+    <comment>Moved out of the tower</comment>
+  </data>
+  <data name="TOWER_FLOORS" xml:space="preserve">
+    <value>Floors</value>
+    <comment>Floor list heading</comment>
+  </data>
+  <data name="TOWER_TYPE" xml:space="preserve">
+    <value>Type</value>
+    <comment>Floor type</comment>
+  </data>
+  <data name="TOWER_REWARDS" xml:space="preserve">
+    <value>Reward slots offered when this floor is cleared</value>
+    <comment>Reward slots</comment>
+  </data>
+  <data name="TOWER_FLOOR_NUMBER" xml:space="preserve">
+    <value>Floor {0}</value>
+    <comment>One floor</comment>
+  </data>
+  <data name="TOWER_YOU_ARE_HERE" xml:space="preserve">
+    <value>here</value>
+    <comment>Marks the current floor</comment>
+  </data>
+  <data name="TOWER_SEED" xml:space="preserve">
+    <value>Seed {0}</value>
+    <comment>The run's seed</comment>
+  </data>
+  <data name="TOWER_TILE" xml:space="preserve">
+    <value>Built from: {0}</value>
+    <comment>The floor's tile</comment>
+  </data>
+  <data name="TOWER_CHALLENGE" xml:space="preserve">
+    <value>Encounter: {0}</value>
+    <comment>The floor's challenge</comment>
+  </data>
 </root>

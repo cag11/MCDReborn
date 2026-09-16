@@ -1,0 +1,141 @@
+<UserControl x:Class="MCDSaveEdit.UI.TowerTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:MCDSaveEdit.UI"
+             mc:Ignorable="d"
+             d:DesignHeight="450"
+             d:DesignWidth="1200">
+    <DockPanel>
+        <!-- A tower item is an ordinary item, so it gets the ordinary editor.
+
+             The width is fixed on purpose. Docked to the right, this is measured before the rest
+             of the tab and with no limit on how wide it may be, and it contains a wrapping
+             description: given infinite room, the text never wraps and the panel asks for
+             whatever one long line needs. That pushed the floors and the run off the screen as
+             soon as an item was picked. A definite width gives the description something to wrap
+             inside, and stops the tab resizing itself every time an item is selected. -->
+        <local:ItemScreen x:Name="selectedItemScreen" DockPanel.Dock="Right" Width="470"
+                          HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+
+        <!-- The content area, and the only thing the enchantment editor covers. It sits inside
+             this Grid rather than over the whole tab so the item being enchanted stays on screen
+             beside it, which is how the inventory behaves. -->
+        <Grid>
+        <DockPanel Margin="10,6,10,10">
+
+            <!-- ===================== The run, in one line ===================== -->
+            <Border DockPanel.Dock="Top" Margin="0,0,0,8" Padding="10,7" CornerRadius="4"
+                    BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                    Background="{DynamicResource Brush.Surface}">
+                <StackPanel Orientation="Horizontal">
+                    <ComboBox x:Name="runCombo" MinWidth="210" FontSize="12" Margin="0,0,16,0"
+                              VerticalContentAlignment="Center"
+                              SelectionChanged="runCombo_SelectionChanged"/>
+
+                    <TextBlock x:Name="floorCaption" Text="*Floor*" FontSize="12" VerticalAlignment="Center"
+                               Foreground="{DynamicResource Brush.TextMuted}"/>
+                    <TextBox x:Name="floorBox" Width="44" Margin="6,0,3,0" FontSize="13"
+                             VerticalContentAlignment="Center" TextChanged="floorBox_TextChanged"/>
+                    <TextBlock x:Name="floorTotalLabel" Text="" FontSize="12" VerticalAlignment="Center"
+                               Margin="0,0,16,0" Foreground="{DynamicResource Brush.TextMuted}"/>
+
+                    <TextBlock x:Name="bossesCaption" Text="*Bosses*" FontSize="12" VerticalAlignment="Center"
+                               Foreground="{DynamicResource Brush.TextMuted}"/>
+                    <TextBox x:Name="bossesBox" Width="44" Margin="6,0,16,0" FontSize="13"
+                             VerticalContentAlignment="Center" TextChanged="bossesBox_TextChanged"/>
+
+                    <TextBlock x:Name="livesCaption" Text="*Lives lost*" FontSize="12" VerticalAlignment="Center"
+                               Foreground="{DynamicResource Brush.TextMuted}"/>
+                    <TextBox x:Name="livesBox" Width="44" Margin="6,0,16,0" FontSize="13"
+                             VerticalContentAlignment="Center" TextChanged="livesBox_TextChanged"/>
+
+                    <TextBlock x:Name="seedLabel" Text="" FontSize="12" VerticalAlignment="Center"
+                               Foreground="{DynamicResource Brush.TextDisabled}"/>
+                </StackPanel>
+            </Border>
+
+            <TextBlock x:Name="emptyLabel" DockPanel.Dock="Top" Text="" TextWrapping="Wrap"
+                       Margin="2,0,2,8" FontSize="12"
+                       Foreground="{DynamicResource Brush.TextDisabled}"/>
+
+            <!-- ===================== Pick a floor ===================== -->
+            <DockPanel x:Name="floorsPanel" DockPanel.Dock="Left" Width="196" Margin="0,0,12,0">
+                <Label x:Name="floorsLabel" DockPanel.Dock="Top" Content="*Floors*"
+                       Style="{StaticResource SectionHeading}" FontSize="14" Padding="0,2" Margin="2,0,2,4"/>
+                <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4"
+                        Background="{DynamicResource Brush.Surface}">
+                    <ListBox x:Name="floorList" BorderThickness="0" Background="Transparent"
+                             SelectionChanged="floorList_SelectionChanged"/>
+                </Border>
+            </DockPanel>
+
+            <!-- ===================== That floor, and what it gives ===================== -->
+            <DockPanel>
+                <Border x:Name="floorPanel" DockPanel.Dock="Top" Margin="0,0,0,10" Padding="10,8" CornerRadius="4"
+                        BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                        Background="{DynamicResource Brush.Surface}">
+                    <StackPanel Orientation="Vertical">
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock x:Name="floorTitleLabel" Text="" FontSize="14" FontWeight="SemiBold"
+                                       VerticalAlignment="Center" Margin="0,0,14,0"
+                                       Foreground="{DynamicResource Brush.Text}"/>
+                            <TextBlock x:Name="typeCaption" Text="*Type*" FontSize="12" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource Brush.TextMuted}"/>
+                            <ComboBox x:Name="typeCombo" Width="118" Margin="6,0,0,0" FontSize="12"
+                                      VerticalContentAlignment="Center"
+                                      SelectionChanged="typeCombo_SelectionChanged"/>
+                        </StackPanel>
+
+                        <TextBlock x:Name="rewardsCaption" Text="*Rewards*" FontSize="12" Margin="0,0,0,4"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <StackPanel x:Name="rewardRow" Orientation="Horizontal"/>
+
+                        <TextBlock x:Name="floorDetailLabel" Text="" TextWrapping="Wrap" FontSize="11"
+                                   Margin="0,8,0,0" Foreground="{DynamicResource Brush.TextDisabled}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- ===================== Who is carrying what ===================== -->
+                <Border x:Name="playerPanel" DockPanel.Dock="Top" Margin="0,0,0,10" Padding="10,8" CornerRadius="4"
+                        BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1"
+                        Background="{DynamicResource Brush.Surface}">
+                    <StackPanel Orientation="Horizontal">
+                        <ComboBox x:Name="playerCombo" MinWidth="180" FontSize="12" Margin="0,0,16,0"
+                                  VerticalContentAlignment="Center"
+                                  SelectionChanged="playerCombo_SelectionChanged"/>
+
+                        <TextBlock x:Name="arrowsCaption" Text="*Arrows*" FontSize="12" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <TextBox x:Name="arrowsBox" Width="50" Margin="6,0,16,0" FontSize="13"
+                                 VerticalContentAlignment="Center" TextChanged="arrowsBox_TextChanged"/>
+
+                        <TextBlock x:Name="pointsCaption" Text="*Points*" FontSize="12" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <TextBox x:Name="pointsBox" Width="50" Margin="6,0,0,0" FontSize="13"
+                                 VerticalContentAlignment="Center" TextChanged="pointsBox_TextChanged"/>
+                    </StackPanel>
+                </Border>
+
+                <Label x:Name="itemsLabel" DockPanel.Dock="Top" Content="*Items*"
+                       Style="{StaticResource SectionHeading}" FontSize="14" Padding="0,2" Margin="2,0,2,4"/>
+
+                <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4"
+                        Background="{DynamicResource Brush.Surface}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="6">
+                        <WrapPanel x:Name="itemsPanel" Orientation="Horizontal"/>
+                    </ScrollViewer>
+                </Border>
+            </DockPanel>
+        </DockPanel>
+
+        <!-- Opened by clicking an enchantment on the item editor. The tower keeps its own rather
+             than borrowing the inventory's: that one edits whichever item the inventory has
+             selected, which is never the item being looked at here. -->
+        <Rectangle x:Name="enchantmentShade" Visibility="Collapsed" Fill="#7F000000"/>
+        <local:EnchantmentScreen x:Name="selectedEnchantmentScreen" Visibility="Collapsed"
+                                 Margin="30" Background="{DynamicResource Brush.Panel}"/>
+        </Grid>
+    </DockPanel>
+</UserControl>

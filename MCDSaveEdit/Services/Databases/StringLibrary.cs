@@ -101,6 +101,15 @@ namespace MCDSaveEdit.Services
         internal static string formatITEMS_DELETE_CHOSEN(int count) { return string.Format(ITEMS_DELETE_CHOSEN, count); }
         internal static string formatITEMS_DELETE_CONFIRM(int count) { return string.Format(ITEMS_DELETE_CONFIRM, count); }
         internal static string formatITEMS_DELETED(int count) { return string.Format(ITEMS_DELETED, count); }
+        internal static string formatTOWER_FLOOR_NUMBER(int number) { return string.Format(TOWER_FLOOR_NUMBER, number); }
+        internal static string formatTOWER_SEED(int seed) { return string.Format(TOWER_SEED, seed); }
+        internal static string formatTOWER_TILE(string tile) { return string.Format(TOWER_TILE, tile); }
+        internal static string formatTOWER_CHALLENGE(string challenge) { return string.Format(TOWER_CHALLENGE, challenge); }
+        internal static string formatTOWER_RUN_NUMBER(int number) { return string.Format(TOWER_RUN_NUMBER, number); }
+        internal static string formatTOWER_OF_FLOORS(int floors) { return string.Format(TOWER_OF_FLOORS, floors); }
+        internal static string formatTOWER_PLAYER(string id) { return string.Format(TOWER_PLAYER, id); }
+        internal static string formatTOWER_MOVED_INVENTORY(string name) { return string.Format(TOWER_MOVED_INVENTORY, name); }
+        internal static string formatTOWER_MOVED_CHEST(string name) { return string.Format(TOWER_MOVED_CHEST, name); }
         internal static string formatEQUIP_IN_SLOT(int slotNumber) { return string.Format(EQUIP_IN_SLOT, slotNumber); }
         internal static string formatEQUIP_OVER_IN_SLOT(int slotNumber) { return string.Format(EQUIP_OVER_IN_SLOT, slotNumber); }
         internal static string formatINVENTORY_FULL_ERROR_MESSAGE(int maximum) { return string.Format(INVENTORY_FULL_ERROR_MESSAGE, maximum); }
