@@ -55,6 +55,12 @@ namespace MeshForge
                     case "packcheck": return packcheck(rest(args));
                     case "rebuild": return rebuild(rest(args));
                     case "import": return import_(rest(args));
+                    case "camera": return camera(rest(args));
+                    case "props": return props(rest(args));
+                    case "raw": return raw(rest(args));
+                    case "live": return live(rest(args));
+                    case "inject": return inject(rest(args));
+                    case "objects": return objects(rest(args));
                     default: usage(); return 1;
                 }
             }
@@ -81,6 +87,12 @@ namespace MeshForge
             Console.WriteLine("  packcheck <text>            unpack and repack every mesh's tangents and UVs");
             Console.WriteLine("  rebuild <text>              take every matching mesh apart and put it back unchanged");
             Console.WriteLine("  import <asset> <model.glb> <out.pak>  put a model on a weapon");
+            Console.WriteLine("  camera [out.pak] [--arm N --pitch N --yaw N --fov N --inheritYaw]");
+            Console.WriteLine("  props <asset path>          every tagged property, with its byte offset");
+            Console.WriteLine("  raw <path>                  a non-package file out of the paks, such as a config");
+            Console.WriteLine("  live                        attach to the running game and find its camera");
+            Console.WriteLine("  inject <file.dll>           load a library into the running game");
+            Console.WriteLine("  objects                     find Unreal's object table in the running game");
             Console.WriteLine();
             Console.WriteLine("The game folder comes from the editor's own setting. Pass --paks <folder> to override.");
         }
@@ -932,6 +944,719 @@ namespace MeshForge
                 for (int channel = 0; channel < perVertex; channel++) { spread.Add(pair); }
             }
             return spread;
+        }
+
+
+        /// <summary>
+        /// Reads every camera the game has, and optionally writes a pak that changes them.
+        ///
+        /// Every camera, not one, because there are two with identical numbers: the spring arm on
+        /// the player character, which is the one the game looks through, and a second on
+        /// BP_CoopCamera for framing several players. Changing only the second does nothing
+        /// visible and looks exactly like the whole approach failing.
+        /// </summary>
+        private static int camera(string[] args)
+        {
+            var (rest, paksOption) = takePaksOption(args);
+
+            var folder = GameFiles.paksFolder(paksOption);
+            if (folder == null) { Console.Error.WriteLine("No game folder. Open the editor once, or pass --paks."); return 1; }
+
+            var index = GameFiles.open(folder);
+
+            var loaded = new List<(string path, byte[] uasset, byte[] uexp, CameraMod.Settings current)>();
+            foreach (var path in CameraMod.ASSETS)
+            {
+                var package = GameFiles.read(index, path);
+                if (package == null) { Console.Error.WriteLine($"  could not read {path}"); continue; }
+
+                var uasset = package.Value.UAsset.ToArray();
+                var uexp = package.Value.UExp.ToArray();
+                var current = CameraMod.read(uasset, uexp);
+                if (current == null) { Console.WriteLine($"  {path} has no camera on it"); continue; }
+
+                loaded.Add((path, uasset, uexp, current));
+                Console.WriteLine(path);
+                describeCamera(current);
+                Console.WriteLine();
+            }
+            if (loaded.Count == 0) { Console.Error.WriteLine("No camera found."); return 1; }
+
+            var outputs = new List<string>();
+            var wanted = new CameraMod.Settings();
+            for (int i = 0; i < rest.Length; i++)
+            {
+                var option = rest[i];
+                if (!option.StartsWith("--", StringComparison.Ordinal)) { outputs.Add(option); continue; }
+
+                var name = option.Substring(2).ToLowerInvariant();
+                if (name == "inherityaw") { wanted.InheritYaw = true; continue; }
+                if (name == "inheritpitch") { wanted.InheritPitch = true; continue; }
+                if (name == "collide") { wanted.CollisionTest = true; continue; }
+                if (name == "controlleryaw") { wanted.ControllerYaw = true; continue; }
+
+                if (i + 1 >= rest.Length) { Console.Error.WriteLine($"{option} needs a number."); return 1; }
+                if (!float.TryParse(rest[++i], System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var number))
+                {
+                    Console.Error.WriteLine($"{option} needs a number.");
+                    return 1;
+                }
+
+                switch (name)
+                {
+                    case "arm": wanted.ArmLength = number; break;
+                    case "seek": wanted.SeekArmLength = number; break;
+                    case "pitch": wanted.Pitch = number; break;
+                    case "yaw": wanted.Yaw = number; break;
+                    case "roll": wanted.Roll = number; break;
+                    case "fov": wanted.FieldOfView = number; break;
+                    case "lag": wanted.RotationLagSpeed = number; break;
+                    case "side": wanted.SocketSide = number; break;
+                    case "height": wanted.SocketHeight = number; break;
+                    case "turn": wanted.TurnRate = number; break;
+                    default: Console.Error.WriteLine($"Unknown option {option}"); return 1;
+                }
+            }
+
+            if (outputs.Count == 0)
+            {
+                Console.WriteLine("Nothing written. Pass a file to write one, with any of");
+                Console.WriteLine("  --arm N --seek N --pitch N --yaw N --roll N --fov N");
+                Console.WriteLine("  --lag N --side N --height N --turn N --inheritYaw --inheritPitch --collide");
+                return 0;
+            }
+            if (wanted.isNothing) { Console.Error.WriteLine("Nothing to change, so no pak was written."); return 1; }
+
+            var entries = new List<(string, byte[], byte[])>();
+            foreach (var (path, uasset, uexp, current) in loaded)
+            {
+                //The seek length is what the arm reaches towards, so moving the arm without it
+                //leaves the camera pulling back to where it used to be. Scaled per asset, since
+                //each one has its own pair.
+                var forThis = new CameraMod.Settings {
+                    ArmLength = wanted.ArmLength,
+                    SeekArmLength = wanted.SeekArmLength,
+                    Pitch = wanted.Pitch, Yaw = wanted.Yaw, Roll = wanted.Roll,
+                    FieldOfView = wanted.FieldOfView,
+                    InheritPitch = wanted.InheritPitch, InheritYaw = wanted.InheritYaw,
+                    InheritRoll = wanted.InheritRoll, CollisionTest = wanted.CollisionTest,
+                    RotationLagSpeed = wanted.RotationLagSpeed,
+                    ControllerYaw = wanted.ControllerYaw,
+                    SocketSide = wanted.SocketSide, SocketHeight = wanted.SocketHeight,
+                    TurnRate = wanted.TurnRate,
+                };
+                if (forThis.ArmLength != null && forThis.SeekArmLength == null
+                    && current.ArmLength > 0 && current.SeekArmLength != null)
+                {
+                    forThis.SeekArmLength = forThis.ArmLength * (current.SeekArmLength / current.ArmLength);
+                }
+
+                byte[] patched;
+                try { patched = CameraMod.patch(uasset, uexp, forThis); }
+                catch (Exception e) { Console.Error.WriteLine($"  {path}: {e.Message}"); continue; }
+
+                var check = CameraMod.read(uasset, patched);
+                if (check == null) { Console.Error.WriteLine($"  {path} no longer reads back."); return 1; }
+
+                Console.WriteLine($"{path} becomes:");
+                describeCamera(check);
+                Console.WriteLine();
+
+                entries.Add((path, uasset, patched));
+            }
+            if (entries.Count == 0) { Console.Error.WriteLine("Nothing was patched."); return 1; }
+
+            //And the volumes that move the camera while you play. Without these a close camera is
+            //yanked out to 3500 the first time you walk into a wide room, which reads as the mod
+            //breaking rather than as the game doing what it always did.
+            var stockArm = loaded[0].current.ArmLength;
+            if (wanted.ArmLength != null && stockArm != null && stockArm > 0)
+            {
+                var factor = wanted.ArmLength.Value / stockArm.Value;
+                foreach (var path in CameraMod.ZOOM_VOLUMES)
+                {
+                    var volume = GameFiles.read(index, path);
+                    if (volume == null) { continue; }
+
+                    var volumeAsset = volume.Value.UAsset.ToArray();
+                    var scaled = CameraMod.scaleZoom(volumeAsset, volume.Value.UExp.ToArray(), factor);
+                    if (scaled == null) { continue; }
+
+                    entries.Add((path, volumeAsset, scaled));
+                }
+                Console.WriteLine($"  zoom volumes scaled by {factor:0.###}, {entries.Count - loaded.Count} of them");
+                Console.WriteLine();
+            }
+
+            GameFiles.writeMod(outputs[0], entries);
+            Console.WriteLine($"Wrote {outputs[0]} ({new FileInfo(outputs[0]).Length:N0} bytes), {entries.Count} asset(s)");
+            Console.WriteLine("Put it in the game's ~mods folder and start the game.");
+            return 0;
+        }
+
+        private static void describeCamera(CameraMod.Settings settings)
+        {
+            Console.WriteLine($"  arm {settings.ArmLength} (seek {settings.SeekArmLength})," +
+                $" pitch {settings.Pitch}, yaw {settings.Yaw}, fov {settings.FieldOfView}");
+            Console.WriteLine($"  follows yaw {settings.InheritYaw}, collides {settings.CollisionTest}," +
+                $" rotation lag {settings.RotationLagSpeed}, socket side {settings.SocketSide}" +
+                $" height {settings.SocketHeight}, turn rate {settings.TurnRate}," +
+                $" character faces aim {settings.ControllerYaw}");
+        }
+
+        private static int props(string[] args)
+        {
+            var (rest, paksOption) = takePaksOption(args);
+            if (rest.Length < 1) { usage(); return 1; }
+
+            var folder = GameFiles.paksFolder(paksOption);
+            if (folder == null) { Console.Error.WriteLine("No game folder. Open the editor once, or pass --paks."); return 1; }
+
+            var index = GameFiles.open(folder);
+            var package = GameFiles.read(index, rest[0]);
+            if (package == null) { Console.Error.WriteLine($"Could not read {rest[0]}"); return 1; }
+
+            var uasset = package.Value.UAsset.ToArray();
+            var uexp = package.Value.UExp.ToArray();
+            var values = CookedProperties.readAll(uasset, uexp);
+
+            Console.WriteLine($"{rest[0]}  ({values.Count} properties)");
+            var export = "";
+            foreach (var value in values)
+            {
+                if (value.Export != export)
+                {
+                    export = value.Export;
+                    Console.WriteLine();
+                    Console.WriteLine($"  {export}");
+                }
+
+                var shown = describeProperty(uexp, value);
+                Console.WriteLine($"    {value.Name,-30} {value.Type,-16} @{value.At,-7} {shown}");
+            }
+            return 0;
+        }
+
+        private static string describeProperty(byte[] uexp, CookedProperties.Value value)
+        {
+            if (value.Type == "BoolProperty") { return value.Flag.ToString(); }
+            if (value.At < 0 || value.At + value.Size > uexp.Length) { return "?"; }
+
+            if (value.Type == "FloatProperty" && value.Size == 4)
+            {
+                return BitConverter.ToSingle(uexp, value.At).ToString();
+            }
+            if (value.Type == "IntProperty" && value.Size == 4)
+            {
+                return BitConverter.ToInt32(uexp, value.At).ToString();
+            }
+            if (value.Type == "StructProperty" && value.Size == 12
+                && (value.StructName == "Rotator" || value.StructName == "Vector"))
+            {
+                return $"({BitConverter.ToSingle(uexp, value.At)}, {BitConverter.ToSingle(uexp, value.At + 4)}," +
+                    $" {BitConverter.ToSingle(uexp, value.At + 8)})";
+            }
+            return $"<{value.Size} bytes{(value.StructName == null ? "" : " " + value.StructName)}>";
+        }
+
+
+        /// <summary>
+        /// A file out of the paks that is not a package.
+        ///
+        /// The readers elsewhere all expect a cooked asset, and a pak holds plainer things too -
+        /// the engine's own ini files among them, which is where a game records what its keys do.
+        /// </summary>
+        private static int raw(string[] args)
+        {
+            var (rest, paksOption) = takePaksOption(args);
+            if (rest.Length < 1) { usage(); return 1; }
+
+            var folder = GameFiles.paksFolder(paksOption);
+            if (folder == null) { Console.Error.WriteLine("No game folder. Open the editor once, or pass --paks."); return 1; }
+
+            var index = GameFiles.open(folder);
+
+            //Tried with and without the extension, because the index groups a package's halves
+            //under one key and leaves other files spelled as they are.
+            foreach (var candidate in new[] { rest[0], rest[0] + ".ini", rest[0] + ".txt" })
+            {
+                ArraySegment<byte>? file = null;
+                try { file = index.GetFile(candidate); } catch (Exception) { }
+                if (file == null) { continue; }
+
+                var bytes = file.Value.ToArray();
+                Console.WriteLine($"{candidate}  {bytes.Length:N0} bytes");
+
+                if (rest.Length > 1)
+                {
+                    File.WriteAllBytes(rest[1], bytes);
+                    Console.WriteLine($"  written to {rest[1]}");
+                }
+                else
+                {
+                    Console.WriteLine();
+                    Console.WriteLine(System.Text.Encoding.UTF8.GetString(bytes));
+                }
+                return 0;
+            }
+
+            Console.Error.WriteLine($"No file at {rest[0]}");
+            return 1;
+        }
+
+
+        /// <summary>
+        /// The go or no go test for editing the game while it runs.
+        ///
+        /// Two questions, in order, and the first one decides whether the second matters. Can this
+        /// machine open the running game's memory at all - it is a packaged app, and the general
+        /// advice is that such things are closed to outside tools, though people plainly do attach
+        /// to this build. And if it can, does the camera's fingerprint appear where it should.
+        ///
+        /// Nothing is written. This only looks.
+        /// </summary>
+        private static int live(string[] args)
+        {
+            //The hunt drops the fingerprint entirely, so it runs before any of that.
+            var huntArg = valueAfter(args, "--hunt");
+            if (huntArg != null) { return hunt(args, huntArg.Value, valueAfter(args, "--for") ?? 60f); }
+
+            var game = LiveEdit.GameProcess.open(out var problem);
+            if (game == null)
+            {
+                Console.Error.WriteLine(problem);
+                return 1;
+            }
+
+            using (game)
+            {
+                Console.WriteLine($"Attached to {LiveEdit.GameProcess.PROCESS_NAME}" +
+                    $" (pid {game.Process.Id}, {game.Process.WorkingSet64 / 1024 / 1024:N0} MB)");
+                Console.WriteLine("  Reading its memory is allowed.");
+                Console.WriteLine();
+
+                //The numbers to look for come from the pak rather than from anything written down
+                //here, so a game update that retunes the camera is followed automatically.
+                var (paksOption, _) = (takePaksOption(args).paks, 0);
+                var folder = GameFiles.paksFolder(paksOption);
+                if (folder == null) { Console.Error.WriteLine("No game folder, so there is no fingerprint to search for."); return 1; }
+
+                var index = GameFiles.open(folder);
+                var package = GameFiles.read(index, CameraMod.ASSETS[0]);
+                if (package == null) { Console.Error.WriteLine("Could not read the camera asset."); return 1; }
+
+                var stock = CameraMod.read(package.Value.UAsset.ToArray(), package.Value.UExp.ToArray());
+                if (stock?.ArmLength == null) { Console.Error.WriteLine("Could not read the camera's values."); return 1; }
+
+                Console.WriteLine($"  Looking for arm {stock.ArmLength}, seek {stock.SeekArmLength}," +
+                    $" pitch {stock.Pitch}, yaw {stock.Yaw}");
+                Console.WriteLine();
+
+                var regions = 0;
+                var clock = System.Diagnostics.Stopwatch.StartNew();
+                var link = new LiveEdit.CameraLink(game);
+                var found = link.search(stock.ArmLength.Value, stock.SeekArmLength ?? 2800f,
+                    stock.Pitch ?? -45f, stock.Yaw ?? 45f, searched => regions = searched);
+
+                Console.WriteLine($"  Searched {regions:N0} writable regions in {clock.Elapsed.TotalSeconds:0.#}s");
+                Console.WriteLine($"  {found.Count} place(s) look like the camera:");
+                foreach (var one in found.Take(12))
+                {
+                    Console.WriteLine($"    arm at 0x{one.ArmLength.ToInt64():X}  = {one.ArmLengthValue}," +
+                        $" rotation at 0x{one.Rotation.ToInt64():X} = pitch {one.PitchValue}, yaw {one.YawValue}");
+                }
+                if (found.Count > 12) { Console.WriteLine($"    ... and {found.Count - 12} more"); }
+
+                Console.WriteLine();
+                if (found.Count == 0)
+                {
+                    Console.WriteLine("  The fingerprint is not in memory, so the camera is laid out differently once loaded.");
+                    return 1;
+                }
+
+                //Arm length is the unmistakable one. A few degrees of pitch can be argued with;
+                //the camera coming in to an eighth of its distance cannot.
+                //Which of these the game actually renders from cannot be told apart by looking:
+                //the loaded asset, the class default and the live component all hold the same
+                //number. But only one of them moves. The game pulls the camera out to 3500 in a
+                //wide room and eases it back afterwards, so watching which address follows the
+                //camera around identifies it without guessing.
+                var watchArg = valueAfter(args, "--watch");
+                if (watchArg != null)
+                {
+                    Console.WriteLine($"  Watching {found.Count} candidate(s) for {watchArg}s.");
+                    Console.WriteLine("  Walk around in game - through a doorway, into a big room, into a mission.");
+                    Console.WriteLine("  Whichever address changes is the camera the game is really using.");
+                    Console.WriteLine();
+
+                    var startValues = found.Select(one => game.readFloat(one.ArmLength) ?? 0f).ToArray();
+                    var moved = new bool[found.Count];
+                    var watchClock = System.Diagnostics.Stopwatch.StartNew();
+
+                    while (watchClock.Elapsed.TotalSeconds < watchArg.Value && game.IsRunning)
+                    {
+                        for (int i = 0; i < found.Count; i++)
+                        {
+                            var now = game.readFloat(found[i].ArmLength);
+                            if (now == null) { continue; }
+                            if (Math.Abs(now.Value - startValues[i]) < 0.5f) { continue; }
+
+                            if (!moved[i])
+                            {
+                                moved[i] = true;
+                                Console.WriteLine($"    MOVED  0x{found[i].ArmLength.ToInt64():X}" +
+                                    $"  {startValues[i]} -> {now.Value}");
+                            }
+                            startValues[i] = now.Value;
+                        }
+                        System.Threading.Thread.Sleep(120);
+                    }
+
+                    var movers = moved.Count(m => m);
+                    Console.WriteLine();
+                    Console.WriteLine(movers == 0
+                        ? "  Nothing moved. Either the camera never changed, or its live distance is somewhere else entirely."
+                        : $"  {movers} of {found.Count} moved. Those are the live ones.");
+                    return 0;
+                }
+
+                var armArg = valueAfter(args, "--arm");
+                if (armArg != null)
+                {
+                    foreach (var one in found)
+                    {
+                        var wasArm = game.readFloat(one.ArmLength) ?? 2450f;
+                        var wasSeek = game.readFloat(one.SeekArmLength) ?? 2800f;
+                        var ratio = wasArm > 0.01f ? wasSeek / wasArm : 1f;
+
+                        //Both, in proportion. The seek length is what the arm reaches towards, so
+                        //writing one alone leaves the camera drifting back to where it started.
+                        game.writeFloat(one.ArmLength, armArg.Value);
+                        game.writeFloat(one.SeekArmLength, armArg.Value * ratio);
+
+                        System.Threading.Thread.Sleep(200);
+                        Console.WriteLine($"    0x{one.ArmLength.ToInt64():X}  {wasArm} -> {game.readFloat(one.ArmLength)}");
+                    }
+                }
+
+                var pitchArg = valueAfter(args, "--pitch");
+                if (pitchArg == null && armArg == null)
+                {
+                    Console.WriteLine("  The camera can be found in the running game.");
+                    Console.WriteLine("  Pass --arm N or --pitch N to write it, --hold S to keep it there.");
+                    return 0;
+                }
+                if (pitchArg == null)
+                {
+                    var holdOnly = valueAfter(args, "--hold");
+                    if (holdOnly != null)
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine($"  Holding for {holdOnly}s - look at the game.");
+                        var clockHold = System.Diagnostics.Stopwatch.StartNew();
+                        while (clockHold.Elapsed.TotalSeconds < holdOnly.Value && game.IsRunning)
+                        {
+                            foreach (var one in found)
+                            {
+                                if (armArg != null) { game.writeFloat(one.ArmLength, armArg.Value); }
+                            }
+                            System.Threading.Thread.Sleep(16);
+                        }
+                        Console.WriteLine("  Done.");
+                    }
+                    return 0;
+                }
+
+                //The question this answers is not "can it be written" but "does it stay written".
+                //A value the game recomputes every frame reverts within milliseconds, and that
+                //difference decides whether this needs a loop or a single write.
+                Console.WriteLine($"  Writing pitch {pitchArg} to {found.Count} candidate(s) and reading it back.");
+                Console.WriteLine();
+
+                foreach (var one in found)
+                {
+                    var before = game.readFloat(one.Rotation);
+                    var wrote = game.writeFloat(one.Rotation, pitchArg.Value);
+
+                    var immediately = game.readFloat(one.Rotation);
+                    System.Threading.Thread.Sleep(400);
+                    var later = game.readFloat(one.Rotation);
+
+                    Console.WriteLine($"    0x{one.Rotation.ToInt64():X}");
+                    Console.WriteLine($"      was {before}, write {(wrote ? "allowed" : "REFUSED")}," +
+                        $" immediately {immediately}, after 400ms {later}");
+                    Console.WriteLine(later != null && Math.Abs(later.Value - pitchArg.Value) < 0.01f
+                        ? "      it stayed - nothing is recomputing it, so one write is enough"
+                        : "      it reverted - the game recomputes it, so it needs writing every frame");
+                }
+
+                var holdArg = valueAfter(args, "--hold");
+                if (holdArg != null)
+                {
+                    //Held by rewriting, for whoever is watching the screen. If the value sticks on
+                    //its own this changes nothing; if it does not, this is what a working feature
+                    //would have to do.
+                    Console.WriteLine();
+                    Console.WriteLine($"  Holding it for {holdArg}s - look at the game.");
+                    var until = System.Diagnostics.Stopwatch.StartNew();
+                    while (until.Elapsed.TotalSeconds < holdArg.Value && game.IsRunning)
+                    {
+                        foreach (var one in found) { game.writeFloat(one.Rotation, pitchArg.Value); }
+                        System.Threading.Thread.Sleep(8);
+                    }
+                    Console.WriteLine("  Done. Put the original back with --pitch -45.");
+                }
+
+                return 0;
+            }
+        }
+
+
+        /// <summary>The number after a named option, or nothing.</summary>
+        private static float? valueAfter(string[] args, string option)
+        {
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                if (!args[i].Equals(option, StringComparison.OrdinalIgnoreCase)) { continue; }
+                if (float.TryParse(args[i + 1], System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture, out var value))
+                {
+                    return value;
+                }
+            }
+            return null;
+        }
+
+
+        /// <summary>
+        /// Finds the camera the game is really using, by watching which number follows it.
+        ///
+        /// The fingerprint search finds the templates - the loaded asset and the class defaults -
+        /// and writing to those changes nothing on screen, which is how this turned out to be
+        /// necessary. Every copy of the authored number looks identical, so no amount of looking
+        /// harder tells them apart.
+        ///
+        /// What tells them apart is movement. The game itself pulls the camera out in a wide room
+        /// and eases it back afterwards, so of the hundreds of places holding the camera distance,
+        /// the live one is the one that changes while somebody plays. This collects them all and
+        /// then watches.
+        /// </summary>
+        private static int hunt(string[] args, float value, float seconds)
+        {
+            var game = LiveEdit.GameProcess.open(out var problem);
+            if (game == null) { Console.Error.WriteLine(problem); return 1; }
+
+            using (game)
+            {
+                Console.WriteLine($"Attached to {LiveEdit.GameProcess.PROCESS_NAME} (pid {game.Process.Id})");
+                Console.WriteLine($"  Collecting every float equal to {value}.");
+
+                var clock = System.Diagnostics.Stopwatch.StartNew();
+                var candidates = new LiveEdit.CameraLink(game).everyFloat(value);
+                Console.WriteLine($"  {candidates.Count:N0} of them, in {clock.Elapsed.TotalSeconds:0.#}s");
+                Console.WriteLine();
+
+                if (candidates.Count == 0)
+                {
+                    Console.WriteLine("  None at all. Restart the game first - an earlier run of this may have");
+                    Console.WriteLine("  overwritten them, and restarting restores everything.");
+                    return 1;
+                }
+
+                //Waiting for the game to move the camera only works if the game moves the camera,
+                //and the distance it holds is a target that nothing touches until a zoom volume
+                //fires. Writing to all of them and looking is the shorter question: if the camera
+                //moves, the live one is in this list and can be narrowed down by halves.
+                var setArg = valueAfter(args, "--set");
+                if (setArg != null)
+                {
+                    var half = args.Any(a => a.Equals("--first-half", StringComparison.OrdinalIgnoreCase)) ? 1
+                        : args.Any(a => a.Equals("--second-half", StringComparison.OrdinalIgnoreCase)) ? 2 : 0;
+
+                    var from = half == 2 ? candidates.Count / 2 : 0;
+                    var to = half == 1 ? candidates.Count / 2 : candidates.Count;
+
+                    Console.WriteLine($"  Writing {setArg} to candidates {from}..{to} of {candidates.Count}.");
+                    var wrote = 0;
+                    for (int i = from; i < to; i++)
+                    {
+                        if (game.writeFloat(candidates[i], setArg.Value)) { wrote++; }
+                    }
+                    Console.WriteLine($"  {wrote} written. Look at the game now.");
+                    Console.WriteLine("  Restarting the game undoes all of it - nothing is on disk.");
+
+                    var holdFor = valueAfter(args, "--for") ?? 20f;
+                    var holdClock = System.Diagnostics.Stopwatch.StartNew();
+                    while (holdClock.Elapsed.TotalSeconds < holdFor && game.IsRunning)
+                    {
+                        for (int i = from; i < to; i++) { game.writeFloat(candidates[i], setArg.Value); }
+                        System.Threading.Thread.Sleep(50);
+                    }
+                    Console.WriteLine("  Done holding.");
+                    return 0;
+                }
+
+                Console.WriteLine($"  Watching them for {seconds}s. Play normally - walk through doorways,");
+                Console.WriteLine("  into big rooms, start a mission. Anything that moves the camera.");
+                Console.WriteLine();
+
+                var before = new float[candidates.Count];
+                for (int i = 0; i < candidates.Count; i++) { before[i] = game.readFloat(candidates[i]) ?? 0f; }
+
+                var moved = new HashSet<int>();
+                var watching = System.Diagnostics.Stopwatch.StartNew();
+
+                while (watching.Elapsed.TotalSeconds < seconds && game.IsRunning)
+                {
+                    for (int i = 0; i < candidates.Count; i++)
+                    {
+                        var now = game.readFloat(candidates[i]);
+                        if (now == null || Math.Abs(now.Value - before[i]) < 1f) { continue; }
+
+                        if (moved.Add(i))
+                        {
+                            Console.WriteLine($"    MOVED  0x{candidates[i].ToInt64():X}  {before[i]} -> {now.Value}");
+                        }
+                        before[i] = now.Value;
+                    }
+                    System.Threading.Thread.Sleep(100);
+                }
+
+                Console.WriteLine();
+                Console.WriteLine(moved.Count == 0
+                    ? "  Nothing moved. The camera distance is not held as a plain float, or nothing moved it."
+                    : $"  {moved.Count} moved out of {candidates.Count:N0}. Those are the live camera.");
+                return 0;
+            }
+        }
+
+
+        /// <summary>
+        /// Loads a library into the running game, once it is past its menu.
+        ///
+        /// The proxy route - putting a file named after a system library beside the executable -
+        /// killed this game instantly on a Microsoft Store build, before anything could be logged.
+        /// Injecting after startup avoids whatever that was, and is what the tools that do work on
+        /// this game already do.
+        /// </summary>
+        private static int inject(string[] args)
+        {
+            if (args.Length < 1) { usage(); return 1; }
+
+            var path = System.IO.Path.GetFullPath(args[0]);
+            Console.WriteLine($"Injecting {path}");
+
+            var ok = LiveEdit.DllInjector.inject(path, out var problem);
+            Console.WriteLine($"  {problem}");
+            return ok ? 0 : 1;
+        }
+
+
+        /// <summary>
+        /// Finds the engine's list of every live object, which is what makes finding anything else
+        /// possible.
+        ///
+        /// Days were spent searching memory for a camera by the numbers it holds, and it never
+        /// separated the live component from the templates that hold identical numbers. The engine
+        /// keeps a register of everything it owns; this finds that register, and after it a camera
+        /// can be found by what it is.
+        /// </summary>
+        private static int objects(string[] args)
+        {
+            var game = LiveEdit.GameProcess.open(out var problem);
+            if (game == null) { Console.Error.WriteLine(problem); return 1; }
+
+            using (game)
+            {
+                Console.WriteLine($"Attached to {game.Process.ProcessName} (pid {game.Process.Id})");
+                Console.WriteLine("  Looking for a chunked object array.");
+                Console.WriteLine();
+
+                var clock = System.Diagnostics.Stopwatch.StartNew();
+                var tables = new LiveEdit.ObjectTables(game);
+                var found = tables.search();
+
+                Console.WriteLine($"  searched in {clock.Elapsed.TotalSeconds:0.#}s, {found.Count} candidate(s)");
+                Console.WriteLine();
+
+                foreach (var one in found.Take(5))
+                {
+                    Console.WriteLine($"  at 0x{one.ChunkedArray.ToInt64():X}");
+                    Console.WriteLine($"    {one.NumElements:N0} objects of {one.MaxElements:N0} capacity," +
+                        $" {one.NumChunks} of {one.MaxChunks} chunks");
+                    Console.WriteLine($"    chunks at 0x{one.Chunks.ToInt64():X}, first object at 0x{one.FirstObject.ToInt64():X}");
+
+                    //Reading a few spread through the array shows the chunk arithmetic is right
+                    //rather than only the first one being reachable.
+                    var reachable = 0;
+                    for (int i = 0; i < 20; i++)
+                    {
+                        var index = (int)((long)i * one.NumElements / 20);
+                        if (tables.objectAt(one, index) != IntPtr.Zero) { reachable++; }
+                    }
+                    Console.WriteLine($"    {reachable} of 20 sampled objects across the array are readable");
+                    Console.WriteLine();
+                }
+
+                if (found.Count == 0)
+                {
+                    Console.WriteLine("  Nothing matched. The array is laid out differently in this build.");
+                    return 1;
+                }
+                Console.WriteLine("  The engine's object table is reachable from outside the game.");
+                Console.WriteLine();
+
+                //The object array says what exists; the name table says what each one is called.
+                //Only together do they answer "which object is the camera".
+                Console.WriteLine("  Looking for the name table.");
+                var names = new LiveEdit.NameTable(game);
+                if (!names.find())
+                {
+                    Console.WriteLine("  Not found - names cannot be resolved, so objects stay anonymous.");
+                    return 1;
+                }
+                Console.WriteLine($"  found at 0x{names.Chunks.ToInt64():X}" +
+                    (names.Count > 0 ? $", {names.Count:N0} names" : ""));
+                Console.WriteLine($"    name 0 is \"{names.nameOf(0)}\", 1 is \"{names.nameOf(1)}\"," +
+                    $" 2 is \"{names.nameOf(2)}\"");
+                Console.WriteLine();
+
+                //UObject, 4.22: vtable, flags, index, class, then the name.
+                const int NAME_IN_OBJECT = 0x18;
+
+                var wanted = args.FirstOrDefault(a => !a.StartsWith("--", StringComparison.Ordinal)) ?? "SpringArm";
+                Console.WriteLine($"  Walking {found[0].NumElements:N0} objects for names containing \"{wanted}\"...");
+
+                var clock2 = System.Diagnostics.Stopwatch.StartNew();
+                var hits = new System.Collections.Generic.List<(IntPtr at, string name)>();
+                var read = 0;
+
+                for (int i = 0; i < found[0].NumElements; i++)
+                {
+                    var address = tables.objectAt(found[0], i);
+                    if (address == IntPtr.Zero) { continue; }
+
+                    var nameField = game.read(new IntPtr(address.ToInt64() + NAME_IN_OBJECT), 4);
+                    if (nameField == null) { continue; }
+                    read++;
+
+                    var name = names.nameOf(BitConverter.ToInt32(nameField, 0));
+                    if (name == null) { continue; }
+                    if (name.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) < 0) { continue; }
+
+                    hits.Add((address, name));
+                    if (hits.Count >= 40) { break; }
+                }
+
+                Console.WriteLine($"  read {read:N0} objects in {clock2.Elapsed.TotalSeconds:0.#}s");
+                Console.WriteLine($"  {hits.Count} matching:");
+                foreach (var (address, name) in hits)
+                {
+                    Console.WriteLine($"    0x{address.ToInt64():X}  {name}");
+                }
+                return 0;
+            }
         }
 
         private static MeshGeometry.Position scaled(MeshGeometry.Position value, float factor) =>

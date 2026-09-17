@@ -1155,4 +1155,284 @@ The save file is not changed until you save it.</value>
     <value>Melee only for now. Bows change shape as they are drawn, and armour is several pieces that have to match.</value>
     <comment>Why ranged and armour are absent</comment>
   </data>
+  <data name="CAMERA_TAB" xml:space="preserve">
+    <value>Camera</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="CAMERA_SETTINGS" xml:space="preserve">
+    <value>Camera</value>
+    <comment>Settings column heading</comment>
+  </data>
+  <data name="CAMERA_PRESETS" xml:space="preserve">
+    <value>Presets</value>
+    <comment>Presets column heading</comment>
+  </data>
+  <data name="CAMERA_PRESETS_HINT" xml:space="preserve">
+    <value>Pick one to apply it to the running game. Adjust the sliders afterwards and save it under your own name.</value>
+    <comment>Explains the presets</comment>
+  </data>
+  <data name="CAMERA_APPLY" xml:space="preserve">
+    <value>Apply to game</value>
+    <comment>Writes the pak</comment>
+  </data>
+  <data name="CAMERA_RESET" xml:space="preserve">
+    <value>Back to the game's own</value>
+    <comment>Clears every choice</comment>
+  </data>
+  <data name="CAMERA_RESET_NOTE" xml:space="preserve">
+    <value>Nothing selected. Remove the pak from ~mods to restore the game's camera.</value>
+    <comment>After reset</comment>
+  </data>
+  <data name="CAMERA_MOD_NAME" xml:space="preserve">
+    <value>Camera</value>
+    <comment>Mod pak name</comment>
+  </data>
+  <data name="CAMERA_APPLIED" xml:space="preserve">
+    <value>Written to {0}. Restart the game to see it.</value>
+    <comment>Applied confirmation</comment>
+  </data>
+  <data name="CAMERA_NOTHING_TO_DO" xml:space="preserve">
+    <value>Nothing is ticked, so there is nothing to change.</value>
+    <comment>Apply with no changes</comment>
+  </data>
+  <data name="CAMERA_NO_CONTENT" xml:space="preserve">
+    <value>Game content is not loaded, so the camera cannot be read.</value>
+    <comment>No paks</comment>
+  </data>
+  <data name="CAMERA_STOCK" xml:space="preserve">
+    <value>game's own: {0}</value>
+    <comment>Shown when a value is not being changed</comment>
+  </data>
+  <data name="CAMERA_ON" xml:space="preserve">
+    <value>on</value>
+    <comment>Checkbox for a yes or no setting</comment>
+  </data>
+  <data name="CAMERA_PRESET_LOADED" xml:space="preserve">
+    <value>Loaded. Adjust anything you like, then apply.</value>
+    <comment>After picking a preset</comment>
+  </data>
+  <data name="CAMERA_DISTANCE" xml:space="preserve">
+    <value>Distance back</value>
+    <comment>Spring arm length</comment>
+  </data>
+  <data name="CAMERA_PITCH" xml:space="preserve">
+    <value>Angle down</value>
+    <comment>Camera pitch</comment>
+  </data>
+  <data name="CAMERA_YAW" xml:space="preserve">
+    <value>Angle around</value>
+    <comment>Camera yaw</comment>
+  </data>
+  <data name="CAMERA_FOV" xml:space="preserve">
+    <value>Field of view</value>
+    <comment>Camera FOV</comment>
+  </data>
+  <data name="CAMERA_HEIGHT" xml:space="preserve">
+    <value>Pivot height</value>
+    <comment>Spring arm socket Z</comment>
+  </data>
+  <data name="CAMERA_SIDE" xml:space="preserve">
+    <value>Pivot sideways</value>
+    <comment>Spring arm socket Y</comment>
+  </data>
+  <data name="CAMERA_LAG" xml:space="preserve">
+    <value>Swing smoothing</value>
+    <comment>Camera rotation lag speed; lower is smoother</comment>
+  </data>
+  <data name="CAMERA_TURN" xml:space="preserve">
+    <value>Character turn speed</value>
+    <comment>Movement component rotation rate</comment>
+  </data>
+  <data name="CAMERA_FOLLOWS" xml:space="preserve">
+    <value>Camera follows you</value>
+    <comment>bInheritYaw</comment>
+  </data>
+  <data name="CAMERA_COLLIDES" xml:space="preserve">
+    <value>Camera avoids walls</value>
+    <comment>bDoCollisionTest</comment>
+  </data>
+  <data name="CAMERA_PRESET_CLOSER" xml:space="preserve">
+    <value>Closer</value>
+    <comment>Preset</comment>
+  </data>
+  <data name="CAMERA_PRESET_CLOSER_WHY" xml:space="preserve">
+    <value>Distance only, angle untouched. Movement still matches the screen exactly.</value>
+    <comment>Preset note</comment>
+  </data>
+  <data name="CAMERA_PRESET_MUCH_CLOSER" xml:space="preserve">
+    <value>Much closer</value>
+    <comment>Preset</comment>
+  </data>
+  <data name="CAMERA_PRESET_MUCH_CLOSER_WHY" xml:space="preserve">
+    <value>The same idea taken further. Still the game's own angle.</value>
+    <comment>Preset note</comment>
+  </data>
+  <data name="CAMERA_PRESET_WIDER" xml:space="preserve">
+    <value>Wider lens</value>
+    <comment>Preset</comment>
+  </data>
+  <data name="CAMERA_PRESET_WIDER_WHY" xml:space="preserve">
+    <value>Field of view only. Fits more on screen without moving the camera.</value>
+    <comment>Preset note</comment>
+  </data>
+  <data name="CAMERA_PRESET_LOWER" xml:space="preserve">
+    <value>Lower angle</value>
+    <comment>Preset</comment>
+  </data>
+  <data name="CAMERA_PRESET_LOWER_WHY" xml:space="preserve">
+    <value>Angle only. Flattening the view makes WASD stop lining up with the screen, since movement is in world directions.</value>
+    <comment>Preset note</comment>
+  </data>
+  <data name="CAMERA_PRESET_FOLLOWS" xml:space="preserve">
+    <value>Follow the character</value>
+    <comment>Preset</comment>
+  </data>
+  <data name="CAMERA_PRESET_FOLLOWS_WHY" xml:space="preserve">
+    <value>Turns the camera with you. Changes how movement reads - try it on its own first.</value>
+    <comment>Preset note</comment>
+  </data>
+  <data name="CAMERA_PRESET_COLLIDES" xml:space="preserve">
+    <value>Avoid walls</value>
+    <comment>Preset</comment>
+  </data>
+  <data name="CAMERA_PRESET_COLLIDES_WHY" xml:space="preserve">
+    <value>Pulls the camera in when something is behind you. Only matters once it is close.</value>
+    <comment>Preset note</comment>
+  </data>
+  <data name="CAMERA_MODS_NOTE" xml:space="preserve">
+    <value>Changes the camera only - not your save, and nothing else about the game. Close the game before applying, and start Dungeons.exe directly. Deleting the pak from ~mods undoes it.</value>
+    <comment>Explains the mod</comment>
+  </data>
+  <data name="CAMERA_FACES_AIM" xml:space="preserve">
+    <value>Character turns to face aim</value>
+    <comment>bUseControllerRotationYaw - needed for the camera to have anything to follow</comment>
+  </data>
+  <data name="CAMERA_LIVE_PREVIEW" xml:space="preserve">
+    <value>Preview in the running game</value>
+    <comment>Checkbox - drives the live camera while dragging</comment>
+  </data>
+  <data name="CAMERA_LIVE_HINT" xml:space="preserve">
+    <value>Every setting here goes straight into the running game as you drag it. Nothing is written to disk - quitting the game puts it all back, and so does the button on the right.</value>
+    <comment>Explains live preview</comment>
+  </data>
+  <data name="CAMERA_LIVE_WAITING" xml:space="preserve">
+    <value>Start Minecraft Dungeons to change its camera while you watch. {0}</value>
+    <comment>Shown when the game is not attached; {0} is the reason</comment>
+  </data>
+  <data name="CAMERA_LIVE_REVERT" xml:space="preserve">
+    <value>Put the game's camera back</value>
+    <comment>Button - restores the live camera without touching the sliders</comment>
+  </data>
+  <data name="CAMERA_LIVE_PUSHED" xml:space="preserve">
+    <value>Changed {0} setting(s) in the running game.</value>
+    <comment>Status after a live write</comment>
+  </data>
+  <data name="CAMERA_LIVE_PAK_ONLY" xml:space="preserve">
+    <value>Turn rate is written to the pak only - it belongs to the character rather than the camera.</value>
+    <comment>Notes which settings cannot be previewed live</comment>
+  </data>
+  <data name="CAMERA_FOLLOWS_AIM" xml:space="preserve">
+    <value>Camera points where you aim</value>
+    <comment>bUsePawnControlRotation - the one that actually makes a following camera</comment>
+  </data>
+  <data name="CAMERA_FOLLOWS_AIM_HINT" xml:space="preserve">
+    <value>Takes the camera's angle straight from your aim. The pitch comes from the aim too, and this game's aim pitch jumps rather than sweeps, so expect the view to swing.</value>
+    <comment>Warns about the pitch</comment>
+  </data>
+  <data name="CAMERA_AIM_ALREADY_ON" xml:space="preserve">
+    <value>Your character already turns to face aim in this game, so that setting changes nothing here. It is written for the pak, where it still matters.</value>
+    <comment>Explains why the face-aim checkbox looks inert</comment>
+  </data>
+  <data name="CAMERA_MOUSE_LOOK" xml:space="preserve">
+    <value>Turn the camera with the mouse</value>
+    <comment>Checkbox - starts mouse look</comment>
+  </data>
+  <data name="CAMERA_MOUSE_LOOK_HINT" xml:space="preserve">
+    <value>Pins the pointer to the middle of the game window, so moving the mouse turns the view and your character aims at whatever you are looking at. Opening any menu hands the pointer back on its own, and closing it takes it again - the game is asked directly rather than guessed at. Alt tab frees it too, and F10 turns everything off from inside the game. Clicking away from the game frees it too.</value>
+    <comment>Explains mouse look and how to escape it</comment>
+  </data>
+  <data name="CAMERA_SENSITIVITY" xml:space="preserve">
+    <value>Mouse sensitivity</value>
+    <comment>Slider label</comment>
+  </data>
+  <data name="CAMERA_INVERT" xml:space="preserve">
+    <value>Invert up and down</value>
+    <comment>Checkbox</comment>
+  </data>
+  <data name="CAMERA_WASD" xml:space="preserve">
+    <value>Move with W A S D</value>
+    <comment>Checkbox - keyboard movement</comment>
+  </data>
+  <data name="CAMERA_WASD_HINT" xml:space="preserve">
+    <value>Walks relative to the camera, so W is always away from you. Hold Ctrl to walk slowly - Shift is left alone, because the game uses it to plant your feet so you can swing at something out of reach. This game has no movement keys of its own, so the input is written straight into the game - there is no virtual controller, which is what used to cost frames.</value>
+    <comment>Explains keyboard movement</comment>
+  </data>
+  <data name="CAMERA_BUTTONS" xml:space="preserve">
+    <value>Clicking attacks without walking you</value>
+    <comment>Checkbox - remaps the mouse buttons to the attack keys</comment>
+  </data>
+  <data name="CAMERA_BUTTONS_HINT" xml:space="preserve">
+    <value>This game binds a left click to two things at once: attack, and walk to where you clicked. With the keys moving you, the second one fights them. The click still swings - melee needs the cursor to know what it is hitting - but where it told you to walk is thrown away. Needs W A S D switched on.</value>
+    <comment>Explains the button remap</comment>
+  </data>
+  <data name="CAMERA_THIRD_PERSON" xml:space="preserve">
+    <value>Third person  (F10)</value>
+    <comment>Button - turns everything on at once</comment>
+  </data>
+  <data name="CAMERA_THIRD_PERSON_HINT" xml:space="preserve">
+    <value>One switch for all of it: the camera comes in behind your character, and mouse look, W A S D and the clicking all turn on together. F10 works from inside the game, which matters because the pointer is pinned while this is on. Turning it off puts the camera back. Every switch below still works on its own.</value>
+    <comment>Explains the one-click setup</comment>
+  </data>
+  <data name="CAMERA_SUSPENDED" xml:space="preserve">
+    <value>Menu open - the pointer is yours. It comes back on its own when you close it.</value>
+    <comment>Shown while mouse look is suspended</comment>
+  </data>
+  <data name="CAMERA_RESUMED" xml:space="preserve">
+    <value>Mouse look again.</value>
+    <comment>Shown when it resumes</comment>
+  </data>
+  <data name="CAMERA_PIVOT" xml:space="preserve">
+    <value>Look at height</value>
+    <comment>How far up the character the camera orbits and looks</comment>
+  </data>
+  <data name="CAMERA_SAVE" xml:space="preserve">
+    <value>Save</value>
+    <comment>Button</comment>
+  </data>
+  <data name="CAMERA_DELETE" xml:space="preserve">
+    <value>Delete</value>
+    <comment>Button - only for saved presets</comment>
+  </data>
+  <data name="CAMERA_SAVE_HINT" xml:space="preserve">
+    <value>Adjust the sliders, then give it a name to keep it. Saved presets appear in the list above and come back in one click.</value>
+    <comment>Explains saving</comment>
+  </data>
+  <data name="CAMERA_SAVE_NEEDS_NAME" xml:space="preserve">
+    <value>Give it a name first.</value>
+    <comment>Save with an empty name</comment>
+  </data>
+  <data name="CAMERA_SAVE_BUILT_IN" xml:space="preserve">
+    <value>That name belongs to one of the presets that ship. Pick another.</value>
+    <comment>Save over a built-in</comment>
+  </data>
+  <data name="CAMERA_SAVE_DONE" xml:space="preserve">
+    <value>Saved as {0}.</value>
+    <comment>Save confirmation</comment>
+  </data>
+  <data name="CAMERA_SAVE_REPLACED" xml:space="preserve">
+    <value>Replaced {0}.</value>
+    <comment>Overwrite confirmation</comment>
+  </data>
+  <data name="CAMERA_DELETED" xml:space="preserve">
+    <value>Deleted {0}.</value>
+    <comment>Delete confirmation</comment>
+  </data>
+  <data name="CAMERA_PRESET_APPLIED" xml:space="preserve">
+    <value>{0} - adjust anything below and it changes in the game as you drag.</value>
+    <comment>Preset applied</comment>
+  </data>
+  <data name="CAMERA_RESTORED" xml:space="preserve">
+    <value>The game's own camera is back.</value>
+    <comment>After restore</comment>
+  </data>
 </root>
