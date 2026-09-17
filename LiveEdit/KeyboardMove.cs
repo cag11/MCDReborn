@@ -38,6 +38,11 @@ namespace LiveEdit
     /// and swinging as the button goes down - by the time there is a destination to refuse, the
     /// swing has already been declined.
     ///
+    /// It can also jump, which the game cannot. Not by asking the character to jump - the flag
+    /// for that is ignored here - but by writing a launch velocity the movement component picks up
+    /// by itself on its next tick. That keeps a jump on the right side of the line this whole
+    /// project runs on: data can be written from out here, behaviour cannot be called.
+    ///
     /// One thing comes with it. The character's facing normally follows the aim, which is right
     /// for a game played by clicking where you want to go and wrong the moment a keyboard is
     /// involved - the two come apart and the character slides across the floor facing somewhere
@@ -104,6 +109,30 @@ namespace LiveEdit
         //slow walk would have quietly broken that, and the two would have fought every time:
         //one asking to move gently, the other refusing to move at all.
         private const int SLOWLY = 0xA2;  // Left Control
+
+        //Q, and not the space bar, which was the first idea and was a bad one.
+        //
+        //Sharing the key with the roll sounded like a way to get a roll that leaves the ground.
+        //It can be made to work, and it is worse: a dodge and a jump at once is hard to aim and
+        //hard to stop doing by accident. A jump is better on its own key, and Q is free.
+        private const int JUMP = 0x51;
+
+        //How a character here leaves the ground, which is not how it first looked.
+        //
+        //The obvious way is bPressedJump, the flag Unreal's own jump sets. It does nothing in this
+        //game, and the test that said otherwise was measuring a character already falling off a
+        //ledge - a measurement worth rather more than the conclusion that came out of it.
+        //
+        //PendingLaunchVelocity works. The movement component reads it every tick, copies it into
+        //the velocity, switches to falling and zeroes it again, all by itself. Writing it is the
+        //entire action: nothing to call, and nothing to clean up afterwards.
+        private const int PENDING_LAUNCH_VELOCITY = 0x0408;
+        private const int MOVEMENT_MODE = 0x01B0;
+        private const byte WALKING = 1;
+
+        //UCharacterMovementComponent. Steering in mid-air; the game's own value is 0.05, which is
+        //almost none, and perfectly reasonable for a character that never jumps.
+        private const int AIR_CONTROL = 0x0214;
 
         //The left mouse button, and the key the game roots the player with.
         private const int LEFT_BUTTON = 0x01;
@@ -296,6 +325,26 @@ namespace LiveEdit
         /// </summary>
         public bool ClicksDoNotWalk { get; set; } = true;
 
+        /// <summary>Whether Q leaves the ground.</summary>
+        public bool CanJump { get; set; }
+
+        /// <summary>
+        /// How fast the launch is, which is not the same as how high it goes.
+        ///
+        /// Gravity here is 5000, so the height is this squared over ten thousand: 1000 clears your
+        /// own waist, 1500 clears your head, and 3000 is nine hundred units and a long way down.
+        /// </summary>
+        public float JumpHeight { get; set; } = 1500f;
+
+        /// <summary>How much steering there is in mid-air. The game gives 0.05, which is almost none.</summary>
+        public float AirControl { get; set; } = 0.35f;
+
+        /// <summary>How many jumps before touching the ground again.</summary>
+        public int JumpCount { get; set; } = 1;
+
+        private bool _jumpHeld;
+        private int _jumpsUsed;
+
         /// <summary>
         /// Whether holding the left button also plants the character's feet.
         ///
@@ -410,6 +459,7 @@ namespace LiveEdit
                 if (movement != _oriented) { orientToMovement(movement); }
 
                 if (AttackRoots) { rootWhileAttacking(); } else { releaseRoot(); }
+                if (CanJump) { jumpOnPress(movement); }
 
                 var forward = 0f;
                 var sideways = 0f;
@@ -498,6 +548,35 @@ namespace LiveEdit
                 Key = new KeyboardInput { VirtualKey = key, Flags = releasing ? KEYEVENTF_KEYUP : 0 },
             };
             SendInput(1, new[] { input }, Marshal.SizeOf<Input>());
+        }
+
+        /// <summary>
+        /// Launches the character upwards on a fresh press of the jump key.
+        ///
+        /// One write per press rather than one per frame, because the movement component consumes
+        /// the launch and zeroes it - writing it every frame would be a character that never comes
+        /// back down. The key has to be let go and pressed again for the next one.
+        ///
+        /// Air jumps are counted here rather than by the game, which has no idea any of this is
+        /// happening. The count resets the moment the character is walking again.
+        /// </summary>
+        private void jumpOnPress(IntPtr movement)
+        {
+            _game.writeFloat(new IntPtr(movement.ToInt64() + AIR_CONTROL), AirControl);
+
+            var mode = _game.read(new IntPtr(movement.ToInt64() + MOVEMENT_MODE), 1);
+            if (mode != null && mode[0] == WALKING) { _jumpsUsed = 0; }
+
+            if (!down(JUMP)) { _jumpHeld = false; return; }
+            if (_jumpHeld) { return; }
+
+            _jumpHeld = true;
+            if (_jumpsUsed >= JumpCount) { return; }
+
+            var launch = new byte[12];
+            Buffer.BlockCopy(BitConverter.GetBytes(JumpHeight), 0, launch, 8, 4);
+
+            if (_game.write(new IntPtr(movement.ToInt64() + PENDING_LAUNCH_VELOCITY), launch)) { _jumpsUsed++; }
         }
 
         private void writeInput(IntPtr pawn, float x, float y)

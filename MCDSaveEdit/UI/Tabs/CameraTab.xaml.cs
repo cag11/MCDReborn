@@ -106,6 +106,11 @@ namespace MCDSaveEdit.UI
             followsAim.Content = R.CAMERA_FOLLOWS_AIM;
             sensitivityLabel.Text = R.CAMERA_SENSITIVITY;
             invertPitch.Content = R.CAMERA_INVERT;
+            canJump.Content = R.CAMERA_JUMP;
+            jumpWhy.Text = R.CAMERA_JUMP_WHY;
+            jumpHeightLabel.Text = R.CAMERA_JUMP_HEIGHT;
+            airControlLabel.Text = R.CAMERA_AIR_CONTROL;
+            jumpCountCaption.Text = R.CAMERA_JUMP_COUNT;
         }
 
         public void updateUI()
@@ -360,6 +365,10 @@ namespace MCDSaveEdit.UI
             mouseLook.IsEnabled = on;
             wasd.IsEnabled = on;
             mouseButtons.IsEnabled = on;
+            canJump.IsEnabled = on;
+            jumpHeight.IsEnabled = on;
+            airControl.IsEnabled = on;
+            jumpCount.IsEnabled = on;
             followsAim.IsEnabled = on;
             sensitivity.IsEnabled = on;
             invertPitch.IsEnabled = on;
@@ -431,6 +440,45 @@ namespace MCDSaveEdit.UI
                 _filling = false;
                 statusLabel.Text = problem;
             }
+        }
+
+        /// <summary>
+        /// Lets space leave the ground as well as roll.
+        ///
+        /// Sharing the key with the roll is the point rather than a compromise - pressing it once
+        /// rolls and jumps together, which is the leap this was asked for.
+        /// </summary>
+        private void canJump_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            _live.canJump = canJump.IsChecked == true;
+        }
+
+        private void jumpHeight_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (jumpCountLabel != null) { jumpCountLabel.Text = ((int)jumpHeight.Value).ToString(); }
+            if (_filling) { return; }
+
+            _live.jumpHeight = (float)jumpHeight.Value;
+            if (canJump.IsChecked != true) { canJump.IsChecked = true; }
+        }
+
+        private void airControl_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (jumpsLabel != null) { jumpsLabel.Text = airControl.Value.ToString("0.00"); }
+            if (_filling) { return; }
+
+            _live.airControl = (float)airControl.Value;
+            if (canJump.IsChecked != true) { canJump.IsChecked = true; }
+        }
+
+        private void jumpCount_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_filling) { return; }
+
+            _live.jumpCount = (int)jumpCount.Value;
+            if (canJump.IsChecked != true) { canJump.IsChecked = true; }
         }
 
         private void mouseButtons_Changed(object sender, RoutedEventArgs e)

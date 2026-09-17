@@ -78,6 +78,8 @@ namespace MCDSaveEdit.UI
             enemiesOn.Content = R.STATS_ENEMIES_ON;
             playerOn.Content = R.STATS_PLAYER_ON;
             restoreButton.Content = R.STATS_RESTORE;
+            poseOnlyWhenSeen.Content = R.STATS_POSE_WHEN_SEEN;
+            poseWhy.Text = R.STATS_POSE_WHY;
         }
 
         public void updateUI() => showLive();
@@ -88,6 +90,7 @@ namespace MCDSaveEdit.UI
             playerStack.Children.Clear();
             _enemyRows.Clear();
             _playerRows.Clear();
+
 
             //Each slider knows which switch it belongs to, so moving one can turn it on.
             addRow(enemyStack, _enemyRows, R.STATS_TOUGH, R.STATS_TOUGH_WHY, 1, 20, 0.5, "x",
@@ -163,6 +166,7 @@ namespace MCDSaveEdit.UI
             enemiesOn.IsEnabled = on;
             playerOn.IsEnabled = on;
             restoreButton.IsEnabled = on;
+            poseOnlyWhenSeen.IsEnabled = on;
 
             liveHint.Text = on ? R.STATS_HINT : string.Format(R.CAMERA_LIVE_WAITING, _live.status);
             if (on) { statusLabel.Text = _live.status; }
@@ -212,6 +216,13 @@ namespace MCDSaveEdit.UI
 
             _live.restorePlayer();
             statusLabel.Text = R.STATS_PLAYER_BACK;
+        }
+
+        private void poseOnlyWhenSeen_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            _live.poseOnlyWhenSeen = poseOnlyWhenSeen.IsChecked == true;
         }
 
         private void restoreButton_Click(object sender, RoutedEventArgs e)

@@ -59,6 +59,35 @@
                               Checked="wasd_Changed" Unchecked="wasd_Changed"/>
                     <CheckBox x:Name="mouseButtons" Content="*Clicking attacks*" Margin="0,6,0,0"
                               Checked="mouseButtons_Changed" Unchecked="mouseButtons_Changed"/>
+                    <CheckBox x:Name="canJump" Content="*Q jumps*" Margin="0,6,0,0"
+                              Checked="canJump_Changed" Unchecked="canJump_Changed"/>
+                    <TextBlock x:Name="jumpWhy" Foreground="Gray" TextWrapping="Wrap"
+                               Margin="18,2,0,0"/>
+                    <DockPanel x:Name="jumpRow" Margin="18,4,0,0">
+                        <TextBlock x:Name="jumpHeightLabel" DockPanel.Dock="Left" Width="120"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock x:Name="jumpCountLabel" DockPanel.Dock="Right" Width="90"
+                                   TextAlignment="Right" Foreground="Gray" VerticalAlignment="Center"/>
+                        <Slider x:Name="jumpHeight" Minimum="600" Maximum="3000" Value="1500"
+                                TickFrequency="50" IsSnapToTickEnabled="True"
+                                VerticalAlignment="Center" ValueChanged="jumpHeight_Changed"/>
+                    </DockPanel>
+                    <DockPanel Margin="18,4,0,0">
+                        <TextBlock x:Name="airControlLabel" DockPanel.Dock="Left" Width="120"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock x:Name="jumpsLabel" DockPanel.Dock="Right" Width="90"
+                                   TextAlignment="Right" Foreground="Gray" VerticalAlignment="Center"/>
+                        <Slider x:Name="airControl" Minimum="0" Maximum="1" Value="0.35"
+                                TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                VerticalAlignment="Center" ValueChanged="airControl_Changed"/>
+                    </DockPanel>
+                    <DockPanel Margin="18,4,0,0">
+                        <TextBlock x:Name="jumpCountCaption" DockPanel.Dock="Left" Width="120"
+                                   VerticalAlignment="Center"/>
+                        <Slider x:Name="jumpCount" Minimum="1" Maximum="4" Value="1"
+                                TickFrequency="1" IsSnapToTickEnabled="True"
+                                VerticalAlignment="Center" ValueChanged="jumpCount_Changed"/>
+                    </DockPanel>
                     <CheckBox x:Name="followsAim" Content="*Points where you aim*" Margin="0,6,0,0"
                               Checked="followsAim_Changed" Unchecked="followsAim_Changed"/>
 

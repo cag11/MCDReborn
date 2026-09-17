@@ -36,6 +36,7 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **Third person and first person**, in a game that has neither: mouse look turns the view, W A S D move you, and clicking attacks instead of walking you there
 * **Presets** - third person, third person far, first person - and you can save your own under a name and bring it back in one click
 * F10 turns the camera setup on and off from inside the game
+* **Jump** on Q, which the game has no button for at all - not the character jumping but a launch written straight into its velocity, which is why it works when asking the character politely does not. Height, steering in mid-air and the number of jumps before landing are all adjustable
 
 #### Custom Builds Feature
 * **Open in MCD Builder**: send the equipped loadout straight to [mcdbuilder.vercel.app](https://mcdbuilder.vercel.app/)
@@ -56,6 +57,7 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 * Held against the game rather than set once: enemies that appear later, a new level, or dying and respawning all get the settings put back within half a second
 * Nothing is written to disk - quitting the game puts everything back, and so does the button
 * Your own damage reduction is left alone on purpose, because that number comes from your gear
+* **Only animate what you can see**: the game poses every enemy in the level every frame, including the ones behind you. Turning that off measured 54 frames a second to 138 in a fight with 198 enemies, and changes nothing you can see
 
 #### Weapon Import Feature
 * **Import your own model** onto any weapon: export a `.glb` from Blender (File -> Export -> glTF Binary) and the weapon comes out wearing it, mesh and texture together, weapons installed as a mod pak beside the game's own so deleting it undoes everything

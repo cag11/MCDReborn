@@ -55,6 +55,17 @@ namespace MCDSaveEdit.Logic
         public float yourGravity { get; set; } = 1f;
         public float yourAttackSpeed { get; set; } = 1f;
 
+        /// <summary>
+        /// Whether enemies nobody can see are left unanimated.
+        ///
+        /// On by default, which is unusual for anything here - everything else waits to be asked.
+        /// This one is worth more than doubling the frame rate in a crowded fight and changes
+        /// nothing anybody can see, so asking first would be asking whether somebody would like
+        /// their game to run badly.
+        /// </summary>
+        public bool poseOnlyWhenSeen { get; set; } = true;
+
+
         /// <summary>What your character says right now, for filling the sliders in the first time.</summary>
         public (float speed, float cooldown, float charges, float gravity)? yours()
         {
@@ -104,6 +115,7 @@ namespace MCDSaveEdit.Logic
             }
 
             if (enemiesOn) { _stats.applyToEnemies(enemyToughness, enemySpeed); }
+            _stats.applyPosing(poseOnlyWhenSeen);
             if (playerOn)
             {
                 _stats.applyToPlayer(yourSpeed, yourDodgeCooldown, yourDodgeCharges, yourGravity);
@@ -137,6 +149,7 @@ namespace MCDSaveEdit.Logic
             //Nothing here was written down, so closing the editor should leave nothing behind.
             if (enemiesOn) { restoreEnemies(); }
             if (playerOn) { restorePlayer(); }
+            _stats?.applyPosing(false);
 
             _game?.Dispose();
             _game = null;

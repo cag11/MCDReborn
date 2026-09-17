@@ -1595,4 +1595,56 @@ The save file is not changed until you save it.</value>
     <value>How fast you swing and shoot. Applied to both your melee and your ranged weapon, since nobody wants half of it.</value>
     <comment>Slider note</comment>
   </data>
+  <data name="STATS_RENDER_ON" xml:space="preserve">
+    <value>Make crowds cheaper</value>
+    <comment>Section switch</comment>
+  </data>
+  <data name="STATS_RENDER_WHY" xml:space="preserve">
+    <value>Third person costs frames for a reason that has nothing to do with this app: looking along a corridor puts far more enemies on screen than looking down at the floor, and each one is a skeleton being posed, drawn and casting a shadow. These make a crowd cheaper without making it smaller.</value>
+    <comment>Explains the section</comment>
+  </data>
+  <data name="STATS_SHADOWS" xml:space="preserve">
+    <value>Enemies cast shadows</value>
+    <comment>Checkbox - off is faster</comment>
+  </data>
+  <data name="STATS_POSE_WHEN_SEEN" xml:space="preserve">
+    <value>Only animate what you can see</value>
+    <comment>Checkbox - on is faster</comment>
+  </data>
+  <data name="STATS_DRAW_DISTANCE" xml:space="preserve">
+    <value>Stop drawing them beyond</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="STATS_DRAW_DISTANCE_WHY" xml:space="preserve">
+    <value>How far away an enemy is still drawn, in centimetres. All the way up means never stop, which is what the game does.</value>
+    <comment>Slider note</comment>
+  </data>
+  <data name="STATS_RENDER_BACK" xml:space="preserve">
+    <value>Enemies are drawn the way the game draws them again.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="STATS_POSE_WHY" xml:space="preserve">
+    <value>The game animates every enemy in the level every frame, including the ones behind you. Unreal has a setting for not doing that and this game does not use it. Measured at 54 frames a second before and 138 after, in a fight with 198 enemies. It changes nothing you can see.</value>
+    <comment>Explains the posing option</comment>
+  </data>
+  <data name="CAMERA_JUMP" xml:space="preserve">
+    <value>Q jumps</value>
+    <comment>Checkbox</comment>
+  </data>
+  <data name="CAMERA_JUMP_WHY" xml:space="preserve">
+    <value>The game has no jump at all. This one is not the character jumping but a launch written straight into its velocity, which is why it works when asking the character nicely does not. On Q rather than space, because a jump that also rolls is harder to aim and harder to stop doing by accident. Needs W A S D switched on.</value>
+    <comment>Explains jumping</comment>
+  </data>
+  <data name="CAMERA_JUMP_HEIGHT" xml:space="preserve">
+    <value>Jump height</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="CAMERA_AIR_CONTROL" xml:space="preserve">
+    <value>Steering in the air</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="CAMERA_JUMP_COUNT" xml:space="preserve">
+    <value>Jumps before landing</value>
+    <comment>Slider</comment>
+  </data>
 </root>

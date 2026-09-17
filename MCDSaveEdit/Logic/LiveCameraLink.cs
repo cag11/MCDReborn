@@ -189,6 +189,10 @@ namespace MCDSaveEdit.Logic
 
             _walk.ClicksDoNotWalk = _clicksDoNotWalk;
             _walk.Suspended = _suspended;
+            _walk.CanJump = _canJump;
+            _walk.JumpHeight = _jumpHeight;
+            _walk.AirControl = _airControl;
+            _walk.JumpCount = _jumpCount;
             _walk.stopped += () => walkingStopped?.Invoke();
             return _walk.start();
         }
@@ -216,6 +220,74 @@ namespace MCDSaveEdit.Logic
         }
 
         private bool _clicksDoNotWalk = true;
+
+        /// <summary>
+        /// Tells mouse look how far the camera may tip, given how far back it is.
+        ///
+        /// Called wherever the distance changes, because the limits that keep a third person camera
+        /// out of the floor are the same ones that point a first person camera at your own head.
+        /// </summary>
+        private void applyPitchLimits(float armLength)
+        {
+            MouseLook.limitsFor(armLength, out var lowest, out var highest);
+
+            _pitchLowest = lowest;
+            _pitchHighest = highest;
+
+            if (_look == null) { return; }
+
+            _look.LowestPitch = lowest;
+            _look.HighestPitch = highest;
+        }
+
+        private float _pitchLowest = -85f;
+        private float _pitchHighest = 5f;
+
+        /// <summary>Whether Q leaves the ground.</summary>
+        public bool canJump
+        {
+            get => _canJump;
+            set
+            {
+                _canJump = value;
+                if (_walk != null) { _walk.CanJump = value; }
+            }
+        }
+
+        public float jumpHeight
+        {
+            get => _jumpHeight;
+            set
+            {
+                _jumpHeight = value;
+                if (_walk != null) { _walk.JumpHeight = value; }
+            }
+        }
+
+        public float airControl
+        {
+            get => _airControl;
+            set
+            {
+                _airControl = value;
+                if (_walk != null) { _walk.AirControl = value; }
+            }
+        }
+
+        public int jumpCount
+        {
+            get => _jumpCount;
+            set
+            {
+                _jumpCount = value;
+                if (_walk != null) { _walk.JumpCount = value; }
+            }
+        }
+
+        private bool _canJump;
+        private float _jumpHeight = 1500f;
+        private float _airControl = 0.35f;
+        private int _jumpCount = 1;
 
         //What the camera should be held at, or nothing to let the world move it as it likes.
         private float? _holdArmLength;
@@ -286,6 +358,7 @@ namespace MCDSaveEdit.Logic
             stopLooking();
             stopWalking();
 
+
             if (restoreTo != null) { push(restoreTo, snap: true); }
         }
 
@@ -311,6 +384,7 @@ namespace MCDSaveEdit.Logic
 
             clicksDoNotWalk = true;
             holdArmLength = THIRD_PERSON_DISTANCE;
+            applyPitchLimits(THIRD_PERSON_DISTANCE);
 
             if (!startWalking(out problem)) { return false; }
             if (!startLooking(sensitivity, invert)) { return false; }
@@ -323,7 +397,10 @@ namespace MCDSaveEdit.Logic
         //swing still shows what it hits.
         private const float THIRD_PERSON_DISTANCE = 800f;
         private const float THIRD_PERSON_PITCH = -12f;
-        private const float THIRD_PERSON_FIELD_OF_VIEW = 75f;
+        //Sixty five rather than seventy five, because field of view turned out to be the only
+        //thing that moves the frame rate: measured at a hundred and forty one enemies, 75 ran at
+        //158 and 60 at 179. This keeps most of the width and gives most of the frames back.
+        private const float THIRD_PERSON_FIELD_OF_VIEW = 65f;
 
         //The character's capsule is 110 half height, so its head is 110 above its origin and the
         //arm hangs 90 below it. Raising the pivot by 170 puts it around the shoulders.
@@ -361,6 +438,7 @@ namespace MCDSaveEdit.Logic
             _camera.setSocketOffset(0f, preset.SocketSide, preset.SocketHeight);
             _camera.setFieldOfView(preset.FieldOfView);
             _camera.setRotationLagSpeed(preset.RotationLagSpeed);
+            _camera.setLagSpeed(preset.LagSpeed);
             _camera.setCollisionTest(preset.Collision);
             _camera.setArmLength(preset.Distance);
             _camera.setRotation(preset.Pitch, _camera.Yaw ?? 45f);
@@ -406,6 +484,7 @@ namespace MCDSaveEdit.Logic
                 SocketSide = _camera.SocketSide ?? 0f,
                 SocketHeight = _camera.SocketHeight ?? -80f,
                 RotationLagSpeed = _camera.RotationLagSpeed ?? 40f,
+                LagSpeed = _camera.LagSpeed ?? 1f,
                 Collision = _camera.CollisionTest ?? false,
                 MouseLook = looking,
                 Wasd = walking,
@@ -430,12 +509,15 @@ namespace MCDSaveEdit.Logic
             _camera.setSocketOffset(0f, preset.SocketSide, preset.SocketHeight);
             _camera.setFieldOfView(preset.FieldOfView);
             _camera.setRotationLagSpeed(preset.RotationLagSpeed);
+            _camera.setLagSpeed(preset.LagSpeed);
             _camera.setCollisionTest(preset.Collision);
             _camera.snapArmLength(preset.Distance);
             _camera.setRotation(preset.Pitch, _camera.Yaw ?? 45f);
 
             //Held from now on, or the first camera volume walked into undoes it.
             holdArmLength = preset.Distance;
+            applyPitchLimits(preset.Distance);
+
 
             if (preset.Wasd && !walking && !startWalking(out problem)) { return false; }
             if (!preset.Wasd && walking) { stopWalking(); }
@@ -463,6 +545,7 @@ namespace MCDSaveEdit.Logic
             _camera.setSocketOffset(0f, _original.SocketSide, _original.SocketHeight);
             _camera.setFieldOfView(_original.FieldOfView);
             _camera.setRotationLagSpeed(_original.RotationLagSpeed);
+            _camera.setLagSpeed(_original.LagSpeed);
             _camera.setCollisionTest(_original.Collision);
             _camera.snapArmLength(_original.Distance);
             _camera.setRotation(_original.Pitch, _camera.Yaw ?? 45f);
@@ -508,6 +591,7 @@ namespace MCDSaveEdit.Logic
                 //Dragging the slider moves what is being held, or the next camera volume would
                 //put it straight back to whatever third person started with.
                 if (_holdArmLength != null) { holdArmLength = arm; }
+                applyPitchLimits(arm);
 
                 if (snap ? _camera.snapArmLength(arm) : _camera.setArmLength(arm)) { done++; }
             }

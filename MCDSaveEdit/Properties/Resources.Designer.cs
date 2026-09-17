@@ -3312,6 +3312,123 @@ namespace MCDSaveEdit.Properties {
             }
         }
 
+        /// <summary>
+        ///   Looks up a localized string similar to Make crowds cheaper
+        /// </summary>
+        public static string STATS_RENDER_ON {
+            get {
+                return ResourceManager.GetString("STATS_RENDER_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Third person costs frames for a reason that has nothing to do with this app: looking along a corrido....
+        /// </summary>
+        public static string STATS_RENDER_WHY {
+            get {
+                return ResourceManager.GetString("STATS_RENDER_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Enemies cast shadows
+        /// </summary>
+        public static string STATS_SHADOWS {
+            get {
+                return ResourceManager.GetString("STATS_SHADOWS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Only animate what you can see
+        /// </summary>
+        public static string STATS_POSE_WHEN_SEEN {
+            get {
+                return ResourceManager.GetString("STATS_POSE_WHEN_SEEN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Stop drawing them beyond
+        /// </summary>
+        public static string STATS_DRAW_DISTANCE {
+            get {
+                return ResourceManager.GetString("STATS_DRAW_DISTANCE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How far away an enemy is still drawn, in centimetres. All the way up means never stop, which is what....
+        /// </summary>
+        public static string STATS_DRAW_DISTANCE_WHY {
+            get {
+                return ResourceManager.GetString("STATS_DRAW_DISTANCE_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Enemies are drawn the way the game draws them again.
+        /// </summary>
+        public static string STATS_RENDER_BACK {
+            get {
+                return ResourceManager.GetString("STATS_RENDER_BACK", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The game animates every enemy in the level every frame, including the ones behind you. Unreal has a ....
+        /// </summary>
+        public static string STATS_POSE_WHY {
+            get {
+                return ResourceManager.GetString("STATS_POSE_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Space also jumps
+        /// </summary>
+        public static string CAMERA_JUMP {
+            get {
+                return ResourceManager.GetString("CAMERA_JUMP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The game can jump and never binds it to anything - a character carries a jump velocity of 1000 and a....
+        /// </summary>
+        public static string CAMERA_JUMP_WHY {
+            get {
+                return ResourceManager.GetString("CAMERA_JUMP_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Jump height
+        /// </summary>
+        public static string CAMERA_JUMP_HEIGHT {
+            get {
+                return ResourceManager.GetString("CAMERA_JUMP_HEIGHT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Steering in the air
+        /// </summary>
+        public static string CAMERA_AIR_CONTROL {
+            get {
+                return ResourceManager.GetString("CAMERA_AIR_CONTROL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Jumps before landing
+        /// </summary>
+        public static string CAMERA_JUMP_COUNT {
+            get {
+                return ResourceManager.GetString("CAMERA_JUMP_COUNT", resourceCulture);
+            }
+        }
+        
         public static string CAMERA_LIVE_PREVIEW {
             get {
                 return ResourceManager.GetString("CAMERA_LIVE_PREVIEW", resourceCulture);

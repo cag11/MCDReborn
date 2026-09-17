@@ -45,6 +45,12 @@
                     <CheckBox x:Name="playerOn" Content="*Change your character*" FontWeight="Bold"
                               Checked="playerOn_Changed" Unchecked="playerOn_Changed"/>
                     <StackPanel x:Name="playerStack"/>
+
+                    <CheckBox x:Name="poseOnlyWhenSeen" Content="*Only animate what you can see*"
+                              FontWeight="Bold" Margin="0,24,0,0" IsChecked="True"
+                              Checked="poseOnlyWhenSeen_Changed" Unchecked="poseOnlyWhenSeen_Changed"/>
+                    <TextBlock x:Name="poseWhy" Foreground="Gray" TextWrapping="Wrap"
+                               Margin="0,4,0,0"/>
                 </StackPanel>
             </Grid>
         </ScrollViewer>

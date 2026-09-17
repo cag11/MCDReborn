@@ -51,6 +51,19 @@ namespace MCDSaveEdit.Logic
         /// <summary>How quickly the camera swings to a new angle. Forty is the game's own.</summary>
         public float RotationLagSpeed { get; set; } = 40f;
 
+        /// <summary>
+        /// How quickly the camera catches up with the character, rather than with its rotation.
+        ///
+        /// The game's own value is 1, which is very slow indeed and completely invisible in a game
+        /// where the character never leaves the ground. Give it a jump and it is the whole problem:
+        /// measured at a hundred and fifty units up, the camera fell 712 units behind the character
+        /// over the arc. At 100 it falls behind by 1.6.
+        ///
+        /// Every preset carries a value rather than leaving it alone, so that switching from a
+        /// preset that needed a fast camera back to one that did not actually puts it back.
+        /// </summary>
+        public float LagSpeed { get; set; } = 1f;
+
         /// <summary>Whether the camera pulls in when something is behind you. Matters once it is close.</summary>
         public bool Collision { get; set; } = true;
 
@@ -72,8 +85,11 @@ namespace MCDSaveEdit.Logic
             return new[] {
                 new CameraPreset {
                     Name = "Third person", BuiltIn = true,
-                    Distance = 800f, Pitch = -12f, FieldOfView = 75f,
+                    Distance = 800f, Pitch = -12f, FieldOfView = 65f,
                     PivotHeight = 170f, SocketSide = 40f, SocketHeight = 20f,
+                    //Fast enough to keep up with a jump, slow enough to still glide. The game's
+                    //own 1 is a camera that gets left behind entirely.
+                    LagSpeed = 25f,
                 },
                 new CameraPreset {
                     Name = "Third person, far", BuiltIn = true,
@@ -81,14 +97,29 @@ namespace MCDSaveEdit.Logic
                     //this far back at a shallow angle spends most of its time looking at a wall.
                     Distance = 1500f, Pitch = -25f, FieldOfView = 70f,
                     PivotHeight = 170f, SocketSide = 30f, SocketHeight = 40f,
+                    LagSpeed = 25f,
                 },
                 new CameraPreset {
                     Name = "First person", BuiltIn = true,
-                    //No arm at all, so the camera sits on the pivot - which is put at eye height
-                    //rather than the shoulders, and moved off the shoulder offset so it is not
-                    //looking out of an ear.
+                    //No arm at all, so the camera sits on the pivot, and two hundred is the right
+                    //number - which took moving it to find out.
+                    //
+                    //The arm hangs ninety units below the capsule centre and the capsule half
+                    //height is 110, so a pivot of 200 puts the camera on the crown of the head.
+                    //Lowering it to eye height sounds better and is not: at 175 the camera is
+                    //inside the body and the view fills with the inside of your own cape. The
+                    //character has no first person model to step into, and the flag that would
+                    //hide it does nothing from out here, so the camera has to sit on top of the
+                    //head rather than in it.
+                    //
+                    //What keeps the head out of frame is not the pivot, it is not being able to
+                    //tip far enough down to look at it. See the pitch limits in MouseLook.
                     Distance = 0f, Pitch = 0f, FieldOfView = 90f,
                     PivotHeight = 200f, SocketSide = 0f, SocketHeight = 0f,
+                    //Rigid, because a camera inside a character's head cannot lag behind it. At
+                    //the game's own lag the character jumps and the camera does not, so the body
+                    //rises straight through the view.
+                    LagSpeed = 100f,
                     //Nothing to collide with when the camera is inside the character.
                     Collision = false,
                 },

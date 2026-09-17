@@ -1,4 +1,4 @@
-using System;
+ using System;
 
 namespace LiveEdit
 {
@@ -57,6 +57,15 @@ namespace LiveEdit
         //for a whole transform before ComponentVelocity.
         private const int ATTACH_PARENT = 0x0108;
         private const int WORLD_ROTATION = 0x0190;
+
+        //Not here: hiding the character in first person.
+        //
+        //bHiddenInGame is at 0x01CC bit 6 and the bit flips perfectly. Nothing happens. The flag
+        //is only read when the component's render state is rebuilt, which SetHiddenInGame does by
+        //calling MarkRenderStateDirty - and calling is the one thing this project cannot do.
+        //Verified by watching LastRenderTime, which kept climbing with the bit set.
+        //
+        //A note rather than code, because the bit flipping is convincing and the effect is nil.
 
         //UCameraComponent.
         private const int FIELD_OF_VIEW = 0x0258;
