@@ -50,6 +50,13 @@ https://github.com/user-attachments/assets/509496fd-7186-4422-a639-9d10272be407
 
 https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 
+#### Difficulty Feature
+* **Change how hard the game is while it is running** - how tough and how fast the enemies are, and your own speed, roll cooldown, roll charges, gravity and attack speed
+* Toughness changes the damage enemies take rather than their health, so it works the same on every kind of enemy
+* Held against the game rather than set once: enemies that appear later, a new level, or dying and respawning all get the settings put back within half a second
+* Nothing is written to disk - quitting the game puts everything back, and so does the button
+* Your own damage reduction is left alone on purpose, because that number comes from your gear
+
 #### Weapon Import Feature
 * **Import your own model** onto any weapon: export a `.glb` from Blender (File -> Export -> glTF Binary) and the weapon comes out wearing it, mesh and texture together, weapons installed as a mod pak beside the game's own so deleting it undoes everything
 * **Or just reshape the game's own model**: resize from a tenth up to **8x**, move and rotate it - a claymore at half size, a dagger the length of a spear, or something absurd

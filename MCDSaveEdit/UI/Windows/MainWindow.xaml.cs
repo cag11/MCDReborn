@@ -148,6 +148,7 @@ namespace MCDSaveEdit.UI
             customSkinsTabItem.Header = R.CUSTOM_SKINS_TAB;
             weaponSkinsTabItem.Header = R.WEAPON_SKINS_TAB;
             cameraTabItem.Header = R.CAMERA_TAB;
+            enemiesTabItem.Header = R.STATS_TAB;
             heroTabItem.Header = R.HERO_TAB;
             chestTabItem.Header = R.getString("StorageChest") ?? R.CHEST;
             towerTabItem.Header = R.getString("TheTower") ?? R.THE_TOWER;

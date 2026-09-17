@@ -69,13 +69,30 @@ namespace LiveEdit
 
         //Asking Windows for a timer that can actually do that.
         //
-        //Without it every sleep below about 15ms is that long instead. It is a process wide
-        //setting and a rude one, so it is asked for when the keys start driving and given back
-        //the moment they stop.
+        //Without it every sleep below about 15ms is that long instead. It reaches outside this
+        //process, so it is asked for on the first step, given back a second and a half after the
+        //last one, and never held while a menu is open or the game is in the background.
         [DllImport("winmm.dll")] private static extern uint timeBeginPeriod(uint milliseconds);
         [DllImport("winmm.dll")] private static extern uint timeEndPeriod(uint milliseconds);
 
         private const uint TIMER_RESOLUTION_MS = 1;
+
+        //How often to look when nobody is walking.
+        //
+        //The fast rate exists so that no frame of walking goes without input behind it. Standing
+        //still needs none of that - the only reason to write anything is to refuse a destination
+        //a click posted, and once every sixteen milliseconds is plenty for that. Four times fewer
+        //wakeups for the whole time somebody is reading their inventory or picking a mission.
+        private const int IDLE_MS = 16;
+
+        //How long after the last step to keep asking for the fast timer.
+        //
+        //Raising the system timer is the only thing here that reaches outside this process, and
+        //it was being held for the entire session - from the moment the keys were switched on
+        //until they were switched off, whether anybody was walking or not. Now it is asked for on
+        //the first step and given back shortly after the last one, which is the difference between
+        //affecting the machine while you play and affecting it while you walk.
+        private const int KEEP_TIMER_MS = 1500;
 
         //Virtual key codes.
         private const int W = 0x57, A = 0x41, S = 0x53, D = 0x44;
@@ -326,19 +343,40 @@ namespace LiveEdit
 
         private void run()
         {
-            timeBeginPeriod(TIMER_RESOLUTION_MS);
             try { drive(); }
-            finally { timeEndPeriod(TIMER_RESOLUTION_MS); }
+            finally { lowerTimer(); }
 
             _running = false;
             stopped?.Invoke();
+        }
+
+        private bool _timerRaised;
+        private int _lastStep;
+
+        private void raiseTimer()
+        {
+            if (_timerRaised) { return; }
+
+            timeBeginPeriod(TIMER_RESOLUTION_MS);
+            _timerRaised = true;
+        }
+
+        private void lowerTimer()
+        {
+            if (!_timerRaised) { return; }
+
+            timeEndPeriod(TIMER_RESOLUTION_MS);
+            _timerRaised = false;
         }
 
         private void drive()
         {
             while (_running)
             {
-                Thread.Sleep(EVERY_MS);
+                //Fast while walking, slow while not. Using last time round's answer costs one
+                //idle frame of latency on the first step and saves three quarters of the wakeups
+                //for all the time in between.
+                Thread.Sleep(_timerRaised ? EVERY_MS : IDLE_MS);
 
                 if (!_game.IsRunning) { break; }
 
@@ -349,6 +387,7 @@ namespace LiveEdit
                     //A key held down when the window changed would stay held, and shift is not a
                     //thing to leave pressed in somebody else's window.
                     releaseRoot();
+                    lowerTimer();
                     continue;
                 }
 
@@ -356,6 +395,7 @@ namespace LiveEdit
                 {
                     //Whatever was being held is let go of, or it stays held into the menu.
                     releaseRoot();
+                    lowerTimer();
                     continue;
                 }
 
@@ -382,6 +422,16 @@ namespace LiveEdit
                 //Standing still is written too, rather than skipped. Leaving the vector alone is
                 //what lets a destination posted by a click quietly move the character while no key
                 //is held - which reads as the character wandering off on its own.
+                if (forward != 0f || sideways != 0f)
+                {
+                    raiseTimer();
+                    _lastStep = Environment.TickCount;
+                }
+                else if (_timerRaised && Environment.TickCount - _lastStep > KEEP_TIMER_MS)
+                {
+                    lowerTimer();
+                }
+
                 if (forward == 0f && sideways == 0f)
                 {
                     if (ClicksDoNotWalk) { refuseDestination(movement); writeInput(pawn, 0f, 0f); }

@@ -25,7 +25,11 @@ namespace LiveEdit
     public sealed class LiveCamera
     {
         //Where the engine keeps the world, as an offset into the game's own image.
-        private const int GWORLD = 0x04795230;
+        //
+        //Shared, because everything that reaches into this game starts from the same world - the
+        //camera hangs off the character in it, and the spawners are actors in its level.
+        internal const int GWORLD_OFFSET = 0x04795230;
+        private const int GWORLD = GWORLD_OFFSET;
 
         private const int WORLD_GAME_INSTANCE = 0x0160;
         private const int GAME_INSTANCE_LOCAL_PLAYERS = 0x0038;

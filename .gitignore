@@ -269,3 +269,13 @@ changelog.md
 
 # Research items, wont be committed to the repo
 research/
+
+# Handover builds. Every one of these is a whole runtime with the app inside it - the
+# self-contained flavour is seventy megabytes - and they are rebuilt from source on demand,
+# so nothing is lost by keeping them out and a great deal of repository is saved.
+dist/
+publish/
+publish-fd/
+publish-full/
+publish-keystick/
+publish-meshforge/

@@ -2952,6 +2952,366 @@ namespace MCDSaveEdit.Properties {
             }
         }
 
+        /// <summary>
+        ///   Looks up a localized string similar to Enemies
+        /// </summary>
+        public static string ENEMIES_TAB {
+            get {
+                return ResourceManager.GetString("ENEMIES_TAB", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to More enemies
+        /// </summary>
+        public static string ENEMIES_ON {
+            get {
+                return ResourceManager.GetString("ENEMIES_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Put it back
+        /// </summary>
+        public static string ENEMIES_RESTORE {
+            get {
+                return ResourceManager.GetString("ENEMIES_RESTORE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Multiplies what the level's own spawners were told to send. Nothing is written to disk and nothing i....
+        /// </summary>
+        public static string ENEMIES_HINT {
+            get {
+                return ResourceManager.GetString("ENEMIES_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} spawner(s) in this level.
+        /// </summary>
+        public static string ENEMIES_FOUND {
+            get {
+                return ResourceManager.GetString("ENEMIES_FOUND", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No wave spawners here. The camp has almost none - load into a mission to see what this does.
+        /// </summary>
+        public static string ENEMIES_NONE_HERE {
+            get {
+                return ResourceManager.GetString("ENEMIES_NONE_HERE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Applied to {0} spawner(s).
+        /// </summary>
+        public static string ENEMIES_APPLIED {
+            get {
+                return ResourceManager.GetString("ENEMIES_APPLIED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Put {0} spawner(s) back.
+        /// </summary>
+        public static string ENEMIES_RESTORED {
+            get {
+                return ResourceManager.GetString("ENEMIES_RESTORED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How many
+        /// </summary>
+        public static string ENEMIES_COUNT {
+            get {
+                return ResourceManager.GetString("ENEMIES_COUNT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Multiplies every wave's size - where it starts, how much it grows and where it stops. Three is a not....
+        /// </summary>
+        public static string ENEMIES_COUNT_WHY {
+            get {
+                return ResourceManager.GetString("ENEMIES_COUNT_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How often
+        /// </summary>
+        public static string ENEMIES_RATE {
+            get {
+                return ResourceManager.GetString("ENEMIES_RATE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How quickly waves arrive. Higher means less breathing room between them, which stacks with the count....
+        /// </summary>
+        public static string ENEMIES_RATE_WHY {
+            get {
+                return ResourceManager.GetString("ENEMIES_RATE_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How spread out
+        /// </summary>
+        public static string ENEMIES_SPREAD {
+            get {
+                return ResourceManager.GetString("ENEMIES_SPREAD", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The radius a spawner scatters its wave across. Wider surrounds you; narrower drops them in a clump y....
+        /// </summary>
+        public static string ENEMIES_SPREAD_WHY {
+            get {
+                return ResourceManager.GetString("ENEMIES_SPREAD_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How close
+        /// </summary>
+        public static string ENEMIES_CLOSENESS {
+            get {
+                return ResourceManager.GetString("ENEMIES_CLOSENESS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How near you they are allowed to appear. Lower gets ambushes, higher gives you the moment to see the....
+        /// </summary>
+        public static string ENEMIES_CLOSENESS_WHY {
+            get {
+                return ResourceManager.GetString("ENEMIES_CLOSENESS_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Difficulty
+        /// </summary>
+        public static string STATS_TAB {
+            get {
+                return ResourceManager.GetString("STATS_TAB", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Change the enemies
+        /// </summary>
+        public static string STATS_ENEMIES_ON {
+            get {
+                return ResourceManager.GetString("STATS_ENEMIES_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Change your character
+        /// </summary>
+        public static string STATS_PLAYER_ON {
+            get {
+                return ResourceManager.GetString("STATS_PLAYER_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Put it all back
+        /// </summary>
+        public static string STATS_RESTORE {
+            get {
+                return ResourceManager.GetString("STATS_RESTORE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Applied to the running game and held there, because enemies that appear later are built fresh. Nothi....
+        /// </summary>
+        public static string STATS_HINT {
+            get {
+                return ResourceManager.GetString("STATS_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} enemies in this level.
+        /// </summary>
+        public static string STATS_FOUND {
+            get {
+                return ResourceManager.GetString("STATS_FOUND", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Waiting for a character - load into the camp or a mission.
+        /// </summary>
+        public static string STATS_NO_CHARACTER {
+            get {
+                return ResourceManager.GetString("STATS_NO_CHARACTER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Enemies are back to normal.
+        /// </summary>
+        public static string STATS_ENEMIES_BACK {
+            get {
+                return ResourceManager.GetString("STATS_ENEMIES_BACK", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your character is back to normal.
+        /// </summary>
+        public static string STATS_PLAYER_BACK {
+            get {
+                return ResourceManager.GetString("STATS_PLAYER_BACK", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Everything is back to normal.
+        /// </summary>
+        public static string STATS_ALL_BACK {
+            get {
+                return ResourceManager.GetString("STATS_ALL_BACK", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How tough they are
+        /// </summary>
+        public static string STATS_TOUGH {
+            get {
+                return ResourceManager.GetString("STATS_TOUGH", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How many hits they take to kill. This changes the damage they take rather than the health they have,....
+        /// </summary>
+        public static string STATS_TOUGH_WHY {
+            get {
+                return ResourceManager.GetString("STATS_TOUGH_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How fast they are
+        /// </summary>
+        public static string STATS_ENEMY_SPEED {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_SPEED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How quickly they close on you. Small changes here are felt more than large ones anywhere else - a sl....
+        /// </summary>
+        public static string STATS_ENEMY_SPEED_WHY {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_SPEED_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your speed
+        /// </summary>
+        public static string STATS_YOUR_SPEED {
+            get {
+                return ResourceManager.GetString("STATS_YOUR_SPEED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How fast you move, on top of whatever your gear already gives you.
+        /// </summary>
+        public static string STATS_YOUR_SPEED_WHY {
+            get {
+                return ResourceManager.GetString("STATS_YOUR_SPEED_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your roll cooldown
+        /// </summary>
+        public static string STATS_DODGE_COOLDOWN {
+            get {
+                return ResourceManager.GetString("STATS_DODGE_COOLDOWN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Seconds between rolls. The game gives you 2.5.
+        /// </summary>
+        public static string STATS_DODGE_COOLDOWN_WHY {
+            get {
+                return ResourceManager.GetString("STATS_DODGE_COOLDOWN_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your roll charges
+        /// </summary>
+        public static string STATS_DODGE_CHARGES {
+            get {
+                return ResourceManager.GetString("STATS_DODGE_CHARGES", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How many rolls you can chain before waiting. The game gives you one.
+        /// </summary>
+        public static string STATS_DODGE_CHARGES_WHY {
+            get {
+                return ResourceManager.GetString("STATS_DODGE_CHARGES_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your gravity
+        /// </summary>
+        public static string STATS_GRAVITY {
+            get {
+                return ResourceManager.GetString("STATS_GRAVITY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How heavily you fall. Lower makes every gap and ledge more forgiving.
+        /// </summary>
+        public static string STATS_GRAVITY_WHY {
+            get {
+                return ResourceManager.GetString("STATS_GRAVITY_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your attack speed
+        /// </summary>
+        public static string STATS_ATTACK_SPEED {
+            get {
+                return ResourceManager.GetString("STATS_ATTACK_SPEED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How fast you swing and shoot. Applied to both your melee and your ranged weapon, since nobody wants half of it.
+        /// </summary>
+        public static string STATS_ATTACK_SPEED_WHY {
+            get {
+                return ResourceManager.GetString("STATS_ATTACK_SPEED_WHY", resourceCulture);
+            }
+        }
+
         public static string CAMERA_LIVE_PREVIEW {
             get {
                 return ResourceManager.GetString("CAMERA_LIVE_PREVIEW", resourceCulture);

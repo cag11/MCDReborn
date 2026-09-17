@@ -85,6 +85,10 @@
                 <local:CameraTab x:Name="cameraTab"/>
             </TabItem>
 
+            <TabItem x:Name="enemiesTabItem" Header="*Enemies*" Selector.Selected="OnTabSelected">
+                <local:EnemiesTab x:Name="enemiesTab"/>
+            </TabItem>
+
             <TabItem x:Name="statsTabItem" Header="*Stats/Counters*" Selector.Selected="OnTabSelected">
                 <local:StatsTab x:Name="statsTab"/>
             </TabItem>
