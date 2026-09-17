@@ -199,6 +199,8 @@ namespace MCDSaveEdit.Logic
             _walk.ClicksDoNotWalk = _clicksDoNotWalk;
             _walk.Suspended = _suspended;
             _walk.CanJump = _canJump;
+            _walk.CanFly = _canFly;
+            _walk.FlySpeed = _flySpeed;
             _walk.JumpHeight = _jumpHeight;
             _walk.LagSpeedWalking = _lagSpeedWalking;
             _walk.AirControl = _airControl;
@@ -256,6 +258,93 @@ namespace MCDSaveEdit.Logic
 
         //Below this the camera is in the character rather than behind it.
         private const float INSIDE_THE_CHARACTER = 150f;
+        /// <summary>
+        /// Riding the nearest creature, which is as close to a mount as this can get.
+        ///
+        /// Nothing is spawned and nothing is attached - both are function calls, and this project
+        /// does not inject. A creature the level already placed is stopped walking and then moved
+        /// under the character every frame, which from the outside is the same thing.
+        /// </summary>
+        public bool startRiding(out string problem)
+        {
+            problem = "";
+            if (_game == null) { problem = "Not attached to the game."; return false; }
+
+            _mount ??= new Mount(_game);
+            _mount.Speed = mountSpeed;
+
+            if (!_mount.start(ride, out problem) && !_mount.Riding) { return false; }
+
+            //And the camera pulls back, because a first person view from on top of a cow is a view
+            //of a cow. Remembered rather than assumed, so ticking it off puts back whatever was
+            //there - including a distance somebody set by hand.
+            _wasDistance = _holdArmLength;
+            holdArmLength = backFarEnoughFor(_mount.MountHeight);
+            _camera?.setRotation(MOUNTED_PITCH, _camera.Yaw ?? 45f);
+            return true;
+        }
+
+        public void stopRiding()
+        {
+            _mount?.stop();
+
+            if (_wasDistance is float back) { holdArmLength = back; }
+            _wasDistance = null;
+        }
+
+        /// <summary>
+        /// Far enough back to see what you are sitting on, whatever it is.
+        ///
+        /// Nine hundred was right for a cow and wrong for anything large - sit on a boss at nine
+        /// hundred and the camera is somewhere inside it. Fitting something of height H in the frame
+        /// takes about nine tenths of H at this field of view, plus room for the rider on top, so
+        /// the distance is worked out from what is actually underneath rather than fixed.
+        /// </summary>
+        private static float backFarEnoughFor(float mountHeight)
+        {
+            var wanted = (mountHeight + RIDER_HEIGHT) * TO_FIT_IN_FRAME;
+
+            return Math.Max(MOUNTED_NEAREST, Math.Min(MOUNTED_FURTHEST, wanted));
+        }
+
+        private const float MOUNTED_NEAREST = 900f;
+        private const float MOUNTED_FURTHEST = 4000f;
+        private const float TO_FIT_IN_FRAME = 1.4f;
+        private const float RIDER_HEIGHT = 220f;
+        private const float MOUNTED_PITCH = -20f;
+
+        private float? _wasDistance;
+
+        /// <summary>Which creature to ride, or zero for whatever is nearest.</summary>
+        public IntPtr ride { get; set; }
+
+        /// <summary>Everything nearby worth sitting on, nearest first, and what was looked at.</summary>
+        public System.Collections.Generic.List<Mount.Candidate> rideable(out string tell)
+        {
+            if (_game == null)
+            {
+                tell = "Not attached to the game.";
+                return new System.Collections.Generic.List<Mount.Candidate>();
+            }
+
+            _mount ??= new Mount(_game);
+            return _mount.nearby(out tell);
+        }
+
+        public bool riding => _mount?.Riding == true;
+
+        public float mountSpeed
+        {
+            get => _mountSpeed;
+            set
+            {
+                _mountSpeed = value;
+                if (_mount != null) { _mount.Speed = value; }
+            }
+        }
+
+        private Mount? _mount;
+        private float _mountSpeed = 2400f;
         private float _lagSpeedWalking = 1f;
 
 
@@ -269,6 +358,30 @@ namespace MCDSaveEdit.Logic
                 if (_walk != null) { _walk.CanJump = value; }
             }
         }
+
+        /// <summary>Whether G switches flying on and off.</summary>
+        public bool canFly
+        {
+            get => _canFly;
+            set
+            {
+                _canFly = value;
+                if (_walk != null) { _walk.CanFly = value; }
+            }
+        }
+
+        public float flySpeed
+        {
+            get => _flySpeed;
+            set
+            {
+                _flySpeed = value;
+                if (_walk != null) { _walk.FlySpeed = value; }
+            }
+        }
+
+        private bool _canFly;
+        private float _flySpeed = 4000f;
 
         public float jumpHeight
         {
@@ -373,6 +486,7 @@ namespace MCDSaveEdit.Logic
 
             stopLooking();
             stopWalking();
+            stopRiding();
 
 
 
@@ -452,7 +566,7 @@ namespace MCDSaveEdit.Logic
             };
 
             _camera.setTargetOffset(0f, 0f, preset.PivotHeight);
-            _camera.setSocketOffset(0f, preset.SocketSide, preset.SocketHeight);
+            _camera.setSocketOffset(preset.SocketForward, preset.SocketSide, preset.SocketHeight);
             _camera.setFieldOfView(preset.FieldOfView);
             _camera.setRotationLagSpeed(preset.RotationLagSpeed);
             _camera.setLagSpeed(preset.LagSpeed);
@@ -527,7 +641,7 @@ namespace MCDSaveEdit.Logic
             _applied = preset.copy();
 
             _camera.setTargetOffset(0f, 0f, preset.PivotHeight);
-            _camera.setSocketOffset(0f, preset.SocketSide, preset.SocketHeight);
+            _camera.setSocketOffset(preset.SocketForward, preset.SocketSide, preset.SocketHeight);
             _camera.setFieldOfView(preset.FieldOfView);
             _camera.setRotationLagSpeed(preset.RotationLagSpeed);
             _camera.setLagSpeed(preset.LagSpeed);

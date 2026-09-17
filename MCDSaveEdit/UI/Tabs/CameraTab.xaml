@@ -91,6 +91,40 @@
                     <CheckBox x:Name="followsAim" Content="*Points where you aim*" Margin="0,6,0,0"
                               Checked="followsAim_Changed" Unchecked="followsAim_Changed"/>
 
+                    <CheckBox x:Name="canFly" Content="*G flies*" Margin="0,6,0,0"
+                              Checked="canFly_Changed" Unchecked="canFly_Changed"/>
+                    <TextBlock x:Name="flyWhy" Foreground="Gray" TextWrapping="Wrap"
+                               Margin="18,2,0,0"/>
+                    <DockPanel Margin="18,4,0,0">
+                        <TextBlock x:Name="flySpeedLabel" DockPanel.Dock="Left" Width="120"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock x:Name="flySpeedValue" DockPanel.Dock="Right" Width="90"
+                                   TextAlignment="Right" Foreground="Gray" VerticalAlignment="Center"/>
+                        <Slider x:Name="flySpeed" Minimum="1000" Maximum="12000" Value="4000"
+                                TickFrequency="250" IsSnapToTickEnabled="True"
+                                VerticalAlignment="Center" ValueChanged="flySpeed_Changed"/>
+                    </DockPanel>
+
+                    <CheckBox x:Name="riding" Content="*Ride*" Margin="0,6,0,0"
+                              Checked="riding_Changed" Unchecked="riding_Changed"/>
+                    <DockPanel Margin="18,4,0,0">
+                        <Button x:Name="refreshMounts" DockPanel.Dock="Right" Width="80"
+                                Margin="6,0,0,0" Click="refreshMounts_Click"/>
+                        <ComboBox x:Name="mountPick" SelectionChanged="mountPick_Changed"/>
+                    </DockPanel>
+                    <TextBlock x:Name="mountWhy" Foreground="Gray" TextWrapping="Wrap"
+                               Margin="18,2,0,0"/>
+                    <DockPanel Margin="18,4,0,0">
+                        <TextBlock x:Name="mountSpeedLabel" DockPanel.Dock="Left" Width="120"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock x:Name="mountSpeedValue" DockPanel.Dock="Right" Width="90"
+                                   TextAlignment="Right" Foreground="Gray" VerticalAlignment="Center"/>
+                        <Slider x:Name="mountSpeed" Minimum="800" Maximum="6000" Value="2400"
+                                TickFrequency="100" IsSnapToTickEnabled="True"
+                                VerticalAlignment="Center" ValueChanged="mountSpeed_Changed"/>
+                    </DockPanel>
+
+
                     <DockPanel Margin="0,8,0,0">
                         <TextBlock x:Name="sensitivityLabel" DockPanel.Dock="Left" Width="120"
                                    VerticalAlignment="Center"/>

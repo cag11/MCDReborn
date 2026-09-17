@@ -49,6 +49,21 @@ namespace MCDSaveEdit.Logic
         public float SocketHeight { get; set; } = 20f;
 
         /// <summary>How quickly the camera swings to a new angle. Forty is the game's own.</summary>
+        /// <summary>
+        /// How far in front of the character's face the camera sits.
+        ///
+        /// SocketOffset.X, which is the one applied after the view rotation - so it means forward
+        /// from where you are looking. TargetOffset, which the pivot slider writes, is added to the
+        /// world position before any rotation, so its X is world X and would sit in front of your
+        /// face walking one way and behind your head walking the other.
+        ///
+        /// Worth about twenty units in first person, which is a head's radius: enough to put the
+        /// lens outside the mesh so the head cannot be in frame at all. It does swing down a little
+        /// when you look down, being view relative - twenty units forward at forty five degrees is
+        /// fourteen forward and fourteen down, which is small enough not to matter.
+        /// </summary>
+        public float SocketForward { get; set; }
+
         public float RotationLagSpeed { get; set; } = 40f;
 
         /// <summary>
@@ -116,8 +131,21 @@ namespace MCDSaveEdit.Logic
                     //
                     //What keeps the head out of frame is not the pivot, it is not being able to
                     //tip far enough down to look at it. See the pitch limits in MouseLook.
+                    //Two hundred and thirty rather than two hundred, to get the last of the head
+                    //off the bottom of the screen.
+                    //
+                    //Two hundred puts the camera exactly on the crown, which is fine standing still
+                    //and not fine walking: the body shifts about thirty units against the capsule
+                    //the camera is bolted to, and the top of the head crosses into the bottom edge
+                    //on every bob. The head is roughly 34 wide, so clearing it needs the camera
+                    //about twenty units above it - by then the head sits steeper than the bottom of
+                    //the view rather than inside it.
+                    //
+                    //Raise it further and first person starts feeling like a drone again; lower it
+                    //and the head comes back, and at 175 the camera is inside the body entirely.
+                    //It is a slider, so this is a starting point rather than an answer.
                     Distance = 0f, Pitch = 0f, FieldOfView = 90f,
-                    PivotHeight = 200f, SocketSide = 0f, SocketHeight = 0f,
+                    PivotHeight = 230f, SocketSide = 0f, SocketHeight = 0f,
                     //Twenty, which is a compromise arrived at from both ends rather than picked.
                     //
                     //The game's own value is 1. From behind a character that is invisible; from

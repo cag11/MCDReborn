@@ -3438,6 +3438,105 @@ namespace MCDSaveEdit.Properties {
             }
         }
 
+        /// <summary>
+        ///   Looks up a localized string similar to Camera forward.
+        /// </summary>
+        public static string CAMERA_FORWARD {
+            get {
+                return ResourceManager.GetString("CAMERA_FORWARD", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Ride the nearest creature.
+        /// </summary>
+        public static string MOUNT_RIDE {
+            get {
+                return ResourceManager.GetString("MOUNT_RIDE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing is spawned - spawning is a function call and this tool only writes memory. The nea.
+        /// </summary>
+        public static string MOUNT_WHY {
+            get {
+                return ResourceManager.GetString("MOUNT_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Riding speed.
+        /// </summary>
+        public static string MOUNT_SPEED {
+            get {
+                return ResourceManager.GetString("MOUNT_SPEED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Stop the rider's legs moving.
+        /// </summary>
+        public static string MOUNT_FREEZE {
+            get {
+                return ResourceManager.GetString("MOUNT_FREEZE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Look around.
+        /// </summary>
+        public static string MOUNT_REFRESH {
+            get {
+                return ResourceManager.GetString("MOUNT_REFRESH", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} nearby. Pick one, then tick Ride..
+        /// </summary>
+        public static string MOUNT_FOUND {
+            get {
+                return ResourceManager.GetString("MOUNT_FOUND", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing nearby that walks. Ride still works - it will just be speed..
+        /// </summary>
+        public static string MOUNT_FOUND_NONE {
+            get {
+                return ResourceManager.GetString("MOUNT_FOUND_NONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to G flies.
+        /// </summary>
+        public static string FLY_ON {
+            get {
+                return ResourceManager.GetString("FLY_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Press G in game to take off and again to land. Forward goes wherever the camera is pointed.
+        /// </summary>
+        public static string FLY_WHY {
+            get {
+                return ResourceManager.GetString("FLY_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Flying speed.
+        /// </summary>
+        public static string FLY_SPEED {
+            get {
+                return ResourceManager.GetString("FLY_SPEED", resourceCulture);
+            }
+        }
+
         public static string CAMERA_LIVE_PREVIEW {
             get {
                 return ResourceManager.GetString("CAMERA_LIVE_PREVIEW", resourceCulture);

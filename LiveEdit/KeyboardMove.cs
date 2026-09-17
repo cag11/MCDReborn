@@ -132,6 +132,35 @@ namespace LiveEdit
         //
         //Left as a note, with the number, so this looks like a good idea to nobody again.
 
+        //G, which nothing in this game uses, and the movement mode that turns gravity off.
+        //
+        //Flying is the one movement mode that does not argue. A walking character pulled upwards is
+        //put straight back down - measured, a lift of 240 units came back as zero - and a flying one
+        //stays exactly where it is put, drifting 0.0 over four seconds. That makes going up a matter
+        //of writing a position rather than fighting for one.
+        //
+        //The direction comes from where the camera is pointed rather than from extra keys. Looking
+        //down and holding forward flies downwards, which is how every flying camera works and needs
+        //nothing bound to it.
+        private const int FLY = 0x47;
+        private const int FLYING_MODE = 5;
+        private const int WALKING_MODE = 1;
+
+        //And the speed flying actually reads, which is not the one walking reads.
+        //
+        //Writing MaxWalkSpeed and then flying is how the first version of this left you hanging in
+        //the air at the game's own six hundred: a flying character never looks at MaxWalkSpeed. It
+        //has its own number, forty two bytes further along, and that is the one that moves you.
+        private const int MAX_FLY_SPEED = 0x01E8;
+        private const int BRAKING_FLYING = 0x0210;
+
+        //Up and down, because looking up is not always possible. The camera's tilt is clamped - as
+        //far as five degrees above level from behind the character - so steering by the camera
+        //alone means never being able to climb. Space goes up, left control goes down, and the
+        //camera's tilt is still added on top for whoever wants to dive by looking.
+        private const int ASCEND = 0x20;
+        private const int DESCEND = 0xA2;
+
         //How a character here leaves the ground, which is not how it first looked.
         //
         //The obvious way is bPressedJump, the flag Unreal's own jump sets. It does nothing in this
@@ -389,6 +418,17 @@ namespace LiveEdit
 
         public float LagSpeedJumping { get; set; } = 100f;
 
+        /// <summary>Whether G switches flying on and off.</summary>
+        public bool CanFly { get; set; }
+
+        /// <summary>How fast flying is, which wants to be a lot faster than walking.</summary>
+        public float FlySpeed { get; set; } = 4000f;
+
+        /// <summary>Whether it is currently flying, for anything that wants to show it.</summary>
+        public bool Flying => _flying;
+
+        private bool _flying;
+        private bool _flyHeld;
         private bool _jumpHeld;
         private int _jumpsUsed;
         private bool _rigid;
@@ -508,6 +548,7 @@ namespace LiveEdit
 
                 if (AttackRoots) { rootWhileAttacking(); } else { releaseRoot(); }
                 if (CanJump) { jumpOnPress(movement); }
+                if (CanFly) { flyOnPress(movement); }
 
                 var forward = 0f;
                 var sideways = 0f;
@@ -517,10 +558,15 @@ namespace LiveEdit
                 if (down(D)) { sideways += 1f; }
                 if (down(A)) { sideways -= 1f; }
 
+                //Counted as movement while flying, so that rising straight up from a standstill
+                //raises the timer and is written like any other direction. Without this, holding
+                //space and nothing else is a key press that never reaches the game.
+                var climbing = _flying && (down(ASCEND) || down(DESCEND));
+
                 //Standing still is written too, rather than skipped. Leaving the vector alone is
                 //what lets a destination posted by a click quietly move the character while no key
                 //is held - which reads as the character wandering off on its own.
-                if (forward != 0f || sideways != 0f)
+                if (forward != 0f || sideways != 0f || climbing)
                 {
                     raiseTimer();
                     _lastStep = Environment.TickCount;
@@ -530,7 +576,10 @@ namespace LiveEdit
                     lowerTimer();
                 }
 
-                if (forward == 0f && sideways == 0f)
+                //Rising straight up counts as going somewhere. Without the climbing test this
+                //returns here with a zero vector, which is why holding space while flying did
+                //nothing at all: the vertical maths further down was never reached.
+                if (forward == 0f && sideways == 0f && !climbing)
                 {
                     if (ClicksDoNotWalk) { refuseDestination(movement); writeInput(pawn, 0f, 0f); }
                     continue;
@@ -559,10 +608,32 @@ namespace LiveEdit
 
                 //A direction has no magnitude the way a stick does, so going slowly needs a key of
                 //its own.
-                var scale = down(SLOWLY) ? 0.5 : 1.0;
+                var scale = !_flying && down(SLOWLY) ? 0.5 : 1.0;
+
+                //Flying goes where the camera looks, so forward becomes forward and down at once.
+                //Walking does not, because a walking character that tilts is a falling one.
+                var up = 0.0;
+                if (_flying)
+                {
+                    //Where the camera looks, which handles diving without a key for it.
+                    var tilt = (_live.Pitch ?? 0f) * Math.PI / 180.0;
+                    up = Math.Sin(tilt) * forward;
+
+                    var flat = Math.Cos(tilt);
+                    x *= flat;
+                    y *= flat;
+
+                    //And straight up or down regardless of where it is pointed, because the tilt
+                    //is clamped and climbing by looking up is not always available.
+                    if (down(ASCEND)) { up += 1.0; }
+                    if (down(DESCEND)) { up -= 1.0; }
+
+                    if (up > 1.0) { up = 1.0; }
+                    if (up < -1.0) { up = -1.0; }
+                }
 
                 if (ClicksDoNotWalk) { refuseDestination(movement); }
-                writeInput(pawn, (float)(x * scale), (float)(y * scale));
+                writeInput(pawn, (float)(x * scale), (float)(y * scale), (float)(up * scale));
             }
 
         }
@@ -641,12 +712,49 @@ namespace LiveEdit
             if (!_rigid) { _rigid = _live.setLagSpeed(LagSpeedJumping); }
         }
 
-        private void writeInput(IntPtr pawn, float x, float y)
+        /// <summary>
+        /// Turns flying on and off, and holds it on while it is.
+        ///
+        /// Held rather than set once, because the movement mode belongs to the character and the
+        /// game puts it back the moment anything lands, respawns or loads. The speed goes on every
+        /// pass for the same reason.
+        /// </summary>
+        private void flyOnPress(IntPtr movement)
+        {
+            var wants = down(FLY);
+            if (wants && !_flyHeld) { _flying = !_flying; }
+            _flyHeld = wants;
+
+            if (!_flying) { return; }
+
+            _game.write(new IntPtr(movement.ToInt64() + MOVEMENT_MODE), new[] { (byte)FLYING_MODE });
+            _game.writeFloat(new IntPtr(movement.ToInt64() + MAX_FLY_SPEED), FlySpeed);
+
+            //And enough braking to stop when the keys come up, rather than drifting on for a
+            //second and a half like something on ice.
+            _game.writeFloat(new IntPtr(movement.ToInt64() + BRAKING_FLYING), FlySpeed * 4f);
+        }
+
+        /// <summary>Puts the character back on the floor, whatever it was doing.</summary>
+        private void land()
+        {
+            if (!_flying) { return; }
+            _flying = false;
+
+            if (!_live.find(out _)) { return; }
+
+            var movement = movementOf(_live.Pawn);
+            if (movement == IntPtr.Zero) { return; }
+
+            _game.write(new IntPtr(movement.ToInt64() + MOVEMENT_MODE), new[] { (byte)WALKING_MODE });
+        }
+
+        private void writeInput(IntPtr pawn, float x, float y, float z = 0f)
         {
             var bytes = new byte[12];
             BitConverter.GetBytes(x).CopyTo(bytes, 0);
             BitConverter.GetBytes(y).CopyTo(bytes, 4);
-            BitConverter.GetBytes(0f).CopyTo(bytes, 8);
+            BitConverter.GetBytes(z).CopyTo(bytes, 8);
 
             _game.write(new IntPtr(pawn.ToInt64() + CONTROL_INPUT_VECTOR), bytes);
         }
@@ -688,6 +796,7 @@ namespace LiveEdit
             releaseRoot();
             restoreFacing();
             restoreLag();
+            land();
         }
     }
 }

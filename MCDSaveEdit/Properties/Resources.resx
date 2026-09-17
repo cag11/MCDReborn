@@ -1651,4 +1651,48 @@ The save file is not changed until you save it.</value>
     <value>Camera smoothing</value>
     <comment>Slider for how rigidly the camera follows the character</comment>
   </data>
+  <data name="CAMERA_FORWARD" xml:space="preserve">
+    <value>Camera forward</value>
+    <comment>Slider for how far in front of the face the camera sits</comment>
+  </data>
+  <data name="MOUNT_RIDE" xml:space="preserve">
+    <value>Ride the nearest creature</value>
+    <comment>Toggle for the mount</comment>
+  </data>
+  <data name="MOUNT_WHY" xml:space="preserve">
+    <value>Nothing is spawned - spawning is a function call and this tool only writes memory. The nearest thing that can walk is stopped and carried under you instead, which looks the same from outside. Needs W A S D switched on.</value>
+    <comment>Explains the mount</comment>
+  </data>
+  <data name="MOUNT_SPEED" xml:space="preserve">
+    <value>Riding speed</value>
+    <comment>Slider for mounted speed</comment>
+  </data>
+  <data name="MOUNT_FREEZE" xml:space="preserve">
+    <value>Stop the rider's legs moving</value>
+    <comment>Freezes the player's animation while mounted</comment>
+  </data>
+  <data name="MOUNT_REFRESH" xml:space="preserve">
+    <value>Look around</value>
+    <comment>Button that lists nearby creatures</comment>
+  </data>
+  <data name="MOUNT_FOUND" xml:space="preserve">
+    <value>{0} nearby. Pick one, then tick Ride.</value>
+    <comment>Says how many creatures were found</comment>
+  </data>
+  <data name="MOUNT_FOUND_NONE" xml:space="preserve">
+    <value>Nothing nearby that walks. Ride still works - it will just be speed.</value>
+    <comment>Says nothing was found</comment>
+  </data>
+  <data name="FLY_ON" xml:space="preserve">
+    <value>G flies</value>
+    <comment>Toggle for flying</comment>
+  </data>
+  <data name="FLY_WHY" xml:space="preserve">
+    <value>Press G in game to take off and again to land. Forward goes wherever the camera is pointed, so look down to dive. Gravity is off while flying, which is what holds you up - there is no way to hold a walking character in the air from outside. Needs W A S D switched on.</value>
+    <comment>Explains flying</comment>
+  </data>
+  <data name="FLY_SPEED" xml:space="preserve">
+    <value>Flying speed</value>
+    <comment>Slider for flight speed</comment>
+  </data>
 </root>

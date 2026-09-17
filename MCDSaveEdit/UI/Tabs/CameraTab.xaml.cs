@@ -108,6 +108,13 @@ namespace MCDSaveEdit.UI
             invertPitch.Content = R.CAMERA_INVERT;
             canJump.Content = R.CAMERA_JUMP;
             jumpWhy.Text = R.CAMERA_JUMP_WHY;
+            canFly.Content = R.FLY_ON;
+            flyWhy.Text = R.FLY_WHY;
+            flySpeedLabel.Text = R.FLY_SPEED;
+            riding.Content = R.MOUNT_RIDE;
+            mountWhy.Text = R.MOUNT_WHY;
+            mountSpeedLabel.Text = R.MOUNT_SPEED;
+            refreshMounts.Content = R.MOUNT_REFRESH;
             jumpHeightLabel.Text = R.CAMERA_JUMP_HEIGHT;
             airControlLabel.Text = R.CAMERA_AIR_CONTROL;
             jumpCountCaption.Text = R.CAMERA_JUMP_COUNT;
@@ -142,6 +149,8 @@ namespace MCDSaveEdit.UI
                 p => p.FieldOfView, (p, v) => p.FieldOfView = v);
             addRow(R.CAMERA_PIVOT, -100, 320, 5,
                 p => p.PivotHeight, (p, v) => p.PivotHeight = v);
+            addRow(R.CAMERA_FORWARD, -50, 150, 1,
+                p => p.SocketForward, (p, v) => p.SocketForward = v);
             addRow(R.CAMERA_SIDE, -200, 200, 5,
                 p => p.SocketSide, (p, v) => p.SocketSide = v);
             addRow(R.CAMERA_HEIGHT, -200, 200, 5,
@@ -458,6 +467,81 @@ namespace MCDSaveEdit.UI
         /// Sharing the key with the roll is the point rather than a compromise - pressing it once
         /// rolls and jumps together, which is the leap this was asked for.
         /// </summary>
+        /// <summary>
+        /// Lists what is close enough to ride.
+        ///
+        /// Described by shape rather than named, because this build of the game has no name table -
+        /// how far off, how tall, how fast it walks. Between them that is enough to tell a cow from
+        /// a chicken from whatever is guarding the corridor.
+        /// </summary>
+        private void refreshMounts_Click(object sender, RoutedEventArgs e)
+        {
+            var found = _live.rideable(out var tell);
+
+            _filling = true;
+            mountPick.ItemsSource = found;
+            mountPick.SelectedIndex = found.Count > 0 ? 0 : -1;
+            _filling = false;
+
+            _live.ride = found.Count > 0 ? found[0].Actor : IntPtr.Zero;
+
+            //The tally either way. An empty list that says nothing about what it looked at is how
+            //the last version of this wasted a build.
+            statusLabel.Text = tell;
+        }
+
+        private void mountPick_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            _live.ride = mountPick.SelectedItem is LiveEdit.Mount.Candidate one
+                ? one.Actor
+                : IntPtr.Zero;
+        }
+
+        private void canFly_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            _live.canFly = canFly.IsChecked == true;
+        }
+
+        private void flySpeed_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            flySpeedValue.Text = ((int)flySpeed.Value).ToString();
+            if (_filling) { return; }
+
+            _live.flySpeed = (float)flySpeed.Value;
+        }
+
+        private void riding_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            if (riding.IsChecked != true) { _live.stopRiding(); return; }
+
+            //Said out loud when it fails, because "nothing nearby to ride" is a real answer and
+            //a checkbox that silently unticks itself is not.
+            if (!_live.startRiding(out var problem))
+            {
+                _filling = true;
+                riding.IsChecked = false;
+                _filling = false;
+            }
+
+            //Said either way. "Nothing to ride, so this is speed only" is a result rather than a
+            //failure, and a checkbox that stays ticked while saying nothing explains nothing.
+            if (problem.Length > 0) { statusLabel.Text = problem; }
+        }
+
+        private void mountSpeed_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            mountSpeedValue.Text = ((int)mountSpeed.Value).ToString();
+            if (_filling) { return; }
+
+            _live.mountSpeed = (float)mountSpeed.Value;
+        }
+
         private void canJump_Changed(object sender, RoutedEventArgs e)
         {
             if (_filling) { return; }

@@ -167,6 +167,9 @@ namespace LiveEdit
 
         public IntPtr Pawn { get; private set; }
 
+        /// <summary>The world itself, for anything that needs the level rather than the player.</summary>
+        public IntPtr World { get; private set; }
+
         /// <summary>The player's controller, which is where the game keeps what it is doing.</summary>
         public IntPtr Controller { get; private set; }
 
@@ -194,6 +197,8 @@ namespace LiveEdit
 
             var world = follow(new IntPtr(image.ToInt64() + GWORLD));
             if (world == IntPtr.Zero) { problem = "GWorld is null - the game has no world loaded."; return false; }
+
+            World = world;
 
             var instance = follow(new IntPtr(world.ToInt64() + WORLD_GAME_INSTANCE));
             if (instance == IntPtr.Zero) { problem = "The world has no game instance."; return false; }
