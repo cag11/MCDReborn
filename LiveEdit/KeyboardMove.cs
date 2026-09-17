@@ -117,6 +117,21 @@ namespace LiveEdit
         //hard to stop doing by accident. A jump is better on its own key, and Q is free.
         private const int JUMP = 0x51;
 
+        //Not here: holding the character's body still.
+        //
+        //The body does not stay put relative to the capsule the camera is bolted to - recorded on a
+        //staircase it swings about thirty units, and with the camera on the crown of the head that
+        //is enough to bring the model into view. Holding it at the bottom of its capsule, where
+        //Unreal puts it, looked like the obvious answer.
+        //
+        //Measured, it is four times worse: the swing went from 31.8 units to 124.4 with the hold
+        //running at four milliseconds. Whatever moves the mesh moves it every frame and does not
+        //take kindly to being argued with, and the argument is louder than the thing it was trying
+        //to quiet. Same shape as correcting the arm length the camera is placed with, and the same
+        //result.
+        //
+        //Left as a note, with the number, so this looks like a good idea to nobody again.
+
         //How a character here leaves the ground, which is not how it first looked.
         //
         //The obvious way is bPressedJump, the flag Unreal's own jump sets. It does nothing in this
@@ -224,6 +239,15 @@ namespace LiveEdit
         /// by the time anything here knows it is finished, the character it borrowed from may not
         /// exist, and a byte written into that is a byte written into whatever took its place.
         /// </summary>
+        /// <summary>Hands the camera smoothing back, if a jump was holding it rigid.</summary>
+        private void restoreLag()
+        {
+            if (!_rigid) { return; }
+
+            if (_live.find(out _)) { _live.setLagSpeed(LagSpeedWalking); }
+            _rigid = false;
+        }
+
         private void restoreFacing()
         {
             if (_oriented == IntPtr.Zero || _flagsWere is not byte flags) { return; }
@@ -342,8 +366,32 @@ namespace LiveEdit
         /// <summary>How many jumps before touching the ground again.</summary>
         public int JumpCount { get; set; } = 1;
 
+        /// <summary>
+        /// How quickly the camera chases the character on the ground, and in the air.
+        ///
+        /// Two numbers because no single one works. The camera lag that stops a jump leaving the
+        /// camera behind is the same lag that was smoothing out every stair step, and measuring it
+        /// properly showed the trade is continuous - there is no value that does both. Recorded
+        /// walking down a staircase and replayed through the engine's own lag maths:
+        ///
+        ///     lag speed   1     shake 0.015     lag speed  25     shake 0.177
+        ///     lag speed  10     shake 0.082     lag speed 100     shake 0.680
+        ///
+        /// against a capsule that jitters 1.717 by itself. One is invisible and a hundred passes
+        /// through two fifths of it.
+        ///
+        /// They are never needed at once, though. Stairs want smoothing while walking; a jump wants
+        /// rigidity while airborne. So the camera is smooth until this launches one, rigid until the
+        /// character lands, and smooth again after - and stairs never enter that state, because
+        /// nothing here launched them.
+        /// </summary>
+        public float LagSpeedWalking { get; set; } = 1f;
+
+        public float LagSpeedJumping { get; set; } = 100f;
+
         private bool _jumpHeld;
         private int _jumpsUsed;
+        private bool _rigid;
 
         /// <summary>
         /// Whether holding the left button also plants the character's feet.
@@ -565,7 +613,15 @@ namespace LiveEdit
             _game.writeFloat(new IntPtr(movement.ToInt64() + AIR_CONTROL), AirControl);
 
             var mode = _game.read(new IntPtr(movement.ToInt64() + MOVEMENT_MODE), 1);
-            if (mode != null && mode[0] == WALKING) { _jumpsUsed = 0; }
+            if (mode != null && mode[0] == WALKING)
+            {
+                _jumpsUsed = 0;
+
+                //Back on the ground, so the camera goes back to being smoothed. Landing is the
+                //right moment for it: the camera is already exactly on the character, so there is
+                //nothing to ease and nothing to see.
+                if (_rigid) { _rigid = !_live.setLagSpeed(LagSpeedWalking); }
+            }
 
             if (!down(JUMP)) { _jumpHeld = false; return; }
             if (_jumpHeld) { return; }
@@ -576,7 +632,13 @@ namespace LiveEdit
             var launch = new byte[12];
             Buffer.BlockCopy(BitConverter.GetBytes(JumpHeight), 0, launch, 8, 4);
 
-            if (_game.write(new IntPtr(movement.ToInt64() + PENDING_LAUNCH_VELOCITY), launch)) { _jumpsUsed++; }
+            if (!_game.write(new IntPtr(movement.ToInt64() + PENDING_LAUNCH_VELOCITY), launch)) { return; }
+
+            _jumpsUsed++;
+
+            //Rigid for the length of the jump, or the character rises through a camera that is
+            //still easing towards where it was standing.
+            if (!_rigid) { _rigid = _live.setLagSpeed(LagSpeedJumping); }
         }
 
         private void writeInput(IntPtr pawn, float x, float y)
@@ -625,6 +687,7 @@ namespace LiveEdit
 
             releaseRoot();
             restoreFacing();
+            restoreLag();
         }
     }
 }

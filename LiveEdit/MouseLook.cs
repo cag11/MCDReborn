@@ -41,32 +41,28 @@ namespace LiveEdit
         //bit more than all the way round.
         private const float DEGREES_PER_PIXEL = 0.12f;
 
-        //How far the camera can tip, which is not one answer but two.
+        //How far the camera can tip, which is one answer from behind a character and another from
+        //inside one.
         //
         //From seven metres back, eighty five degrees down is the game's own top-down view and five
-        //degrees up is as far as the camera can rise before it swings under the floor. Those were
-        //the only limits for a while and they are wrong from inside the character's head, where
-        //eighty five degrees down points at the floor you are standing on and shows you the top of
-        //your own head, and five degrees up means you cannot look up at all.
+        //up is as far as the camera can rise before it swings under the floor. With the camera on
+        //the crown of the head those are backwards: eighty five down is aimed at the head itself,
+        //and five up means you cannot look up at all.
         //
-        //Measured rather than guessed: watching every camera field while walking into corners, the
-        //arm length, the pivot, the offsets and the field of view never moved a thousandth, and the
-        //pitch went to minus eighty five. Nothing was pulling the camera in. It was tipping over.
+        //This is the only thing that ever explained the head near walls, and it is the one thing
+        //that had never actually run - see the note in LiveCameraLink.startLooking. Measured over
+        //forty seconds of walking into corners, the arm length, the pivot, both offsets and the
+        //field of view did not move a thousandth of a unit. The pitch went to minus eighty five.
+        //
+        //Forty five rather than thirty five, which was a guess made when this was competing with
+        //four other changes, or sixty, which was a guess made when it was believed not to matter.
         private const float THIRD_PERSON_LOWEST = -85f;
         private const float THIRD_PERSON_HIGHEST = 5f;
-        //Minus thirty five down, and this is the number that does the work.
-        //
-        //The camera sits on the crown of the head, so the whole character hangs directly below it
-        //and any real tilt downwards frames it. Seventy was tried and still showed the head; so did
-        //moving the camera down into the body, which filled the screen with the inside of a cape.
-        //There is no first person model to step into and no way to hide the character from out
-        //here, so the answer is simply not to point the camera at it.
-        //
-        //Thirty five degrees is enough to see the floor a couple of paces ahead, which is what
-        //looking down in a corner is actually for. Up is unrestricted by comparison: there is
-        //nothing above the camera to run into.
-        private const float FIRST_PERSON_LOWEST = -35f;
+        private const float FIRST_PERSON_LOWEST = -45f;
         private const float FIRST_PERSON_HIGHEST = 70f;
+
+        //Below this the camera is in the character rather than behind it.
+        private const float INSIDE_THE_CHARACTER = 150f;
 
         [StructLayout(LayoutKind.Sequential)]
         private struct NativePoint { public int X; public int Y; }
@@ -144,24 +140,12 @@ namespace LiveEdit
         /// </summary>
         public float? HoldArmLength { get; set; }
 
-        /// <summary>
-        /// How far the camera may tip down and up, in degrees.
-        ///
-        /// Set from the distance rather than asked for, because the right answer is entirely about
-        /// whether your own head is in the way. <see cref="limitsFor"/> has the reasoning.
-        /// </summary>
+        /// <summary>How far the camera may tip down and up, in degrees.</summary>
         public float LowestPitch { get; set; } = THIRD_PERSON_LOWEST;
 
         public float HighestPitch { get; set; } = THIRD_PERSON_HIGHEST;
 
-        /// <summary>
-        /// The pitch limits that suit a camera this far back.
-        ///
-        /// Inside the character there is no sensible reason to look at the floor under your feet
-        /// and every reason to look up, so the limits are close to symmetric and human. Further
-        /// back the character is below the camera rather than in it, looking down is the game's
-        /// own view, and looking up quickly puts the camera through the floor.
-        /// </summary>
+        /// <summary>The pitch limits that suit a camera this far back.</summary>
         public static void limitsFor(float armLength, out float lowest, out float highest)
         {
             var inside = armLength < INSIDE_THE_CHARACTER;
@@ -170,8 +154,6 @@ namespace LiveEdit
             highest = inside ? FIRST_PERSON_HIGHEST : THIRD_PERSON_HIGHEST;
         }
 
-        //Below this the camera is in the character rather than behind it.
-        private const float INSIDE_THE_CHARACTER = 150f;
 
         /// <summary>
         /// A key that stops it outright, or zero for none. Zero, now.
@@ -217,6 +199,7 @@ namespace LiveEdit
 
             //Whatever the camera was already tipped to, brought inside the limits that apply now.
             _pitch = Math.Max(LowestPitch, Math.Min(HighestPitch, _pitch));
+
             _yaw = _camera.Yaw ?? 45f;
 
             _running = true;
@@ -317,30 +300,21 @@ namespace LiveEdit
 
                 //And the distance, against the volumes that set it.
                 //
-                //Both lengths, which is the whole point. This used to watch the desired length
-                //only, and a camera volume does not touch the desired length - it writes the
-                //target, the one the camera is actually placed with, and the arm then eases the
-                //target back towards the desired by itself over about two and a half seconds.
+                //The desired length only, and gently. Writing the target length as well was tried,
+                //for a good reason - a camera volume writes the target and not the desired, so this
+                //check does not fire while the camera is pulled out and easing back in.
                 //
-                //So the old check never fired: desired still read what we had asked for, while
-                //the camera sat three thousand units out and crawled back in. Measured at a wall,
-                //target went 3500, 3270, 3114, 3009 while desired sat unchanged the whole way.
-                //
-                //In third person that is the drift that kept being reported near bridges. In first
-                //person it is worse and much more obvious, because easing back in from three
-                //thousand units means a second of looking at the back of your own head.
+                //It was still wrong. The target is what the camera is placed with and the game
+                //writes it every tick, so correcting it every frame is a tug of war at sixty hertz
+                //and the camera shakes itself apart. The engine eases the target towards the
+                //desired by itself; nudging the desired lets it do that, which is the whole reason
+                //this was written this way to begin with.
                 if (HoldArmLength is float wanted)
                 {
-                    var target = _live.ArmLength;
-                    var desired = _live.DesiredLength;
-
-                    if (target == null || desired == null
-                        || Math.Abs(target.Value - wanted) > 2f
-                        || Math.Abs(desired.Value - wanted) > 2f)
+                    var now = _live.DesiredLength;
+                    if (now == null || Math.Abs(now.Value - wanted) > 2f)
                     {
-                        //Snapping rather than easing: easing is what the volume is already doing
-                        //and what we are here to interrupt.
-                        _live.snapArmLength(wanted);
+                        _live.setArmLength(wanted);
                     }
                 }
             }

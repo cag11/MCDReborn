@@ -54,10 +54,14 @@ namespace MCDSaveEdit.Logic
         /// <summary>
         /// How quickly the camera catches up with the character, rather than with its rotation.
         ///
-        /// The game's own value is 1, which is very slow indeed and completely invisible in a game
-        /// where the character never leaves the ground. Give it a jump and it is the whole problem:
-        /// measured at a hundred and fifty units up, the camera fell 712 units behind the character
-        /// over the arc. At 100 it falls behind by 1.6.
+        /// The game's own value is 1, which is very slow indeed, and every preset uses it - because
+        /// slow is what stops a staircase shaking the view apart. Recorded walking down one and
+        /// replayed through the engine's lag maths, a lag of 1 passes through 0.015 of a capsule
+        /// that jitters 1.717, and a lag of 100 passes through 0.680.
+        ///
+        /// Raising it was tried, to stop a jump leaving the camera behind, and it is the wrong
+        /// place to fix that: the trade between the two is continuous and there is no value that
+        /// does both. The jump makes the camera rigid for its own duration instead.
         ///
         /// Every preset carries a value rather than leaving it alone, so that switching from a
         /// preset that needed a fast camera back to one that did not actually puts it back.
@@ -87,9 +91,7 @@ namespace MCDSaveEdit.Logic
                     Name = "Third person", BuiltIn = true,
                     Distance = 800f, Pitch = -12f, FieldOfView = 65f,
                     PivotHeight = 170f, SocketSide = 40f, SocketHeight = 20f,
-                    //Fast enough to keep up with a jump, slow enough to still glide. The game's
-                    //own 1 is a camera that gets left behind entirely.
-                    LagSpeed = 25f,
+                    LagSpeed = 1f,
                 },
                 new CameraPreset {
                     Name = "Third person, far", BuiltIn = true,
@@ -97,7 +99,7 @@ namespace MCDSaveEdit.Logic
                     //this far back at a shallow angle spends most of its time looking at a wall.
                     Distance = 1500f, Pitch = -25f, FieldOfView = 70f,
                     PivotHeight = 170f, SocketSide = 30f, SocketHeight = 40f,
-                    LagSpeed = 25f,
+                    LagSpeed = 1f,
                 },
                 new CameraPreset {
                     Name = "First person", BuiltIn = true,
@@ -116,10 +118,22 @@ namespace MCDSaveEdit.Logic
                     //tip far enough down to look at it. See the pitch limits in MouseLook.
                     Distance = 0f, Pitch = 0f, FieldOfView = 90f,
                     PivotHeight = 200f, SocketSide = 0f, SocketHeight = 0f,
-                    //Rigid, because a camera inside a character's head cannot lag behind it. At
-                    //the game's own lag the character jumps and the camera does not, so the body
-                    //rises straight through the view.
-                    LagSpeed = 100f,
+                    //Twenty, which is a compromise arrived at from both ends rather than picked.
+                    //
+                    //The game's own value is 1. From behind a character that is invisible; from
+                    //inside one it is the whole problem, because the camera trails the climb.
+                    //Measured walking up a staircase, the camera's height above the body varied by
+                    //324 units at a lag of 1 - the model rising into view and then settling as the
+                    //camera caught up.
+                    //
+                    //A hundred fixes that and puts every single step straight into the view. There
+                    //is no value that does both: recorded on a staircase, lag 1 passes through
+                    //0.015 of a capsule that jitters 1.717, lag 20 passes 0.145 and lag 100 passes
+                    //0.680. Twenty keeps a tenth of the shake and most of the responsiveness.
+                    //
+                    //It is a slider on the camera tab, because this is taste and the number that
+                    //suits somebody is not findable from here.
+                    LagSpeed = 20f,
                     //Nothing to collide with when the camera is inside the character.
                     Collision = false,
                 },

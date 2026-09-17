@@ -3429,6 +3429,15 @@ namespace MCDSaveEdit.Properties {
             }
         }
         
+        /// <summary>
+        ///   Looks up a localized string similar to Camera smoothing.
+        /// </summary>
+        public static string CAMERA_SMOOTHING {
+            get {
+                return ResourceManager.GetString("CAMERA_SMOOTHING", resourceCulture);
+            }
+        }
+
         public static string CAMERA_LIVE_PREVIEW {
             get {
                 return ResourceManager.GetString("CAMERA_LIVE_PREVIEW", resourceCulture);

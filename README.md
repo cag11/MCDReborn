@@ -36,6 +36,7 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **Third person and first person**, in a game that has neither: mouse look turns the view, W A S D move you, and clicking attacks instead of walking you there
 * **Presets** - third person, third person far, first person - and you can save your own under a name and bring it back in one click
 * F10 turns the camera setup on and off from inside the game
+* **Camera smoothing**, which matters most in first person and has no right answer - low and the camera trails you up a staircase until your own model rises into view, high and every step goes straight into it. It is a slider because it is taste: first person starts at 20, third person at the game's own 1
 * **Jump** on Q, which the game has no button for at all - not the character jumping but a launch written straight into its velocity, which is why it works when asking the character politely does not. Height, steering in mid-air and the number of jumps before landing are all adjustable
 
 #### Custom Builds Feature

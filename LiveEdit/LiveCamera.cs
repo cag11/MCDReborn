@@ -58,6 +58,20 @@ namespace LiveEdit
         private const int ATTACH_PARENT = 0x0108;
         private const int WORLD_ROTATION = 0x0190;
 
+        //Not here: turning off the character's network smoothing.
+        //
+        //This game runs a server even on your own machine, so the character is smoothed the way a
+        //networked one is - NetworkSmoothingMode at 0x01B2 on the movement component, Exponential
+        //here. Walking down a staircase the mesh swings eighty six units above where it rests, and
+        //with the camera on the crown of the head that is the body riding up through the view.
+        //
+        //Turning it off was tried, and it is a mistake, because that smoothing is also what absorbs
+        //the capsule snapping up a full step at a time on the way up. Measured going down it looked
+        //like a clean win; reported going up it shook, and the descent turned floaty. One direction
+        //is not enough evidence to take a smoothing system away from a game that needs it in both.
+        //
+        //Left as a note. The head near walls turned out to be the arm length hold rather than this.
+
         //Not here: hiding the character in first person.
         //
         //bHiddenInGame is at 0x01CC bit 6 and the bit flips perfectly. Nothing happens. The flag

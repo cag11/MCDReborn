@@ -148,6 +148,16 @@ namespace MCDSaveEdit.UI
                 p => p.SocketHeight, (p, v) => p.SocketHeight = v);
             addRow(R.CAMERA_LAG, 1, 60, 1,
                 p => p.RotationLagSpeed, (p, v) => p.RotationLagSpeed = v);
+
+            //How hard the camera is bolted to the character, and the one setting here that is a
+            //matter of taste rather than a right answer. Low floats and rides over stairs; high
+            //follows exactly and shows every step the character takes. The game ships it at 1.
+            //
+            //A slider rather than a number chosen here, because both ends of it have been tried
+            //and disliked for opposite reasons, and the person playing can find the middle in ten
+            //seconds where guessing at it took six builds.
+            addRow(R.CAMERA_SMOOTHING, 0.2, 40, 0.2,
+                p => p.LagSpeed, (p, v) => p.LagSpeed = v);
         }
 
         private void addRow(string caption, double minimum, double maximum, double step,

@@ -154,6 +154,15 @@ namespace MCDSaveEdit.Logic
             _look = new MouseLook(_game, _camera) { Sensitivity = sensitivity, InvertPitch = invert };
             _look.Suspended = _suspended;
             _look.HoldArmLength = _holdArmLength;
+
+            //And the tilt limits. This line is the entire reason the limits did nothing for two
+            //releases: the distance is decided before the mouse look exists, so applyPitchLimits
+            //ran with nothing to put them on, stored them here, and every mouse look started on the
+            //defaults. The measurement that caught it asked for thirty five degrees and recorded
+            //eighty five.
+            _look.LowestPitch = _pitchLowest;
+            _look.HighestPitch = _pitchHighest;
+
             _look.stopped += () => lookingStopped?.Invoke();
             return _look.start();
         }
@@ -191,6 +200,7 @@ namespace MCDSaveEdit.Logic
             _walk.Suspended = _suspended;
             _walk.CanJump = _canJump;
             _walk.JumpHeight = _jumpHeight;
+            _walk.LagSpeedWalking = _lagSpeedWalking;
             _walk.AirControl = _airControl;
             _walk.JumpCount = _jumpCount;
             _walk.stopped += () => walkingStopped?.Invoke();
@@ -224,8 +234,9 @@ namespace MCDSaveEdit.Logic
         /// <summary>
         /// Tells mouse look how far the camera may tip, given how far back it is.
         ///
-        /// Called wherever the distance changes, because the limits that keep a third person camera
-        /// out of the floor are the same ones that point a first person camera at your own head.
+        /// Called wherever the distance is decided. Nothing here writes anything the game also
+        /// writes - it only clamps a number this app owns, which is why it is the one change around
+        /// this camera that cannot fight the engine.
         /// </summary>
         private void applyPitchLimits(float armLength)
         {
@@ -242,6 +253,11 @@ namespace MCDSaveEdit.Logic
 
         private float _pitchLowest = -85f;
         private float _pitchHighest = 5f;
+
+        //Below this the camera is in the character rather than behind it.
+        private const float INSIDE_THE_CHARACTER = 150f;
+        private float _lagSpeedWalking = 1f;
+
 
         /// <summary>Whether Q leaves the ground.</summary>
         public bool canJump
@@ -359,6 +375,7 @@ namespace MCDSaveEdit.Logic
             stopWalking();
 
 
+
             if (restoreTo != null) { push(restoreTo, snap: true); }
         }
 
@@ -439,6 +456,10 @@ namespace MCDSaveEdit.Logic
             _camera.setFieldOfView(preset.FieldOfView);
             _camera.setRotationLagSpeed(preset.RotationLagSpeed);
             _camera.setLagSpeed(preset.LagSpeed);
+
+            //And the value a jump hands back when it lands.
+            _lagSpeedWalking = preset.LagSpeed;
+            if (_walk != null) { _walk.LagSpeedWalking = preset.LagSpeed; }
             _camera.setCollisionTest(preset.Collision);
             _camera.setArmLength(preset.Distance);
             _camera.setRotation(preset.Pitch, _camera.Yaw ?? 45f);
@@ -510,6 +531,10 @@ namespace MCDSaveEdit.Logic
             _camera.setFieldOfView(preset.FieldOfView);
             _camera.setRotationLagSpeed(preset.RotationLagSpeed);
             _camera.setLagSpeed(preset.LagSpeed);
+
+            //And the value a jump hands back when it lands.
+            _lagSpeedWalking = preset.LagSpeed;
+            if (_walk != null) { _walk.LagSpeedWalking = preset.LagSpeed; }
             _camera.setCollisionTest(preset.Collision);
             _camera.snapArmLength(preset.Distance);
             _camera.setRotation(preset.Pitch, _camera.Yaw ?? 45f);

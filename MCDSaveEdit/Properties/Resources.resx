@@ -1647,4 +1647,8 @@ The save file is not changed until you save it.</value>
     <value>Jumps before landing</value>
     <comment>Slider</comment>
   </data>
+  <data name="CAMERA_SMOOTHING" xml:space="preserve">
+    <value>Camera smoothing</value>
+    <comment>Slider for how rigidly the camera follows the character</comment>
+  </data>
 </root>
