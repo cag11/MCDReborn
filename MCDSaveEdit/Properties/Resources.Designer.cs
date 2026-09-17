@@ -2390,5 +2390,635 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("WEAPON_SKINS_MELEE_ONLY", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Camera.
+        /// </summary>
+        public static string CAMERA_TAB {
+            get {
+                return ResourceManager.GetString("CAMERA_TAB", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Camera.
+        /// </summary>
+        public static string CAMERA_SETTINGS {
+            get {
+                return ResourceManager.GetString("CAMERA_SETTINGS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Presets.
+        /// </summary>
+        public static string CAMERA_PRESETS {
+            get {
+                return ResourceManager.GetString("CAMERA_PRESETS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Each preset changes one thing and nothing else, so if something breaks you know what did it. Pick one to fi....
+        /// </summary>
+        public static string CAMERA_PRESETS_HINT {
+            get {
+                return ResourceManager.GetString("CAMERA_PRESETS_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Apply to game.
+        /// </summary>
+        public static string CAMERA_APPLY {
+            get {
+                return ResourceManager.GetString("CAMERA_APPLY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Back to the game's own.
+        /// </summary>
+        public static string CAMERA_RESET {
+            get {
+                return ResourceManager.GetString("CAMERA_RESET", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing selected. Remove the pak from ~mods to restore the game's camera..
+        /// </summary>
+        public static string CAMERA_RESET_NOTE {
+            get {
+                return ResourceManager.GetString("CAMERA_RESET_NOTE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Camera.
+        /// </summary>
+        public static string CAMERA_MOD_NAME {
+            get {
+                return ResourceManager.GetString("CAMERA_MOD_NAME", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Written to {0}. Restart the game to see it..
+        /// </summary>
+        public static string CAMERA_APPLIED {
+            get {
+                return ResourceManager.GetString("CAMERA_APPLIED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing is ticked, so there is nothing to change..
+        /// </summary>
+        public static string CAMERA_NOTHING_TO_DO {
+            get {
+                return ResourceManager.GetString("CAMERA_NOTHING_TO_DO", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Game content is not loaded, so the camera cannot be read..
+        /// </summary>
+        public static string CAMERA_NO_CONTENT {
+            get {
+                return ResourceManager.GetString("CAMERA_NO_CONTENT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to game's own: {0}.
+        /// </summary>
+        public static string CAMERA_STOCK {
+            get {
+                return ResourceManager.GetString("CAMERA_STOCK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to on.
+        /// </summary>
+        public static string CAMERA_ON {
+            get {
+                return ResourceManager.GetString("CAMERA_ON", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Loaded. Adjust anything you like, then apply..
+        /// </summary>
+        public static string CAMERA_PRESET_LOADED {
+            get {
+                return ResourceManager.GetString("CAMERA_PRESET_LOADED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Distance back.
+        /// </summary>
+        public static string CAMERA_DISTANCE {
+            get {
+                return ResourceManager.GetString("CAMERA_DISTANCE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Angle down.
+        /// </summary>
+        public static string CAMERA_PITCH {
+            get {
+                return ResourceManager.GetString("CAMERA_PITCH", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Angle around.
+        /// </summary>
+        public static string CAMERA_YAW {
+            get {
+                return ResourceManager.GetString("CAMERA_YAW", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Field of view.
+        /// </summary>
+        public static string CAMERA_FOV {
+            get {
+                return ResourceManager.GetString("CAMERA_FOV", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Pivot height.
+        /// </summary>
+        public static string CAMERA_HEIGHT {
+            get {
+                return ResourceManager.GetString("CAMERA_HEIGHT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Pivot sideways.
+        /// </summary>
+        public static string CAMERA_SIDE {
+            get {
+                return ResourceManager.GetString("CAMERA_SIDE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Swing smoothing.
+        /// </summary>
+        public static string CAMERA_LAG {
+            get {
+                return ResourceManager.GetString("CAMERA_LAG", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Character turn speed.
+        /// </summary>
+        public static string CAMERA_TURN {
+            get {
+                return ResourceManager.GetString("CAMERA_TURN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Camera follows you.
+        /// </summary>
+        public static string CAMERA_FOLLOWS {
+            get {
+                return ResourceManager.GetString("CAMERA_FOLLOWS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Camera avoids walls.
+        /// </summary>
+        public static string CAMERA_COLLIDES {
+            get {
+                return ResourceManager.GetString("CAMERA_COLLIDES", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Closer.
+        /// </summary>
+        public static string CAMERA_PRESET_CLOSER {
+            get {
+                return ResourceManager.GetString("CAMERA_PRESET_CLOSER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Distance only, angle untouched. Movement still matches the screen exactly..
+        /// </summary>
+        public static string CAMERA_PRESET_CLOSER_WHY {
+            get {
+                return ResourceManager.GetString("CAMERA_PRESET_CLOSER_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Much closer.
+        /// </summary>
+        public static string CAMERA_PRESET_MUCH_CLOSER {
+            get {
+                return ResourceManager.GetString("CAMERA_PRESET_MUCH_CLOSER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The same idea taken further. Still the game's own angle..
+        /// </summary>
+        public static string CAMERA_PRESET_MUCH_CLOSER_WHY {
+            get {
+                return ResourceManager.GetString("CAMERA_PRESET_MUCH_CLOSER_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Wider lens.
+        /// </summary>
+        public static string CAMERA_PRESET_WIDER {
+            get {
+                return ResourceManager.GetString("CAMERA_PRESET_WIDER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Field of view only. Fits more on screen without moving the camera..
+        /// </summary>
+        public static string CAMERA_PRESET_WIDER_WHY {
+            get {
+                return ResourceManager.GetString("CAMERA_PRESET_WIDER_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Lower angle.
+        /// </summary>
+        public static string CAMERA_PRESET_LOWER {
+            get {
+                return ResourceManager.GetString("CAMERA_PRESET_LOWER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Angle only. Flattening the view makes WASD stop lining up with the screen, since movement is in world direc....
+        /// </summary>
+        public static string CAMERA_PRESET_LOWER_WHY {
+            get {
+                return ResourceManager.GetString("CAMERA_PRESET_LOWER_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Follow the character.
+        /// </summary>
+        public static string CAMERA_PRESET_FOLLOWS {
+            get {
+                return ResourceManager.GetString("CAMERA_PRESET_FOLLOWS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Turns the camera with you. Changes how movement reads - try it on its own first..
+        /// </summary>
+        public static string CAMERA_PRESET_FOLLOWS_WHY {
+            get {
+                return ResourceManager.GetString("CAMERA_PRESET_FOLLOWS_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Avoid walls.
+        /// </summary>
+        public static string CAMERA_PRESET_COLLIDES {
+            get {
+                return ResourceManager.GetString("CAMERA_PRESET_COLLIDES", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Pulls the camera in when something is behind you. Only matters once it is close..
+        /// </summary>
+        public static string CAMERA_PRESET_COLLIDES_WHY {
+            get {
+                return ResourceManager.GetString("CAMERA_PRESET_COLLIDES_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Preview in the running game.
+        /// </summary>
+        /// <summary>
+        ///   Looks up a localized string similar to Camera points where you aim.
+        /// </summary>
+        public static string CAMERA_FOLLOWS_AIM {
+            get {
+                return ResourceManager.GetString("CAMERA_FOLLOWS_AIM", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Takes the camera's angle straight from your aim. The pitch comes from the aim too, and this game's a....
+        /// </summary>
+        public static string CAMERA_FOLLOWS_AIM_HINT {
+            get {
+                return ResourceManager.GetString("CAMERA_FOLLOWS_AIM_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your character already turns to face aim in this game, so that setting changes nothing here. It is w....
+        /// </summary>
+        public static string CAMERA_AIM_ALREADY_ON {
+            get {
+                return ResourceManager.GetString("CAMERA_AIM_ALREADY_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Turn the camera with the mouse.
+        /// </summary>
+        public static string CAMERA_MOUSE_LOOK {
+            get {
+                return ResourceManager.GetString("CAMERA_MOUSE_LOOK", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pins the pointer to the middle of the game window, so moving the mouse turns the view and your chara....
+        /// </summary>
+        public static string CAMERA_MOUSE_LOOK_HINT {
+            get {
+                return ResourceManager.GetString("CAMERA_MOUSE_LOOK_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Mouse sensitivity.
+        /// </summary>
+        public static string CAMERA_SENSITIVITY {
+            get {
+                return ResourceManager.GetString("CAMERA_SENSITIVITY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Invert up and down.
+        /// </summary>
+        public static string CAMERA_INVERT {
+            get {
+                return ResourceManager.GetString("CAMERA_INVERT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Move with W A S D.
+        /// </summary>
+        public static string CAMERA_WASD {
+            get {
+                return ResourceManager.GetString("CAMERA_WASD", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Walks relative to the camera, so W is always away from you. Hold Shift to walk slowly. This game has....
+        /// </summary>
+        public static string CAMERA_WASD_HINT {
+            get {
+                return ResourceManager.GetString("CAMERA_WASD_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Left click attacks instead of walking.
+        /// </summary>
+        public static string CAMERA_BUTTONS {
+            get {
+                return ResourceManager.GetString("CAMERA_BUTTONS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to This game binds a left click to two things at once: attack, and walk to where you clicked. With the ....
+        /// </summary>
+        public static string CAMERA_BUTTONS_HINT {
+            get {
+                return ResourceManager.GetString("CAMERA_BUTTONS_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Set up third person.
+        /// </summary>
+        public static string CAMERA_THIRD_PERSON {
+            get {
+                return ResourceManager.GetString("CAMERA_THIRD_PERSON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pulls the camera in behind your character, turns on mouse look, W A S D and the attack buttons toget....
+        /// </summary>
+        public static string CAMERA_THIRD_PERSON_HINT {
+            get {
+                return ResourceManager.GetString("CAMERA_THIRD_PERSON_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pointer handed back for the menu. Press the same key again to carry on.
+        /// </summary>
+        public static string CAMERA_SUSPENDED {
+            get {
+                return ResourceManager.GetString("CAMERA_SUSPENDED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Mouse look again.
+        /// </summary>
+        public static string CAMERA_RESUMED {
+            get {
+                return ResourceManager.GetString("CAMERA_RESUMED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Look at height
+        /// </summary>
+        public static string CAMERA_PIVOT {
+            get {
+                return ResourceManager.GetString("CAMERA_PIVOT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Save
+        /// </summary>
+        public static string CAMERA_SAVE {
+            get {
+                return ResourceManager.GetString("CAMERA_SAVE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Delete
+        /// </summary>
+        public static string CAMERA_DELETE {
+            get {
+                return ResourceManager.GetString("CAMERA_DELETE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Adjust the sliders, then give it a name to keep it. Saved presets appear in the list above and come back in one click.
+        /// </summary>
+        public static string CAMERA_SAVE_HINT {
+            get {
+                return ResourceManager.GetString("CAMERA_SAVE_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Give it a name first.
+        /// </summary>
+        public static string CAMERA_SAVE_NEEDS_NAME {
+            get {
+                return ResourceManager.GetString("CAMERA_SAVE_NEEDS_NAME", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to That name belongs to one of the presets that ship. Pick another.
+        /// </summary>
+        public static string CAMERA_SAVE_BUILT_IN {
+            get {
+                return ResourceManager.GetString("CAMERA_SAVE_BUILT_IN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Saved as {0}.
+        /// </summary>
+        public static string CAMERA_SAVE_DONE {
+            get {
+                return ResourceManager.GetString("CAMERA_SAVE_DONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Replaced {0}.
+        /// </summary>
+        public static string CAMERA_SAVE_REPLACED {
+            get {
+                return ResourceManager.GetString("CAMERA_SAVE_REPLACED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Deleted {0}.
+        /// </summary>
+        public static string CAMERA_DELETED {
+            get {
+                return ResourceManager.GetString("CAMERA_DELETED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} - adjust anything below and it changes in the game as you drag.
+        /// </summary>
+        public static string CAMERA_PRESET_APPLIED {
+            get {
+                return ResourceManager.GetString("CAMERA_PRESET_APPLIED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The game's own camera is back.
+        /// </summary>
+        public static string CAMERA_RESTORED {
+            get {
+                return ResourceManager.GetString("CAMERA_RESTORED", resourceCulture);
+            }
+        }
+
+        public static string CAMERA_LIVE_PREVIEW {
+            get {
+                return ResourceManager.GetString("CAMERA_LIVE_PREVIEW", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The game is running, so these sliders change its camera as you drag them. Nothing is written to disk....
+        /// </summary>
+        public static string CAMERA_LIVE_HINT {
+            get {
+                return ResourceManager.GetString("CAMERA_LIVE_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Start Minecraft Dungeons to change its camera while you watch. {0}.
+        /// </summary>
+        public static string CAMERA_LIVE_WAITING {
+            get {
+                return ResourceManager.GetString("CAMERA_LIVE_WAITING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Put the game's camera back.
+        /// </summary>
+        public static string CAMERA_LIVE_REVERT {
+            get {
+                return ResourceManager.GetString("CAMERA_LIVE_REVERT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Changed {0} setting(s) in the running game..
+        /// </summary>
+        public static string CAMERA_LIVE_PUSHED {
+            get {
+                return ResourceManager.GetString("CAMERA_LIVE_PUSHED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Turn rate is written to the pak only - it belongs to the character rather than the camera..
+        /// </summary>
+        public static string CAMERA_LIVE_PAK_ONLY {
+            get {
+                return ResourceManager.GetString("CAMERA_LIVE_PAK_ONLY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Changes the camera only.
+        /// </summary>
+        public static string CAMERA_MODS_NOTE {
+            get {
+                return ResourceManager.GetString("CAMERA_MODS_NOTE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Character turns to face aim.
+        /// </summary>
+        public static string CAMERA_FACES_AIM {
+            get {
+                return ResourceManager.GetString("CAMERA_FACES_AIM", resourceCulture);
+            }
+        }
     }
 }

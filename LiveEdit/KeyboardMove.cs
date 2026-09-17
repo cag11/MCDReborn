@@ -1,0 +1,501 @@
+using System;
+using System.Runtime.InteropServices;
+using System.Threading;
+
+namespace LiveEdit
+{
+    /// <summary>
+    /// Walking with the keyboard, in a game that has no keys for walking.
+    ///
+    /// Dungeons is played by clicking where you want to go. There are no movement bindings to
+    /// rebind - not hidden ones, not disabled ones - so nothing can be configured into existence,
+    /// and the movement has to come from somewhere else.
+    ///
+    /// The first attempt was a virtual Xbox controller, which worked and was unusable: the game
+    /// switches its whole interface between keyboard and controller depending on what it heard
+    /// last, so a pad reporting sticks while a mouse reported motion made it change its mind many
+    /// times a second, and the frame rate went with it.
+    ///
+    /// This does not pretend to be a device at all. `AddMovementInput` accumulates into one vector
+    /// on the pawn, and the engine consumes it each frame and clears it - so writing
+    /// that vector is not an imitation of a keypress, it is the same thing a keypress would
+    /// eventually become. The game accelerates, animates, collides and turns exactly as it does
+    /// for its own input, because past this point it is its own input.
+    ///
+    /// Written every frame by necessity rather than by choice: consuming it clears it, so a vector
+    /// written once moves the character for a single frame and stops. Faster than the game ticks,
+    /// too, and by enough of a margin to survive the scheduler - a frame that ticks with no input
+    /// behind it reads as letting go of the key, and this game brakes hard enough to make one of
+    /// those a visible stumble.
+    ///
+    /// A click still attacks, and is meant to. Melee needs the cursor to resolve what it is
+    /// swinging at, so the click has to reach the game - the config's keyboard bindings for
+    /// attacking turned out to do nothing in a shipped build, tested by pressing them.
+    ///
+    /// Making that click swing rather than walk took the game's own answer, which a player knew
+    /// and none of this worked out: hold shift, and the character plants its feet. Cancelling the
+    /// destination afterwards was never going to do it, because the game chooses between walking
+    /// and swinging as the button goes down - by the time there is a destination to refuse, the
+    /// swing has already been declined.
+    ///
+    /// One thing comes with it. The character's facing normally follows the aim, which is right
+    /// for a game played by clicking where you want to go and wrong the moment a keyboard is
+    /// involved - the two come apart and the character slides across the floor facing somewhere
+    /// else. So while this is running the movement component is asked to face where it is going
+    /// instead, and put back the way it was when it stops.
+    ///
+    /// That clearing is also how this was proved rather than hoped for. Writing the vector and
+    /// finding it zero a moment later says two things at once - the field is the one the engine
+    /// reads, and the game is actually ticking rather than paused in the background. Measured at
+    /// six times out of six, followed by the character walking 1381 units in two seconds at
+    /// exactly its own MaxWalkSpeed.
+    /// </summary>
+    public sealed class KeyboardMove : IDisposable
+    {
+        //Faster than the game's frame rate on purpose, and by a wider margin than it looks.
+        //
+        //The vector is cleared when it is consumed, so a frame that ticks without a write behind
+        //it is a frame of standing still. That sounds harmless and is not: this character has a
+        //ground friction of 100 and a braking deceleration of nine and a half million, so one
+        //input-less frame does not cost a little speed, it stops you. Measured while walking on
+        //the keys, the speed collapsed and rebuilt over and over - 700, 645, 278, 182, 179, 204,
+        //413 - while clicking to the same place held a steady 680, because a destination goes
+        //through the requested velocity and never has a gap in it.
+        //
+        //Eight milliseconds was already meant to be twice a frame. It was not: Sleep on Windows
+        //rounds up to the system timer, about 15.6ms by default, so the loop ran slower than the
+        //game and skipped frames rather than doubling them.
+        private const int EVERY_MS = 4;
+
+        //Asking Windows for a timer that can actually do that.
+        //
+        //Without it every sleep below about 15ms is that long instead. It is a process wide
+        //setting and a rude one, so it is asked for when the keys start driving and given back
+        //the moment they stop.
+        [DllImport("winmm.dll")] private static extern uint timeBeginPeriod(uint milliseconds);
+        [DllImport("winmm.dll")] private static extern uint timeEndPeriod(uint milliseconds);
+
+        private const uint TIMER_RESOLUTION_MS = 1;
+
+        //Virtual key codes.
+        private const int W = 0x57, A = 0x41, S = 0x53, D = 0x44;
+
+        //Control rather than shift, and deliberately.
+        //
+        //Shift is the game's own RootPlayer - hold it and the character plants its feet so a
+        //click swings at something out of reach instead of walking to it. Taking shift for a
+        //slow walk would have quietly broken that, and the two would have fought every time:
+        //one asking to move gently, the other refusing to move at all.
+        private const int SLOWLY = 0xA2;  // Left Control
+
+        //The left mouse button, and the key the game roots the player with.
+        private const int LEFT_BUTTON = 0x01;
+        private const ushort LEFT_SHIFT = 0xA0;
+
+        private const uint INPUT_KEYBOARD = 1;
+        private const uint KEYEVENTF_KEYUP = 0x0002;
+
+        //APawn, and not the movement component - which is where this was written first, and why
+        //the keys did nothing. The offset is the same number in both places in the SDK listing,
+        //so a glance at 0x0374 confirms nothing; the class it belongs to is the whole of it. It
+        //sits beside bUseControllerRotationYaw at 0x0338 on the pawn, which is the giveaway.
+        //
+        //This is where AddMovementInput accumulates and where ConsumeInputVector takes it from.
+        private const int CONTROL_INPUT_VECTOR = 0x0374;
+
+        [DllImport("user32.dll")] private static extern short GetAsyncKeyState(int key);
+        [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct KeyboardInput
+        {
+            public ushort VirtualKey, ScanCode;
+            public uint Flags, Time;
+            public IntPtr Extra;
+        }
+
+        //An INPUT is a tag and a union laid out for its largest member, so the keyboard part is
+        //followed by the room the mouse part would have needed.
+        [StructLayout(LayoutKind.Sequential)]
+        private struct Input
+        {
+            public uint Type;
+            public KeyboardInput Key;
+            public int PadA, PadB;
+        }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern uint SendInput(uint count, Input[] inputs, int size);
+
+        private readonly GameProcess _game;
+        private readonly LiveCamera _camera;
+
+        //Walked again every time round, rather than remembered.
+        //
+        //The pawn and the movement component are the character's own, and a level change frees
+        //both. Writing into them afterwards crashed the game on the way back to the camp - and
+        //the worst of it was the tidying up: putting the rotation flags back wrote a byte into a
+        //component that had already been destroyed.
+        private readonly LiveCamera _live;
+
+        //Which movement component the facing was changed on, and what it was before. Kept
+        //together so the flags are only ever handed back to the component they were taken from,
+        //and only while it is still the live one.
+        private IntPtr _oriented;
+        private byte? _flagsWere;
+
+        private Thread? _thread;
+        private volatile bool _running;
+
+        private KeyboardMove(GameProcess game, LiveCamera camera)
+        {
+            _game = game;
+            _camera = camera;
+            _live = new LiveCamera(game);
+        }
+
+        /// <summary>
+        /// Asks the character to face where it is going, remembering what it said before.
+        ///
+        /// Done again for each new character rather than once, because each level brings its own
+        /// and the old one's setting is not something that can be handed back.
+        /// </summary>
+        private void orientToMovement(IntPtr movement)
+        {
+            var flags = _game.read(new IntPtr(movement.ToInt64() + MOVEMENT_ROTATION_FLAGS), 1);
+            if (flags == null) { return; }
+
+            _oriented = movement;
+            _flagsWere = flags[0];
+            _game.write(new IntPtr(movement.ToInt64() + MOVEMENT_ROTATION_FLAGS),
+                new[] { (byte)(flags[0] | (1 << BIT_ORIENT_TO_MOVEMENT)) });
+        }
+
+        /// <summary>
+        /// Puts the facing back, but only onto a component the game still has.
+        ///
+        /// The check is the point. Restoring blindly is what turned a level change into a crash:
+        /// by the time anything here knows it is finished, the character it borrowed from may not
+        /// exist, and a byte written into that is a byte written into whatever took its place.
+        /// </summary>
+        private void restoreFacing()
+        {
+            if (_oriented == IntPtr.Zero || _flagsWere is not byte flags) { return; }
+
+            if (_live.find(out _) && movementOf(_live.Pawn) == _oriented)
+            {
+                _game.write(new IntPtr(_oriented.ToInt64() + MOVEMENT_ROTATION_FLAGS), new[] { flags });
+            }
+
+            _oriented = IntPtr.Zero;
+            _flagsWere = null;
+        }
+
+        private IntPtr movementOf(IntPtr pawn)
+        {
+            return pawn == IntPtr.Zero
+                ? IntPtr.Zero
+                : readPointer(_game, new IntPtr(pawn.ToInt64() + CHARACTER_MOVEMENT));
+        }
+
+        /// <summary>
+        /// Attaches to the character's movement, or says why it could not.
+        ///
+        /// The movement component is checked rather than assumed, by reading a walk speed out of
+        /// it: a plausible speed means the pointer is the thing it is supposed to be, and a zero
+        /// or a wild number means the chain led somewhere else and nothing should be written.
+        /// </summary>
+        public static KeyboardMove? attach(GameProcess game, LiveCamera camera, out string problem)
+        {
+            problem = "";
+
+            if (camera.Pawn == IntPtr.Zero)
+            {
+                problem = "No character to move yet.";
+                return null;
+            }
+
+            var movement = readPointer(game, new IntPtr(camera.Pawn.ToInt64() + CHARACTER_MOVEMENT));
+            if (movement == IntPtr.Zero)
+            {
+                problem = "The character has no movement component.";
+                return null;
+            }
+
+            var walkSpeed = game.readFloat(new IntPtr(movement.ToInt64() + MAX_WALK_SPEED));
+            if (walkSpeed == null || walkSpeed < 1f || walkSpeed > 100000f)
+            {
+                problem = "The movement component is not where it was expected - this build may differ.";
+                return null;
+            }
+
+            //Neither pointer is kept. They are walked to again every time round the loop, because
+            //a level change frees both and writing into them afterwards crashes the game.
+            return new KeyboardMove(game, camera);
+        }
+
+        //ACharacter, and the speed used to prove the pointer.
+        private const int CHARACTER_MOVEMENT = 0x0398;
+        private const int MAX_WALK_SPEED = 0x01DC;
+
+        //UCharacterMovementComponent's rotation flags, and the one that stops the moonwalking.
+        //
+        //Left alone, the character's facing comes from where the player is aiming, which is fine
+        //in a game played by clicking where you want to go - you always walk towards what you are
+        //pointing at. Give it a keyboard and the two come apart: measured at a hundred and sixty
+        //eight degrees between the way it was going and the way it was facing, which is a
+        //character sliding backwards across the floor.
+        //
+        //This is Unreal's own answer, and it takes precedence over the aim when there is input:
+        //face where you are going. It suits this game particularly because there are no sideways
+        //animations to play - a character that always runs the way it faces always has the right
+        //animation for what it is doing.
+        private const int MOVEMENT_ROTATION_FLAGS = 0x0240;
+        private const int BIT_ORIENT_TO_MOVEMENT = 3;
+
+        //Where a click sends you, and how to refuse it.
+        //
+        //The game binds a left click to two actions at once - MainAttack and SetDestination - and
+        //there is no way to accept one and decline the other, because it is one key press. The
+        //keyboard bindings the config offers for attacking, K and L, turn out to be inert in a
+        //shipped build, so the click has to be allowed through to swing at all.
+        //
+        //Which leaves cancelling where it sends you, every frame, after it has been sent. A
+        //destination becomes movement one of two ways and it is cheaper to refuse both than to
+        //find out which: the input vector, and a requested velocity from path following. Three
+        //writes, against a frame that was going to happen anyway.
+        private const int MOVEMENT_STATE_FLAGS = 0x03D2;
+        private const int BIT_HAS_REQUESTED_VELOCITY = 0;
+        private const int REQUESTED_VELOCITY = 0x03E8;
+
+        public bool IsRunning => _running;
+
+        /// <summary>
+        /// Whether clicking is allowed to walk the character somewhere.
+        ///
+        /// On, the keys are the only thing that moves you and a click is only ever an attack.
+        /// Off, the game behaves as it always did, which is what somebody wants who is using the
+        /// camera without the keys.
+        /// </summary>
+        public bool ClicksDoNotWalk { get; set; } = true;
+
+        /// <summary>
+        /// Whether holding the left button also plants the character's feet.
+        ///
+        /// This is the game's own answer to the problem, and it was a player who knew it: hold
+        /// shift and a click swings where it is pointed instead of walking there. The action is
+        /// called RootPlayer and the config binds it to LeftShift.
+        ///
+        /// Which is a better answer than anything reached for here. Cancelling the destination
+        /// after the fact never worked, because the game decides between walking and swinging at
+        /// the moment of the click - by the time there is a destination to refuse, the swing has
+        /// already been declined. Rooting changes the decision rather than its consequence.
+        ///
+        /// Held only while the button is down, so it is the game's behaviour during an attack and
+        /// nothing at all the rest of the time.
+        /// </summary>
+        public bool AttackRoots { get; set; } = true;
+
+        private bool _rooting;
+
+        //Set while a menu is open. Walking on through an inventory screen would be its own kind
+        //of wrong, and the keys are the game's to read there.
+        private volatile bool _suspended;
+
+        /// <summary>Whether the keys are being left to the game for the moment.</summary>
+        public bool Suspended
+        {
+            get => _suspended;
+            set => _suspended = value;
+        }
+
+        /// <summary>Raised when it stops by itself, so a panel can untick its box.</summary>
+        public event Action? stopped;
+
+        public bool start()
+        {
+            if (_running) { return true; }
+
+            _running = true;
+            _thread = new Thread(run) { IsBackground = true, Name = "keyboard movement" };
+            _thread.Start();
+            return true;
+        }
+
+        public void stop() => _running = false;
+
+        private void run()
+        {
+            timeBeginPeriod(TIMER_RESOLUTION_MS);
+            try { drive(); }
+            finally { timeEndPeriod(TIMER_RESOLUTION_MS); }
+
+            _running = false;
+            stopped?.Invoke();
+        }
+
+        private void drive()
+        {
+            while (_running)
+            {
+                Thread.Sleep(EVERY_MS);
+
+                if (!_game.IsRunning) { break; }
+
+                //Only while the game is in front. Otherwise typing a message with a W in it walks
+                //somebody into a wall in a window they are not looking at.
+                if (GetForegroundWindow() != _game.Process.MainWindowHandle)
+                {
+                    //A key held down when the window changed would stay held, and shift is not a
+                    //thing to leave pressed in somebody else's window.
+                    releaseRoot();
+                    continue;
+                }
+
+                if (_suspended)
+                {
+                    //Whatever was being held is let go of, or it stays held into the menu.
+                    releaseRoot();
+                    continue;
+                }
+
+                //The character as it is now. Between levels there is not one, and this idles.
+                if (!_live.find(out _)) { continue; }
+
+                var pawn = _live.Pawn;
+                var movement = movementOf(pawn);
+                if (movement == IntPtr.Zero) { continue; }
+
+                //A new character needs asking again, and the old one's setting is gone with it.
+                if (movement != _oriented) { orientToMovement(movement); }
+
+                if (AttackRoots) { rootWhileAttacking(); } else { releaseRoot(); }
+
+                var forward = 0f;
+                var sideways = 0f;
+
+                if (down(W)) { forward += 1f; }
+                if (down(S)) { forward -= 1f; }
+                if (down(D)) { sideways += 1f; }
+                if (down(A)) { sideways -= 1f; }
+
+                //Standing still is written too, rather than skipped. Leaving the vector alone is
+                //what lets a destination posted by a click quietly move the character while no key
+                //is held - which reads as the character wandering off on its own.
+                if (forward == 0f && sideways == 0f)
+                {
+                    if (ClicksDoNotWalk) { refuseDestination(movement); writeInput(pawn, 0f, 0f); }
+                    continue;
+                }
+
+                //Relative to the camera, which is the only thing that makes sense once the camera
+                //can be pointed anywhere: W is away from the viewer, not north. Read each frame
+                //rather than remembered, because mouse look is turning it at the same time.
+                var yaw = _camera.Yaw ?? 0f;
+                var radians = yaw * Math.PI / 180.0;
+                var cos = Math.Cos(radians);
+                var sin = Math.Sin(radians);
+
+                //Unreal's forward is X and its right is Y at a yaw of zero.
+                var x = forward * cos - sideways * sin;
+                var y = forward * sin + sideways * cos;
+
+                //Diagonals would otherwise be a little over a fortieth faster than straight lines,
+                //which is small enough to feel as the character subtly preferring corners.
+                var length = Math.Sqrt(x * x + y * y);
+                if (length > 0.0001)
+                {
+                    x /= length;
+                    y /= length;
+                }
+
+                //A direction has no magnitude the way a stick does, so going slowly needs a key of
+                //its own.
+                var scale = down(SLOWLY) ? 0.5 : 1.0;
+
+                if (ClicksDoNotWalk) { refuseDestination(movement); }
+                writeInput(pawn, (float)(x * scale), (float)(y * scale));
+            }
+
+        }
+
+        /// <summary>
+        /// Presses the game's root key for as long as the left button is down.
+        ///
+        /// Edges only. Sending the key every eight milliseconds would be sixty held keypresses a
+        /// second, which the game would read as sixty separate presses.
+        /// </summary>
+        private void rootWhileAttacking()
+        {
+            var attacking = (GetAsyncKeyState(LEFT_BUTTON) & 0x8000) != 0;
+
+            if (attacking && !_rooting) { press(LEFT_SHIFT, false); _rooting = true; }
+            else if (!attacking && _rooting) { press(LEFT_SHIFT, true); _rooting = false; }
+        }
+
+        private void releaseRoot()
+        {
+            if (!_rooting) { return; }
+
+            press(LEFT_SHIFT, true);
+            _rooting = false;
+        }
+
+        private static void press(ushort key, bool releasing)
+        {
+            var input = new Input {
+                Type = INPUT_KEYBOARD,
+                Key = new KeyboardInput { VirtualKey = key, Flags = releasing ? KEYEVENTF_KEYUP : 0 },
+            };
+            SendInput(1, new[] { input }, Marshal.SizeOf<Input>());
+        }
+
+        private void writeInput(IntPtr pawn, float x, float y)
+        {
+            var bytes = new byte[12];
+            BitConverter.GetBytes(x).CopyTo(bytes, 0);
+            BitConverter.GetBytes(y).CopyTo(bytes, 4);
+            BitConverter.GetBytes(0f).CopyTo(bytes, 8);
+
+            _game.write(new IntPtr(pawn.ToInt64() + CONTROL_INPUT_VECTOR), bytes);
+        }
+
+        /// <summary>
+        /// Throws away anywhere the game has been told to walk to.
+        ///
+        /// Both ways at once, because a click could become movement through either and checking
+        /// which would cost as much as simply refusing both.
+        /// </summary>
+        private void refuseDestination(IntPtr movement)
+        {
+            var flags = _game.read(new IntPtr(movement.ToInt64() + MOVEMENT_STATE_FLAGS), 1);
+            if (flags != null && (flags[0] & (1 << BIT_HAS_REQUESTED_VELOCITY)) != 0)
+            {
+                _game.write(new IntPtr(movement.ToInt64() + MOVEMENT_STATE_FLAGS),
+                    new[] { (byte)(flags[0] & ~(1 << BIT_HAS_REQUESTED_VELOCITY)) });
+
+                _game.write(new IntPtr(movement.ToInt64() + REQUESTED_VELOCITY), new byte[12]);
+            }
+        }
+
+        private static bool down(int key) => (GetAsyncKeyState(key) & 0x8000) != 0;
+
+        private static IntPtr readPointer(GameProcess game, IntPtr at)
+        {
+            var bytes = game.read(at, 8);
+            if (bytes == null) { return IntPtr.Zero; }
+
+            var pointer = BitConverter.ToInt64(bytes, 0);
+            return pointer > 0x10000 && pointer < 0x7FFFFFFFFFFF ? new IntPtr(pointer) : IntPtr.Zero;
+        }
+
+        public void Dispose()
+        {
+            stop();
+            _thread?.Join(200);
+
+            releaseRoot();
+            restoreFacing();
+        }
+    }
+}

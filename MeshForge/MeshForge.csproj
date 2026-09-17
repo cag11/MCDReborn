@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PakReader\PakReader.csproj" />
+    <ProjectReference Include="..\LiveEdit\LiveEdit.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -31,6 +32,8 @@
     <Compile Include="..\MCDSaveEdit\Logic\VertexPacking.cs" Link="Linked\VertexPacking.cs" />
     <Compile Include="..\MCDSaveEdit\Logic\CookedMesh.cs" Link="Linked\CookedMesh.cs" />
     <Compile Include="..\MCDSaveEdit\Logic\GlbModel.cs" Link="Linked\GlbModel.cs" />
+    <Compile Include="..\MCDSaveEdit\Logic\CameraMod.cs" Link="Linked\CameraMod.cs" />
+    <Compile Include="..\MCDSaveEdit\Logic\CookedProperties.cs" Link="Linked\CookedProperties.cs" />
   </ItemGroup>
 
 </Project>

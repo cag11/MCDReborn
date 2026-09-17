@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -71,6 +71,7 @@
   <ItemGroup>
     <ProjectReference Include="..\DungeonTools\DungeonTools.csproj" />
     <ProjectReference Include="..\PakReader\PakReader.csproj" />
+    <ProjectReference Include="..\LiveEdit\LiveEdit.csproj" />
   </ItemGroup>
 
 </Project>

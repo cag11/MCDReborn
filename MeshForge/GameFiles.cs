@@ -108,6 +108,44 @@ namespace MeshForge
             return package;
         }
 
+
+        /// <summary>
+        /// The path a mod file has to be written under, in the case the game will look for it.
+        ///
+        /// This matters more than it sounds. The index here is mounted case-insensitively so that
+        /// a path can be typed without getting every capital right, and the price of that is every
+        /// path it hands back is lowercased. Write a pak using one of those and the file inside it
+        /// is `dungeons/content/actors/bp_coopcamera.uasset` - which the game, looking up
+        /// `Dungeons/Content/Actors/BP_CoopCamera.uasset`, never finds. The mod loads, contains
+        /// exactly the right bytes, and does nothing at all.
+        ///
+        /// The asset knows its own name. A cooked package carries its path in its name table as
+        /// `/Game/Actors/BP_CoopCamera`, spelled the way the cooker spelled it, and `/Game/` is
+        /// the mount point for `Dungeons/Content/`. So the answer is taken from the file rather
+        /// than from the index that lost it.
+        /// </summary>
+        public static string modPathFor(byte[] uasset, string requestedPath)
+        {
+            var fallback = requestedPath.TrimStart('/');
+
+            var leaf = requestedPath.Substring(requestedPath.LastIndexOf('/') + 1);
+            if (leaf.Length == 0) { return fallback; }
+
+            foreach (var name in MCDSaveEdit.Logic.CookedProperties.readNamesOf(uasset))
+            {
+                if (!name.StartsWith("/Game/", StringComparison.Ordinal)) { continue; }
+
+                var tail = name.Substring(name.LastIndexOf('/') + 1);
+                if (!string.Equals(tail, leaf, StringComparison.OrdinalIgnoreCase)) { continue; }
+
+                return "Dungeons/Content/" + name.Substring("/Game/".Length);
+            }
+
+            //Nothing matched, which means the package does not name itself the way this expects.
+            //Returning what was asked for is no worse than guessing, and the caller typed it.
+            return fallback;
+        }
+
         /// <summary>
         /// Writes the pieces back out as a mod pak, at the paths the game keeps them under.
         ///
@@ -120,8 +158,9 @@ namespace MeshForge
             foreach (var (path, uasset, uexp) in assets)
             {
                 //Inside a pak the path loses its leading slash and keeps the extension, which the
-                //index does not carry.
-                var inside = path.TrimStart('/');
+                //index does not carry - and it has to be spelled exactly as the game spells it,
+                //which the asset itself is asked for.
+                var inside = modPathFor(uasset, path);
                 entries.Add(new MCDSaveEdit.Logic.PakWriter.Entry(inside + ".uasset", uasset));
                 entries.Add(new MCDSaveEdit.Logic.PakWriter.Entry(inside + ".uexp", uexp));
             }
