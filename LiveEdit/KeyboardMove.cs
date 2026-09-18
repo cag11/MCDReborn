@@ -335,6 +335,7 @@ namespace LiveEdit
 
         //ACharacter, and the speed used to prove the pointer.
         private const int CHARACTER_MOVEMENT = 0x0398;
+
         private const int MAX_WALK_SPEED = 0x01DC;
 
         //UCharacterMovementComponent's rotation flags, and the one that stops the moonwalking.

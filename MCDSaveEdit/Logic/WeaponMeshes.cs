@@ -99,12 +99,6 @@ namespace MCDSaveEdit.Logic
 
         public static bool ready => CustomSkins.ready;
 
-        /// <summary>
-        /// Every equipment mesh in the game, found once and remembered.
-        ///
-        /// Scanned rather than listed, because a list written by hand goes stale the first time a
-        /// DLC adds a weapon, and this is a thing the paks can simply be asked.
-        /// </summary>
         public static IReadOnlyList<Mesh> all()
         {
             if (_catalogue != null) { return _catalogue; }
@@ -117,7 +111,7 @@ namespace MCDSaveEdit.Logic
 
             foreach (var entry in paks)
             {
-                var path = entry.Replace('\\', '/');
+                var path = entry.Replace("\\", "/");
                 var at = path.IndexOf("//", StringComparison.Ordinal);
                 if (at >= 0) { path = path.Substring(at + 1); }
 

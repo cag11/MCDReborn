@@ -1660,7 +1660,7 @@ The save file is not changed until you save it.</value>
     <comment>Toggle for the mount</comment>
   </data>
   <data name="MOUNT_WHY" xml:space="preserve">
-    <value>Nothing is spawned - spawning is a function call and this tool only writes memory. The nearest thing that can walk is stopped and carried under you instead, which looks the same from outside. Needs W A S D switched on.</value>
+    <value>Press R to get on and off. Nothing here spawns anything, but the game does: any summoning artifact - Enchanted Grass, Tasty Bone, Golem Kit, Wonderful Wheat - drops a creature beside you, and R rides whatever has just arrived rather than whatever is merely nearest. Needs W A S D switched on.</value>
     <comment>Explains the mount</comment>
   </data>
   <data name="MOUNT_SPEED" xml:space="preserve">
@@ -1694,5 +1694,137 @@ The save file is not changed until you save it.</value>
   <data name="FLY_SPEED" xml:space="preserve">
     <value>Flying speed</value>
     <comment>Slider for flight speed</comment>
+  </data>
+  <data name="MOUNT_RIDE_KEY" xml:space="preserve">
+    <value>R rides the closest creature</value>
+    <comment>Toggle for the ride hotkey</comment>
+  </data>
+  <data name="BOARD_ON" xml:space="preserve">
+    <value>Board at your feet</value>
+    <comment>Toggle for moving equipment underfoot</comment>
+  </data>
+  <data name="BOARD_WHY" xml:space="preserve">
+    <value>Takes whatever is in your hand off your arm and puts it flat under your feet. Pack a model over the Mace on the Weapon Skins tab first and it becomes a skateboard; without that it is whatever you happen to be holding, lying on the floor.</value>
+    <comment>Explains the board</comment>
+  </data>
+  <data name="BOARD_HEIGHT" xml:space="preserve">
+    <value>Board height</value>
+    <comment>Slider for how high the board sits</comment>
+  </data>
+  <data name="BOARD_FOUND" xml:space="preserve">
+    <value>{0} equipped. Pick one, then tick the board.</value>
+    <comment>Says how many held meshes were found</comment>
+  </data>
+  <data name="BOARD_FOUND_NONE" xml:space="preserve">
+    <value>Nothing equipped that could be a board.</value>
+    <comment>Says nothing was found</comment>
+  </data>
+  <data name="MOUNT_TAB_INTRO" xml:space="preserve">
+    <value>Nothing here spawns anything - spawning is a function call, and this app only writes memory. The Totem of Regeneration does spawn, though: the artifact drops a rigid object on the floor wherever you stand. Replace what that object looks like, and it is your mount.</value>
+    <comment>Intro for the mount tab</comment>
+  </data>
+  <data name="MOUNT_TAB_RIDING" xml:space="preserve">
+    <value>Riding it</value>
+    <comment>Header</comment>
+  </data>
+  <data name="MOUNT_TAB_BOARD" xml:space="preserve">
+    <value>Standing on something you are carrying</value>
+    <comment>Header</comment>
+  </data>
+  <data name="MOUNT_TAB_LOOK" xml:space="preserve">
+    <value>What your mount looks like</value>
+    <comment>Header</comment>
+  </data>
+  <data name="MOUNT_TAB_LOOK_WHY" xml:space="preserve">
+    <value>Your model replaces the Totem of Regeneration, so the totem the artifact drops is whatever you import - a skateboard, a car, anything rigid. Nothing here is written to the game until you press Install, and the game has to be restarted afterwards because paks only load at startup.</value>
+    <comment>Explains the appearance section</comment>
+  </data>
+  <data name="MOUNT_TAB_CHOOSE" xml:space="preserve">
+    <value>Choose a model...</value>
+    <comment>Button to pick a glb</comment>
+  </data>
+  <data name="MOUNT_TAB_SIZE" xml:space="preserve">
+    <value>Size</value>
+    <comment>Scale slider</comment>
+  </data>
+  <data name="MOUNT_TAB_INSTALL" xml:space="preserve">
+    <value>Install it over the totem</value>
+    <comment>Install button</comment>
+  </data>
+  <data name="MOUNT_TAB_READY" xml:space="preserve">
+    <value>Ready to install over {0}. Check the size, then install.</value>
+    <comment>Model loaded</comment>
+  </data>
+  <data name="MOUNT_TAB_INSTALLED" xml:space="preserve">
+    <value>Written to {0}. Restart the game, then equip and use the Totem of Regeneration - what it drops is your mount.</value>
+    <comment>Installed</comment>
+  </data>
+  <data name="MOUNT_TAB_PICK_FIRST" xml:space="preserve">
+    <value>Choose a model first.</value>
+    <comment>No model chosen</comment>
+  </data>
+  <data name="MOUNT_TAB_NO_HOST" xml:space="preserve">
+    <value>Could not find {0} in the game's files.</value>
+    <comment>Host asset missing</comment>
+  </data>
+  <data name="MOUNT_TAB_GLB_FILTER" xml:space="preserve">
+    <value>glTF binary (*.glb)|*.glb</value>
+    <comment>File picker filter</comment>
+  </data>
+  <data name="MOUNT_TAB_PREVIEW" xml:space="preserve">
+    <value>How it will look</value>
+    <comment>Preview header</comment>
+  </data>
+  <data name="MOUNT_TAB_ORBIT" xml:space="preserve">
+    <value>Turn view</value>
+    <comment>Orbit slider</comment>
+  </data>
+  <data name="MOUNT_TAB_TURN" xml:space="preserve">
+    <value>Which way up</value>
+    <comment>Rotation header</comment>
+  </data>
+  <data name="MOUNT_TAB_TURN_WHY" xml:space="preserve">
+    <value>Modelling programs disagree about which axis is up and which is forward, so a model can arrive on its side or facing backwards. There is no way to tell from the file. Turn it here until it looks right standing under the body, and the pak is built that way round.</value>
+    <comment>Explains rotation</comment>
+  </data>
+  <data name="MOUNT_TAB_ROLL" xml:space="preserve">
+    <value>Roll</value>
+    <comment>Rotation X</comment>
+  </data>
+  <data name="MOUNT_TAB_PITCH" xml:space="preserve">
+    <value>Tip</value>
+    <comment>Rotation Y</comment>
+  </data>
+  <data name="MOUNT_TAB_YAW" xml:space="preserve">
+    <value>Spin</value>
+    <comment>Rotation Z</comment>
+  </data>
+  <data name="MOUNT_TAB_MEASURED" xml:space="preserve">
+    <value>{0} long, {1} wide, {2} tall</value>
+    <comment>Model bounds</comment>
+  </data>
+  <data name="MOUNT_TAB_STAND_ON" xml:space="preserve">
+    <value>Stand on top of it</value>
+    <comment>Lift toggle</comment>
+  </data>
+  <data name="MOUNT_TAB_HOST" xml:space="preserve">
+    <value>Made out of</value>
+    <comment>Host asset picker label</comment>
+  </data>
+  <data name="MOUNT_TAB_HOST_WHY" xml:space="preserve">
+    <value>Your model replaces the Totem of Regeneration. A totem is used because it is a rigid object rather than an animated one - animals and armour cannot be replaced this way - and because the artifact drops one on the floor on demand, which is the only way to get a mount where you are standing.</value>
+    <comment>Explains the totem host</comment>
+  </data>
+  <data name="MOUNT_TAB_READY_TOTEM" xml:space="preserve">
+    <value>Loaded. Set the size and which way up it is, then press Install - nothing is written until you do.</value>
+    <comment>Model loaded</comment>
+  </data>
+  <data name="STATS_ENEMY_SIZE" xml:space="preserve">
+    <value>Enemy size</value>
+    <comment>Slider for how big enemies are drawn</comment>
+  </data>
+  <data name="STATS_ENEMY_SIZE_WHY" xml:space="preserve">
+    <value>How big they are drawn, not how big they are to walk into - the shape they collide with is left alone, so a giant will not get stuck in a doorway. Works for the same reason riding one does: a creature is animated every frame, and that is what carries the change to the screen.</value>
+    <comment>Explains enemy size</comment>
   </data>
 </root>

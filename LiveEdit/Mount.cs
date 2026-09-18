@@ -138,6 +138,22 @@ namespace LiveEdit
             //whole feature did nothing in exactly the places it would have helped.
             if (mount != IntPtr.Zero)
             {
+                //Only things that can walk, and that is a safety check as much as a filter.
+                //
+                //It was removed once, because a totem and a barrel have no movement component and
+                //were being silently dropped. That was a real bug and this is the wrong fix for it:
+                //requiring a movement component is also the only thing guaranteeing this is a
+                //character, with a layout where 0x0158 is a root component and 0x01A0 is a
+                //position. Without it, a position gets written into whatever happens to live at
+                //those offsets on an arbitrary actor.
+                //
+                //Measured, with the check removed: a prop driven under the player ended up 23,367
+                //units from where it was put, and the game lost its connection shortly after. That
+                //is not a mount that did not work, that is a write into somebody else's memory.
+                //
+                //Riding props needs the actor's layout established first - that its root really is
+                //a scene component, and that its transform is one the engine reads back. Until then
+                //this only rides things it understands.
                 var movement = readPointer(new IntPtr(mount.ToInt64() + CHARACTER_MOVEMENT));
                 if (movement != IntPtr.Zero)
                 {
@@ -154,7 +170,14 @@ namespace LiveEdit
                 }
             }
 
-            if (_mount == IntPtr.Zero) { problem = "Nothing to ride, so this is speed only."; }
+            //Said properly, because "speed only" was hiding a real answer: the thing you picked
+            //cannot be ridden, and which thing that is matters.
+            if (_mount == IntPtr.Zero)
+            {
+                problem = mount == IntPtr.Zero
+                    ? "Nothing nearby to ride, so this is speed only."
+                    : "That one cannot be carried - only creatures can, for now. Speed only.";
+            }
 
             //Lifted once, onto whatever is about to be parked underneath. Gravity goes off with it,
             //or the lift lasts exactly one frame.
@@ -189,7 +212,7 @@ namespace LiveEdit
         {
             //Only given its speed back if it is still the thing we took it from. If the level has
             //gone, so has the creature, and the tidying up would be the same bad write as the loop.
-            if (_mount != IntPtr.Zero && stillThere())
+            if (_mount != IntPtr.Zero && stillThere() && _mountSpeedWas > 0f)
             {
                 var movement = readPointer(new IntPtr(_mount.ToInt64() + CHARACTER_MOVEMENT));
                 if (movement != IntPtr.Zero)
@@ -197,6 +220,8 @@ namespace LiveEdit
                     _game.writeFloat(new IntPtr(movement.ToInt64() + MAX_WALK_SPEED), _mountSpeedWas);
                 }
             }
+
+            _mountSpeedWas = 0f;
 
             _mount = IntPtr.Zero;
             MountHeight = 0f;
@@ -568,6 +593,39 @@ namespace LiveEdit
             var found = nearby(out _);
             return found.Count > 0 ? found[0].Actor : IntPtr.Zero;
         }
+
+        /// <summary>
+        /// Remembers what is in the level, so that something arriving can be noticed.
+        ///
+        /// Which is the whole trick behind summoning a mount. Nothing here can spawn an actor, but
+        /// Enchanted Grass can - the game summons a sheep through its own code, and a sheep that
+        /// was not in the level a moment ago and is now standing next to you is not ambiguous.
+        /// Riding the newest thing beats riding the nearest, because the nearest might be a crate.
+        /// </summary>
+        public void remember()
+        {
+            _known.Clear();
+
+            foreach (var one in nearby(out _, 200)) { _known.Add(one.Actor); }
+        }
+
+        /// <summary>
+        /// Whatever has appeared since the last look, nearest first, or zero if nothing has.
+        /// </summary>
+        public IntPtr newcomer()
+        {
+            if (_known.Count == 0) { return IntPtr.Zero; }
+
+            foreach (var one in nearby(out _, 200))
+            {
+                if (!_known.Contains(one.Actor)) { return one.Actor; }
+            }
+
+            return IntPtr.Zero;
+        }
+
+        private readonly System.Collections.Generic.HashSet<IntPtr> _known =
+            new System.Collections.Generic.HashSet<IntPtr>();
 
         private IntPtr readPointer(IntPtr at)
         {

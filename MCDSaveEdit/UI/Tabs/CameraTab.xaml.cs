@@ -48,7 +48,7 @@ namespace MCDSaveEdit.UI
         /// <summary>Whether a preset has been picked, and so is waiting for a game to arrive.</summary>
         private bool _chosen;
 
-        private readonly LiveCameraLink _live = new LiveCameraLink();
+        private readonly LiveCameraLink _live = LiveCameraLink.shared;
 
         public CameraTab()
         {
@@ -57,6 +57,7 @@ namespace MCDSaveEdit.UI
 
             _live.changed += showLive;
 
+            _live.ridePressed += ridePressedInGame;
             _live.lookingStopped += () => Dispatcher.BeginInvoke(new Action(() => {
                 _filling = true;
                 mouseLook.IsChecked = false;
@@ -108,13 +109,14 @@ namespace MCDSaveEdit.UI
             invertPitch.Content = R.CAMERA_INVERT;
             canJump.Content = R.CAMERA_JUMP;
             jumpWhy.Text = R.CAMERA_JUMP_WHY;
+            rideKey.Content = R.MOUNT_RIDE_KEY;
+            mountWhy.Text = R.MOUNT_WHY;
+            riding.Content = R.MOUNT_RIDE;
+            refreshMounts.Content = R.MOUNT_REFRESH;
+            mountSpeedLabel.Text = R.MOUNT_SPEED;
             canFly.Content = R.FLY_ON;
             flyWhy.Text = R.FLY_WHY;
             flySpeedLabel.Text = R.FLY_SPEED;
-            riding.Content = R.MOUNT_RIDE;
-            mountWhy.Text = R.MOUNT_WHY;
-            mountSpeedLabel.Text = R.MOUNT_SPEED;
-            refreshMounts.Content = R.MOUNT_REFRESH;
             jumpHeightLabel.Text = R.CAMERA_JUMP_HEIGHT;
             airControlLabel.Text = R.CAMERA_AIR_CONTROL;
             jumpCountCaption.Text = R.CAMERA_JUMP_COUNT;
@@ -461,44 +463,6 @@ namespace MCDSaveEdit.UI
             }
         }
 
-        /// <summary>
-        /// Lets space leave the ground as well as roll.
-        ///
-        /// Sharing the key with the roll is the point rather than a compromise - pressing it once
-        /// rolls and jumps together, which is the leap this was asked for.
-        /// </summary>
-        /// <summary>
-        /// Lists what is close enough to ride.
-        ///
-        /// Described by shape rather than named, because this build of the game has no name table -
-        /// how far off, how tall, how fast it walks. Between them that is enough to tell a cow from
-        /// a chicken from whatever is guarding the corridor.
-        /// </summary>
-        private void refreshMounts_Click(object sender, RoutedEventArgs e)
-        {
-            var found = _live.rideable(out var tell);
-
-            _filling = true;
-            mountPick.ItemsSource = found;
-            mountPick.SelectedIndex = found.Count > 0 ? 0 : -1;
-            _filling = false;
-
-            _live.ride = found.Count > 0 ? found[0].Actor : IntPtr.Zero;
-
-            //The tally either way. An empty list that says nothing about what it looked at is how
-            //the last version of this wasted a build.
-            statusLabel.Text = tell;
-        }
-
-        private void mountPick_Changed(object sender, SelectionChangedEventArgs e)
-        {
-            if (_filling) { return; }
-
-            _live.ride = mountPick.SelectedItem is LiveEdit.Mount.Candidate one
-                ? one.Actor
-                : IntPtr.Zero;
-        }
-
         private void canFly_Changed(object sender, RoutedEventArgs e)
         {
             if (_filling) { return; }
@@ -514,24 +478,45 @@ namespace MCDSaveEdit.UI
             _live.flySpeed = (float)flySpeed.Value;
         }
 
-        private void riding_Changed(object sender, RoutedEventArgs e)
+        /// <summary>Keeps the checkbox honest when the key is used instead of the mouse.</summary>
+        private void ridePressedInGame()
+        {
+            Dispatcher.Invoke(() => {
+                _live.toggleRiding();
+
+                _filling = true;
+                riding.IsChecked = _live.riding;
+                _filling = false;
+            });
+        }
+
+        private void rideKey_Changed(object sender, RoutedEventArgs e)
         {
             if (_filling) { return; }
 
-            if (riding.IsChecked != true) { _live.stopRiding(); return; }
+            _live.rideKey = rideKey.IsChecked == true;
+        }
 
-            //Said out loud when it fails, because "nothing nearby to ride" is a real answer and
-            //a checkbox that silently unticks itself is not.
-            if (!_live.startRiding(out var problem))
-            {
-                _filling = true;
-                riding.IsChecked = false;
-                _filling = false;
-            }
+        private void refreshMounts_Click(object sender, RoutedEventArgs e)
+        {
+            var found = _live.rideable(out var tell);
 
-            //Said either way. "Nothing to ride, so this is speed only" is a result rather than a
-            //failure, and a checkbox that stays ticked while saying nothing explains nothing.
-            if (problem.Length > 0) { statusLabel.Text = problem; }
+            _filling = true;
+            mountPick.ItemsSource = found;
+            mountPick.SelectedIndex = found.Count > 0 ? 0 : -1;
+            _filling = false;
+
+            _live.ride = found.Count > 0 ? found[0].Actor : IntPtr.Zero;
+            statusLabel.Text = tell;
+        }
+
+        private void mountPick_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            _live.ride = mountPick.SelectedItem is LiveEdit.Mount.Candidate one
+                ? one.Actor
+                : IntPtr.Zero;
         }
 
         private void mountSpeed_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -540,6 +525,22 @@ namespace MCDSaveEdit.UI
             if (_filling) { return; }
 
             _live.mountSpeed = (float)mountSpeed.Value;
+        }
+
+        private void riding_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            if (riding.IsChecked != true) { _live.stopRiding(); return; }
+
+            if (!_live.startRiding(out var problem))
+            {
+                _filling = true;
+                riding.IsChecked = false;
+                _filling = false;
+            }
+
+            if (problem.Length > 0) { statusLabel.Text = problem; }
         }
 
         private void canJump_Changed(object sender, RoutedEventArgs e)

@@ -49,6 +49,9 @@ namespace MCDSaveEdit.Logic
         public float enemyToughness { get; set; } = 2f;
         public float enemySpeed { get; set; } = 1f;
 
+        /// <summary>How big enemies are drawn. One is the size the game made them.</summary>
+        public float enemySize { get; set; } = 1f;
+
         public float yourSpeed { get; set; } = 1f;
         public float yourDodgeCooldown { get; set; } = 2.5f;
         public float yourDodgeCharges { get; set; } = 1f;
@@ -114,7 +117,7 @@ namespace MCDSaveEdit.Logic
                 return;
             }
 
-            if (enemiesOn) { _stats.applyToEnemies(enemyToughness, enemySpeed); }
+            if (enemiesOn) { _stats.applyToEnemies(enemyToughness, enemySpeed, enemySize); }
             _stats.applyPosing(poseOnlyWhenSeen);
             if (playerOn)
             {

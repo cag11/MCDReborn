@@ -97,6 +97,8 @@ namespace MCDSaveEdit.UI
                 l => l.enemyToughness, (l, v) => l.enemyToughness = v);
             addRow(enemyStack, _enemyRows, R.STATS_ENEMY_SPEED, R.STATS_ENEMY_SPEED_WHY, 0.25, 4, 0.05, "x",
                 l => l.enemySpeed, (l, v) => l.enemySpeed = v);
+            addRow(enemyStack, _enemyRows, R.STATS_ENEMY_SIZE, R.STATS_ENEMY_SIZE_WHY, 0.3, 6, 0.1, "x",
+                l => l.enemySize, (l, v) => l.enemySize = v);
 
             addRow(playerStack, _playerRows, R.STATS_YOUR_SPEED, R.STATS_YOUR_SPEED_WHY, 0.25, 5, 0.05, "x",
                 l => l.yourSpeed, (l, v) => l.yourSpeed = v);

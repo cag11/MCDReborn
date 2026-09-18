@@ -60,6 +60,9 @@ namespace LiveEdit
         //Measured at 54 frames a second before and 138 after, in a fight with 198 enemies. It is
         //the largest single thing in this whole project.
         private const int CHARACTER_MESH = 0x0390;
+
+        //USceneComponent. Part of the same transform as the position, which is why it carries.
+        private const int RELATIVE_SCALE = 0x017C;
         private const int VISIBILITY_ANIM_TICK = 0x06B4;
         private const int ANIM_FLAGS = 0x06B7;
         private const int BIT_UPDATE_RATE_OPTIMISATIONS = 0;
@@ -303,7 +306,7 @@ namespace LiveEdit
         /// Applied over and over rather than once, because enemies that appear later are built
         /// fresh and arrive at the game's own numbers.
         /// </summary>
-        public int applyToEnemies(float toughness, float speed)
+        public int applyToEnemies(float toughness, float speed, float size)
         {
             var done = 0;
 
@@ -311,6 +314,18 @@ namespace LiveEdit
             {
                 var health = setOf(enemy, _healthSetClass);
                 var movement = setOf(enemy, _movementSetClass);
+
+                //And how big it is, which works for the same reason riding one does.
+                //
+                //A scale written onto an inert object never reaches the screen - that is what
+                //killed moving a totem, where the position read back exactly as asked and nothing
+                //moved. A creature is different: it is animated every frame, and that tick pushes
+                //its transform to the renderer, so a scale written here is picked up along with it.
+                //
+                //The mesh only, and not the capsule around it. Scaling the capsule would make a
+                //giant physically as big as it looks, which sounds better until something is
+                //standing in a doorway it can no longer fit through.
+                scaleOf(enemy, size);
 
                 //Tougher means taking less of each hit, so the multiplier goes down as the slider
                 //goes up.
@@ -345,7 +360,24 @@ namespace LiveEdit
             return done;
         }
 
-        public int restoreEnemies() => applyToEnemies(1f, 1f);
+        public int restoreEnemies() => applyToEnemies(1f, 1f, 1f);
+
+        /// <summary>Sets how big a creature is drawn, leaving what it collides with alone.</summary>
+        private void scaleOf(IntPtr actor, float size)
+        {
+            if (size < 0.05f || size > 20f) { return; }
+
+            var mesh = follow(new IntPtr(actor.ToInt64() + CHARACTER_MESH));
+            if (mesh == IntPtr.Zero) { return; }
+
+            var scale = new byte[12];
+            var bytes = BitConverter.GetBytes(size);
+            Buffer.BlockCopy(bytes, 0, scale, 0, 4);
+            Buffer.BlockCopy(bytes, 0, scale, 4, 4);
+            Buffer.BlockCopy(bytes, 0, scale, 8, 4);
+
+            _game.write(new IntPtr(mesh.ToInt64() + RELATIVE_SCALE), scale);
+        }
 
         /// <summary>
         /// Stops the game animating enemies nobody can see.

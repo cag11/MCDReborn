@@ -273,6 +273,12 @@ namespace MCDSaveEdit.Logic
             _mount ??= new Mount(_game);
             _mount.Speed = mountSpeed;
 
+            //Something summoned beats something chosen beats whatever is nearest. Enchanted Grass
+            //puts a sheep beside you, and a sheep that was not there a moment ago is a better guess
+            //at what you meant than a crate two metres closer.
+            var summoned = _mount.newcomer();
+            if (summoned != IntPtr.Zero) { ride = summoned; }
+
             if (!_mount.start(ride, out problem) && !_mount.Riding) { return false; }
 
             //And the camera pulls back, because a first person view from on top of a cow is a view
@@ -317,6 +323,39 @@ namespace MCDSaveEdit.Logic
 
         /// <summary>Which creature to ride, or zero for whatever is nearest.</summary>
         public IntPtr ride { get; set; }
+
+        /// <summary>
+        /// Takes note of what is in the level, so the next thing to appear can be recognised.
+        ///
+        /// Called when the ride key is pressed while not riding, which is the moment before you
+        /// summon something - press it, use the grass, press it again, and the sheep is what you
+        /// get rather than the nearest barrel.
+        /// </summary>
+        public void rememberWhatIsHere()
+        {
+            if (_game == null) { return; }
+
+            _mount ??= new Mount(_game);
+            _mount.remember();
+        }
+
+        /// <summary>
+        /// The one link, shared by every tab that talks to the running game.
+        ///
+        /// One rather than one each. Two links means two watchers, two mounts and two sets of
+        /// writes going to the same character sixty times a second, which is the sort of thing that
+        /// works on a quiet afternoon and produces an unreproducible mess in a fight.
+        /// </summary>
+        public static LiveCameraLink shared { get; } = new LiveCameraLink();
+
+
+        /// <summary>Riding, or not, whichever it is not already.</summary>
+        public void toggleRiding()
+        {
+            if (riding) { stopRiding(); return; }
+
+            startRiding(out _);
+        }
 
         /// <summary>Everything nearby worth sitting on, nearest first, and what was looked at.</summary>
         public System.Collections.Generic.List<Mount.Candidate> rideable(out string tell)
@@ -784,6 +823,9 @@ namespace MCDSaveEdit.Logic
         //F10. Out of the way of anything Dungeons binds, and of the usual screenshot keys.
         private const int TOGGLE_KEY = 0x79;
 
+        //R, which this game does not use, for getting on and off without opening anything.
+        private const int RIDE_KEY = 0x52;
+
         //The keys that open something you need a pointer for.
         //
         //Watched rather than detected. The obvious way would be to ask the game whether a menu is
@@ -813,6 +855,13 @@ namespace MCDSaveEdit.Logic
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         private static extern short GetAsyncKeyState(int key);
 
+        /// <summary>Whether R gets on and off a mount.</summary>
+        public bool rideKey { get; set; } = true;
+
+        /// <summary>Raised on the way down, for the tab to keep its checkbox honest.</summary>
+        public event Action? ridePressed;
+
+        private bool _rideWasDown;
         private System.Threading.Thread? _hotkey;
         private volatile bool _watchingHotkey;
         private bool _wasDown;
@@ -856,6 +905,16 @@ namespace MCDSaveEdit.Logic
                     var down = (GetAsyncKeyState(TOGGLE_KEY) & 0x8000) != 0;
                     if (down && !_wasDown) { togglePressed?.Invoke(); }
                     _wasDown = down;
+
+                    //And R, which gets on and off whatever is beside you. Two presses around a
+                    //summon: the first notes what is already there, the second rides what arrived.
+                    var wantsRide = (GetAsyncKeyState(RIDE_KEY) & 0x8000) != 0;
+                    if (wantsRide && !_rideWasDown && rideKey)
+                    {
+                        if (!riding) { rememberWhatIsHere(); }
+                        ridePressed?.Invoke();
+                    }
+                    _rideWasDown = wantsRide;
 
                     //The game itself, when it will say. This is the whole of it: the pointer goes
                     //back the instant a menu opens and is taken again the instant it closes, with

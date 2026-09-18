@@ -3537,6 +3537,303 @@ namespace MCDSaveEdit.Properties {
             }
         }
 
+        /// <summary>
+        ///   Looks up a localized string similar to R rides the closest creature.
+        /// </summary>
+        public static string MOUNT_RIDE_KEY {
+            get {
+                return ResourceManager.GetString("MOUNT_RIDE_KEY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Board at your feet.
+        /// </summary>
+        public static string BOARD_ON {
+            get {
+                return ResourceManager.GetString("BOARD_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Takes whatever is in your hand off your arm and puts it flat under your feet. Pa.
+        /// </summary>
+        public static string BOARD_WHY {
+            get {
+                return ResourceManager.GetString("BOARD_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Board height.
+        /// </summary>
+        public static string BOARD_HEIGHT {
+            get {
+                return ResourceManager.GetString("BOARD_HEIGHT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} equipped. Pick one, then tick the board..
+        /// </summary>
+        public static string BOARD_FOUND {
+            get {
+                return ResourceManager.GetString("BOARD_FOUND", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing equipped that could be a board..
+        /// </summary>
+        public static string BOARD_FOUND_NONE {
+            get {
+                return ResourceManager.GetString("BOARD_FOUND_NONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing here spawns anything - spawning is a function call and this app only wri.
+        /// </summary>
+        public static string MOUNT_TAB_INTRO {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_INTRO", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Riding something.
+        /// </summary>
+        public static string MOUNT_TAB_RIDING {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_RIDING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Standing on something you are carrying.
+        /// </summary>
+        public static string MOUNT_TAB_BOARD {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_BOARD", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to What the board looks like.
+        /// </summary>
+        public static string MOUNT_TAB_LOOK {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_LOOK", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to A weapon under your feet is a sword on the floor. Pack a model over the Mace and.
+        /// </summary>
+        public static string MOUNT_TAB_LOOK_WHY {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_LOOK_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Choose a model....
+        /// </summary>
+        public static string MOUNT_TAB_CHOOSE {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_CHOOSE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Size.
+        /// </summary>
+        public static string MOUNT_TAB_SIZE {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_SIZE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Install over the Mace.
+        /// </summary>
+        public static string MOUNT_TAB_INSTALL {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_INSTALL", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Ready to install over {0}. Check the size, then install..
+        /// </summary>
+        public static string MOUNT_TAB_READY {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_READY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Installed as {0}. Restart the game, equip the Mace, then tick the board..
+        /// </summary>
+        public static string MOUNT_TAB_INSTALLED {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_INSTALLED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Choose a model first..
+        /// </summary>
+        public static string MOUNT_TAB_PICK_FIRST {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_PICK_FIRST", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Could not find {0} in the game's files..
+        /// </summary>
+        public static string MOUNT_TAB_NO_HOST {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_NO_HOST", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to glTF binary (*.glb) *.glb.
+        /// </summary>
+        public static string MOUNT_TAB_GLB_FILTER {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_GLB_FILTER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How it will look.
+        /// </summary>
+        public static string MOUNT_TAB_PREVIEW {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_PREVIEW", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Turn view.
+        /// </summary>
+        public static string MOUNT_TAB_ORBIT {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_ORBIT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Which way up.
+        /// </summary>
+        public static string MOUNT_TAB_TURN {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_TURN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Modelling programs disagree about which axis is up and which is forward, so a mo.
+        /// </summary>
+        public static string MOUNT_TAB_TURN_WHY {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_TURN_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Roll.
+        /// </summary>
+        public static string MOUNT_TAB_ROLL {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_ROLL", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Tip.
+        /// </summary>
+        public static string MOUNT_TAB_PITCH {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_PITCH", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Spin.
+        /// </summary>
+        public static string MOUNT_TAB_YAW {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_YAW", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} long, {1} wide, {2} tall.
+        /// </summary>
+        public static string MOUNT_TAB_MEASURED {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_MEASURED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Stand on top of it.
+        /// </summary>
+        public static string MOUNT_TAB_STAND_ON {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_STAND_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Made out of.
+        /// </summary>
+        public static string MOUNT_TAB_HOST {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_HOST", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your model replaces the Totem of Regeneration. A totem is used because it is a r.
+        /// </summary>
+        public static string MOUNT_TAB_HOST_WHY {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_HOST_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Ready. Check the size and which way up it is, then install..
+        /// </summary>
+        public static string MOUNT_TAB_READY_TOTEM {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_READY_TOTEM", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Enemy size.
+        /// </summary>
+        public static string STATS_ENEMY_SIZE {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_SIZE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How big they are drawn, not how big they are to walk into - the shape they colli.
+        /// </summary>
+        public static string STATS_ENEMY_SIZE_WHY {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_SIZE_WHY", resourceCulture);
+            }
+        }
+
         public static string CAMERA_LIVE_PREVIEW {
             get {
                 return ResourceManager.GetString("CAMERA_LIVE_PREVIEW", resourceCulture);
