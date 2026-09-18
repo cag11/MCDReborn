@@ -722,7 +722,21 @@ namespace LiveEdit
         private void flyOnPress(IntPtr movement)
         {
             var wants = down(FLY);
-            if (wants && !_flyHeld) { _flying = !_flying; }
+            if (wants && !_flyHeld)
+            {
+                _flying = !_flying;
+
+                //Switching it off has to say so, not just stop saying the opposite. Leaving the
+                //movement mode on flying and simply not writing it again leaves the character
+                //hanging exactly where it was - nothing pulls it down, because that is what flying
+                //means. Putting it back to walking lets the engine notice there is no floor under
+                //it, and fall.
+                if (!_flying)
+                {
+                    _game.write(new IntPtr(movement.ToInt64() + MOVEMENT_MODE), new[] { (byte)WALKING_MODE });
+                }
+            }
+
             _flyHeld = wants;
 
             if (!_flying) { return; }
