@@ -30,7 +30,38 @@ namespace LiveEdit
     {
         //Fast enough to be worth mounting for, and written to the character's own walk speed, which
         //is the number the game accelerates towards rather than a multiplier applied afterwards.
-        private const int EVERY_MS = 8;
+        //How often the mount is put back under the rider.
+        //
+        //This is the whole of why a mount shook while moving. The mount does not follow anybody -
+        //nothing in the engine moves it, its walk speed is zero, and the position the renderer
+        //draws is exactly the last one written here. So between two writes it is perfectly still
+        //while the rider carries on, and every write is a step: at four thousand units a second,
+        //eight milliseconds is a thirty two unit jump, about a third of a character's height,
+        //arriving sixty times a second. Standing still it is invisible, which is why this looked
+        //like a flying problem rather than a clock problem.
+        //
+        //Two milliseconds puts the step under ten units at the fastest this can fly, and the same
+        //number was already arrived at for walking - see the note on EVERY_MS in KeyboardMove,
+        //which is the same mistake found from the other end.
+        private const int EVERY_MS = 2;
+
+        //And asking Windows for a clock that can keep it. Without this every sleep below about
+        //fifteen milliseconds is fifteen milliseconds, so the constant above would be a wish.
+        //KeyboardMove raises it too and only while walking, which would have left the mount's
+        //cadence depending on whether somebody had a key down.
+        [System.Runtime.InteropServices.DllImport("winmm.dll")]
+        private static extern uint timeBeginPeriod(uint milliseconds);
+        [System.Runtime.InteropServices.DllImport("winmm.dll")]
+        private static extern uint timeEndPeriod(uint milliseconds);
+
+        private const uint TIMER_RESOLUTION_MS = 1;
+
+        //Everything that is not "put the mount under the rider" happens at the old rate. Resolving
+        //the pawn is a seven read walk and looking for something to ride walks the level, and
+        //neither is worth doing five hundred times a second.
+        private const int HOUSEKEEPING_EVERY = 4;
+
+        private IntPtr _pawn;
 
         //AActor and its root, and the two places a position has to be written for it to hold. The
         //relative one is what the engine recomputes from, the world one is what is drawn this frame;
@@ -54,8 +85,9 @@ namespace LiveEdit
         //is smaller than the capsule around it, so that leaves a gap; this sits them into it.
         private const float SIT_INTO = 1.8f;
 
-        //Looking again is a walk of the level's actor list, so it goes by a count of passes rather
-        //than by a clock: at eight milliseconds a pass, forty of them is about a third of a second.
+        //Looking again is a walk of the level's actor list, so it goes by a count of housekeeping
+        //passes rather than by a clock: at eight milliseconds each, forty of them is about a third
+        //of a second.
         private const int LOOKS_EVERY = 40;
         private int _untilNextLook;
 
@@ -451,56 +483,83 @@ namespace LiveEdit
 
         private void loop()
         {
-            while (_running)
+            timeBeginPeriod(TIMER_RESOLUTION_MS);
+
+            try
             {
-                Thread.Sleep(EVERY_MS);
+                var untilHousekeeping = 0;
 
-                //Resolved every pass rather than held. A level change frees all of this, and a
-                //pointer kept across one is a write into somebody else's memory.
-                if (!_live.find(out _)) { continue; }
-
-                var pawn = _live.Pawn;
-                if (pawn == IntPtr.Zero) { continue; }
-
-                //Before anything is written to it. Losing the mount is normal - a mission starts,
-                //the level goes - and the answer is to let it go and keep the speed, rather than to
-                //write into whatever owns that memory now.
-                if (_mount != IntPtr.Zero && !stillThere()) { _mount = IntPtr.Zero; }
-
-                //And with nothing underneath, keep looking for something.
-                //
-                //This is what riding a summoned creature needs. Enchanted Grass puts a sheep beside
-                //you a moment *after* anybody would have pressed the key, and until now that moment
-                //was the only chance there was - miss it and the answer stayed "speed only" however
-                //long you stood next to the sheep. Now the key says start riding and the loop finds
-                //what to ride, whenever it turns up.
-                //
-                //Occasionally rather than every pass: a look walks the whole actor list, which is
-                //thousands of reads, and doing that at the frame rate would cost more than it is
-                //worth for something that changes on a human timescale.
-                if (_mount == IntPtr.Zero)
+                while (_running)
                 {
-                    if (--_untilNextLook <= 0)
+                    Thread.Sleep(EVERY_MS);
+
+                    if (--untilHousekeeping <= 0)
                     {
-                        _untilNextLook = LOOKS_EVERY;
-                        //Beside you rather than anywhere in range, because this one is not asked
-                        //for - it happens on its own, and picking up a creature across the room
-                        //that somebody never pointed at would be a surprise rather than a mount.
-                        var found = nearestCreature(pawn, WITHIN_REACH);
-                        if (found != IntPtr.Zero) { takeOver(found); }
+                        untilHousekeeping = HOUSEKEEPING_EVERY;
+                        housekeeping();
                     }
+
+                    if (_pawn == IntPtr.Zero) { continue; }
+                    carry(_pawn);
                 }
-
-                carry(pawn);
-
-                //The legs stop while there is something underneath and start again when there is
-                //not, rather than staying stopped because the mount went. A rider left paused in
-                //mid-stride after the creature they were on despawned looks like a crash.
-                freezeRider(_mount != IntPtr.Zero);
+            }
+            finally
+            {
+                timeEndPeriod(TIMER_RESOLUTION_MS);
             }
 
             _running = false;
             release();
+        }
+
+        /// <summary>
+        /// Everything that is not worth doing at the rate the mount is moved at.
+        ///
+        /// The pawn is re-resolved here rather than held indefinitely. A level change frees all of
+        /// this and a pointer kept across one is a write into somebody else's memory - so it is
+        /// held for one housekeeping interval and no longer, which is the same exposure the loop
+        /// had when it resolved every pass at that rate.
+        /// </summary>
+        private void housekeeping()
+        {
+            if (!_live.find(out _)) { _pawn = IntPtr.Zero; return; }
+
+            _pawn = _live.Pawn;
+            if (_pawn == IntPtr.Zero) { return; }
+
+            //Before anything is written to it. Losing the mount is normal - a mission starts, the
+            //level goes - and the answer is to let it go and keep the speed, rather than to write
+            //into whatever owns that memory now.
+            if (_mount != IntPtr.Zero && !stillThere()) { _mount = IntPtr.Zero; }
+
+            //And with nothing underneath, keep looking for something.
+            //
+            //This is what riding a summoned creature needs. Enchanted Grass puts a sheep beside you
+            //a moment *after* anybody would have pressed the key, and that moment used to be the
+            //only chance there was - miss it and the answer stayed "speed only" however long you
+            //stood next to the sheep. Now the key says start riding and the loop finds what to
+            //ride, whenever it turns up.
+            //
+            //Occasionally rather than every pass: a look walks the whole actor list, which is
+            //thousands of reads, and doing that often would cost more than it is worth for
+            //something that changes on a human timescale.
+            if (_mount == IntPtr.Zero)
+            {
+                if (--_untilNextLook <= 0)
+                {
+                    _untilNextLook = LOOKS_EVERY;
+                    //Beside you rather than anywhere in range, because this one is not asked for -
+                    //it happens on its own, and picking up a creature across the room that somebody
+                    //never pointed at would be a surprise rather than a mount.
+                    var found = nearestCreature(_pawn, WITHIN_REACH);
+                    if (found != IntPtr.Zero) { takeOver(found); }
+                }
+            }
+
+            //The legs stop while there is something underneath and start again when there is not,
+            //rather than staying stopped because the mount went. A rider left paused in mid-stride
+            //after the creature they were on despawned looks like a crash.
+            freezeRider(_mount != IntPtr.Zero);
         }
 
         /// <summary>
