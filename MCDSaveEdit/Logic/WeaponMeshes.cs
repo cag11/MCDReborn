@@ -218,6 +218,11 @@ namespace MCDSaveEdit.Logic
                 entries.AddRange(CustomSkins.texturePatchFor(assetPath, model.BaseColourPng));
             }
 
+            //And the weapon's cut-out turned off. Some of these materials decide whether to draw a
+            //pixel at all from a texture that is not the one being replaced - see the note on
+            //unmask - and an imported model then arrives with whole pieces of it missing.
+            entries.AddRange(CreatureVariants.unmask(assetPath, out _));
+
             return CustomSkins.writeModPak(modName, entries);
         }
 

@@ -97,6 +97,10 @@
                 <local:StatsTab x:Name="statsTab"/>
             </TabItem>
 
+            <TabItem x:Name="modsTabItem" Header="*Installed Mods*" Selector.Selected="OnTabSelected">
+                <local:ModsTab x:Name="modsTab"/>
+            </TabItem>
+
         </TabControl>
 
     </DockPanel>

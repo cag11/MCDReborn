@@ -40,14 +40,12 @@ namespace MCDSaveEdit.UI
         private void translateStaticStrings()
         {
             gearLabel.Content = R.CUSTOM_SKINS_GEAR;
-            installedLabel.Content = R.CUSTOM_SKINS_INSTALLED;
             exportButton.Content = R.CUSTOM_SKINS_EXPORT;
             designerButton.Content = R.CUSTOM_SKINS_DESIGNER;
             pasteButton.Content = R.CUSTOM_SKINS_PASTE;
             applyButton.Content = R.CUSTOM_SKINS_APPLY;
             filesLabel.Text = R.CUSTOM_SKINS_FILES;
             hintLabel.Text = R.CUSTOM_SKINS_HINT;
-            modsNoteLabel.Text = R.CUSTOM_SKINS_MODS_NOTE;
             showArmourCheckBox.Content = R.ARMOUR_SHOW;
 
             //Loaded, not the constructor. A TabControl unloads the content of whichever tab is
@@ -56,15 +54,12 @@ namespace MCDSaveEdit.UI
             //the hint below the box froze while the box itself still worked.
             Loaded += (s, e) => { ArmourVisibility.changed += refreshArmourBox; refreshArmourBox(); };
             Unloaded += (s, e) => ArmourVisibility.changed -= refreshArmourBox;
-            addPakButton.ToolTip = R.CUSTOM_SKINS_ADD_PAK;
-            openModsButton.ToolTip = R.CUSTOM_SKINS_OPEN_MODS;
         }
 
         public void updateUI()
         {
             fillCategories();
             fillGearList();
-            fillInstalled();
             refreshArmourBox();
             updateSelection();
         }
@@ -351,7 +346,8 @@ namespace MCDSaveEdit.UI
 
         private void install(CustomSkins.InstalledMod mod)
         {
-            fillInstalled();
+            //The list of what is installed lives on its own tab now and refills when it is opened,
+            //so there is nothing here to keep in step with.
             updateSelection();
             MessageBox.Show(R.formatCUSTOM_SKINS_APPLIED(mod.Name), R.CUSTOM_SKINS_TAB);
         }
@@ -395,180 +391,6 @@ namespace MCDSaveEdit.UI
                 //elevation. Put the box back rather than leave it lying about the state.
                 MessageBox.Show(exception.Message, R.ERROR);
                 refreshArmourBox();
-            }
-        }
-
-        #endregion
-
-        #region Mods brought from elsewhere
-
-        /// <summary>
-        /// Installs a pak this app did not make.
-        ///
-        /// Everything about modding this game is one folder - "~mods" beside the game's own
-        /// paks - and the two things people get wrong are dropping the tilde and not making the
-        /// folder at all. Doing it here removes both.
-        /// </summary>
-        private void addPakButton_Click(object sender, RoutedEventArgs e)
-        {
-            EventLogger.logEvent("customSkinAddPak");
-
-            var dialog = new OpenFileDialog {
-                Filter = "Unreal pak|*.pak",
-                Title = R.CUSTOM_SKINS_ADD_PAK,
-                Multiselect = true,
-            };
-            if (dialog.ShowDialog() != true) { return; }
-
-            var added = new List<string>();
-            foreach (var file in dialog.FileNames)
-            {
-                try
-                {
-                    added.Add(install(file, overwrite: false).Name);
-                }
-                catch (IOException)
-                {
-                    //Already there. Worth asking rather than either silently replacing someone's
-                    //mod or refusing to update one.
-                    var name = System.IO.Path.GetFileName(file);
-                    var answer = MessageBox.Show(
-                        R.formatCUSTOM_SKINS_PAK_REPLACE(name), R.CUSTOM_SKINS_TAB, MessageBoxButton.YesNo);
-                    if (answer != MessageBoxResult.Yes) { continue; }
-                    try { added.Add(install(file, overwrite: true).Name); }
-                    catch (Exception retry) { MessageBox.Show(retry.Message, R.ERROR); }
-                }
-                catch (Exception exception)
-                {
-                    //Not a pak, the game holding the folder open, or an install needing elevation.
-                    MessageBox.Show(exception.Message, R.ERROR);
-                }
-            }
-
-            fillInstalled();
-            if (added.Count > 0)
-            {
-                MessageBox.Show(R.formatCUSTOM_SKINS_PAK_ADDED(string.Join(", ", added)), R.CUSTOM_SKINS_TAB);
-            }
-        }
-
-        private static CustomSkins.InstalledMod install(string file, bool overwrite)
-            => CustomSkins.installPak(file, overwrite);
-
-        /// <summary>Opens ~mods in Explorer, making it first if it is not there.</summary>
-        private void openModsButton_Click(object sender, RoutedEventArgs e)
-        {
-            EventLogger.logEvent("customSkinOpenMods");
-            try
-            {
-                var folder = CustomSkins.ensureModsFolder();
-                if (!LinkLauncher.open(folder))
-                {
-                    MessageBox.Show(folder, R.CUSTOM_SKINS_OPEN_MODS);
-                }
-            }
-            catch (Exception exception)
-            {
-                MessageBox.Show(exception.Message, R.ERROR);
-            }
-        }
-
-        #endregion
-
-        #region Installed
-
-        private void fillInstalled()
-        {
-            installedStack.Children.Clear();
-
-            //These two need the paks folder and nothing else - not a save file, not a piece of
-            //gear picked - so they follow the content rather than the selection.
-            addPakButton.IsEnabled = CustomSkins.ready;
-            openModsButton.IsEnabled = CustomSkins.ready;
-
-            if (!CustomSkins.ready) { installedCountLabel.Text = string.Empty; return; }
-
-            //Anything this app drives from a checkbox is left out: it is managed there, and a
-            //Remove button beside it would just be a second, contradictory control.
-            var mods = CustomSkins.installed().Where(mod => !mod.Internal).ToList();
-            installedCountLabel.Text = mods.Count.ToString();
-
-            if (mods.Count == 0)
-            {
-                installedStack.Children.Add(new TextBlock {
-                    Text = R.CUSTOM_SKINS_NONE_INSTALLED,
-                    Margin = new Thickness(8, 8, 8, 8),
-                    FontSize = 12,
-                    TextWrapping = TextWrapping.Wrap,
-                    Foreground = (System.Windows.Media.Brush)FindResource("Brush.TextDisabled"),
-                });
-                return;
-            }
-
-            int index = 0;
-            foreach (var mod in mods)
-            {
-                installedStack.Children.Add(createInstalledRow(mod, index++));
-            }
-        }
-
-        private FrameworkElement createInstalledRow(CustomSkins.InstalledMod mod, int index)
-        {
-            var name = new TextBlock {
-                //A skin made here is named after the item id, because that is stable and does not
-                //move with the Language menu - two names for one armour would mean two paks both
-                //replacing it. The list shows the readable name instead; an id it does not know
-                //comes back unchanged, so a manual pak's filename survives this untouched.
-                Text = R.itemName(mod.Name),
-                VerticalAlignment = VerticalAlignment.Center,
-                FontSize = 13,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                ToolTip = mod.Path,
-            };
-
-            var detail = new TextBlock {
-                //A pak someone else made is marked, because Remove deletes it and the user should
-                //know which of these this app is responsible for.
-                Text = mod.Manual
-                    ? $"{R.CUSTOM_SKINS_MANUAL_TAG} · {mod.Size / 1024:N0} KB · {mod.Installed:g}"
-                    : $"{mod.Size / 1024:N0} KB · {mod.Installed:g}",
-                VerticalAlignment = VerticalAlignment.Center,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                Margin = new Thickness(0, 0, 8, 0),
-                FontSize = 12,
-            };
-            detail.SetResourceReference(ForegroundProperty, "Brush.TextMuted");
-
-            var remove = new Button { Content = R.CUSTOM_SKINS_REMOVE, Padding = new Thickness(8, 2, 8, 2) };
-            remove.Click += (s, e) => removeMod(mod);
-
-            var grid = new Grid { Height = 34 };
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            Grid.SetColumn(name, 0);
-            Grid.SetColumn(detail, 1);
-            Grid.SetColumn(remove, 2);
-            grid.Children.Add(name);
-            grid.Children.Add(detail);
-            grid.Children.Add(remove);
-
-            var row = new Border { Child = grid };
-            row.SetResourceReference(StyleProperty, index % 2 == 0 ? "StatRowEven" : "StatRowOdd");
-            return row;
-        }
-
-        private void removeMod(CustomSkins.InstalledMod mod)
-        {
-            EventLogger.logEvent("customSkinRemove");
-            try
-            {
-                CustomSkins.remove(mod);
-                fillInstalled();
-            }
-            catch (Exception exception)
-            {
-                MessageBox.Show(exception.Message, R.ERROR);
             }
         }
 

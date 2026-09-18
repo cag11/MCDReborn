@@ -1,0 +1,41 @@
+﻿<UserControl x:Class="MCDSaveEdit.UI.ModsTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:MCDSaveEdit.UI"
+             mc:Ignorable="d"
+             d:DesignHeight="450"
+             d:DesignWidth="900">
+    <DockPanel Margin="10,6,10,10">
+
+        <!-- The heading, with how many there are, and the two things you can do to the folder. -->
+        <Grid DockPanel.Dock="Top" Margin="2,0,2,6">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Label x:Name="installedLabel" Content="*Installed*"
+                       Style="{StaticResource SectionHeading}" FontSize="16" Padding="0,2"/>
+                <TextBlock x:Name="installedCountLabel" Text="" VerticalAlignment="Center"
+                           Margin="8,0,0,0" FontSize="13"
+                           Foreground="{DynamicResource Brush.TextMuted}"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Button x:Name="importButton" Content="*Import Mod*" Padding="10,5" Margin="0,0,6,0"
+                        Click="importButton_Click"/>
+                <Button x:Name="openFolderButton" Content="*Open Mod Folder*" Padding="10,5"
+                        Click="openFolderButton_Click"/>
+            </StackPanel>
+        </Grid>
+
+        <TextBlock x:Name="modsNoteLabel" DockPanel.Dock="Top" TextWrapping="Wrap"
+                   Margin="2,0,2,8" FontSize="12" Text="*mods note*"
+                   Foreground="{DynamicResource Brush.TextDisabled}"/>
+
+        <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4"
+                Background="{DynamicResource Brush.Surface}" Margin="2,0,2,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="2">
+                <StackPanel x:Name="installedStack" Orientation="Vertical"/>
+            </ScrollViewer>
+        </Border>
+    </DockPanel>
+</UserControl>

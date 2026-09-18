@@ -547,6 +547,11 @@ namespace MCDSaveEdit.UI
                 modelLabel.Text = string.Format(R.WEAPON_SKINS_MODEL_LOADED,
                     model.Name, model.VertexCount, model.TriangleCount,
                     model.BaseColourPng != null ? R.WEAPON_SKINS_WITH_TEXTURE : R.WEAPON_SKINS_NO_TEXTURE);
+
+                //Said here rather than left to be discovered in game. A model whose artwork was
+                //lost on the way to .glb imports correctly and comes out blank, which looks like
+                //this having gone wrong.
+                if (model.Note.Length > 0) { modelLabel.Text += "\n" + model.Note; }
                 clearModelButton.Visibility = Visibility.Visible;
                 statusLabel.Text = string.Empty;
                 redraw();

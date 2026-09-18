@@ -1863,4 +1863,20 @@ The save file is not changed until you save it.</value>
     <value>The rider is placed on top of the creature's collision capsule, not on top of what is drawn. Those agree for the game's own animals and stop agreeing the moment you put your own model on one, so this is the difference - raise it until you are sitting on your model rather than inside it.</value>
     <comment>Why the ride height is a slider</comment>
   </data>
+  <data name="MODEL_NO_COLOUR" xml:space="preserve">
+    <value>{0}% of this model has no colour in the file at all - no texture, and materials that state none - so that much of it will come out white. The artwork was most likely lost converting it to .glb; downloading the .glb from where the model came from usually keeps it.</value>
+    <comment>A model that arrived without its artwork</comment>
+  </data>
+  <data name="MODS_TAB" xml:space="preserve">
+    <value>Installed Mods</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="MODS_IMPORT" xml:space="preserve">
+    <value>Import Mod</value>
+    <comment>Install a pak this app did not make</comment>
+  </data>
+  <data name="MODS_OPEN_FOLDER" xml:space="preserve">
+    <value>Open Mod Folder</value>
+    <comment>Show ~mods in Explorer</comment>
+  </data>
 </root>

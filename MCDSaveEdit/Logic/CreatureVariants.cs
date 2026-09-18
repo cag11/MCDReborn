@@ -152,6 +152,112 @@ namespace MCDSaveEdit.Logic
         }
 
         /// <summary>
+        /// The materials with their cut-out turned off, so an imported model is not clipped away.
+        ///
+        /// A masked material decides per pixel whether to draw at all, by comparing an alpha
+        /// against `OpacityMaskClipValue`. Which alpha depends on the material, and that is where
+        /// this bites: some take it from the albedo, which an import repaints and fills with solid
+        /// coverage, and some take it from a second texture the import never touches.
+        ///
+        /// The Anchor is the second kind. Its material samples a texture from an entirely different
+        /// folder for the mask, so an imported model - whose coordinates were laid out for its own
+        /// artwork and nobody else's - lands on whatever texel happens to sit there. Every part of
+        /// the model is then either drawn or not drawn, whole, depending on one pixel of somebody
+        /// else's texture. That is a model with pieces missing, and no amount of getting the
+        /// artwork right fixes it, because the artwork is not what is being consulted.
+        ///
+        /// So the threshold goes to nought, which nothing can fail. The blend mode is left alone -
+        /// it is a static parameter, and a cooked game cannot compile the shader that changing it
+        /// would ask for. A weapon that used its mask for real detail loses that detail; an
+        /// imported model had none to lose, and being whole matters more.
+        /// </summary>
+        public static IEnumerable<PakWriter.Entry> unmask(string meshAssetPath, out List<string> opened)
+        {
+            opened = new List<string>();
+            var entries = new List<PakWriter.Entry>();
+
+            var paks = CustomSkins.index;
+            if (paks == null) { return entries; }
+
+            foreach (var path in materialsOf(meshAssetPath))
+            {
+                PakReader.Pak.PakPackage package;
+                try
+                {
+                    var read = paks.extractPackage(path);
+                    if (read == null || !read.Value.HasExport()) { continue; }
+                    package = read.Value;
+                }
+                catch (Exception) { continue; }
+
+                var clip = clipValueIn(package);
+                if (clip == null || clip <= 0f) { continue; }
+
+                var uexp = package.UExp.ToArray();
+                if (!replace(uexp, clip.Value, 0f)) { continue; }
+
+                var insidePak = path.TrimStart('/');
+                entries.Add(new PakWriter.Entry(insidePak + ".uasset", package.UAsset.ToArray()));
+                entries.Add(new PakWriter.Entry(insidePak + ".uexp", uexp));
+                if (package.UBulk != null)
+                {
+                    entries.Add(new PakWriter.Entry(insidePak + ".ubulk", package.UBulk.Value.ToArray()));
+                }
+                opened.Add(System.IO.Path.GetFileName(path));
+            }
+
+            return entries;
+        }
+
+        /// <summary>What a material instance clips its mask at, when it overrides that at all.</summary>
+        private static float? clipValueIn(PakReader.Pak.PakPackage package)
+        {
+            JsonNode? root;
+            try { root = JsonNode.Parse(package.JsonData); }
+            catch (JsonException) { return null; }
+
+            if (root is not JsonArray exports) { return null; }
+
+            foreach (var export in exports)
+            {
+                var value = export?["ExportValue"]?["BasePropertyOverrides"]?["OpacityMaskClipValue"];
+                if (value == null) { continue; }
+
+                try { return value.GetValue<float>(); }
+                catch (Exception) { return null; }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// One float rewritten where it sits, having first proved there is only one place it sits.
+        ///
+        /// The same rule as the emissive above and for the same reason: a threshold is four bytes
+        /// that could be any four bytes, and writing over the wrong ones makes a material the game
+        /// will not load. Not sure means not written.
+        /// </summary>
+        private static bool replace(byte[] uexp, float was, float now)
+        {
+            var pattern = BitConverter.GetBytes(was);
+
+            var at = -1;
+            for (int i = 0; i + 4 <= uexp.Length; i++)
+            {
+                if (uexp[i] != pattern[0] || uexp[i + 1] != pattern[1] ||
+                    uexp[i + 2] != pattern[2] || uexp[i + 3] != pattern[3]) { continue; }
+
+                if (at >= 0) { return false; }
+                at = i;
+            }
+
+            if (at < 0) { return false; }
+
+            Buffer.BlockCopy(BitConverter.GetBytes(now), 0, uexp, at, 4);
+            return true;
+        }
+
+        /// <summary>
         /// The emissive colours a material instance overrides, read from the parsed asset.
         ///
         /// Read rather than searched for. A material instance is one of the types PakReader models

@@ -619,6 +619,12 @@ namespace LiveEdit
                 var up = 0.0;
                 if (_flying)
                 {
+                    //Rigid while flying, for the same reason a jump is: the character climbs on
+                    //Space far faster than a smoothed camera eases after it, so the view is left
+                    //looking at where you took off from while you are already above it. Landing
+                    //puts the smoothing back, exactly as it does after a jump.
+                    if (!_rigid) { _rigid = _live.setLagSpeed(LagSpeedJumping); }
+
                     //Where the camera looks, which handles diving without a key for it.
                     var tilt = (_live.Pitch ?? 0f) * Math.PI / 180.0;
                     up = Math.Sin(tilt) * forward;
@@ -741,6 +747,8 @@ namespace LiveEdit
                 }
                 else
                 {
+                    if (_rigid) { _rigid = !_live.setLagSpeed(LagSpeedWalking); }
+
                     putFlightBack(movement);
 
                     //Switching it off has to say so, not just stop saying the opposite. Leaving the
@@ -775,6 +783,8 @@ namespace LiveEdit
 
             var movement = movementOf(_live.Pawn);
             if (movement == IntPtr.Zero) { return; }
+
+            if (_rigid) { _rigid = !_live.setLagSpeed(LagSpeedWalking); }
 
             putFlightBack(movement);
             _game.write(new IntPtr(movement.ToInt64() + MOVEMENT_MODE), new[] { (byte)WALKING_MODE });

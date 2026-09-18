@@ -148,6 +148,7 @@ namespace MCDSaveEdit.UI
             customSkinsTabItem.Header = R.CUSTOM_SKINS_TAB;
             weaponSkinsTabItem.Header = R.WEAPON_SKINS_TAB;
             mobSkinsTabItem.Header = R.MOB_SKINS_TAB;
+            modsTabItem.Header = R.MODS_TAB;
             cameraTabItem.Header = R.CAMERA_TAB;
             enemiesTabItem.Header = R.STATS_TAB;
             heroTabItem.Header = R.HERO_TAB;

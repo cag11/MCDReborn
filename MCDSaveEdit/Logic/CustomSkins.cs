@@ -257,6 +257,59 @@ namespace MCDSaveEdit.Logic
         /// that texture's size. The size is not known until the asset has been read, which is
         /// why this takes a function rather than the bytes.
         /// </summary>
+        /// <summary>
+        /// That the rewritten asset still reads as the texture it was, holding the new pixels.
+        ///
+        /// Every part of it is checked against what was already known rather than against itself:
+        /// the size and the format come from the asset as it was before, and the pixels are the
+        /// ones just written. An asset that agrees with all three is one the game can load.
+        /// </summary>
+        private static void confirm(byte[] uasset, byte[] uexp, ArraySegment<byte>? ubulk,
+            FTexturePlatformData was, byte[] written, string assetPath)
+        {
+            var name = System.IO.Path.GetFileName(assetPath);
+
+            UTexture2D? texture;
+            try
+            {
+                var package = new PakPackage(new ArraySegment<byte>(uasset), new ArraySegment<byte>(uexp), ubulk);
+                texture = package.GetExport<UTexture2D>();
+            }
+            catch (Exception problem)
+            {
+                throw new InvalidOperationException(
+                    $"{name} could not be rewritten - putting the artwork in left a file that no longer reads as a texture ({problem.Message}).");
+            }
+
+            if (texture == null || texture.PlatformDatas.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    $"{name} could not be rewritten - putting the artwork in left a file that no longer reads as a texture.");
+            }
+
+            var now = texture.PlatformDatas[0];
+            if (now.SizeX != was.SizeX || now.SizeY != was.SizeY || now.PixelFormat != was.PixelFormat)
+            {
+                throw new InvalidOperationException(
+                    $"{name} could not be rewritten - it came back describing a different texture than it was.");
+            }
+
+            var pixels = now.Mips.Length > 0 ? now.Mips[0].BulkData.Data : null;
+            if (pixels == null || pixels.Length != written.Length)
+            {
+                throw new InvalidOperationException(
+                    $"{name} could not be rewritten - the artwork did not land where its pixels are kept.");
+            }
+
+            for (int i = 0; i < written.Length; i++)
+            {
+                if (pixels[i] == written[i]) { continue; }
+
+                throw new InvalidOperationException(
+                    $"{name} could not be rewritten - the artwork did not land where its pixels are kept.");
+            }
+        }
+
         private static List<PakWriter.Entry> patchTexture(string assetPath, Func<int, int, byte[]> makePixels)
         {
             var paks = index ?? throw new InvalidOperationException("Game content is not loaded.");
@@ -289,7 +342,28 @@ namespace MCDSaveEdit.Logic
             var uexp = package.UExp.ToArray();
             var offset = indexOf(uexp, original);
             if (offset < 0) { throw new InvalidOperationException("Could not find the pixels inside the asset."); }
+
+            //And only where they are in one place. A small texture of mostly one colour can match
+            //somewhere it is not, and then this writes a picture over whatever else lived there -
+            //which does not fail, it produces an asset the game loads as nothing. That is what
+            //reached somebody's game: a weapon drawn black and see-through, from a texture that no
+            //longer parsed at all.
+            if (indexOf(uexp, original, offset + 1) >= 0)
+            {
+                throw new InvalidOperationException(
+                    $"{System.IO.Path.GetFileName(assetPath)} holds its pixels in a pattern that appears more than once, "
+                    + "so where to write them cannot be told for certain.");
+            }
+
             Buffer.BlockCopy(replacement, 0, uexp, offset, replacement.Length);
+
+            //Then read back what is about to be shipped, the way the game will read it.
+            //
+            //Writing into a file by searching it is a reasonable way to find something and a poor
+            //way to be sure of it, and the difference only shows up later, on somebody else's
+            //screen. Parsing the result costs a millisecond and turns every way this can go wrong -
+            //the wrong offset, a field clipped, a format this misread - into a refusal here.
+            confirm(package.UAsset.ToArray(), uexp, package.UBulk, platform, replacement, assetPath);
 
             //Paths inside a pak are relative to the mount point and carry no leading slash.
             var insidePak = assetPath.TrimStart('/');
@@ -549,10 +623,10 @@ namespace MCDSaveEdit.Logic
             return bytes;
         }
 
-        private static int indexOf(byte[] haystack, byte[] needle)
+        private static int indexOf(byte[] haystack, byte[] needle, int from = 0)
         {
             if (needle.Length == 0 || haystack.Length < needle.Length) { return -1; }
-            for (int i = 0; i <= haystack.Length - needle.Length; i++)
+            for (int i = Math.Max(0, from); i <= haystack.Length - needle.Length; i++)
             {
                 if (haystack[i] != needle[0]) { continue; }
                 int j = 1;

@@ -3983,5 +3983,41 @@ namespace MCDSaveEdit.Properties {
             }
         }
         
+        /// <summary>
+        ///   Looks up a localized string similar to {0}% of this model has no colour in the file at all - no texture, and materials that st....
+        /// </summary>
+        public static string MODEL_NO_COLOUR {
+            get {
+                return ResourceManager.GetString("MODEL_NO_COLOUR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Installed Mods.
+        /// </summary>
+        public static string MODS_TAB {
+            get {
+                return ResourceManager.GetString("MODS_TAB", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Import Mod.
+        /// </summary>
+        public static string MODS_IMPORT {
+            get {
+                return ResourceManager.GetString("MODS_IMPORT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Open Mod Folder.
+        /// </summary>
+        public static string MODS_OPEN_FOLDER {
+            get {
+                return ResourceManager.GetString("MODS_OPEN_FOLDER", resourceCulture);
+            }
+        }
+        
     }
 }

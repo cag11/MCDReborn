@@ -42,6 +42,7 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **Jump** on Q, which the game has no button for at all - not the character jumping but a launch written straight into its velocity, which is why it works when asking the character politely does not. Height, steering in mid-air and the number of jumps before landing are all adjustable
 
 * A **Ride height** slider, because the rider is placed on the creature's collision capsule rather than on what is drawn - fine for the game's own animals, and the difference you have to make up when your own model is on one
+* The camera goes rigid while flying, so climbing on Space does not leave the view behind
 * **Fly on G**, off again on G: the character lifts out of the level entirely, and switching it off drops them back to the floor with gravity and their own flight settings put back exactly as they were found
 * Q, G and R are all live the moment the camera is switched on - the game has no button for any of them, so there is nothing of its own to clash with
 
@@ -70,7 +71,12 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 * **Import your own model** onto any weapon: export a `.glb` from Blender (File -> Export -> glTF Binary) and the weapon comes out wearing it, mesh and texture together, weapons installed as a mod pak beside the game's own so deleting it undoes everything
 * **Or just reshape the game's own model**: resize from a tenth up to **8x**, move and rotate it - a claymore at half size, a dagger the length of a spear, or something absurd
 * A live 3D preview **painted with the real texture**, which you can drag to turn and scroll to zoom, with the **original ghosted behind your model**. That outline is where the game already knows how to hold the weapon, so keeping the handle end of your model on the handle end of the outline is all there is to aligning it
+* **A model with no texture still comes out right.** Plenty of models colour themselves with flat material colours and carry no picture at all; those get one made from those colours, rather than arriving in the old weapon's colours and half transparent
+* Models arrive **the right way up and in one piece**: a .glb states where each part goes through a tree of nodes, including the turn from the modelling world's up to the game's, and all of it is followed
 * Imported models are **fitted on arrival** - scaled to the weapon's size and centred on it - so the sliders start somewhere sensible instead of at a speck or a wall
+* **It tells you when a model arrived without its artwork.** A .glb converted from another format often loses its texture, leaving materials that state no colour - which glTF says is white, so the import is correct and the result is blank. The percentage of the model that will come out white is shown when you bring it in
+* Weapons that **cut themselves out with a mask** are handled: some decide whether to draw a pixel at all from a texture an import never replaces, which left models with whole pieces missing. The threshold is turned off so your model arrives whole
+* Delete a weapon's old mod pak before importing onto it again - the installed one shadows the game's own copy
 * It replaces the weapon's model and texture - not its stats, and not how it behaves. A weapon using several materials is refused rather than mangled
 
 #### Mob Import Feature
@@ -81,6 +87,12 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 * **Summoned creatures come out right too.** An artifact does not summon the animal that wanders the level - it summons a variant with its own skin and a coloured glow, which is why an imported model used to arrive pink. Every skin a creature has is painted, and the game's colouring is turned off, so the model you brought is the model you get
 * Installed as a mod pak beside the game's own, so deleting it undoes everything
 * Creatures drawn at several levels of detail, in several pieces, or with cloth on them are **left out of the list rather than listed and refused**
+
+#### Installed Mods Feature
+* **Every mod pak in one place**, on the last tab: what is installed, how big it is, when it went in, and Remove beside each one
+* **Import Mod** installs a pak this app did not make - it finds or creates the `~mods` folder for you, which is the part people get wrong
+* **Open Mod Folder** shows it in Explorer
+* Paks you added yourself are marked as yours, because Remove deletes them from disk
 
 #### DISCLAIMER: Please keep backups of your save files! This app does not guarantee your save file to be playable after editing!
 
