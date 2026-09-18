@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="MCDSaveEdit.UI.WeaponSkinsTab"
+﻿<UserControl x:Class="MCDSaveEdit.UI.MeshWorkshopTab"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              mc:Ignorable="d"
@@ -15,14 +15,14 @@
 
         <!-- Which weapon -->
         <DockPanel Grid.Column="0" Margin="0,0,8,0">
-            <Label x:Name="weaponLabel" DockPanel.Dock="Top" Content="*Weapon*" Padding="0,0,0,4"/>
+            <Label x:Name="meshLabel" DockPanel.Dock="Top" Content="*Mesh*" Padding="0,0,0,4"/>
             <ComboBox x:Name="categoryCombo" DockPanel.Dock="Top" Margin="0,0,0,4"
                       SelectionChanged="categoryCombo_SelectionChanged"/>
             <TextBox x:Name="searchBox" DockPanel.Dock="Top" Margin="0,0,0,4"
                      TextChanged="searchBox_TextChanged"/>
             <TextBlock x:Name="countLabel" DockPanel.Dock="Bottom" Margin="0,4,0,0"
                        Foreground="Gray" TextWrapping="Wrap"/>
-            <ListBox x:Name="weaponList" SelectionChanged="weaponList_SelectionChanged"
+            <ListBox x:Name="meshList" SelectionChanged="meshList_SelectionChanged"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
         </DockPanel>
 

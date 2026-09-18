@@ -34,12 +34,6 @@ namespace MCDSaveEdit.Logic
         private const int MIN_VERTEX = -20;
         private const int MAX_VERTEX = -16;
 
-        //And in the .uasset, the two numbers that have to move when the export changes length.
-        private const int BULK_DATA_START_OFFSET = 169;
-        private const int EXPORT_ENTRY_SIZE = 104;
-        private const int SERIAL_SIZE_IN_ENTRY = 28;
-        private const int SERIAL_OFFSET_IN_ENTRY = 36;
-
         private CookedMesh(byte[] uasset, byte[] uexp, MeshGeometry.Vertices positions,
             MeshGeometry.Attributes attributes, IReadOnlyList<MeshGeometry.Triangles> indexBuffers,
             int positionBufferStart, int boundsBlock,
@@ -366,7 +360,7 @@ namespace MCDSaveEdit.Logic
             //export, so nothing after it needs moving - only its own size and the offset that
             //marks where bulk data would start.
             var uasset = (byte[])UAsset.Clone();
-            correctHeader(uasset, uexp.Length - UExp.Length);
+            CookedPackage.correctHeader(uasset, uexp.Length - UExp.Length);
 
             //The tagged bounds at the front of the export travel in the uexp, so they are fixed
             //there rather than here.
@@ -407,90 +401,6 @@ namespace MCDSaveEdit.Logic
             //A model without tangents is not an error worth refusing over: a flat direction is
             //wrong but harmless, where refusing would block a model that is otherwise fine.
             return index < list.Count ? list[index] : new VertexPacking.Direction(0, 0, 1, 1);
-        }
-
-        /// <summary>
-        /// Moves the export's recorded length, and the bulk data marker after it, by however much
-        /// the export grew or shrank.
-        ///
-        /// Only the last export needs this. Were the mesh not last, every export after it would
-        /// need its offset moved too - so that is checked rather than assumed.
-        /// </summary>
-        private void correctHeader(byte[] uasset, int delta)
-        {
-            if (delta == 0) { return; }
-
-            var exportCount = exportTableCount(uasset, out var exportOffset);
-            if (exportCount <= 0) { throw new InvalidOperationException("Could not read the export table."); }
-
-            var lastEntry = exportOffset + (exportCount - 1) * EXPORT_ENTRY_SIZE;
-            if (lastEntry + SERIAL_OFFSET_IN_ENTRY + 8 > uasset.Length)
-            {
-                throw new InvalidOperationException("The export table is not where the header says it is.");
-            }
-
-            //The mesh has to be the last export for this to be the whole correction.
-            var biggest = 0L;
-            var biggestEntry = -1;
-            for (int i = 0; i < exportCount; i++)
-            {
-                var entry = exportOffset + i * EXPORT_ENTRY_SIZE;
-                var size = BitConverter.ToInt64(uasset, entry + SERIAL_SIZE_IN_ENTRY);
-                if (size > biggest) { biggest = size; biggestEntry = entry; }
-            }
-            if (biggestEntry != lastEntry)
-            {
-                throw new InvalidOperationException("The mesh is not the last export, so more offsets would need moving.");
-            }
-
-            var serialSize = BitConverter.ToInt64(uasset, lastEntry + SERIAL_SIZE_IN_ENTRY);
-            writeLong(uasset, lastEntry + SERIAL_SIZE_IN_ENTRY, serialSize + delta);
-
-            var bulkStart = BitConverter.ToInt64(uasset, BULK_DATA_START_OFFSET);
-            writeLong(uasset, BULK_DATA_START_OFFSET, bulkStart + delta);
-        }
-
-        /// <summary>
-        /// How many exports there are and where the table begins.
-        ///
-        /// Read from the summary rather than searched for, because this part of the header is one
-        /// of the few things in a cooked package laid out at a fixed place.
-        /// </summary>
-        private static int exportTableCount(byte[] uasset, out int exportOffset)
-        {
-            exportOffset = 0;
-            if (uasset.Length < 64) { return 0; }
-
-            //The summary's export count and offset sit together, after the name and gatherable
-            //text entries. Located by stepping the same fields the describer already reads.
-            using var stream = new MemoryStream(uasset);
-            using var reader = new BinaryReader(stream);
-
-            if (reader.ReadUInt32() != 0x9E2A83C1) { return 0; }
-            var legacy = reader.ReadInt32();
-            if (legacy != -4) { reader.ReadInt32(); }
-            reader.ReadInt32(); // ue4 version
-            reader.ReadInt32(); // licensee version
-            var customVersions = reader.ReadInt32();
-            for (int i = 0; i < customVersions; i++) { reader.ReadBytes(20); }
-            reader.ReadInt32(); // total header size
-            skipString(reader);
-            reader.ReadUInt32(); // package flags
-            reader.ReadInt32(); // name count
-            reader.ReadInt32(); // name offset
-            reader.ReadInt32(); // gatherable text count
-            reader.ReadInt32(); // gatherable text offset
-
-            var exportCount = reader.ReadInt32();
-            exportOffset = reader.ReadInt32();
-            return exportCount;
-        }
-
-        private static void skipString(BinaryReader reader)
-        {
-            var length = reader.ReadInt32();
-            if (length == 0) { return; }
-            reader.ReadBytes(length < 0 ? -length * 2 : length);
         }
 
         /// <summary>
@@ -682,9 +592,6 @@ namespace MCDSaveEdit.Logic
 
         private static void writeInt(byte[] destination, int at, int value)
             => Buffer.BlockCopy(BitConverter.GetBytes(value), 0, destination, at, 4);
-
-        private static void writeLong(byte[] destination, int at, long value)
-            => Buffer.BlockCopy(BitConverter.GetBytes(value), 0, destination, at, 8);
 
         private static void writeFloat(byte[] destination, int at, float value)
             => Buffer.BlockCopy(BitConverter.GetBytes(value), 0, destination, at, 4);

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Windows.Media.Imaging;
 #nullable enable
 
 namespace MCDSaveEdit.Logic
@@ -26,55 +27,6 @@ namespace MCDSaveEdit.Logic
     {
         public enum Category { Melee, Ranged, Armor }
 
-        public sealed class Mesh
-        {
-            public Mesh(string assetPath, Category category)
-            {
-                AssetPath = assetPath;
-                Category = category;
-                Name = prettyName(assetPath);
-                Variant = folderName(assetPath);
-            }
-
-            public string AssetPath { get; }
-            public Category Category { get; }
-            /// <summary>The mesh's own name, spaced out for reading.</summary>
-            public string Name { get; }
-            /// <summary>The folder it sits in, which is what tells two uniques apart.</summary>
-            public string Variant { get; }
-
-            public override string ToString() => Name;
-        }
-
-        /// <summary>What a mesh looks like, far enough to draw it and to measure it.</summary>
-        public sealed class Shape
-        {
-            public Shape(IReadOnlyList<MeshGeometry.Position> positions, IReadOnlyList<int> indices,
-                MeshGeometry.Position origin, MeshGeometry.Position extent, float radius,
-                IReadOnlyList<(float u, float v)>? texCoords = null)
-            {
-                Positions = positions;
-                Indices = indices;
-                Origin = origin;
-                Extent = extent;
-                Radius = radius;
-                TexCoords = texCoords ?? Array.Empty<(float, float)>();
-            }
-
-            public IReadOnlyList<MeshGeometry.Position> Positions { get; }
-            /// <summary>Flat triples, as a renderer wants them.</summary>
-            public IReadOnlyList<int> Indices { get; }
-            public MeshGeometry.Position Origin { get; }
-            public MeshGeometry.Position Extent { get; }
-            public float Radius { get; }
-            /// <summary>One pair per vertex, the artwork channel only.</summary>
-            public IReadOnlyList<(float u, float v)> TexCoords { get; }
-            public int TriangleCount => Indices.Count / 3;
-
-            /// <summary>The longest side, which is the number a scale has to be judged against.</summary>
-            public float LongestSide => Math.Max(Extent.X, Math.Max(Extent.Y, Extent.Z)) * 2f;
-        }
-
         /// <summary>
         /// Where the meshes that can be imported onto live.
         ///
@@ -95,18 +47,18 @@ namespace MCDSaveEdit.Logic
             ("/actors/equipment/meleeweapons/", Category.Melee),
         };
 
-        private static List<Mesh>? _catalogue;
+        private static List<MeshEntry>? _catalogue;
 
         public static bool ready => CustomSkins.ready;
 
-        public static IReadOnlyList<Mesh> all()
+        public static IReadOnlyList<MeshEntry> all()
         {
             if (_catalogue != null) { return _catalogue; }
 
             var paks = CustomSkins.index;
-            if (paks == null) { return Array.Empty<Mesh>(); }
+            if (paks == null) { return Array.Empty<MeshEntry>(); }
 
-            var found = new List<Mesh>();
+            var found = new List<MeshEntry>();
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var entry in paks)
@@ -125,13 +77,13 @@ namespace MCDSaveEdit.Logic
                 {
                     if (path.IndexOf(folder, StringComparison.OrdinalIgnoreCase) < 0) { continue; }
                     if (!seen.Add(path)) { break; }
-                    found.Add(new Mesh(path, category));
+                    found.Add(new MeshEntry(path, category.ToString(), prettyName(path), folderName(path)));
                     break;
                 }
             }
 
             _catalogue = found
-                .OrderBy(mesh => mesh.Category)
+                .OrderBy(mesh => mesh.Group, StringComparer.Ordinal)
                 .ThenBy(mesh => mesh.Name, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
             return _catalogue;
@@ -143,7 +95,7 @@ namespace MCDSaveEdit.Logic
         /// Returning nothing is a real answer rather than a failure: a few of the game's meshes
         /// are skeletal or have no declared bounds, and those simply cannot be reshaped this way.
         /// </summary>
-        public static Shape? read(string assetPath)
+        public static MeshShape? read(string assetPath)
         {
             var package = readPackage(assetPath);
             if (package == null) { return null; }
@@ -183,7 +135,7 @@ namespace MCDSaveEdit.Logic
                 }
             }
 
-            return new Shape(MeshGeometry.readPositions(uexp, vertices, vertices.Count), indices,
+            return new MeshShape(MeshGeometry.readPositions(uexp, vertices, vertices.Count), indices,
                 origin, extent, radius, texCoords);
         }
 
@@ -225,101 +177,6 @@ namespace MCDSaveEdit.Logic
             return CustomSkins.writeModPak(modName, entries);
         }
 
-
-        /// <summary>
-        /// A transform that drops an imported model roughly where the weapon it replaces sits.
-        ///
-        /// Roughly is the honest word. It matches the model's longest side to the weapon's and
-        /// centres one box on the other, which gets the scale right - the difference is usually a
-        /// factor of ten or more, and nobody wants to find that with a slider - and gets the
-        /// position close. It cannot get the orientation right, because nothing in a model says
-        /// which end is the handle. That is what the ghost and the rotation sliders are for.
-        /// </summary>
-        public static MeshEdit.Transform autoFit(GlbModel model, Shape donor)
-        {
-            var (modelOrigin, modelExtent, _) = CookedMesh.measure(model.Positions);
-
-            var modelSide = Math.Max(modelExtent.X, Math.Max(modelExtent.Y, modelExtent.Z)) * 2f;
-            var donorSide = donor.LongestSide;
-            var scale = modelSide > 0.0001f && donorSide > 0.0001f ? donorSide / modelSide : 1f;
-
-            //Centre on centre. The weapon's own origin is not its middle - a claymore's sits fifty
-            //units down the blade - so the model is placed against the donor's box rather than
-            //against its origin.
-            var offset = new MeshGeometry.Position(
-                donor.Origin.X - modelOrigin.X * scale,
-                donor.Origin.Y - modelOrigin.Y * scale,
-                donor.Origin.Z - modelOrigin.Z * scale);
-
-            return new MeshEdit.Transform(scale, offset, new MeshGeometry.Position(0, 0, 0));
-        }
-
-        /// <summary>
-        /// The imported model's geometry, moved into the weapon's space.
-        ///
-        /// Directions are turned but never moved or scaled: a normal says which way a surface
-        /// faces, and adding an offset to it would point it somewhere meaningless. That is why the
-        /// rotation is applied to them separately rather than by reusing the whole transform.
-        /// </summary>
-        public static CookedMesh.Geometry place(GlbModel model, MeshEdit.Transform transform, int texCoordSets)
-        {
-            var positions = new List<MeshGeometry.Position>(model.Positions.Count);
-            foreach (var position in model.Positions) { positions.Add(transform.move(position)); }
-
-            var turn = new MeshEdit.Transform(1f, new MeshGeometry.Position(0, 0, 0), transform.RotationDegrees);
-
-            var normals = new List<VertexPacking.Direction>(model.Normals.Count);
-            foreach (var normal in model.Normals) { normals.Add(turned(normal, turn)); }
-
-            var tangents = new List<VertexPacking.Direction>(model.Tangents.Count);
-            foreach (var tangent in model.Tangents) { tangents.Add(turned(tangent, turn)); }
-
-            return new CookedMesh.Geometry {
-                Positions = positions,
-                Normals = normals,
-                Tangents = tangents,
-                TexCoords = spreadTexCoords(model.TexCoords, texCoordSets, positions.Count),
-                Indices = model.Indices,
-            };
-        }
-
-        /// <summary>
-        /// One set of texture coordinates per vertex turned into as many as the weapon's mesh
-        /// keeps.
-        ///
-        /// A cooked weapon here holds two: the one the artwork is painted with, and a second the
-        /// engine reserves for baked lighting. A model exported from a modelling tool almost
-        /// always has only the first, so the second is filled with a copy of it. That is the right
-        /// filler rather than a lazy one - a weapon is a moving object lit dynamically, so nothing
-        /// ever reads its lightmap channel, and leaving it empty would put zeroes where the engine
-        /// expects coordinates.
-        ///
-        /// They are written per vertex rather than per channel: vertex zero's sets, then vertex
-        /// one's. That is the order the engine reads them back in, and the order a flat copy of
-        /// the game's own data already round-trips through.
-        /// </summary>
-        private static IReadOnlyList<(float u, float v)> spreadTexCoords(
-            IReadOnlyList<(float u, float v)> supplied, int perVertex, int vertices)
-        {
-            if (perVertex <= 1) { return supplied; }
-
-            var spread = new List<(float, float)>(vertices * perVertex);
-            for (int i = 0; i < vertices; i++)
-            {
-                var pair = i < supplied.Count ? supplied[i] : (0f, 0f);
-                for (int channel = 0; channel < perVertex; channel++) { spread.Add(pair); }
-            }
-            return spread;
-        }
-
-        private static VertexPacking.Direction turned(VertexPacking.Direction direction, MeshEdit.Transform turn)
-        {
-            var spun = turn.move(new MeshGeometry.Position(direction.X, direction.Y, direction.Z));
-            //The fourth component says which way the bitangent runs and is not a direction, so it
-            //is carried across untouched.
-            return new VertexPacking.Direction(spun.X, spun.Y, spun.Z, direction.W);
-        }
-
         /// <summary>
         /// Writes a mod pak replacing the weapon's mesh with an imported model.
         ///
@@ -344,7 +201,7 @@ namespace MCDSaveEdit.Logic
                 ?? throw new InvalidOperationException(
                     "This weapon's mesh is not one this can rewrite - it uses several materials, or its bounds cannot be located safely.");
 
-            var (uasset, uexp) = mesh.rebuild(place(model, transform, mesh.Attributes.TexCoords));
+            var (uasset, uexp) = mesh.rebuild(ModelFitting.place(model, transform, mesh.Attributes.TexCoords));
 
             var insidePak = assetPath.TrimStart('/');
             var entries = new List<PakWriter.Entry> {
@@ -373,7 +230,7 @@ namespace MCDSaveEdit.Logic
         /// that. Since aligning the handle is the whole job this tab asks of somebody, showing the
         /// texture is not decoration.
         /// </summary>
-        public static System.Windows.Media.Imaging.BitmapSource? textureFor(string meshAssetPath)
+        public static BitmapSource? textureFor(string meshAssetPath)
         {
             var texture = CustomSkins.textureBeside(meshAssetPath);
             if (texture == null) { return null; }
@@ -421,6 +278,31 @@ namespace MCDSaveEdit.Logic
         /// both are undone: "claymoreunique3_greataxeblade" reads as "Claymoreunique3 Greataxeblade"
         /// rather than as itself. Not perfect, and better than the raw path by a distance.
         /// </summary>
+        /// <summary>This catalogue, as the shared workshop tab wants it.</summary>
+        public static readonly MeshCatalogue catalogue = new Catalogue();
+
+        private sealed class Catalogue : MeshCatalogue
+        {
+            public override bool ready => WeaponMeshes.ready;
+            public override IReadOnlyList<MeshEntry> all() => WeaponMeshes.all();
+            public override MeshShape? read(string assetPath) => WeaponMeshes.read(assetPath);
+            public override BitmapSource? textureFor(string assetPath) => WeaponMeshes.textureFor(assetPath);
+
+            public override CustomSkins.InstalledMod replace(string assetPath, GlbModel model,
+                MeshEdit.Transform transform, string modName)
+                => import(assetPath, model, transform, modName);
+
+            public override CustomSkins.InstalledMod reshape(string assetPath, MeshEdit.Transform transform, string modName)
+                => apply(assetPath, transform, modName);
+
+            public override string subjectLabel => R.WEAPON_SKINS_WEAPON;
+            public override string countFormat => R.WEAPON_SKINS_COUNT;
+            public override string scopeNote => R.WEAPON_SKINS_MELEE_ONLY;
+            public override string ghostHint => R.WEAPON_SKINS_GHOST_HINT;
+            public override string importHint => R.WEAPON_SKINS_IMPORT_HINT;
+            public override string nothingToDo => R.WEAPON_SKINS_NOTHING_TO_DO;
+        }
+
         private static string spaced(string raw)
         {
             var words = raw.Replace('_', ' ').Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);

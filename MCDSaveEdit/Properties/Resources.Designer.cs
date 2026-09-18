@@ -3902,5 +3902,68 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("CAMERA_FACES_AIM", resourceCulture);
             }
         }
+        /// <summary>
+        ///   Looks up a localized string similar to Mob Import.
+        /// </summary>
+        public static string MOB_SKINS_TAB {
+            get {
+                return ResourceManager.GetString("MOB_SKINS_TAB", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Creature.
+        /// </summary>
+        public static string MOB_SKINS_MOB {
+            get {
+                return ResourceManager.GetString("MOB_SKINS_MOB", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} meshes.
+        /// </summary>
+        public static string MOB_SKINS_COUNT {
+            get {
+                return ResourceManager.GetString("MOB_SKINS_COUNT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to About a fifth of the game's creatures can be replaced. The rest are drawn at several le....
+        /// </summary>
+        public static string MOB_SKINS_SCOPE {
+            get {
+                return ResourceManager.GetString("MOB_SKINS_SCOPE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The outline is the creature as the game knows it. Stand your model on the outline's fee....
+        /// </summary>
+        public static string MOB_SKINS_GHOST_HINT {
+            get {
+                return ResourceManager.GetString("MOB_SKINS_GHOST_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A .glb carries the model and its texture in one file. Export one from Blender with File....
+        /// </summary>
+        public static string MOB_SKINS_IMPORT_HINT {
+            get {
+                return ResourceManager.GetString("MOB_SKINS_IMPORT_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Import a model first. A creature's own vertices are moved by its skeleton, so nudging t....
+        /// </summary>
+        public static string MOB_SKINS_NEEDS_MODEL {
+            get {
+                return ResourceManager.GetString("MOB_SKINS_NEEDS_MODEL", resourceCulture);
+            }
+        }
+        
     }
 }

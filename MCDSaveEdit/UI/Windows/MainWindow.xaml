@@ -78,7 +78,11 @@
             </TabItem>
 
             <TabItem x:Name="weaponSkinsTabItem" Header="*Weapon Import*" Selector.Selected="OnTabSelected">
-                <local:WeaponSkinsTab x:Name="weaponSkinsTab"/>
+                <local:MeshWorkshopTab x:Name="weaponSkinsTab" Catalogue="Weapons"/>
+            </TabItem>
+
+            <TabItem x:Name="mobSkinsTabItem" Header="*Mob Import*" Selector.Selected="OnTabSelected">
+                <local:MeshWorkshopTab x:Name="mobSkinsTab" Catalogue="Mobs"/>
             </TabItem>
 
             <TabItem x:Name="cameraTabItem" Header="*Camera*" Selector.Selected="OnTabSelected">

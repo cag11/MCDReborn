@@ -67,7 +67,16 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 * **Or just reshape the game's own model**: resize from a tenth up to **8x**, move and rotate it - a claymore at half size, a dagger the length of a spear, or something absurd
 * A live 3D preview **painted with the real texture**, which you can drag to turn and scroll to zoom, with the **original ghosted behind your model**. That outline is where the game already knows how to hold the weapon, so keeping the handle end of your model on the handle end of the outline is all there is to aligning it
 * Imported models are **fitted on arrival** - scaled to the weapon's size and centred on it - so the sliders start somewhere sensible instead of at a speck or a wall
-* It replaces the weapon's model and texture - not its stats, and not how it behaves. A weapon using several materials is refused rather than mangled, and the three whips are skeletal so they are out entirely
+* It replaces the weapon's model and texture - not its stats, and not how it behaves. A weapon using several materials is refused rather than mangled
+
+#### Mob Import Feature
+* **Import your own model onto a creature**: export a `.glb` from Blender the same way, pick a sheep, a pig, a wolf or any of 122 other meshes, and the creature comes out wearing it. A skateboard, a mount, a truck - anything that should move under its own power, because a creature is the one thing the engine already animates
+* **It rides rather than bends.** The model is attached rigidly to the skeleton's root, so it walks, charges and gets summoned by an artifact without being deformed by the walk cycle. For a vehicle that is the point rather than a compromise
+* The same live 3D preview as the weapon tab - drag to turn, scroll to zoom, real texture, **original ghosted behind**. Stand your model on the outline's feet and face it the same way, or it will walk sunk into the floor or backwards
+* Grouped into **creatures and props**, with a search box. Props are the game's animated scenery - gates, doors, windmills, banners
+* **Summoned creatures come out right too.** An artifact does not summon the animal that wanders the level - it summons a variant with its own skin and a coloured glow, which is why an imported model used to arrive pink. Every skin a creature has is painted, and the game's colouring is turned off, so the model you brought is the model you get
+* Installed as a mod pak beside the game's own, so deleting it undoes everything
+* Creatures drawn at several levels of detail, in several pieces, or with cloth on them are **left out of the list rather than listed and refused**
 
 #### DISCLAIMER: Please keep backups of your save files! This app does not guarantee your save file to be playable after editing!
 

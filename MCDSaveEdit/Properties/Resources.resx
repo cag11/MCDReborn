@@ -1092,11 +1092,11 @@ The save file is not changed until you save it.</value>
     <comment>No paks</comment>
   </data>
   <data name="WEAPON_SKINS_PICK_ONE" xml:space="preserve">
-    <value>Pick a weapon to see its shape.</value>
+    <value>Pick one to see its shape.</value>
     <comment>Nothing selected</comment>
   </data>
   <data name="WEAPON_SKINS_NO_GEOMETRY" xml:space="preserve">
-    <value>This mesh does not declare its bounds, so its geometry cannot be found and it cannot be reshaped.</value>
+    <value>This mesh's geometry cannot be found, so it cannot be replaced.</value>
     <comment>Unreadable mesh</comment>
   </data>
   <data name="WEAPON_SKINS_MEASUREMENTS" xml:space="preserve">
@@ -1112,7 +1112,7 @@ The save file is not changed until you save it.</value>
     <comment>Applied confirmation</comment>
   </data>
   <data name="WEAPON_SKINS_MODS_NOTE" xml:space="preserve">
-    <value>This replaces the weapon's shape, not its textures or how it behaves. Deleting the pak from ~mods undoes it. Close the game before applying, and start Dungeons.exe directly – launching through the Minecraft Launcher removes mods.</value>
+    <value>This replaces the mesh's shape, not how it behaves. Deleting the pak from ~mods undoes it. Close the game before applying, and start Dungeons.exe directly – launching through the Minecraft Launcher removes mods.</value>
     <comment>Explains what reshaping does</comment>
   </data>
   <data name="WEAPON_SKINS_MODEL" xml:space="preserve">
@@ -1826,5 +1826,33 @@ The save file is not changed until you save it.</value>
   <data name="STATS_ENEMY_SIZE_WHY" xml:space="preserve">
     <value>How big they are drawn, not how big they are to walk into - the shape they collide with is left alone, so a giant will not get stuck in a doorway. Works for the same reason riding one does: a creature is animated every frame, and that is what carries the change to the screen.</value>
     <comment>Explains enemy size</comment>
+  </data>
+  <data name="MOB_SKINS_TAB" xml:space="preserve">
+    <value>Mob Import</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="MOB_SKINS_MOB" xml:space="preserve">
+    <value>Creature</value>
+    <comment>Which creature to replace</comment>
+  </data>
+  <data name="MOB_SKINS_COUNT" xml:space="preserve">
+    <value>{0} meshes</value>
+    <comment>How many are listed</comment>
+  </data>
+  <data name="MOB_SKINS_SCOPE" xml:space="preserve">
+    <value>About a fifth of the game's creatures can be replaced. The rest are drawn at several levels of detail, in several pieces, or with cloth on them, and are left out rather than listed and refused.</value>
+    <comment>What is and is not in the list</comment>
+  </data>
+  <data name="MOB_SKINS_GHOST_HINT" xml:space="preserve">
+    <value>The outline is the creature as the game knows it. Stand your model on the outline's feet and face it the same way, or it will walk sunk into the floor or backwards.</value>
+    <comment>How to use the ghost</comment>
+  </data>
+  <data name="MOB_SKINS_IMPORT_HINT" xml:space="preserve">
+    <value>A .glb carries the model and its texture in one file. Export one from Blender with File → Export → glTF Binary. The model is attached rigidly, so it rides the creature rather than being animated by it: it will walk, charge and be summoned, but it will not bend.</value>
+    <comment>How to bring a model</comment>
+  </data>
+  <data name="MOB_SKINS_NEEDS_MODEL" xml:space="preserve">
+    <value>Import a model first. A creature's own vertices are moved by its skeleton, so nudging them with the sliders would pull it apart rather than resize it.</value>
+    <comment>Why the sliders alone do nothing</comment>
   </data>
 </root>

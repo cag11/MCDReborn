@@ -446,8 +446,14 @@ namespace MCDSaveEdit.Logic
             var texture = textureBeside(meshAssetPath);
             if (texture == null) { return Array.Empty<PakWriter.Entry>(); }
 
+            return texturePatchAt(texture, png);
+        }
+
+        /// <summary>The same, onto a texture the caller has already chosen.</summary>
+        public static IEnumerable<PakWriter.Entry> texturePatchAt(string textureAssetPath, byte[] png)
+        {
             var image = decodePng(png);
-            return patchTexture(texture, (width, height) => toBgra(scaled(image, width, height), width, height));
+            return patchTexture(textureAssetPath, (width, height) => toBgra(scaled(image, width, height), width, height));
         }
 
         /// <summary>

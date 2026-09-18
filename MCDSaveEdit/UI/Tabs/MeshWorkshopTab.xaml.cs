@@ -14,7 +14,11 @@ using System.Windows.Media.Media3D;
 namespace MCDSaveEdit.UI
 {
     /// <summary>
-    /// Changing the shape of a weapon.
+    /// Putting a different model into one of the game's meshes.
+    ///
+    /// Serves two tabs. Which meshes are offered and how they are written back comes from a
+    /// <see cref="MeshCatalogue"/> - weapons in one, creatures in the other - and everything else
+    /// on screen is the same work either way, so it is the same control rather than two of it.
     ///
     /// The same arrangement as the recolouring tab and for the same reason: nothing here touches a
     /// save file, and nothing here modifies the game. A mod pak sits beside the game's own holding
@@ -22,21 +26,25 @@ namespace MCDSaveEdit.UI
     /// whole of undo.
     ///
     /// What is different is that this edits geometry rather than pixels, which brings a problem
-    /// recolouring does not have: a weapon is held by its handle, and moving the mesh moves the
-    /// handle out of the hand. So the original is drawn behind the edit, in outline, and that
-    /// ghost is the alignment reference - it is the shape the game already knows how to hold, and
-    /// keeping the grip end of the new shape sitting on the grip end of the old one is the whole
-    /// of getting it right. A modelled arm would say less: the weapon being replaced *is* the
-    /// hand's position, exactly, with nothing approximated.
+    /// recolouring does not have: the thing being replaced is already in the right place and the
+    /// model arriving is not. A weapon is held by its handle, and moving the mesh moves the handle
+    /// out of the hand; a creature stands on the ground, and a model centred differently sinks
+    /// into it. So the original is drawn behind the edit, in outline, and that ghost is the
+    /// alignment reference - it is the shape the game already knows how to hold or how to walk,
+    /// and sitting the new shape on it is the whole of getting it right. A modelled arm or a
+    /// modelled floor would say less: what is being replaced *is* the position, exactly, with
+    /// nothing approximated.
     ///
     /// The preview and the file are computed by the same code, deliberately. A preview with its
     /// own copy of the arithmetic can disagree with what gets written, and it would disagree in
-    /// the way nobody checks - where the picture looks right and the weapon in game does not.
+    /// the way nobody checks - where the picture looks right and the thing in game does not.
     /// </summary>
-    public partial class WeaponSkinsTab : UserControl
+    public partial class MeshWorkshopTab : UserControl
     {
-        private WeaponMeshes.Mesh? _selected;
-        private WeaponMeshes.Shape? _shape;
+        private MeshCatalogue _catalogue = WeaponMeshes.catalogue;
+
+        private MeshEntry? _selected;
+        private MeshShape? _shape;
 
         //The model somebody brought, if they brought one. When this is set the tab is replacing
         //the weapon rather than reshaping it, and almost everything else behaves the same way.
@@ -62,17 +70,53 @@ namespace MCDSaveEdit.UI
         //mesh around the screen instead of turning it on the spot.
         private Point3D _centre = new Point3D(0, 0, 0);
 
-        public WeaponSkinsTab()
+        public MeshWorkshopTab()
         {
             InitializeComponent();
-            translateStaticStrings();
             hookSpin();
+            translateStaticStrings();
+
+            //Filled the first time somebody looks at it rather than at startup. Building the
+            //creature list means opening several hundred packages to find out which of them can
+            //be rewritten, which is a second nobody should pay for a tab they did not open.
+            IsVisibleChanged += (s, e) => { if (IsVisible) { fillOnce(); } };
+        }
+
+        /// <summary>
+        /// Which set of meshes this instance offers, set from the markup.
+        ///
+        /// A string rather than the catalogue itself because XAML cannot hand over an object
+        /// without a great deal of ceremony, and there are two of these.
+        /// </summary>
+        public string Catalogue
+        {
+            get => _catalogue == MobMeshes.catalogue ? MOBS : WEAPONS;
+            set
+            {
+                _catalogue = string.Equals(value, MOBS, StringComparison.OrdinalIgnoreCase)
+                    ? MobMeshes.catalogue
+                    : WeaponMeshes.catalogue;
+                translateStaticStrings();
+                _filled = false;
+                if (IsVisible) { fillOnce(); }
+            }
+        }
+
+        private const string WEAPONS = "Weapons";
+        private const string MOBS = "Mobs";
+
+        private bool _filled;
+
+        private void fillOnce()
+        {
+            if (_filled) { return; }
+            _filled = true;
             updateUI();
         }
 
         private void translateStaticStrings()
         {
-            weaponLabel.Content = R.WEAPON_SKINS_WEAPON;
+            meshLabel.Content = _catalogue.subjectLabel;
             previewLabel.Content = R.WEAPON_SKINS_PREVIEW;
             shapeLabel.Content = R.WEAPON_SKINS_SHAPE;
             sizeHeader.Text = R.WEAPON_SKINS_SIZE;
@@ -82,64 +126,58 @@ namespace MCDSaveEdit.UI
             applyButton.Content = R.WEAPON_SKINS_APPLY;
             resetButton.Content = R.WEAPON_SKINS_RESET;
             ghostCheckBox.Content = R.WEAPON_SKINS_GHOST;
-            ghostHint.Text = R.WEAPON_SKINS_GHOST_HINT;
+            ghostHint.Text = _catalogue.ghostHint;
             spinHint.Text = R.WEAPON_SKINS_SPIN;
             modsNoteLabel.Text = R.WEAPON_SKINS_MODS_NOTE;
             searchBox.ToolTip = R.WEAPON_SKINS_SEARCH;
             modelHeader.Text = R.WEAPON_SKINS_MODEL;
             importButton.Content = R.WEAPON_SKINS_IMPORT;
             clearModelButton.Content = R.WEAPON_SKINS_CLEAR_MODEL;
-            importHint.Text = R.WEAPON_SKINS_IMPORT_HINT;
+            importHint.Text = _catalogue.importHint;
             texturedCheckBox.Content = R.WEAPON_SKINS_TEXTURED;
         }
 
         public void updateUI()
         {
             fillCategories();
-            fillWeaponList();
+            fillMeshList();
             updateSelection();
         }
 
         #region Choosing
 
-        //Melee only. Ranged weapons are driven through animation states, so replacing the one mesh
-        //a model would land on changes the weapon's shape partway through being fired; armour is
-        //several meshes per set that have to agree with each other and with the body. Both are
-        //left out rather than offered and quietly broken.
-        private static readonly (WeaponMeshes.Category category, Func<string> label)[] CATEGORIES = {
-            (WeaponMeshes.Category.Melee, () => R.getString("ItemTag_Melee") ?? R.MELEE_ITEMS_FILTER),
-        };
-
+        /// <summary>
+        /// The headings the list can be narrowed to, when the catalogue has more than one.
+        ///
+        /// A list of one is not a choice, so it is not shown as one.
+        /// </summary>
         private void fillCategories()
         {
-            if (categoryCombo.Items.Count > 0) { return; }
-            foreach (var (category, label) in CATEGORIES)
-            {
-                categoryCombo.Items.Add(new ComboBoxItem { Content = label(), Tag = category });
-            }
-            categoryCombo.SelectedIndex = 0;
+            var groups = _catalogue.groups();
 
-            //A list of one is not a choice, so it is not shown as one. Written against the list
-            //rather than against the fact that it currently holds melee, so putting a category
-            //back brings the box back with it.
-            categoryCombo.Visibility = CATEGORIES.Length > 1 ? Visibility.Visible : Visibility.Collapsed;
+            categoryCombo.Items.Clear();
+            foreach (var group in groups)
+            {
+                categoryCombo.Items.Add(new ComboBoxItem { Content = group, Tag = group });
+            }
+            if (categoryCombo.Items.Count > 0) { categoryCombo.SelectedIndex = 0; }
+            categoryCombo.Visibility = groups.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        private WeaponMeshes.Category selectedCategory =>
-            (categoryCombo.SelectedItem as ComboBoxItem)?.Tag as WeaponMeshes.Category? ?? WeaponMeshes.Category.Melee;
+        private string? selectedGroup => (categoryCombo.SelectedItem as ComboBoxItem)?.Tag as string;
 
-        private void categoryCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => fillWeaponList();
+        private void categoryCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => fillMeshList();
 
-        private void searchBox_TextChanged(object sender, TextChangedEventArgs e) => fillWeaponList();
+        private void searchBox_TextChanged(object sender, TextChangedEventArgs e) => fillMeshList();
 
-        private void fillWeaponList()
+        private void fillMeshList()
         {
             if (!IsInitialized) { return; }
 
             _filling = true;
-            weaponList.Items.Clear();
+            meshList.Items.Clear();
 
-            if (!WeaponMeshes.ready)
+            if (!_catalogue.ready)
             {
                 countLabel.Text = R.WEAPON_SKINS_NO_CONTENT;
                 _filling = false;
@@ -147,9 +185,10 @@ namespace MCDSaveEdit.UI
                 return;
             }
 
+            var group = selectedGroup;
             var search = searchBox.Text?.Trim() ?? string.Empty;
-            var matching = WeaponMeshes.all()
-                .Where(mesh => mesh.Category == selectedCategory)
+            var matching = _catalogue.all()
+                .Where(mesh => group == null || mesh.Group == group)
                 .Where(mesh => search.Length == 0
                     || mesh.Name.IndexOf(search, StringComparison.CurrentCultureIgnoreCase) >= 0
                     || mesh.Variant.IndexOf(search, StringComparison.CurrentCultureIgnoreCase) >= 0)
@@ -157,8 +196,9 @@ namespace MCDSaveEdit.UI
 
             foreach (var mesh in matching)
             {
-                //The folder is shown under the name because it is the only thing telling two
-                //uniques apart - three different meshes are all called some variety of "Claymore".
+                //The folder is shown under the name because it is often the only thing telling two
+                //apart - three different meshes are all called some variety of "Claymore", and the
+                //game has a baby version of half its animals.
                 var row = new StackPanel();
                 row.Children.Add(new TextBlock { Text = mesh.Name });
                 row.Children.Add(new TextBlock {
@@ -166,18 +206,18 @@ namespace MCDSaveEdit.UI
                     Foreground = Brushes.Gray,
                     FontSize = 10,
                 });
-                weaponList.Items.Add(new ListBoxItem { Content = row, Tag = mesh });
+                meshList.Items.Add(new ListBoxItem { Content = row, Tag = mesh });
             }
 
-            countLabel.Text = string.Format(R.WEAPON_SKINS_COUNT, matching.Count);
-            if (CATEGORIES.Length == 1) { countLabel.Text += "\n" + R.WEAPON_SKINS_MELEE_ONLY; }
+            countLabel.Text = string.Format(_catalogue.countFormat, matching.Count)
+                + "\n" + _catalogue.scopeNote;
             _filling = false;
 
-            if (weaponList.Items.Count > 0) { weaponList.SelectedIndex = 0; }
+            if (meshList.Items.Count > 0) { meshList.SelectedIndex = 0; }
             else { updateSelection(); }
         }
 
-        private void weaponList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void meshList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (_filling) { return; }
             updateSelection();
@@ -185,11 +225,11 @@ namespace MCDSaveEdit.UI
 
         private void updateSelection()
         {
-            _selected = (weaponList.SelectedItem as ListBoxItem)?.Tag as WeaponMeshes.Mesh;
-            _shape = _selected == null ? null : WeaponMeshes.read(_selected.AssetPath);
+            _selected = (meshList.SelectedItem as ListBoxItem)?.Tag as MeshEntry;
+            _shape = _selected == null ? null : _catalogue.read(_selected.AssetPath);
             if (_imported == null)
             {
-                _texture = _selected == null ? null : WeaponMeshes.textureFor(_selected.AssetPath);
+                _texture = _selected == null ? null : _catalogue.textureFor(_selected.AssetPath);
             }
 
             showTransform(_selected == null
@@ -339,7 +379,7 @@ namespace MCDSaveEdit.UI
             describeSize(transform);
         }
 
-        private static MeshGeometry3D build(WeaponMeshes.Shape shape, MeshEdit.Transform transform)
+        private static MeshGeometry3D build(MeshShape shape, MeshEdit.Transform transform)
         {
             var mesh = new MeshGeometry3D();
             var points = new Point3DCollection(shape.Positions.Count);
@@ -459,12 +499,12 @@ namespace MCDSaveEdit.UI
         #region Importing
 
         /// <summary>What the preview is showing: the imported model when there is one.</summary>
-        private WeaponMeshes.Shape? previewShape()
+        private MeshShape? previewShape()
         {
             if (_imported == null) { return _shape; }
 
             var (origin, extent, radius) = CookedMesh.measure(_imported.Positions);
-            return new WeaponMeshes.Shape(_imported.Positions, _imported.Indices, origin, extent, radius);
+            return new MeshShape(_imported.Positions, _imported.Indices, origin, extent, radius);
         }
 
         private void importButton_Click(object sender, RoutedEventArgs e)
@@ -494,7 +534,7 @@ namespace MCDSaveEdit.UI
                 //Fitted on arrival rather than dropped at its own scale. A model is usually built
                 //a few units long where a weapon here is a couple of hundred, so without this the
                 //first sight of it is either a speck or a wall.
-                var fit = WeaponMeshes.autoFit(model, _shape);
+                var fit = ModelFitting.autoFit(model, _shape);
 
                 //And the slider has to be able to hold that number. The sword this was built
                 //against needs sixteen times its own size to match a claymore, against a slider
@@ -555,7 +595,7 @@ namespace MCDSaveEdit.UI
         private void clearModelButton_Click(object sender, RoutedEventArgs e)
         {
             _imported = null;
-            _texture = _selected == null ? null : WeaponMeshes.textureFor(_selected.AssetPath);
+            _texture = _selected == null ? null : _catalogue.textureFor(_selected.AssetPath);
             resetScaleRange();
             modelLabel.Text = string.Empty;
             clearModelButton.Visibility = Visibility.Collapsed;
@@ -573,17 +613,17 @@ namespace MCDSaveEdit.UI
             if (_selected == null) { return; }
 
             var transform = currentTransform;
-            if (_imported == null && transform.isNothing)
+            if (_imported == null && (transform.isNothing || !_catalogue.canReshape))
             {
-                statusLabel.Text = R.WEAPON_SKINS_NOTHING_TO_DO;
+                statusLabel.Text = _catalogue.nothingToDo;
                 return;
             }
 
             try
             {
                 var mod = _imported != null
-                    ? WeaponMeshes.import(_selected.AssetPath, _imported, transform, _selected.Name + " " + _imported.Name)
-                    : WeaponMeshes.apply(_selected.AssetPath, transform, _selected.Name);
+                    ? _catalogue.replace(_selected.AssetPath, _imported, transform, _selected.Name + " " + _imported.Name)
+                    : _catalogue.reshape(_selected.AssetPath, transform, _selected.Name);
                 statusLabel.Text = string.Format(R.WEAPON_SKINS_APPLIED, System.IO.Path.GetFileName(mod.Path));
             }
             catch (Exception problem)
