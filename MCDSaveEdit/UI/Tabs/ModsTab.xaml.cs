@@ -46,6 +46,10 @@ namespace MCDSaveEdit.UI
             modsNoteLabel.Text = R.CUSTOM_SKINS_MODS_NOTE;
             importButton.Content = R.MODS_IMPORT;
             openFolderButton.Content = R.MODS_OPEN_FOLDER;
+            importZipButton.Content = R.MODS_IMPORT_ZIP;
+            exportZipButton.Content = R.MODS_EXPORT_ZIP;
+            importZipButton.ToolTip = R.MODS_IMPORT_ZIP_WHY;
+            exportZipButton.ToolTip = R.MODS_EXPORT_ZIP_WHY;
         }
 
         public void updateUI() => fillInstalled();
@@ -102,6 +106,89 @@ namespace MCDSaveEdit.UI
             }
         }
 
+        /// <summary>
+        /// Installs every mod an archive holds, however it was put together.
+        ///
+        /// One file is the whole point: somebody zips their mods folder, sends it, and the other
+        /// end gets all of it in one go rather than a folder of paks and instructions about where
+        /// to drop them.
+        /// </summary>
+        private void importZipButton_Click(object sender, RoutedEventArgs e)
+        {
+            EventLogger.logEvent("modsImportArchive");
+
+            var dialog = new OpenFileDialog {
+                Filter = ModArchive.READ_FILTER,
+                Title = R.MODS_IMPORT_ZIP,
+            };
+            if (dialog.ShowDialog() != true) { return; }
+
+            try
+            {
+                //The question about replacing is asked here rather than inside, because this is
+                //the half of the program with a window to ask it in.
+                var haul = ModArchive.install(dialog.FileName, name =>
+                    MessageBox.Show(R.formatCUSTOM_SKINS_PAK_REPLACE(name), R.MODS_TAB,
+                        MessageBoxButton.YesNo) == MessageBoxResult.Yes);
+
+                fillInstalled();
+                MessageBox.Show(describe(haul), R.MODS_TAB);
+            }
+            catch (Exception exception)
+            {
+                //Not an archive, an archive this cannot read, or the game holding the folder open.
+                MessageBox.Show(exception.Message, R.ERROR);
+            }
+        }
+
+        /// <summary>
+        /// What came of an archive, said in full.
+        ///
+        /// Every count rather than just the good one. "Four installed" hides that two were
+        /// skipped, and somebody who gets four of six mods and is told about four will spend the
+        /// evening wondering why the other two do nothing.
+        /// </summary>
+        private static string describe(ModArchive.Haul haul)
+        {
+            var said = new List<string>();
+
+            if (haul.Installed.Count > 0) { said.Add(string.Format(R.MODS_ZIP_INSTALLED, haul.Installed.Count)); }
+            if (haul.Replaced.Count > 0) { said.Add(string.Format(R.MODS_ZIP_REPLACED, haul.Replaced.Count)); }
+            if (haul.Skipped.Count > 0) { said.Add(string.Format(R.MODS_ZIP_SKIPPED, haul.Skipped.Count)); }
+            if (haul.Rejected.Count > 0)
+            {
+                said.Add(string.Format(R.MODS_ZIP_REJECTED, string.Join(", ", haul.Rejected)));
+            }
+            if (haul.Ignored > 0) { said.Add(string.Format(R.MODS_ZIP_IGNORED, haul.Ignored)); }
+
+            return said.Count == 0 ? R.MODS_ZIP_NOTHING : string.Join(Environment.NewLine, said);
+        }
+
+        /// <summary>Every installed mod in one zip, for sending somebody.</summary>
+        private void exportZipButton_Click(object sender, RoutedEventArgs e)
+        {
+            EventLogger.logEvent("modsExportArchive");
+
+            var dialog = new SaveFileDialog {
+                Filter = ModArchive.WRITE_FILTER,
+                Title = R.MODS_EXPORT_ZIP,
+                FileName = "MCDReborn mods.zip",
+                AddExtension = true,
+                DefaultExt = "zip",
+            };
+            if (dialog.ShowDialog() != true) { return; }
+
+            try
+            {
+                var many = ModArchive.writeAll(dialog.FileName);
+                MessageBox.Show(string.Format(R.MODS_ZIP_EXPORTED, many, dialog.FileName), R.MODS_TAB);
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(exception.Message, R.ERROR);
+            }
+        }
+
         /// <summary>Opens ~mods in Explorer, making it first if it is not there.</summary>
         private void openFolderButton_Click(object sender, RoutedEventArgs e)
         {
@@ -134,6 +221,7 @@ namespace MCDSaveEdit.UI
             //gear picked - so they follow the content rather than any selection.
             importButton.IsEnabled = CustomSkins.ready;
             openFolderButton.IsEnabled = CustomSkins.ready;
+            importZipButton.IsEnabled = CustomSkins.ready;
 
             if (!CustomSkins.ready) { installedCountLabel.Text = string.Empty; return; }
 
@@ -141,6 +229,9 @@ namespace MCDSaveEdit.UI
             //Remove button beside it would just be a second, contradictory control.
             var mods = CustomSkins.installed().Where(mod => !mod.Internal).ToList();
             installedCountLabel.Text = mods.Count.ToString();
+
+            //Nothing to pack is not an error worth a dialog, so the button says so by being off.
+            exportZipButton.IsEnabled = mods.Count > 0;
 
             if (mods.Count == 0)
             {

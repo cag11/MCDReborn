@@ -1864,7 +1864,7 @@ The save file is not changed until you save it.</value>
     <comment>Why the ride height is a slider</comment>
   </data>
   <data name="MODEL_NO_COLOUR" xml:space="preserve">
-    <value>{0}% of this model has no colour in the file at all - no texture, and materials that state none - so that much of it will come out white. The artwork was most likely lost converting it to .glb; downloading the .glb from where the model came from usually keeps it.</value>
+    <value>{0}% of this model states no colour of its own and will come out white. That is usually what the model intends - plenty of them are painted with flat colours and leave the white parts white.</value>
     <comment>A model that arrived without its artwork</comment>
   </data>
   <data name="MODS_TAB" xml:space="preserve">
@@ -1878,5 +1878,61 @@ The save file is not changed until you save it.</value>
   <data name="MODS_OPEN_FOLDER" xml:space="preserve">
     <value>Open Mod Folder</value>
     <comment>Show ~mods in Explorer</comment>
+  </data>
+  <data name="MODEL_NO_COLOUR_AT_ALL" xml:space="preserve">
+    <value>This model carries no colour anywhere - no texture, and not one material that states a colour - so it will come out entirely white. Its artwork was most likely lost on the way to .glb; downloading the .glb from where the model came from usually keeps it.</value>
+    <comment>A model that lost its artwork completely</comment>
+  </data>
+  <data name="WEAPON_SKINS_WRONG_MASTER" xml:space="preserve">
+    <value>This weapon is dressed by the game's decor material rather than its equipment one - the only two that are. It takes its cut-out and its shine from a texture named separately from its colour, which an import cannot replace, so an imported model on it comes out glossy and dark however good the model is. Both were tried. Pick another weapon.</value>
+    <comment>Why an import will not look right on this one</comment>
+  </data>
+  <data name="WEAPON_SKINS_WRONG_MASTER_TAG" xml:space="preserve">
+    <value>imports come out wrong</value>
+    <comment>The short mark in the list</comment>
+  </data>
+  <data name="MODS_IMPORT_ZIP" xml:space="preserve">
+    <value>Import Zip</value>
+    <comment>Install every mod in an archive</comment>
+  </data>
+  <data name="MODS_EXPORT_ZIP" xml:space="preserve">
+    <value>Export All as Zip</value>
+    <comment>Pack every installed mod into one file</comment>
+  </data>
+  <data name="MODS_IMPORT_ZIP_WHY" xml:space="preserve">
+    <value>Installs every pak inside an archive, wherever in it they are - loose, in a folder, or in several. Anything that is not a pak is left alone. Zip and rar both open.</value>
+    <comment>What importing an archive does</comment>
+  </data>
+  <data name="MODS_EXPORT_ZIP_WHY" xml:space="preserve">
+    <value>Packs every mod listed here into one zip, for sending somebody. They can bring the whole thing back in with Import Zip.</value>
+    <comment>What exporting does</comment>
+  </data>
+  <data name="MODS_ZIP_INSTALLED" xml:space="preserve">
+    <value>{0} installed.</value>
+    <comment>How many mods went in</comment>
+  </data>
+  <data name="MODS_ZIP_REPLACED" xml:space="preserve">
+    <value>{0} replaced.</value>
+    <comment>How many were already there and were updated</comment>
+  </data>
+  <data name="MODS_ZIP_SKIPPED" xml:space="preserve">
+    <value>{0} skipped.</value>
+    <comment>How many were left alone</comment>
+  </data>
+  <data name="MODS_ZIP_REJECTED" xml:space="preserve">
+    <value>Not mod paks, so left out: {0}.</value>
+    <comment>Files named .pak that were not</comment>
+  </data>
+  <data name="MODS_ZIP_IGNORED" xml:space="preserve">
+    <value>{0} other file(s) in the archive were ignored.</value>
+    <comment>Readmes, screenshots</comment>
+  </data>
+  <data name="MODS_ZIP_NOTHING" xml:space="preserve">
+    <value>There were no mod paks in that archive.</value>
+    <comment>An archive with nothing usable in it</comment>
+  </data>
+  <data name="MODS_ZIP_EXPORTED" xml:space="preserve">
+    <value>{0} mod(s) written to {1}.</value>
+    <comment>The export succeeded</comment>
   </data>
 </root>

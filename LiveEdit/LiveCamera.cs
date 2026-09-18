@@ -28,8 +28,31 @@ namespace LiveEdit
         //
         //Shared, because everything that reaches into this game starts from the same world - the
         //camera hangs off the character in it, and the spawners are actors in its level.
+        //
+        //A guess rather than a fact. This one was measured against the Steam build and is right
+        //for it, and it is wrong for the copy the Minecraft Launcher installs - a different
+        //executable, with its own layout, where this address holds something else entirely. That
+        //came back as "GWorld is null", which sounds like a game sitting in a menu and was in fact
+        //a game this could not read at all.
+        //
+        //So it is tried first and, when it leads nowhere, looked for instead. See findWorld.
         internal const int GWORLD_OFFSET = 0x04795230;
         private const int GWORLD = GWORLD_OFFSET;
+
+        //Where it actually turned out to be, once. Remembered for the life of the process because
+        //the variable does not move - the world it points at changes with every level, the address
+        //holding that pointer does not.
+        private static int _worldOffset = GWORLD_OFFSET;
+
+        //Once the offset has led to a real world, it is right, and searching again would be work
+        //done to reach the same answer. Before that it may be wrong - so the search is allowed,
+        //but not often: find() is called many times a second by everything that reaches into the
+        //game, and a menu has no world at all, so without this a player sitting on the title
+        //screen would have the whole image scanned over and over for something that is not there
+        //yet.
+        private static bool _worldProven;
+        private static DateTime _lastSearch = DateTime.MinValue;
+        private static readonly TimeSpan BETWEEN_SEARCHES = TimeSpan.FromSeconds(5);
 
         private const int WORLD_GAME_INSTANCE = 0x0160;
         private const int GAME_INSTANCE_LOCAL_PLAYERS = 0x0038;
@@ -195,8 +218,34 @@ namespace LiveEdit
             var image = _game.Process.MainModule?.BaseAddress ?? IntPtr.Zero;
             if (image == IntPtr.Zero) { problem = "Could not find the game's own module."; return false; }
 
-            var world = follow(new IntPtr(image.ToInt64() + GWORLD));
-            if (world == IntPtr.Zero) { problem = "GWorld is null - the game has no world loaded."; return false; }
+            var world = follow(new IntPtr(image.ToInt64() + _worldOffset));
+
+            //Nothing there. Either the game has no world yet, or this is a build whose world lives
+            //somewhere else - and those need telling apart, because one of them is worth waiting
+            //out and the other never resolves on its own.
+            if (world != IntPtr.Zero && leadsToAPlayer(world))
+            {
+                //It works, so it is right, and nothing needs looking for ever again.
+                _worldProven = true;
+            }
+            else if (!_worldProven && DateTime.UtcNow - _lastSearch > BETWEEN_SEARCHES)
+            {
+                _lastSearch = DateTime.UtcNow;
+
+                if (findWorld(image, out var found))
+                {
+                    _worldOffset = found;
+                    _worldProven = true;
+                    world = follow(new IntPtr(image.ToInt64() + found));
+                }
+            }
+
+            if (world == IntPtr.Zero)
+            {
+                problem = "GWorld is null - load into the Camp or a mission first. "
+                    + "If you are already in one, this build of the game is not one these offsets fit.";
+                return false;
+            }
 
             World = world;
 
@@ -555,6 +604,80 @@ namespace LiveEdit
             return writeFloat(SOCKET_OFFSET, x)
                 && writeFloat(SOCKET_OFFSET + 4, y)
                 && writeFloat(SOCKET_OFFSET + 8, z);
+        }
+
+        /// <summary>
+        /// Looks through the game's own image for the variable holding the world.
+        ///
+        /// Only ever reached when the written-down offset leads nowhere, which means either a
+        /// different build of the game or a version this has not seen. Both have the same answer:
+        /// the offset is not knowable in advance, but the *shape* of what it points at is, and a
+        /// shape can be searched for.
+        ///
+        /// What makes this cheap enough to do is that almost nothing survives the first test. The
+        /// world is scanned for as an eight byte value that is a plausible pointer, whose target
+        /// has a plausible pointer where a game instance belongs - and a run of unrelated bytes
+        /// fails that immediately. Whatever is left is put through the whole walk, which is a
+        /// stricter test than any signature: a false positive would have to be a pointer to
+        /// something that leads, through five more pointers, to a spring arm.
+        ///
+        /// It finds nothing while the game is in a menu, because then there genuinely is no world.
+        /// That is not a failure of the search and the message says so.
+        /// </summary>
+        private bool findWorld(IntPtr image, out int offset)
+        {
+            offset = 0;
+
+            var module = _game.Process.MainModule;
+            if (module == null) { return false; }
+
+            var size = module.ModuleMemorySize;
+            if (size <= 0) { return false; }
+
+            //A megabyte at a time, because a read per candidate would be a million system calls
+            //and a read of the whole image would be a hundred megabytes held for no reason.
+            const int block = 1024 * 1024;
+            var buffer = new byte[block];
+
+            for (long at = 0; at < size; at += block)
+            {
+                var length = (int)Math.Min(block, size - at);
+                if (!_game.tryRead(new IntPtr(image.ToInt64() + at), buffer, length)) { continue; }
+
+                for (int i = 0; i + 8 <= length; i += 8)
+                {
+                    var candidate = BitConverter.ToInt64(buffer, i);
+                    if (candidate <= 0x10000 || candidate >= 0x7FFFFFFFFFFF) { continue; }
+
+                    if (!leadsToAPlayer(new IntPtr(candidate))) { continue; }
+
+                    offset = (int)(at + i);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Whether something really is the world, judged by what hangs off it.
+        ///
+        /// The same walk the camera does, stopped at the controller. Going that far is what makes
+        /// it worth trusting - a game instance alone is one pointer and could be luck, a local
+        /// player list and a controller behind it is not.
+        /// </summary>
+        private bool leadsToAPlayer(IntPtr world)
+        {
+            var instance = follow(new IntPtr(world.ToInt64() + WORLD_GAME_INSTANCE));
+            if (instance == IntPtr.Zero) { return false; }
+
+            var players = follow(new IntPtr(instance.ToInt64() + GAME_INSTANCE_LOCAL_PLAYERS));
+            if (players == IntPtr.Zero) { return false; }
+
+            var player = follow(players);
+            if (player == IntPtr.Zero) { return false; }
+
+            return follow(new IntPtr(player.ToInt64() + PLAYER_CONTROLLER)) != IntPtr.Zero;
         }
 
         private IntPtr follow(IntPtr at)

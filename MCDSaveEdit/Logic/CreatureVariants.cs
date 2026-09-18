@@ -34,21 +34,60 @@ namespace MCDSaveEdit.Logic
     /// </summary>
     public static class CreatureVariants
     {
-        /// <summary>Every folder anywhere in the paks whose last segment matches this mesh's.</summary>
+        /// <summary>
+        /// Every folder that is this mesh's folder, wherever the game keeps a copy of it.
+        ///
+        /// Matched on the whole path below the content root rather than on the last segment alone.
+        /// The last segment was the first attempt and it is too loose by a long way: a weapon in
+        /// `Actors/Equipment/MeleeWeapons/Anchor` and an ornament in `Decor/Prefabs/Anchor` share
+        /// a leaf and nothing else, so importing onto the weapon reached over and rewrote the
+        /// ornament's material. Two unrelated assets, one of them nobody asked to touch.
+        ///
+        /// What the leaf was reaching for is real though: the game keeps variants of a thing under
+        /// a patch root, `Patch2/Actors/.../Sheep` beside `Actors/.../Sheep`, and those are the
+        /// same folder in every sense that matters here. So the root is dropped and the rest has
+        /// to agree exactly, which catches the variants and nothing else.
+        /// </summary>
         private static IEnumerable<string> around(string meshAssetPath)
         {
             var paks = CustomSkins.index;
             if (paks == null) { yield break; }
 
-            var leaf = folderLeaf(meshAssetPath);
-            if (leaf.Length == 0) { yield break; }
+            var wanted = folderKey(meshAssetPath);
+            if (wanted.Length == 0) { yield break; }
 
             foreach (var entry in paks)
             {
                 var path = CustomSkins.assetPath(entry);
-                if (!string.Equals(folderLeaf(path), leaf, StringComparison.OrdinalIgnoreCase)) { continue; }
+                if (!string.Equals(folderKey(path), wanted, StringComparison.Ordinal)) { continue; }
                 yield return path;
             }
+        }
+
+        /// <summary>An asset's folder, with whichever content root it happens to live under removed.</summary>
+        private static string folderKey(string assetPath)
+        {
+            var cut = assetPath.LastIndexOf('/');
+            if (cut <= 0) { return string.Empty; }
+            var folder = assetPath.Substring(0, cut + 1);
+
+            const string content = "/Content/";
+            var at = folder.IndexOf(content, StringComparison.OrdinalIgnoreCase);
+            if (at >= 0) { folder = folder.Substring(at + content.Length); }
+
+            //And the patch or downloadable-content folder the game files a later copy under.
+            var slash = folder.IndexOf('/');
+            if (slash > 0)
+            {
+                var first = folder.Substring(0, slash);
+                if (first.StartsWith("Patch", StringComparison.OrdinalIgnoreCase) ||
+                    first.StartsWith("Content_", StringComparison.OrdinalIgnoreCase))
+                {
+                    folder = folder.Substring(slash + 1);
+                }
+            }
+
+            return folder.ToLowerInvariant();
         }
 
         /// <summary>
@@ -150,6 +189,52 @@ namespace MCDSaveEdit.Logic
 
             return entries;
         }
+
+        /// <summary>
+        /// The master materials the ones beside a mesh descend from.
+        ///
+        /// Which master dresses a thing decides whether an imported model can look right on it,
+        /// and it is the only property that does. The game's equipment master reads everything
+        /// from the textures beside the mesh, all of which an import replaces; the decor master
+        /// reads its cut-out and its shine from a separate parameter that may point anywhere at
+        /// all, and where it points somewhere else there is nothing an import can do about it.
+        /// </summary>
+        public static IReadOnlyList<string> mastersOf(string meshAssetPath)
+        {
+            var paks = CustomSkins.index;
+            if (paks == null) { return Array.Empty<string>(); }
+
+            var found = new List<string>();
+
+            foreach (var path in materialsOf(meshAssetPath))
+            {
+                PakReader.Pak.PakPackage package;
+                try
+                {
+                    var read = paks.extractPackage(path);
+                    if (read == null || !read.Value.HasExport()) { continue; }
+                    package = read.Value;
+                }
+                catch (Exception) { continue; }
+
+                JsonNode? root;
+                try { root = JsonNode.Parse(package.JsonData); }
+                catch (JsonException) { continue; }
+
+                if (root is not JsonArray exports) { continue; }
+
+                foreach (var export in exports)
+                {
+                    var parent = export?["ExportValue"]?["Parent"]?["ObjectName"]?.GetValue<string>();
+                    if (parent != null && !found.Contains(parent)) { found.Add(parent); }
+                }
+            }
+
+            return found;
+        }
+
+        /// <summary>The master everything that takes an imported model cleanly descends from.</summary>
+        public const string EQUIPMENT_MASTER = "M_MasterEquipment";
 
         /// <summary>
         /// The materials with their cut-out turned off, so an imported model is not clipped away.

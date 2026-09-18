@@ -206,7 +206,19 @@ namespace MCDSaveEdit.UI
                     Foreground = Brushes.Gray,
                     FontSize = 10,
                 });
-                meshList.Items.Add(new ListBoxItem { Content = row, Tag = mesh });
+
+                //Marked in the list rather than only once it is picked, so it can be avoided
+                //before anybody spends an evening modelling something for it.
+                if (mesh.Caution.Length > 0)
+                {
+                    row.Children.Add(new TextBlock {
+                        Text = R.WEAPON_SKINS_WRONG_MASTER_TAG,
+                        Foreground = new SolidColorBrush(Color.FromRgb(216, 160, 64)),
+                        FontSize = 10,
+                    });
+                }
+
+                meshList.Items.Add(new ListBoxItem { Content = row, Tag = mesh, ToolTip = mesh.Caution.Length > 0 ? mesh.Caution : null });
             }
 
             countLabel.Text = string.Format(_catalogue.countFormat, matching.Count)
@@ -231,6 +243,9 @@ namespace MCDSaveEdit.UI
             {
                 _texture = _selected == null ? null : _catalogue.textureFor(_selected.AssetPath);
             }
+
+            //And said in full when it is picked, because the mark in the list is four words.
+            statusLabel.Text = _selected?.Caution ?? string.Empty;
 
             showTransform(_selected == null
                 ? MeshEdit.Transform.none

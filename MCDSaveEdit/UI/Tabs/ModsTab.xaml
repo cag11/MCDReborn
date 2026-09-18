@@ -20,6 +20,10 @@
             </StackPanel>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Button x:Name="importZipButton" Content="*Import Zip*" Padding="10,5" Margin="0,0,6,0"
+                        Click="importZipButton_Click"/>
+                <Button x:Name="exportZipButton" Content="*Export All as Zip*" Padding="10,5" Margin="0,0,14,0"
+                        Click="exportZipButton_Click"/>
                 <Button x:Name="importButton" Content="*Import Mod*" Padding="10,5" Margin="0,0,6,0"
                         Click="importButton_Click"/>
                 <Button x:Name="openFolderButton" Content="*Open Mod Folder*" Padding="10,5"

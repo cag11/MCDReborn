@@ -4019,5 +4019,131 @@ namespace MCDSaveEdit.Properties {
             }
         }
         
+        /// <summary>
+        ///   Looks up a localized string similar to This model carries no colour anywhere.
+        /// </summary>
+        public static string MODEL_NO_COLOUR_AT_ALL {
+            get {
+                return ResourceManager.GetString("MODEL_NO_COLOUR_AT_ALL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This weapon is dressed by the game's decor material rather than its equipment on....
+        /// </summary>
+        public static string WEAPON_SKINS_WRONG_MASTER {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_WRONG_MASTER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to imports come out wrong....
+        /// </summary>
+        public static string WEAPON_SKINS_WRONG_MASTER_TAG {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_WRONG_MASTER_TAG", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Import Zip.
+        /// </summary>
+        public static string MODS_IMPORT_ZIP {
+            get {
+                return ResourceManager.GetString("MODS_IMPORT_ZIP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export All as Zip.
+        /// </summary>
+        public static string MODS_EXPORT_ZIP {
+            get {
+                return ResourceManager.GetString("MODS_EXPORT_ZIP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Installs every pak inside an archive, wherever in it they are - loose, in a fold.
+        /// </summary>
+        public static string MODS_IMPORT_ZIP_WHY {
+            get {
+                return ResourceManager.GetString("MODS_IMPORT_ZIP_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Packs every mod listed here into one zip, for sending somebody. They can bring t.
+        /// </summary>
+        public static string MODS_EXPORT_ZIP_WHY {
+            get {
+                return ResourceManager.GetString("MODS_EXPORT_ZIP_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} installed..
+        /// </summary>
+        public static string MODS_ZIP_INSTALLED {
+            get {
+                return ResourceManager.GetString("MODS_ZIP_INSTALLED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} replaced..
+        /// </summary>
+        public static string MODS_ZIP_REPLACED {
+            get {
+                return ResourceManager.GetString("MODS_ZIP_REPLACED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} skipped..
+        /// </summary>
+        public static string MODS_ZIP_SKIPPED {
+            get {
+                return ResourceManager.GetString("MODS_ZIP_SKIPPED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Not mod paks, so left out: {0}..
+        /// </summary>
+        public static string MODS_ZIP_REJECTED {
+            get {
+                return ResourceManager.GetString("MODS_ZIP_REJECTED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} other file(s) in the archive were ignored..
+        /// </summary>
+        public static string MODS_ZIP_IGNORED {
+            get {
+                return ResourceManager.GetString("MODS_ZIP_IGNORED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to There were no mod paks in that archive..
+        /// </summary>
+        public static string MODS_ZIP_NOTHING {
+            get {
+                return ResourceManager.GetString("MODS_ZIP_NOTHING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} mod(s) written to {1}..
+        /// </summary>
+        public static string MODS_ZIP_EXPORTED {
+            get {
+                return ResourceManager.GetString("MODS_ZIP_EXPORTED", resourceCulture);
+            }
+        }
+        
     }
 }

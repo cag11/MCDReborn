@@ -285,7 +285,13 @@ namespace MCDSaveEdit.Logic
 
             if (blank == 0 || total == 0) { return string.Empty; }
 
-            return string.Format(R.MODEL_NO_COLOUR, blank * 100 / total);
+            //Two different things, and saying the alarming one about both was wrong. A model where
+            //*some* materials state no colour is usually a model that wants white there - a fish
+            //with a white belly is exactly this - and it imports correctly. A model where *none* of
+            //them state anything has lost its artwork and will arrive blank.
+            return blank == total
+                ? R.MODEL_NO_COLOUR_AT_ALL
+                : string.Format(R.MODEL_NO_COLOUR, blank * 100 / total);
         }
 
         /// <summary>
@@ -536,8 +542,23 @@ namespace MCDSaveEdit.Logic
             var side = (int)Math.Ceiling(Math.Sqrt(colours.Count));
             if (side < 1) { return null; }
 
-            var stride = side * 4;
-            var pixels = new byte[stride * side];
+            //Each cell is painted as a block rather than as a single pixel.
+            //
+            //A palette one pixel per colour is the right *idea* and the wrong *file*, because it
+            //never reaches the game at that size - it is resized to whatever the texture it
+            //replaces happens to be, and a resize of single pixels is a gradient with no pure
+            //colour left in it except at the corners. Which is not where the coordinates point:
+            //they point at cell centres, so every material ended up sampling a blend, and a
+            //palette with white in half its cells blends to white. That is a white fish.
+            //
+            //Blocks survive it. Sixty four pixels a side is far more than any of these textures
+            //need - some of this game's weapons are dressed by a twenty five pixel colour ramp -
+            //so the resize is a reduction, and a reduction of a solid block is that solid colour
+            //everywhere except its edges. The middle, which is what gets sampled, stays pure.
+            const int cell = 64;
+            var width = side * cell;
+            var stride = width * 4;
+            var pixels = new byte[stride * width];
 
             //Opaque white everywhere first, so the cells the grid does not fill are not holes.
             //A square number of cells rarely matches the number of materials, and leaving the
@@ -547,18 +568,27 @@ namespace MCDSaveEdit.Logic
             for (int i = 0; i < colours.Count; i++)
             {
                 var (b, g, r, a) = colours[i];
-                var at = (i / side) * stride + (i % side) * 4;
-                pixels[at] = b;
-                pixels[at + 1] = g;
-                pixels[at + 2] = r;
-                pixels[at + 3] = a;
+                var left = (i % side) * cell;
+                var top = (i / side) * cell;
+
+                for (int y = top; y < top + cell; y++)
+                {
+                    for (int x = left; x < left + cell; x++)
+                    {
+                        var at = y * stride + x * 4;
+                        pixels[at] = b;
+                        pixels[at + 1] = g;
+                        pixels[at + 2] = r;
+                        pixels[at + 3] = a;
+                    }
+                }
             }
 
             foreach (var (from, count, material) in runs)
             {
-                var cell = material >= 0 && material < colours.Count - 1 ? material : colours.Count - 1;
-                var u = ((cell % side) + 0.5f) / side;
-                var v = ((cell / side) + 0.5f) / side;
+                var slot = material >= 0 && material < colours.Count - 1 ? material : colours.Count - 1;
+                var u = ((slot % side) + 0.5f) / side;
+                var v = ((slot / side) + 0.5f) / side;
 
                 for (int i = from; i < from + count && i < texCoords.Count; i++)
                 {
@@ -566,7 +596,7 @@ namespace MCDSaveEdit.Logic
                 }
             }
 
-            var bitmap = BitmapSource.Create(side, side, 96, 96, PixelFormats.Bgra32, null, pixels, stride);
+            var bitmap = BitmapSource.Create(width, width, 96, 96, PixelFormats.Bgra32, null, pixels, stride);
             var encoder = new PngBitmapEncoder();
             encoder.Frames.Add(BitmapFrame.Create(bitmap));
 

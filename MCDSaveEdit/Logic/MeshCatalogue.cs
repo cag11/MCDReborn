@@ -7,12 +7,13 @@ namespace MCDSaveEdit.Logic
     /// <summary>One mesh somebody can pick, however it happens to be stored.</summary>
     public sealed class MeshEntry
     {
-        public MeshEntry(string assetPath, string group, string name, string variant)
+        public MeshEntry(string assetPath, string group, string name, string variant, string caution = "")
         {
             AssetPath = assetPath;
             Group = group;
             Name = name;
             Variant = variant;
+            Caution = caution;
         }
 
         public string AssetPath { get; }
@@ -22,6 +23,16 @@ namespace MCDSaveEdit.Logic
         public string Name { get; }
         /// <summary>The folder it sits in, which is what tells two similar ones apart.</summary>
         public string Variant { get; }
+
+        /// <summary>
+        /// Why this one is likely to disappoint, or nothing when it is not.
+        ///
+        /// Said in the list rather than discovered afterwards. Finding out that a weapon cannot
+        /// wear an imported model costs modelling it, fitting it, writing the pak, restarting the
+        /// game and looking - and then leaves somebody with no way to tell whether the fault was
+        /// theirs or the weapon's.
+        /// </summary>
+        public string Caution { get; }
 
         public override string ToString() => Name;
     }

@@ -77,7 +77,8 @@ namespace MCDSaveEdit.Logic
                 {
                     if (path.IndexOf(folder, StringComparison.OrdinalIgnoreCase) < 0) { continue; }
                     if (!seen.Add(path)) { break; }
-                    found.Add(new MeshEntry(path, category.ToString(), prettyName(path), folderName(path)));
+                    found.Add(new MeshEntry(path, category.ToString(), prettyName(path),
+                        folderName(path), cautionFor(path)));
                     break;
                 }
             }
@@ -261,6 +262,34 @@ namespace MCDSaveEdit.Logic
                 //more than leaving it out of the list.
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Whether this weapon is one an imported model will not sit right on.
+        ///
+        /// Decided by which master material dresses it, which measured across the game's melee
+        /// weapons splits them sixty two to two: everything descends from the equipment master
+        /// except the Anchor and the Anchor Unique, which descend from the one the *decor* is
+        /// built from. That master takes its cut-out and its shine from a texture named in a
+        /// separate parameter, and on the Unique that parameter points at an ornament in another
+        /// folder - so an import repaints the colour and the rest goes on coming from somewhere it
+        /// cannot reach.
+        ///
+        /// Both Anchors were tried and both came out wrong, which is what makes this the master
+        /// rather than the borrowing: the ordinary one repaints the very texture its shine comes
+        /// from and is still wrong, so the fault is in how that master reads it.
+        /// </summary>
+        private static string cautionFor(string assetPath)
+        {
+            var masters = CreatureVariants.mastersOf(assetPath);
+
+            //Nothing found is not a complaint. Some of these meshes are dressed from their parent
+            //weapon's folder, and saying "this may not work" about every one of them would make
+            //the warning worth ignoring.
+            if (masters.Count == 0) { return string.Empty; }
+            if (masters.Contains(CreatureVariants.EQUIPMENT_MASTER)) { return string.Empty; }
+
+            return R.WEAPON_SKINS_WRONG_MASTER;
         }
 
         private static string folderName(string assetPath)

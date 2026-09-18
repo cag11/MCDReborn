@@ -64,6 +64,7 @@
 
   <!-- ===================== packages ===================== -->
   <ItemGroup>
+    <PackageReference Include="SharpCompress" Version="0.50.4" />
     <PackageReference Include="SkiaSharp" Version="2.88.9" />
     <PackageReference Include="System.Reactive" Version="6.0.1" />
   </ItemGroup>
