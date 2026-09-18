@@ -1660,7 +1660,7 @@ The save file is not changed until you save it.</value>
     <comment>Toggle for the mount</comment>
   </data>
   <data name="MOUNT_WHY" xml:space="preserve">
-    <value>Press R to get on and off. Nothing here spawns anything, but the game does: any summoning artifact - Enchanted Grass, Tasty Bone, Golem Kit, Wonderful Wheat - drops a creature beside you, and R rides whatever has just arrived rather than whatever is merely nearest. Needs W A S D switched on.</value>
+    <value>Press R once to get on, again to get off. Nothing here spawns anything, but the game does: any summoning artifact - Enchanted Grass, Tasty Bone, Golem Kit, Wonderful Wheat - drops a creature beside you, and it does not have to be there when you press R. With nothing underneath you it keeps looking, and climbs onto the first creature that comes within reach. Needs W A S D switched on.</value>
     <comment>Explains the mount</comment>
   </data>
   <data name="MOUNT_SPEED" xml:space="preserve">

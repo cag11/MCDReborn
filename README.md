@@ -37,9 +37,12 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **Presets** - third person, third person far, first person - and you can save your own under a name and bring it back in one click
 * F10 turns the camera setup on and off from inside the game
 * **Camera smoothing**, which matters most in first person and has no right answer - low and the camera trails you up a staircase until your own model rises into view, high and every step goes straight into it. It is a slider because it is taste: first person starts at 20, third person at the game's own 1
-* **Ride**, which is a mount without a mount: nothing can be spawned from outside a process, so the nearest creature is stopped where it stands and carried under you instead. Speed is adjustable and the rider's legs can be frozen
+* **Ride**, which is a mount without a mount: nothing can be spawned from outside a process, so the nearest creature is stopped where it stands and carried under you instead. Press R once and it keeps looking - use a summoning artifact afterwards and it climbs onto the sheep, wolf or llama as soon as that arrives. Speed is adjustable and the rider's legs can be frozen
 * **Camera forward**, which slides the lens out in front of the character's face - the setting that can put the head out of frame entirely in first person
 * **Jump** on Q, which the game has no button for at all - not the character jumping but a launch written straight into its velocity, which is why it works when asking the character politely does not. Height, steering in mid-air and the number of jumps before landing are all adjustable
+
+* **Fly on G**, off again on G: the character lifts out of the level entirely, and switching it off drops them back to the floor with gravity and their own flight settings put back exactly as they were found
+* Q, G and R are all live the moment the camera is switched on - the game has no button for any of them, so there is nothing of its own to clash with
 
 #### Custom Builds Feature
 * **Open in MCD Builder**: send the equipped loadout straight to [mcdbuilder.vercel.app](https://mcdbuilder.vercel.app/)

@@ -727,13 +727,25 @@ namespace LiveEdit
             {
                 _flying = !_flying;
 
-                //Switching it off has to say so, not just stop saying the opposite. Leaving the
-                //movement mode on flying and simply not writing it again leaves the character
-                //hanging exactly where it was - nothing pulls it down, because that is what flying
-                //means. Putting it back to walking lets the engine notice there is no floor under
-                //it, and fall.
-                if (!_flying)
+                if (_flying)
                 {
+                    //Read before the first write, so that switching it off can put them back. Two
+                    //fields are about to be overwritten and neither belongs to this - they are the
+                    //character's own, and a character left holding a flight speed of four thousand
+                    //after landing is a setting somebody did not ask for and cannot see.
+                    _flySpeedWas ??= _game.readFloat(new IntPtr(movement.ToInt64() + MAX_FLY_SPEED));
+                    _brakingWas ??= _game.readFloat(new IntPtr(movement.ToInt64() + BRAKING_FLYING));
+                }
+                else
+                {
+                    putFlightBack(movement);
+
+                    //Switching it off has to say so, not just stop saying the opposite. Leaving the
+                    //movement mode on flying and simply not writing it again leaves the character
+                    //hanging exactly where it was - nothing pulls it down, because that is what
+                    //flying means. Putting it back to walking lets the engine notice there is no
+                    //floor under it, and fall - which is also the whole of putting gravity back,
+                    //since gravity is a thing walking has and flying does not.
                     _game.write(new IntPtr(movement.ToInt64() + MOVEMENT_MODE), new[] { (byte)WALKING_MODE });
                 }
             }
@@ -761,8 +773,35 @@ namespace LiveEdit
             var movement = movementOf(_live.Pawn);
             if (movement == IntPtr.Zero) { return; }
 
+            putFlightBack(movement);
             _game.write(new IntPtr(movement.ToInt64() + MOVEMENT_MODE), new[] { (byte)WALKING_MODE });
         }
+
+        /// <summary>
+        /// The two flight fields put back the way they were found.
+        ///
+        /// Cleared as well as written, so that the next time flying is switched on it reads them
+        /// again. Keeping the first value forever would mean a second flight restoring a number
+        /// that was already this tool's, which is the same leak arriving a run later.
+        /// </summary>
+        private void putFlightBack(IntPtr movement)
+        {
+            if (_flySpeedWas is float speed)
+            {
+                _game.writeFloat(new IntPtr(movement.ToInt64() + MAX_FLY_SPEED), speed);
+            }
+            if (_brakingWas is float braking)
+            {
+                _game.writeFloat(new IntPtr(movement.ToInt64() + BRAKING_FLYING), braking);
+            }
+
+            _flySpeedWas = null;
+            _brakingWas = null;
+        }
+
+        //What the character's own flight fields held before any of this touched them.
+        private float? _flySpeedWas;
+        private float? _brakingWas;
 
         private void writeInput(IntPtr pawn, float x, float y, float z = 0f)
         {

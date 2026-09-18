@@ -60,7 +60,7 @@
                     <CheckBox x:Name="mouseButtons" Content="*Clicking attacks*" Margin="0,6,0,0"
                               Checked="mouseButtons_Changed" Unchecked="mouseButtons_Changed"/>
                     <CheckBox x:Name="canJump" Content="*Q jumps*" Margin="0,6,0,0"
-                              Checked="canJump_Changed" Unchecked="canJump_Changed"/>
+                              IsChecked="True" Checked="canJump_Changed" Unchecked="canJump_Changed"/>
                     <TextBlock x:Name="jumpWhy" Foreground="Gray" TextWrapping="Wrap"
                                Margin="18,2,0,0"/>
                     <DockPanel x:Name="jumpRow" Margin="18,4,0,0">
@@ -113,7 +113,7 @@
                               Checked="followsAim_Changed" Unchecked="followsAim_Changed"/>
 
                     <CheckBox x:Name="canFly" Content="*G flies*" Margin="0,6,0,0"
-                              Checked="canFly_Changed" Unchecked="canFly_Changed"/>
+                              IsChecked="True" Checked="canFly_Changed" Unchecked="canFly_Changed"/>
                     <TextBlock x:Name="flyWhy" Foreground="Gray" TextWrapping="Wrap"
                                Margin="18,2,0,0"/>
                     <DockPanel Margin="18,4,0,0">

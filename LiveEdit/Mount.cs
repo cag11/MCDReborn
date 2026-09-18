@@ -54,6 +54,14 @@ namespace LiveEdit
         //is smaller than the capsule around it, so that leaves a gap; this sits them into it.
         private const float SIT_INTO = 1.8f;
 
+        //Looking again is a walk of the level's actor list, so it goes by a count of passes rather
+        //than by a clock: at eight milliseconds a pass, forty of them is about a third of a second.
+        private const int LOOKS_EVERY = 40;
+        private int _untilNextLook;
+
+        //Close enough that whatever is picked up is something standing next to you.
+        private const float WITHIN_REACH = 1500f;
+
         //UCharacterMovementComponent's movement mode, and the value that turns gravity off.
         //
         //Standing on a mount needs the rider held above the floor, and holding a walking character
@@ -116,6 +124,9 @@ namespace LiveEdit
 
         public event Action? stopped;
 
+        /// <summary>Something has been got onto, with how tall it is.</summary>
+        public event Action<float>? mounted;
+
         /// <summary>
         /// Takes over the nearest creature and parks it under the character.
         ///
@@ -136,7 +147,35 @@ namespace LiveEdit
             //Riding nothing is allowed, and is the half of this that actually changes how a level
             //plays. The creature underneath is decoration; refusing to start without one meant the
             //whole feature did nothing in exactly the places it would have helped.
-            if (mount != IntPtr.Zero)
+            if (mount != IntPtr.Zero) { takeOver(mount); }
+
+            //Said properly, because "speed only" was hiding a real answer: the thing you picked
+            //cannot be ridden, and which thing that is matters.
+            if (_mount == IntPtr.Zero)
+            {
+                problem = mount == IntPtr.Zero
+                    ? "Nothing nearby to ride yet - still looking, and this is speed only meanwhile."
+                    : "That one cannot be carried - only creatures can, for now. Speed only.";
+            }
+
+            _level = levelOf();
+            _running = true;
+            _thread = new Thread(loop) { IsBackground = true, Name = "mount" };
+            _thread.Start();
+            return true;
+        }
+
+        /// <summary>
+        /// Takes one particular creature as the mount, and puts the rider on top of it.
+        ///
+        /// Its own method because it happens twice now: once when the key is pressed, and again
+        /// whenever the loop finds something while riding with nothing underneath. Pressing the
+        /// key used to be the only chance - miss it and the answer was speed only until the key
+        /// was pressed again, which is exactly the summoning case, where the creature arrives a
+        /// second *after* anybody would have pressed it.
+        /// </summary>
+        private bool takeOver(IntPtr mount)
+        {
             {
                 //Only things that can walk, and that is a safety check as much as a filter.
                 //
@@ -170,23 +209,12 @@ namespace LiveEdit
                 }
             }
 
-            //Said properly, because "speed only" was hiding a real answer: the thing you picked
-            //cannot be ridden, and which thing that is matters.
-            if (_mount == IntPtr.Zero)
-            {
-                problem = mount == IntPtr.Zero
-                    ? "Nothing nearby to ride, so this is speed only."
-                    : "That one cannot be carried - only creatures can, for now. Speed only.";
-            }
+            if (_mount == IntPtr.Zero) { return false; }
 
             //Lifted once, onto whatever is about to be parked underneath. Gravity goes off with it,
             //or the lift lasts exactly one frame.
-            if (_mount != IntPtr.Zero) { lift(pawn); }
-
-            _level = levelOf();
-            _running = true;
-            _thread = new Thread(loop) { IsBackground = true, Name = "mount" };
-            _thread.Start();
+            lift(_live.Pawn);
+            mounted?.Invoke(MountHeight);
             return true;
         }
 
@@ -242,6 +270,17 @@ namespace LiveEdit
             public float Away;
             public float Tall;
             public float Walks;
+
+            /// <summary>
+            /// Whether this is something that can actually be carried.
+            ///
+            /// Which is not the same as being nearby, and the difference is the whole of why this
+            /// used to need the key pressing over and over: the list holds everything with a
+            /// position, so the nearest thing is usually a crate, and the nearest thing was what
+            /// got picked. Riding needs a character movement component - see the note in start -
+            /// so whether there is one is recorded while the actor is already being read.
+            /// </summary>
+            public bool Rideable;
 
             /// <summary>How many of this kind are in the level.</summary>
             public int HowMany;
@@ -349,6 +388,7 @@ namespace LiveEdit
                     Away = away,
                     Tall = sane(_game.readFloat(new IntPtr(theirRoot.ToInt64() + CAPSULE_HALF_HEIGHT)), 50f) * 2f,
                     Walks = speed,
+                    Rideable = movement != IntPtr.Zero,
                 });
             }
 
@@ -368,7 +408,12 @@ namespace LiveEdit
                 if (kinds.TryGetValue(kind, out var already))
                 {
                     already.HowMany++;
-                    if (one.Away < already.Away) { already.Away = one.Away; already.Actor = one.Actor; }
+                    if (one.Away < already.Away)
+                    {
+                        already.Away = one.Away;
+                        already.Actor = one.Actor;
+                        already.Rideable = one.Rideable;
+                    }
                     continue;
                 }
 
@@ -415,15 +460,43 @@ namespace LiveEdit
                 if (!_live.find(out _)) { continue; }
 
                 var pawn = _live.Pawn;
-                if (pawn == IntPtr.Zero || _mount == IntPtr.Zero) { continue; }
+                if (pawn == IntPtr.Zero) { continue; }
 
                 //Before anything is written to it. Losing the mount is normal - a mission starts,
                 //the level goes - and the answer is to let it go and keep the speed, rather than to
                 //write into whatever owns that memory now.
                 if (_mount != IntPtr.Zero && !stillThere()) { _mount = IntPtr.Zero; }
 
+                //And with nothing underneath, keep looking for something.
+                //
+                //This is what riding a summoned creature needs. Enchanted Grass puts a sheep beside
+                //you a moment *after* anybody would have pressed the key, and until now that moment
+                //was the only chance there was - miss it and the answer stayed "speed only" however
+                //long you stood next to the sheep. Now the key says start riding and the loop finds
+                //what to ride, whenever it turns up.
+                //
+                //Occasionally rather than every pass: a look walks the whole actor list, which is
+                //thousands of reads, and doing that at the frame rate would cost more than it is
+                //worth for something that changes on a human timescale.
+                if (_mount == IntPtr.Zero)
+                {
+                    if (--_untilNextLook <= 0)
+                    {
+                        _untilNextLook = LOOKS_EVERY;
+                        //Beside you rather than anywhere in range, because this one is not asked
+                        //for - it happens on its own, and picking up a creature across the room
+                        //that somebody never pointed at would be a surprise rather than a mount.
+                        var found = nearestCreature(pawn, WITHIN_REACH);
+                        if (found != IntPtr.Zero) { takeOver(found); }
+                    }
+                }
+
                 carry(pawn);
-                freezeRider(true);
+
+                //The legs stop while there is something underneath and start again when there is
+                //not, rather than staying stopped because the mount went. A rider left paused in
+                //mid-stride after the creature they were on despawned looks like a crash.
+                freezeRider(_mount != IntPtr.Zero);
             }
 
             _running = false;
@@ -587,11 +660,26 @@ namespace LiveEdit
             if (_game.write(at, new[] { value })) { _riderFrozen = frozen; }
         }
 
-        /// <summary>The closest thing worth sitting on, which is the top of the same list.</summary>
-        private IntPtr nearestCreature(IntPtr pawn)
+        /// <summary>
+        /// The closest thing that can actually be sat on.
+        ///
+        /// The top of the list used to do, and it was wrong in the way that is hardest to see: the
+        /// list is everything with a position, so in a room with a crate in it the crate wins, the
+        /// take-over refuses it because it has no movement component, and riding comes out as
+        /// speed only. Pressing the key again picks the crate again. That is what "spam R until it
+        /// finds the creature" was - not a slow search, but the same wrong answer every time,
+        /// until something wandered close enough to beat the crate.
+        /// </summary>
+        private IntPtr nearestCreature(IntPtr pawn, float within = float.MaxValue)
         {
-            var found = nearby(out _);
-            return found.Count > 0 ? found[0].Actor : IntPtr.Zero;
+            foreach (var one in nearby(out _))
+            {
+                if (!one.Rideable) { continue; }
+                if (one.Away > within) { break; }
+                return one.Actor;
+            }
+
+            return IntPtr.Zero;
         }
 
         /// <summary>
@@ -618,6 +706,10 @@ namespace LiveEdit
 
             foreach (var one in nearby(out _, 200))
             {
+                //Rideable, or this hands back something that cannot be carried and the answer
+                //comes out as speed only - which is the same fault the nearest-anything search
+                //had, arriving by a different route.
+                if (!one.Rideable) { continue; }
                 if (!_known.Contains(one.Actor)) { return one.Actor; }
             }
 

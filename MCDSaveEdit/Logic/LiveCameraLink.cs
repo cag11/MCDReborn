@@ -1,4 +1,4 @@
-using LiveEdit;
+﻿using LiveEdit;
 using System;
 using System.Windows.Threading;
 #nullable enable
@@ -270,7 +270,7 @@ namespace MCDSaveEdit.Logic
             problem = "";
             if (_game == null) { problem = "Not attached to the game."; return false; }
 
-            _mount ??= new Mount(_game);
+            mountReady();
             _mount.Speed = mountSpeed;
 
             //Something summoned beats something chosen beats whatever is nearest. Enchanted Grass
@@ -279,12 +279,16 @@ namespace MCDSaveEdit.Logic
             var summoned = _mount.newcomer();
             if (summoned != IntPtr.Zero) { ride = summoned; }
 
-            if (!_mount.start(ride, out problem) && !_mount.Riding) { return false; }
+            //Remembered rather than assumed, so ticking it off puts back whatever was there -
+            //including a distance somebody set by hand. Before starting, not after: starting can
+            //find a mount straight away, and getting on pulls the camera back, so reading it
+            //afterwards would remember the mounted distance as the one to go back to.
+            _wasDistance = _holdArmLength;
+
+            if (!_mount.start(ride, out problem) && !_mount.Riding) { _wasDistance = null; return false; }
 
             //And the camera pulls back, because a first person view from on top of a cow is a view
-            //of a cow. Remembered rather than assumed, so ticking it off puts back whatever was
-            //there - including a distance somebody set by hand.
-            _wasDistance = _holdArmLength;
+            //of a cow.
             holdArmLength = backFarEnoughFor(_mount.MountHeight);
             _camera?.setRotation(MOUNTED_PITCH, _camera.Yaw ?? 45f);
             return true;
@@ -321,6 +325,22 @@ namespace MCDSaveEdit.Logic
 
         private float? _wasDistance;
 
+        /// <summary>
+        /// The one Mount, made on first use and listened to.
+        ///
+        /// Listened to because getting on no longer only happens when the key is pressed: with
+        /// nothing underneath, the mount keeps looking, so the creature can arrive seconds later -
+        /// which is exactly the summoning case. The camera has to pull back at that moment rather
+        /// than at the moment somebody asked, or riding a summoned sheep is a close-up of a sheep.
+        /// </summary>
+        private void mountReady()
+        {
+            if (_mount != null) { return; }
+
+            _mount = new Mount(_game!);
+            _mount.mounted += height => holdArmLength = backFarEnoughFor(height);
+        }
+
         /// <summary>Which creature to ride, or zero for whatever is nearest.</summary>
         public IntPtr ride { get; set; }
 
@@ -335,7 +355,7 @@ namespace MCDSaveEdit.Logic
         {
             if (_game == null) { return; }
 
-            _mount ??= new Mount(_game);
+            mountReady();
             _mount.remember();
         }
 
@@ -366,7 +386,7 @@ namespace MCDSaveEdit.Logic
                 return new System.Collections.Generic.List<Mount.Candidate>();
             }
 
-            _mount ??= new Mount(_game);
+            mountReady();
             return _mount.nearby(out tell);
         }
 
@@ -419,7 +439,10 @@ namespace MCDSaveEdit.Logic
             }
         }
 
-        private bool _canFly;
+        //On from the start, the way R already was. These are keys the game has no button for at
+        //all, so there is nothing of the game's own for them to clash with, and somebody who has
+        //switched the camera on has already said what they want.
+        private bool _canFly = true;
         private float _flySpeed = 4000f;
 
         public float jumpHeight
@@ -452,7 +475,7 @@ namespace MCDSaveEdit.Logic
             }
         }
 
-        private bool _canJump;
+        private bool _canJump = true;
         private float _jumpHeight = 1500f;
         private float _airControl = 0.35f;
         private int _jumpCount = 1;
