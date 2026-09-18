@@ -159,7 +159,10 @@ namespace LiveEdit
         //alone means never being able to climb. Space goes up, left control goes down, and the
         //camera's tilt is still added on top for whoever wants to dive by looking.
         private const int ASCEND = 0x20;
-        private const int DESCEND = 0xA2;
+        //Shift rather than Control, which was doing two jobs: it is also the walk-slowly key, so
+        //creeping along the floor and dropping out of the sky were the same button. Shift is what
+        //Minecraft itself descends on, so it is the one people reach for anyway.
+        private const int DESCEND = 0xA0;  // Left Shift
 
         //How a character here leaves the ground, which is not how it first looked.
         //

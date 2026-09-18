@@ -3965,5 +3965,23 @@ namespace MCDSaveEdit.Properties {
             }
         }
         
+        /// <summary>
+        ///   Looks up a localized string similar to Ride height.
+        /// </summary>
+        public static string MOUNT_SIT_HEIGHT {
+            get {
+                return ResourceManager.GetString("MOUNT_SIT_HEIGHT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The rider is placed on top of the creature's collision capsule, not on top of what is d....
+        /// </summary>
+        public static string MOUNT_SIT_HEIGHT_WHY {
+            get {
+                return ResourceManager.GetString("MOUNT_SIT_HEIGHT_WHY", resourceCulture);
+            }
+        }
+        
     }
 }

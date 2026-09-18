@@ -1855,4 +1855,12 @@ The save file is not changed until you save it.</value>
     <value>Import a model first. A creature's own vertices are moved by its skeleton, so nudging them with the sliders would pull it apart rather than resize it.</value>
     <comment>Why the sliders alone do nothing</comment>
   </data>
+  <data name="MOUNT_SIT_HEIGHT" xml:space="preserve">
+    <value>Ride height</value>
+    <comment>How high the rider sits on the mount</comment>
+  </data>
+  <data name="MOUNT_SIT_HEIGHT_WHY" xml:space="preserve">
+    <value>The rider is placed on top of the creature's collision capsule, not on top of what is drawn. Those agree for the game's own animals and stop agreeing the moment you put your own model on one, so this is the difference - raise it until you are sitting on your model rather than inside it.</value>
+    <comment>Why the ride height is a slider</comment>
+  </data>
 </root>

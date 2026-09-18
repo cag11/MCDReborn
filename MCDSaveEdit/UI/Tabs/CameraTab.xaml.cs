@@ -114,6 +114,8 @@ namespace MCDSaveEdit.UI
             riding.Content = R.MOUNT_RIDE;
             refreshMounts.Content = R.MOUNT_REFRESH;
             mountSpeedLabel.Text = R.MOUNT_SPEED;
+            sitHeightLabel.Text = R.MOUNT_SIT_HEIGHT;
+            sitHeightWhy.Text = R.MOUNT_SIT_HEIGHT_WHY;
             canFly.Content = R.FLY_ON;
             flyWhy.Text = R.FLY_WHY;
             flySpeedLabel.Text = R.FLY_SPEED;
@@ -517,6 +519,14 @@ namespace MCDSaveEdit.UI
             _live.ride = mountPick.SelectedItem is LiveEdit.Mount.Candidate one
                 ? one.Actor
                 : IntPtr.Zero;
+        }
+
+        private void sitHeight_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            sitHeightValue.Text = ((int)sitHeight.Value).ToString();
+            if (_filling) { return; }
+
+            _live.sitHeight = (float)sitHeight.Value;
         }
 
         private void mountSpeed_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)

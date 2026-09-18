@@ -338,8 +338,22 @@ namespace MCDSaveEdit.Logic
             if (_mount != null) { return; }
 
             _mount = new Mount(_game!);
+            _mount.SitHeight = _sitHeight;
             _mount.mounted += height => holdArmLength = backFarEnoughFor(height);
         }
+
+        /// <summary>How much higher than its own capsule the rider sits on the mount.</summary>
+        public float sitHeight
+        {
+            get => _sitHeight;
+            set
+            {
+                _sitHeight = value;
+                if (_mount != null) { _mount.SitHeight = value; }
+            }
+        }
+
+        private float _sitHeight;
 
         /// <summary>Which creature to ride, or zero for whatever is nearest.</summary>
         public IntPtr ride { get; set; }

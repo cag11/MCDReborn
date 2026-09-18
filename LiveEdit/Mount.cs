@@ -77,6 +77,21 @@ namespace LiveEdit
         private const int CHARACTER_MESH = 0x0390;
         private const int MAX_WALK_SPEED = 0x01DC;
 
+        //What makes the mount fall out from under itself between one write and the next.
+        //
+        //Zeroing its walk speed stops it walking and does nothing about gravity, so a mount held in
+        //the air - which is every mount, while flying - is in free fall the whole time. Position is
+        //put back every two milliseconds and velocity is not, so the velocity keeps accumulating:
+        //after a second of flight it is falling fast enough to cover real distance inside one of
+        //those two millisecond gaps, and that is the up and down jitter that survived the pacing
+        //fix. Standing on the ground it is smaller because the floor keeps catching it.
+        //
+        //Both offsets are the SDK's, and the two either side of them - MovementMode at 0x01B0 and
+        //MaxWalkSpeed at 0x01DC - are ones this file already relies on and the SDK agrees with,
+        //which is what makes the new pair worth trusting.
+        private const int GRAVITY_SCALE = 0x0198;
+        private const int VELOCITY = 0x010C;
+
         //UCapsuleComponent, for standing the rider on top of whatever is underneath them rather
         //than inside it.
         private const int CAPSULE_HALF_HEIGHT = 0x0590;
@@ -120,6 +135,10 @@ namespace LiveEdit
 
         private IntPtr _mount;
         private float _mountSpeedWas;
+        private float _mountGravityWas;
+
+        //Twelve bytes of nothing, made once rather than every two milliseconds.
+        private static readonly byte[] STILL = new byte[12];
         private bool _riderFrozen;
 
         //What the mount was, so it can be told apart from whatever now occupies its address.
@@ -144,6 +163,32 @@ namespace LiveEdit
 
         /// <summary>How fast the character travels while mounted, in the game's own units.</summary>
         public float Speed { get; set; } = 2400f;
+
+        /// <summary>
+        /// How much higher than the creature's own capsule the rider sits.
+        ///
+        /// A slider rather than a number worked out here, because there is nothing to work it out
+        /// from. The rider is placed above the mount's *capsule*, and a capsule is what the game
+        /// collides with rather than what it draws - fine while the two agree, which they do for
+        /// every animal in the game, and wrong the moment somebody puts their own model on one. A
+        /// sheep-sized capsule under a crate-sized model leaves the rider inside the crate.
+        ///
+        /// Live: changing it while riding lifts the rider by the difference rather than waiting for
+        /// them to get off and on again, because finding the right height means dragging until it
+        /// looks right.
+        /// </summary>
+        public float SitHeight
+        {
+            get => _sitHeight;
+            set
+            {
+                var by = value - _sitHeight;
+                _sitHeight = value;
+                if (_running && _lifted && Math.Abs(by) > 0.01f) { raiseRider(by); }
+            }
+        }
+
+        private float _sitHeight;
 
         /// <summary>Whether the loop is running, with or without something underneath.</summary>
         public bool Riding => _running;
@@ -231,6 +276,13 @@ namespace LiveEdit
                     _mountSpeedWas = _game.readFloat(new IntPtr(movement.ToInt64() + MAX_WALK_SPEED)) ?? 0f;
                     _game.writeFloat(new IntPtr(movement.ToInt64() + MAX_WALK_SPEED), 0f);
 
+                    //Gravity off rather than the movement mode parked. Parking it would stop the
+                    //engine touching the component at all, and the engine touching it is what keeps
+                    //its bounds - and therefore its lighting and whether it is culled - following
+                    //it about. This takes the falling away and leaves the tick alone.
+                    _mountGravityWas = _game.readFloat(new IntPtr(movement.ToInt64() + GRAVITY_SCALE)) ?? 0f;
+                    _game.writeFloat(new IntPtr(movement.ToInt64() + GRAVITY_SCALE), 0f);
+
                     _mount = mount;
                     _vtable = readPointer(mount);
 
@@ -278,10 +330,18 @@ namespace LiveEdit
                 if (movement != IntPtr.Zero)
                 {
                     _game.writeFloat(new IntPtr(movement.ToInt64() + MAX_WALK_SPEED), _mountSpeedWas);
+
+                    //Back to whatever it had, which is not always one - and nought would leave the
+                    //creature hanging in the air for the rest of the level.
+                    if (_mountGravityWas > 0f)
+                    {
+                        _game.writeFloat(new IntPtr(movement.ToInt64() + GRAVITY_SCALE), _mountGravityWas);
+                    }
                 }
             }
 
             _mountSpeedWas = 0f;
+            _mountGravityWas = 0f;
 
             _mount = IntPtr.Zero;
             MountHeight = 0f;
@@ -611,7 +671,7 @@ namespace LiveEdit
             //    mount middle = ground + mountHalf
             //
             //which is the line below, with the two half heights collected.
-            var under = z - riderHalf - mountHalf * (SIT_INTO - 1f);
+            var under = z - riderHalf - mountHalf * (SIT_INTO - 1f) - _sitHeight;
 
             var where = new byte[12];
             Buffer.BlockCopy(BitConverter.GetBytes(x), 0, where, 0, 4);
@@ -620,6 +680,16 @@ namespace LiveEdit
 
             _game.write(new IntPtr(mount.ToInt64() + WORLD_LOCATION), where);
             _game.write(new IntPtr(mount.ToInt64() + RELATIVE_LOCATION), where);
+
+            //And nothing left over to carry it anywhere. Gravity is off, but a knock, a push or
+            //whatever the creature was doing when it was taken leaves a velocity behind, and a
+            //velocity is a thing that keeps being applied - the position would be corrected every
+            //pass and the drift would come straight back in the gap after it.
+            var theirMovement = readPointer(new IntPtr(_mount.ToInt64() + CHARACTER_MOVEMENT));
+            if (theirMovement != IntPtr.Zero)
+            {
+                _game.write(new IntPtr(theirMovement.ToInt64() + VELOCITY), STILL);
+            }
 
             //And pointed where the rider is pointed, in both of the places a rotation lives.
             //
@@ -666,13 +736,33 @@ namespace LiveEdit
             //Nine tenths of the mount's height rather than all of it. The capsule is taller than
             //the thing drawn inside it, so lifting by the full height leaves the rider hovering a
             //hand's width above its back; sinking slightly into it reads as sitting on it.
-            Buffer.BlockCopy(BitConverter.GetBytes(BitConverter.ToSingle(at, 8) + mountHalf * SIT_INTO), 0, up, 8, 4);
+            Buffer.BlockCopy(
+                BitConverter.GetBytes(BitConverter.ToSingle(at, 8) + mountHalf * SIT_INTO + _sitHeight), 0, up, 8, 4);
 
             _game.write(new IntPtr(movement.ToInt64() + MOVEMENT_MODE), new[] { FLYING });
             _game.write(new IntPtr(rider.ToInt64() + WORLD_LOCATION), up);
             _game.write(new IntPtr(rider.ToInt64() + RELATIVE_LOCATION), up);
 
             _lifted = true;
+        }
+
+        /// <summary>Moves the rider up or down where they are, without touching the mount.</summary>
+        private void raiseRider(float by)
+        {
+            if (!_live.find(out _)) { return; }
+
+            var rider = readPointer(new IntPtr(_live.Pawn.ToInt64() + ROOT_COMPONENT));
+            if (rider == IntPtr.Zero) { return; }
+
+            var at = _game.read(new IntPtr(rider.ToInt64() + WORLD_LOCATION), 12);
+            if (at == null) { return; }
+
+            var up = new byte[12];
+            Buffer.BlockCopy(at, 0, up, 0, 8);
+            Buffer.BlockCopy(BitConverter.GetBytes(BitConverter.ToSingle(at, 8) + by), 0, up, 8, 4);
+
+            _game.write(new IntPtr(rider.ToInt64() + WORLD_LOCATION), up);
+            _game.write(new IntPtr(rider.ToInt64() + RELATIVE_LOCATION), up);
         }
 
         /// <summary>Puts the rider back on the floor, or they hover for the rest of the level.</summary>

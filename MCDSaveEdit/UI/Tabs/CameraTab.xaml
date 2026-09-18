@@ -108,6 +108,17 @@
                                 TickFrequency="100" IsSnapToTickEnabled="True"
                                 VerticalAlignment="Center" ValueChanged="mountSpeed_Changed"/>
                     </DockPanel>
+                    <DockPanel Margin="18,6,0,0">
+                        <TextBlock x:Name="sitHeightLabel" DockPanel.Dock="Left" Width="120"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock x:Name="sitHeightValue" DockPanel.Dock="Right" Width="90"
+                                   TextAlignment="Right" Foreground="Gray" VerticalAlignment="Center"/>
+                        <Slider x:Name="sitHeight" Minimum="-150" Maximum="600" Value="0"
+                                TickFrequency="5" IsSnapToTickEnabled="True"
+                                VerticalAlignment="Center" ValueChanged="sitHeight_Changed"/>
+                    </DockPanel>
+                    <TextBlock x:Name="sitHeightWhy" Foreground="Gray" TextWrapping="Wrap"
+                               Margin="18,2,0,0"/>
 
                     <CheckBox x:Name="followsAim" Content="*Points where you aim*" Margin="0,6,0,0"
                               Checked="followsAim_Changed" Unchecked="followsAim_Changed"/>
