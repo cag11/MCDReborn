@@ -27,6 +27,33 @@ namespace MCDSaveEdit.Logic
         private const int SERIAL_OFFSET_IN_ENTRY = 36;
 
         /// <summary>
+        /// The recorded length of the biggest export - the one an asset is really about.
+        ///
+        /// Exposed because a caller rebuilding an export has to know what it was before, in order
+        /// to work out the delta to pass back to correctHeader. Reading it from a fixed offset does
+        /// not work: the export table's position is written in the summary, after a name string and
+        /// a variable number of custom versions, so it moves between assets. Doing it by hand gave
+        /// a serial size of seven quintillion and a bulk offset two gigabytes into negative.
+        /// </summary>
+        public static long largestExportSize(byte[] uasset)
+        {
+            var exportCount = exportTableCount(uasset, out var exportOffset);
+            if (exportCount <= 0) { return 0; }
+
+            var biggest = 0L;
+            for (int i = 0; i < exportCount; i++)
+            {
+                var entry = exportOffset + i * EXPORT_ENTRY_SIZE;
+                if (entry + SERIAL_SIZE_IN_ENTRY + 8 > uasset.Length) { break; }
+
+                var size = BitConverter.ToInt64(uasset, entry + SERIAL_SIZE_IN_ENTRY);
+                if (size > biggest) { biggest = size; }
+            }
+
+            return biggest;
+        }
+
+        /// <summary>
         /// Moves the export's recorded length, and the bulk data marker after it, by however much
         /// the export grew or shrank.
         ///

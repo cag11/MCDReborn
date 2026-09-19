@@ -950,6 +950,143 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_MUSIC_SET=<engine path>;<audio file> - replaces one track for real, and says
+            //what it produced. The chain is long enough that a failure anywhere in it looks the
+            //same from the tab, so each stage reports its own numbers.
+            var probeMusicSet = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_MUSIC_SET="));
+            if (probeMusicSet != null)
+            {
+                var bits = probeMusicSet.Substring("PROBE_MUSIC_SET=".Length).Trim('"').Split(';');
+                try
+                {
+                    var track = Logic.GameMusic.all()
+                        .FirstOrDefault(one => one.EnginePath.Equals(bits[0], StringComparison.OrdinalIgnoreCase));
+
+                    if (track == null)
+                    {
+                        Console.WriteLine($"[set] no track called {bits[0]}");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    Console.WriteLine($"[set] {track.Label}, {track.Bytes / 1024:N0} KB");
+                    Console.WriteLine($"[set] engine: {track.EnginePath}");
+                    Console.WriteLine($"[set] pak:    {track.PakPath}");
+
+                    var audio = Logic.MusicEncode.read(bits[1]);
+                    Console.WriteLine($"[set] encoded {System.IO.Path.GetFileName(bits[1])}: "
+                        + $"{audio.Ogg.Length:N0} bytes of Ogg, {audio.SampleRate} Hz, "
+                        + $"{audio.Channels} ch, {audio.Samples:N0} samples, {audio.Duration:F1}s");
+
+                    var mod = Logic.MusicMod.install(track, audio);
+                    Console.WriteLine($"[set] {System.IO.Path.GetFileName(mod.Path)}, {mod.Size:N0} bytes");
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[set] refused: {problem.Message}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_MUSIC[=<how many>] - the game's music, biggest first. Which is the whole
+            //question the Music tab turns on: 1,658 assets are called bgm_ and most of them are
+            //stings rather than tracks, and nothing but size tells them apart.
+            var probeMusic = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_MUSIC"));
+            if (probeMusic != null)
+            {
+                var many = 20;
+                var at = probeMusic.IndexOf('=');
+                if (at > 0) { int.TryParse(probeMusic.Substring(at + 1), out many); }
+
+                Console.WriteLine($"[music] paks folder = {Logic.CustomSkins.paksFolder ?? "<null>"}");
+
+                var tracks = Logic.GameMusic.all();
+                Console.WriteLine($"[music] {tracks.Count} music assets found");
+                foreach (var note in Logic.GameMusic.Notes.Take(8))
+                {
+                    Console.WriteLine($"[music]   {note}");
+                }
+
+                //Where the rest of a streamed track lives, if it is streamed. The cluster of
+                //entries at exactly 256 KB is a chunk boundary rather than a coincidence.
+                var index = Logic.CustomSkins.index;
+                var bulky = 0;
+                if (index != null)
+                {
+                    foreach (var entry in index.AllEntries())
+                    {
+                        var p = entry.Key.Replace(System.IO.Path.DirectorySeparatorChar, '/');
+                        if (p.IndexOf("02_audio_soundWave", StringComparison.OrdinalIgnoreCase) < 0) { continue; }
+                        if (!System.IO.Path.GetFileName(p).StartsWith("bgm", StringComparison.OrdinalIgnoreCase)) { continue; }
+
+                        if (entry.Value.Ubulk != null)
+                        {
+                            if (bulky < 4)
+                            {
+                                Console.WriteLine($"[music]   ubulk: {entry.Value.Ubulk.UncompressedSize / 1024:N0} KB for {System.IO.Path.GetFileName(p)}");
+                            }
+                            bulky++;
+                        }
+                    }
+                }
+                Console.WriteLine($"[music] {bulky} of them carry a .ubulk");
+
+                foreach (var track in tracks.Take(many))
+                {
+                    Console.WriteLine($"[music]   {track.Bytes / 1024,7:N0} KB  ~{track.Seconds,4}s  {track.Label}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_EXTRACT=<asset path>[;<folder>] - writes one of the game's own cooked assets
+            //out to disk, unchanged.
+            //
+            //Which is the missing half of reading this game. PROBE_ASSETS says what exists and
+            //PROBE_PROPS says what an asset stores - but PROBE_PROPS reads from disk, and
+            //everything interesting is inside a 1.2 GB pak. So anything of the game's own could be
+            //listed and never opened, which is how "what is actually inside UMG_IngameMenu" stayed
+            //unanswered while being the one thing worth knowing.
+            //
+            //Read-only in every sense: it takes a copy and changes nothing in the game folder.
+            var probeExtract = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_EXTRACT="));
+            if (probeExtract != null)
+            {
+                var bits = probeExtract.Substring("PROBE_EXTRACT=".Length).Trim('"').Split(';');
+                var where = bits.Length > 1 ? bits[1] : System.IO.Path.Combine(
+                    System.IO.Path.GetTempPath(), "mcdreborn-extract");
+
+                var read = Logic.CustomSkins.index?.extractPackage(bits[0]);
+                if (read == null)
+                {
+                    Console.WriteLine($"[extract] could not read {bits[0]}");
+                    this.Shutdown();
+                    return;
+                }
+
+                System.IO.Directory.CreateDirectory(where);
+                var stem = System.IO.Path.Combine(where, System.IO.Path.GetFileName(bits[0]));
+
+                var uasset = read.Value.UAsset.ToArray();
+                var uexp = read.Value.UExp.ToArray();
+                System.IO.File.WriteAllBytes(stem + ".uasset", uasset);
+                System.IO.File.WriteAllBytes(stem + ".uexp", uexp);
+
+                Console.WriteLine($"[extract] {bits[0]}");
+                Console.WriteLine($"[extract]   {stem}.uasset  {uasset.Length:N0} bytes");
+                Console.WriteLine($"[extract]   {stem}.uexp    {uexp.Length:N0} bytes");
+                //Spelled the way PROBE_PROPS wants it, so the next command can be pasted rather
+                //than retyped with the slashes turned round.
+                var asProbe = stem.Replace(System.IO.Path.DirectorySeparatorChar, '/');
+                Console.WriteLine($"[extract] now readable with PROBE_PROPS={asProbe}");
+
+                this.Shutdown();
+                return;
+            }
+
             //PROBE_PAYLOAD=<asset path>;<folder>;<trigger>;<name> - takes one of the game's
             //own assets, writes it out as a cooked file the way an editor would, installs it as a
             //payload, then reads back what landed and removes it again. Which exercises the whole

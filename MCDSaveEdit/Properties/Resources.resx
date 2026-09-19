@@ -2219,6 +2219,58 @@ The save file is not changed until you save it.</value>
     <value>The loader is not installed, so nothing here will run a payload yet - a payload would be written correctly and then simply never read. Use Install loader first.</value>
     <comment>Shown in the mods tab while no loader is installed</comment>
   </data>
+  <data name="MUSIC_TAB" xml:space="preserve">
+    <value>Music</value>
+    <comment>Title of the music tab</comment>
+  </data>
+  <data name="MUSIC_TRACKS" xml:space="preserve">
+    <value>Game music</value>
+    <comment>Heading over the track list</comment>
+  </data>
+  <data name="MUSIC_TRACKS_HINT" xml:space="preserve">
+    <value>The game's own music, longest first. Length is what tells a real track from a one-bar sting - everything here is named bgm_. Where the name gives away the mission it is spelled out in brackets.</value>
+    <comment>Explains the track list</comment>
+  </data>
+  <data name="MUSIC_REPLACE" xml:space="preserve">
+    <value>Replace with your own</value>
+    <comment>Heading over the replace controls</comment>
+  </data>
+  <data name="MUSIC_HINT" xml:space="preserve">
+    <value>Pick a track on the left, choose an audio file, and Install writes a mod pak beside the game’s own. The game is never changed - removing the pak puts the original back.</value>
+    <comment>Explains how replacing works</comment>
+  </data>
+  <data name="MUSIC_CHOOSE" xml:space="preserve">
+    <value>Choose audio…</value>
+    <comment>Button that picks the replacement file</comment>
+  </data>
+  <data name="MUSIC_INSTALL" xml:space="preserve">
+    <value>Install</value>
+    <comment>Button that writes the music mod</comment>
+  </data>
+  <data name="MUSIC_REMOVE" xml:space="preserve">
+    <value>Remove</value>
+    <comment>Button that deletes a music mod</comment>
+  </data>
+  <data name="MUSIC_NONE_CHOSEN" xml:space="preserve">
+    <value>No track chosen</value>
+    <comment>Shown before a track is picked</comment>
+  </data>
+  <data name="MUSIC_FILE_CHOSEN" xml:space="preserve">
+    <value>Using {0}</value>
+    <comment>Shown once an audio file is picked</comment>
+  </data>
+  <data name="MUSIC_INSTALLED" xml:space="preserve">
+    <value>{0} installed - {1} now plays your audio.</value>
+    <comment>After a music mod is written</comment>
+  </data>
+  <data name="MUSIC_REMOVED" xml:space="preserve">
+    <value>{0} removed - the game’s own track is back.</value>
+    <comment>After a music mod is deleted</comment>
+  </data>
+  <data name="MUSIC_NOT_INSTALLED" xml:space="preserve">
+    <value>That track has not been replaced.</value>
+    <comment>Remove pressed with nothing to remove</comment>
+  </data>
   <data name="MODS_GAME_RUNNING" xml:space="preserve">
     <value>Minecraft Dungeons is running. Close it first: while it is open Windows will not let this app write over a pak the game has in use, and any new pak it does write will not be read until the game is started again.</value>
     <comment>Refused because the game is open</comment>

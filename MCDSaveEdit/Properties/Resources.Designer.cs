@@ -4777,6 +4777,123 @@ namespace MCDSaveEdit.Properties {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Music.
+        /// </summary>
+        public static string MUSIC_TAB {
+            get {
+                return ResourceManager.GetString("MUSIC_TAB", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Game music.
+        /// </summary>
+        public static string MUSIC_TRACKS {
+            get {
+                return ResourceManager.GetString("MUSIC_TRACKS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The game's own music, longest first. Length is what tells a .
+        /// </summary>
+        public static string MUSIC_TRACKS_HINT {
+            get {
+                return ResourceManager.GetString("MUSIC_TRACKS_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Replace with your own.
+        /// </summary>
+        public static string MUSIC_REPLACE {
+            get {
+                return ResourceManager.GetString("MUSIC_REPLACE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Pick a track on the left, choose an audio file, and Install .
+        /// </summary>
+        public static string MUSIC_HINT {
+            get {
+                return ResourceManager.GetString("MUSIC_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Choose audio….
+        /// </summary>
+        public static string MUSIC_CHOOSE {
+            get {
+                return ResourceManager.GetString("MUSIC_CHOOSE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Install.
+        /// </summary>
+        public static string MUSIC_INSTALL {
+            get {
+                return ResourceManager.GetString("MUSIC_INSTALL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove.
+        /// </summary>
+        public static string MUSIC_REMOVE {
+            get {
+                return ResourceManager.GetString("MUSIC_REMOVE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No track chosen.
+        /// </summary>
+        public static string MUSIC_NONE_CHOSEN {
+            get {
+                return ResourceManager.GetString("MUSIC_NONE_CHOSEN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Using {0}.
+        /// </summary>
+        public static string MUSIC_FILE_CHOSEN {
+            get {
+                return ResourceManager.GetString("MUSIC_FILE_CHOSEN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} installed - {1} now plays your audio..
+        /// </summary>
+        public static string MUSIC_INSTALLED {
+            get {
+                return ResourceManager.GetString("MUSIC_INSTALLED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} removed - the game’s own track is back..
+        /// </summary>
+        public static string MUSIC_REMOVED {
+            get {
+                return ResourceManager.GetString("MUSIC_REMOVED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to That track has not been replaced..
+        /// </summary>
+        public static string MUSIC_NOT_INSTALLED {
+            get {
+                return ResourceManager.GetString("MUSIC_NOT_INSTALLED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Minecraft Dungeons is running. Close it first: while it is o.
         /// </summary>
         public static string MODS_GAME_RUNNING {
