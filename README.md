@@ -30,7 +30,8 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **The Tower** tab: tower runs that you have started and saved will show here, allow modifying gear and floor progress
 * 36 new enchantments the game carries but never offers, under the **Other** toggle
 * Bulk Delete items on the inventory and storage chest tabs
-* **Difficulty Tab:** Change how hard the game is while it is running. How tough and how fast the enemies are, and your own speed, roll cooldown, roll charges, gravity and attack speed
+* **Difficulty Tab:** Change how hard the game is while it is running. How tough, how fast and how heavy the enemies are, and your own speed, roll cooldown, roll charges, gravity and attack speed
+* **Press J to throw every enemy in the level into the air**, with the enemy gravity slider deciding how long they stay there - at normal weight they reach 141 units, at a fortieth nearly 3000. The two go together: gravity does nothing to a mob standing on the floor
 * **Installed Mods Tab:** Every mod pak in one place. You can import and export multiple mods via a zip package.
 
 #### Camera Feature

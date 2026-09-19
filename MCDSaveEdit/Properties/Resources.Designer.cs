@@ -2383,6 +2383,69 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to {0} enemies thrown into the air..
+        /// </summary>
+        public static string STATS_ENEMY_JUMP_DONE {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_JUMP_DONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to J throws every enemy into the air.
+        /// </summary>
+        public static string STATS_ENEMY_JUMP {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_JUMP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Press J while the game has the keyboard and every enemy.
+        /// </summary>
+        public static string STATS_ENEMY_JUMP_WHY {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_JUMP_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Jump strength.
+        /// </summary>
+        public static string STATS_ENEMY_JUMP_POWER {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_JUMP_POWER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to How hard J throws them. Written as a launch the movemen.
+        /// </summary>
+        public static string STATS_ENEMY_JUMP_POWER_WHY {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_JUMP_POWER_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enemy gravity.
+        /// </summary>
+        public static string STATS_ENEMY_GRAVITY {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_GRAVITY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to How heavily enemies fall, as a multiple of their own weight..
+        /// </summary>
+        public static string STATS_ENEMY_GRAVITY_WHY {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_GRAVITY_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Glow.
         /// </summary>
         public static string WEAPON_SKINS_GLOW {

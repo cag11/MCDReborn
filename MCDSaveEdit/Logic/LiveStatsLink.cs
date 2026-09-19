@@ -1,4 +1,4 @@
-using LiveEdit;
+﻿using LiveEdit;
 using MCDSaveEdit.Services;
 using System;
 using System.Windows.Threading;
@@ -33,6 +33,7 @@ namespace MCDSaveEdit.Logic
             _watch = new DispatcherTimer { Interval = APPLY_EVERY };
             _watch.Tick += (_, _) => tick();
             _watch.Start();
+            watchJumpKey();
             tick();
         }
 
@@ -52,6 +53,18 @@ namespace MCDSaveEdit.Logic
 
         /// <summary>How big enemies are drawn. One is the size the game made them.</summary>
         public float enemySize { get; set; } = 1f;
+
+        /// <summary>How heavily enemies fall, as a multiple of their own weight.</summary>
+        public float enemyGravity { get; set; } = 1f;
+
+        /// <summary>Whether J throws every enemy into the air.</summary>
+        public bool enemyJumpKey { get; set; }
+
+        /// <summary>How hard it throws them.</summary>
+        public float enemyJumpPower { get; set; } = 1200f;
+
+        /// <summary>How many went up, for saying so afterwards.</summary>
+        public event Action<int>? enemiesLaunched;
 
         public float yourSpeed { get; set; } = 1f;
         public float yourDodgeCooldown { get; set; } = 2.5f;
@@ -86,6 +99,67 @@ namespace MCDSaveEdit.Logic
             return (speed.Value, cooldown.Value, charges.Value, gravity.Value);
         }
 
+
+        #region The jump key
+
+        //J. Dungeons binds nothing to it, and it is nowhere near the movement keys - a key that
+        //throws every enemy in the level upwards is not one to hit by accident while walking.
+        private const int JUMP_KEY = 0x4A;
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern short GetAsyncKeyState(int key);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        private System.Threading.Thread? _keyWatch;
+        private volatile bool _watching;
+        private bool _jumpWasDown;
+
+        private void watchJumpKey()
+        {
+            _watching = true;
+            _keyWatch = LiveEdit.Trouble.start("enemy jump key", () => {
+                while (_watching)
+                {
+                    //Only while the game has the keyboard. Otherwise typing a J into the search
+                    //box on any other tab would throw the level into the air.
+                    var down = enemyJumpKey && playing() && (GetAsyncKeyState(JUMP_KEY) & 0x8000) != 0;
+
+                    if (down && !_jumpWasDown)
+                    {
+                        //Onto the thread that owns the reading, so a launch cannot arrive halfway
+                        //through the pass that lists the enemies.
+                        System.Windows.Application.Current?.Dispatcher.BeginInvoke(new Action(launchNow));
+                    }
+                    _jumpWasDown = down;
+
+                    System.Threading.Thread.Sleep(30);
+                }
+            });
+        }
+
+        private bool playing()
+        {
+            var game = _game;
+            if (game == null) { return false; }
+
+            try { return game.Process.MainWindowHandle == GetForegroundWindow(); }
+            catch (Exception) { return false; }
+        }
+
+        private void launchNow()
+        {
+            if (_stats == null || !_stats.Ready) { return; }
+
+            var thrown = _stats.launchEnemies(enemyJumpPower);
+            if (thrown > 0) { enemiesLaunched?.Invoke(thrown); }
+        }
+
+        #endregion
+
+        private bool _saidEnemiesOn;
+
         private void tick()
         {
             var was = attached;
@@ -108,6 +182,7 @@ namespace MCDSaveEdit.Logic
                     if (was) { changed?.Invoke(); }
                     return;
                 }
+                Services.Journal.note($"enemy loop attached to pid {_game.Id} ({_game.Process.ProcessName})");
                 _stats = new LiveStats(_game);
             }
 
@@ -118,7 +193,14 @@ namespace MCDSaveEdit.Logic
                 return;
             }
 
-            if (enemiesOn) { _stats.applyToEnemies(enemyToughness, enemySpeed, enemySize); }
+            if (enemiesOn != _saidEnemiesOn)
+            {
+                _saidEnemiesOn = enemiesOn;
+                Services.Journal.note($"enemy settings {(enemiesOn ? "on" : "off")}"
+                    + $" - toughness {enemyToughness}, speed {enemySpeed}, size {enemySize}, gravity {enemyGravity}");
+            }
+
+            if (enemiesOn) { _stats.applyToEnemies(enemyToughness, enemySpeed, enemySize, enemyGravity); }
             _stats.applyPosing(poseOnlyWhenSeen);
             if (playerOn)
             {
@@ -149,6 +231,8 @@ namespace MCDSaveEdit.Logic
         public void Dispose()
         {
             _watch.Stop();
+            _watching = false;
+            _keyWatch?.Join(200);
 
             //Nothing here was written down, so closing the editor should leave nothing behind.
             if (enemiesOn) { restoreEnemies(); }

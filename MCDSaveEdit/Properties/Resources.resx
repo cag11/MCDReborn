@@ -1151,6 +1151,34 @@ The save file is not changed until you save it.</value>
     <value>Show texture</value>
     <comment>Textured preview toggle</comment>
   </data>
+  <data name="STATS_ENEMY_JUMP_DONE" xml:space="preserve">
+    <value>{0} enemies thrown into the air.</value>
+    <comment>After the jump key is pressed</comment>
+  </data>
+  <data name="STATS_ENEMY_JUMP" xml:space="preserve">
+    <value>J throws every enemy into the air</value>
+    <comment>The enemy jump key switch</comment>
+  </data>
+  <data name="STATS_ENEMY_JUMP_WHY" xml:space="preserve">
+    <value>Press J while the game has the keyboard and every enemy in the level is launched upwards. It is what makes the gravity slider visible: a mob that walks never leaves the ground, so how heavily it would fall changes nothing until something puts it up there. Ten launched at the same strength reached 143 units at normal gravity, 1440 at a tenth and 2996 at a fortieth.</value>
+    <comment>Why the enemy jump key exists</comment>
+  </data>
+  <data name="STATS_ENEMY_JUMP_POWER" xml:space="preserve">
+    <value>Jump strength</value>
+    <comment>Caption for the enemy jump strength</comment>
+  </data>
+  <data name="STATS_ENEMY_JUMP_POWER_WHY" xml:space="preserve">
+    <value>How hard J throws them. Written as a launch the movement component picks up on its next tick, which is the same way your own Q jump works.</value>
+    <comment>Why the jump strength slider exists</comment>
+  </data>
+  <data name="STATS_ENEMY_GRAVITY" xml:space="preserve">
+    <value>Enemy gravity</value>
+    <comment>Caption for the enemy gravity slider</comment>
+  </data>
+  <data name="STATS_ENEMY_GRAVITY_WHY" xml:space="preserve">
+    <value>How heavily enemies fall, as a multiple of their own weight. Written straight onto each creature's movement, the same number the mount uses to take a creature's weight away - so a mob knocked into the air at a fortieth of its weight keeps going up. Knockback weapons and the Wind Horn become launchers. Their own weight is remembered, because a creature that floats or falls heavily by design does so through this number.</value>
+    <comment>Why the enemy gravity slider exists</comment>
+  </data>
   <data name="WEAPON_SKINS_GLOW" xml:space="preserve">
     <value>Glow</value>
     <comment>Heading for the glow controls</comment>

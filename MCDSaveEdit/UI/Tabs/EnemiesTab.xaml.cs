@@ -47,6 +47,12 @@ namespace MCDSaveEdit.UI
 
             _live.changed += () => Dispatcher.BeginInvoke(new Action(showLive));
 
+            //Said out loud, because a key that works silently and a key that does nothing look
+            //the same from the chair.
+            _live.enemiesLaunched += many => Dispatcher.BeginInvoke(new Action(() => {
+                statusLabel.Text = string.Format(R.STATS_ENEMY_JUMP_DONE, many);
+            }));
+
             //Not disposed when this page goes away.
             //
             //A TabControl takes the old page out of the tree when another is chosen, so hanging
@@ -76,6 +82,8 @@ namespace MCDSaveEdit.UI
         {
             titleLabel.Content = R.STATS_TAB;
             enemiesOn.Content = R.STATS_ENEMIES_ON;
+            enemyJumpKey.Content = R.STATS_ENEMY_JUMP;
+            enemyJumpHint.Text = R.STATS_ENEMY_JUMP_WHY;
             playerOn.Content = R.STATS_PLAYER_ON;
             restoreButton.Content = R.STATS_RESTORE;
             poseOnlyWhenSeen.Content = R.STATS_POSE_WHEN_SEEN;
@@ -99,6 +107,16 @@ namespace MCDSaveEdit.UI
                 l => l.enemySpeed, (l, v) => l.enemySpeed = v);
             addRow(enemyStack, _enemyRows, R.STATS_ENEMY_SIZE, R.STATS_ENEMY_SIZE_WHY, 0.3, 6, 0.1, "x",
                 l => l.enemySize, (l, v) => l.enemySize = v);
+            //The same range as your own, and for the same reason: floating is the interesting end
+            //and a tenth barely reads as different from normal.
+            addRow(enemyStack, _enemyRows, R.STATS_ENEMY_GRAVITY, R.STATS_ENEMY_GRAVITY_WHY, 0.025, 3, 0.025, "x",
+                l => l.enemyGravity, (l, v) => l.enemyGravity = v);
+
+            //Its own switch and its own stack, because this one is a key rather than a setting -
+            //nothing happens until it is pressed, so it does not belong under "change the
+            //enemies" with the things that are true all the time.
+            addRow(enemyJumpStack, _enemyRows, R.STATS_ENEMY_JUMP_POWER, R.STATS_ENEMY_JUMP_POWER_WHY,
+                200, 6000, 50, "", l => l.enemyJumpPower, (l, v) => l.enemyJumpPower = v);
 
             addRow(playerStack, _playerRows, R.STATS_YOUR_SPEED, R.STATS_YOUR_SPEED_WHY, 0.25, 5, 0.05, "x",
                 l => l.yourSpeed, (l, v) => l.yourSpeed = v);
@@ -153,7 +171,8 @@ namespace MCDSaveEdit.UI
                 TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0),
             });
 
-            row.Switch = ReferenceEquals(into, enemyStack) ? enemiesOn : playerOn;
+            row.Switch = ReferenceEquals(into, enemyJumpStack) ? enemyJumpKey
+                : ReferenceEquals(into, enemyStack) ? enemiesOn : playerOn;
 
             into.Children.Add(panel);
             list.Add(row);
@@ -166,6 +185,7 @@ namespace MCDSaveEdit.UI
             var on = _live.attached;
 
             enemiesOn.IsEnabled = on;
+            enemyJumpKey.IsEnabled = on;
             playerOn.IsEnabled = on;
             restoreButton.IsEnabled = on;
             poseOnlyWhenSeen.IsEnabled = on;
@@ -196,8 +216,16 @@ namespace MCDSaveEdit.UI
 
             _filling = true;
             enemiesOn.IsChecked = _live.enemiesOn;
+            enemyJumpKey.IsChecked = _live.enemyJumpKey;
             playerOn.IsChecked = _live.playerOn;
             _filling = false;
+        }
+
+
+        private void enemyJumpKey_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+            _live.enemyJumpKey = enemyJumpKey.IsChecked == true;
         }
 
         private void enemiesOn_Changed(object sender, RoutedEventArgs e)

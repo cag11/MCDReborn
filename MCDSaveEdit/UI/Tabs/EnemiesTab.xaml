@@ -38,6 +38,11 @@
                     <CheckBox x:Name="enemiesOn" Content="*Change the enemies*" FontWeight="Bold"
                               Checked="enemiesOn_Changed" Unchecked="enemiesOn_Changed"/>
                     <StackPanel x:Name="enemyStack"/>
+
+                    <CheckBox x:Name="enemyJumpKey" Margin="0,10,0,0"
+                              Checked="enemyJumpKey_Changed" Unchecked="enemyJumpKey_Changed"/>
+                    <StackPanel x:Name="enemyJumpStack"/>
+                    <TextBlock x:Name="enemyJumpHint" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
                 </StackPanel>
 
                 <!-- You -->

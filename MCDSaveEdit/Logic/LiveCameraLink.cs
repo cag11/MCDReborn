@@ -106,7 +106,14 @@ namespace MCDSaveEdit.Logic
             //everything running has to be pointed at it again.
             if (thirdPersonOn && _camera.SpringArm != _boundTo) { reattach(); }
 
-            if (attached != was) { changed?.Invoke(); }
+            if (attached != was)
+            {
+                //Said in the log, because "the camera stopped working" and "the camera never
+                //started" look the same from the chair and want different answers.
+                Services.Journal.note($"camera {(attached ? "attached" : "lost")}"
+                    + (attached ? $" to pid {_game?.Id} ({_game?.Process.ProcessName})" : $" - {status}"));
+                changed?.Invoke();
+            }
         }
 
         /// <summary>
@@ -209,7 +216,10 @@ namespace MCDSaveEdit.Logic
             _walk.LagSpeedWalking = _lagSpeedWalking;
             _walk.AirControl = _airControl;
             _walk.JumpCount = _jumpCount;
-            _walk.stopped += () => walkingStopped?.Invoke();
+            _walk.stopped += () => {
+                Services.Journal.note("walking stopped by itself");
+                walkingStopped?.Invoke();
+            };
             return _walk.start();
         }
 
@@ -688,6 +698,20 @@ namespace MCDSaveEdit.Logic
 
         private void drop()
         {
+            //Everything known about the going away, because "the game went away" was the answer
+            //to a question nobody had asked yet: which process, and did it really go?
+            try
+            {
+                var went = _game?.Process;
+                var stillThere = went == null ? 0 : System.Diagnostics.Process
+                    .GetProcessesByName(went.ProcessName).Length;
+                Services.Journal.note($"camera dropped - pid {went?.Id}, name {went?.ProcessName}"
+                    + $", HasExited {went?.HasExited}, processes of that name still running: {stillThere}");
+            }
+            catch (Exception problem)
+            {
+                Services.Journal.note($"camera dropped - and asking about it threw: {problem.GetType().Name}");
+            }
             stopLooking();
             stopWalking();
             _camera = null;

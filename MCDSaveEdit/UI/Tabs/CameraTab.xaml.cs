@@ -86,11 +86,33 @@ namespace MCDSaveEdit.UI
                 showSwitches();
             }));
 
-            Unloaded += (s, e) => _live.Dispose();
+            //Let go of when the window closes, and not before.
+            //
+            //This used to be Unloaded, which WPF raises when a tab control switches away from its
+            //content - so opening any other tab disposed the live camera. The link is shared and
+            //there is only ever one of it, so it never came back: the camera kept the shape it had
+            //already written into the game and nothing could change it again, the walking loop was
+            //stopped along with it, and the log said "the game went away" about a game that was
+            //still running.
+            Loaded += (s, e) => keepUntilTheWindowCloses();
 
             buildRows();
             loadPresets();
             updateUI();
+        }
+
+
+        private bool _hookedClose;
+
+        private void keepUntilTheWindowCloses()
+        {
+            if (_hookedClose) { return; }
+
+            var window = Window.GetWindow(this);
+            if (window == null) { return; }
+
+            _hookedClose = true;
+            window.Closed += (s, e) => _live.Dispose();
         }
 
         private void translateStaticStrings()
