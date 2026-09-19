@@ -1772,7 +1772,7 @@ The save file is not changed until you save it.</value>
     <comment>Toggle for flying</comment>
   </data>
   <data name="FLY_WHY" xml:space="preserve">
-    <value>Press G in game to take off and again to land. Forward goes wherever the camera is pointed, so look down to dive. Gravity is off while flying, which is what holds you up - there is no way to hold a walking character in the air from outside. Needs W A S D switched on.</value>
+    <value>Press G in game to take off and again to land. Space climbs and C drops; forward goes wherever the camera is pointed, so look down to dive. Gravity is off while flying, which is what holds you up - there is no way to hold a walking character in the air from outside. Needs W A S D switched on.</value>
     <comment>Explains flying</comment>
   </data>
   <data name="FLY_SPEED" xml:space="preserve">
