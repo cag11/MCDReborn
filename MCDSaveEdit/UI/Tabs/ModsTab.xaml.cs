@@ -1,4 +1,4 @@
-using MCDSaveEdit.Logic;
+﻿using MCDSaveEdit.Logic;
 using MCDSaveEdit.Services;
 using Microsoft.Win32;
 using System;
@@ -43,6 +43,33 @@ namespace MCDSaveEdit.UI
         private void translateStaticStrings()
         {
             installedLabel.Content = R.CUSTOM_SKINS_INSTALLED;
+            installPayloadButton.Content = R.MODS_INSTALL_PAYLOAD;
+            installPayloadButton.ToolTip = R.MODS_INSTALL_PAYLOAD_WHY;
+            installPayloadFolderButton.Content = R.MODS_INSTALL_PAYLOAD_FOLDER;
+            installPayloadFolderButton.ToolTip = R.MODS_INSTALL_PAYLOAD_FOLDER_WHY;
+            gameAssetsButton.Content = R.MODS_GAME_ASSETS;
+            gameAssetsButton.ToolTip = R.MODS_GAME_ASSETS_WHY;
+            installLoaderButton.Content = R.MODS_INSTALL_LOADER;
+            installLoaderButton.ToolTip = R.MODS_INSTALL_LOADER_WHY;
+
+            if (payloadTrigger.Items.Count == 0)
+            {
+                foreach (var trigger in Logic.Payloads.TRIGGERS)
+                {
+                    payloadTrigger.Items.Add(new ComboBoxItem { Content = trigger, Tag = trigger });
+                }
+                //Menu, and not because it is first in the list.
+                //
+                //A trigger is not really a preference about where something appears, it is a
+                //lifetime. The main menu is a rendered camp scene, so a payload loaded there is
+                //created before anything else and outlives every level after it - which is why
+                //the community's own overlay mod ships as a Menu payload and is visible for the
+                //whole session, in the Camp and in missions alike.
+                //
+                //Lobby and Ingame are for the narrower case of something that should exist only
+                //at that moment. Anything meant to be there throughout belongs here.
+                payloadTrigger.SelectedIndex = 0;   //Menu
+            }
             modsNoteLabel.Text = R.CUSTOM_SKINS_MODS_NOTE;
             importButton.Content = R.MODS_IMPORT;
             openFolderButton.Content = R.MODS_OPEN_FOLDER;
@@ -57,6 +84,43 @@ namespace MCDSaveEdit.UI
         #region The folder
 
         /// <summary>
+        /// Whether the game being open should stop this, said rather than discovered.
+        ///
+        /// Everything on this tab ends in a file written into the game's own paks folder, and a
+        /// running game makes that either impossible or pointless - it holds the paks open, and
+        /// it read that folder once at startup and never looks again. The first shows up as a
+        /// file-sharing exception from several layers down; the second shows up as nothing
+        /// whatsoever, which is the same thing a broken mod looks like.
+        ///
+        /// A refusal, not a question. There is no version of this that works with the game up, so
+        /// offering to try anyway would only be offering to waste somebody's evening.
+        /// </summary>
+        private bool gameIsInTheWay()
+        {
+            if (!Logic.GameRunning.isUp) { return false; }
+
+            statusLabel.Text = R.MODS_GAME_RUNNING;
+            MessageBox.Show(R.MODS_GAME_RUNNING, R.MODS_TAB);
+            return true;
+        }
+
+        /// <summary>
+        /// Whether to go ahead with a payload when there is no loader to run it.
+        ///
+        /// Asked rather than refused, because installing payloads before the loader is a perfectly
+        /// reasonable order to do things in, and because the note above the list says the same
+        /// thing already. What it prevents is the case that keeps happening: a payload installed,
+        /// a game started, nothing there, and no way to tell that from a payload that is wrong.
+        /// </summary>
+        private bool payloadWithoutLoaderRefused()
+        {
+            if (Logic.Loader.isInstalled) { return false; }
+
+            return MessageBox.Show(R.MODS_NO_LOADER_ASK, R.MODS_TAB, MessageBoxButton.YesNo)
+                != MessageBoxResult.Yes;
+        }
+
+        /// <summary>
         /// Installs a pak this app did not make.
         ///
         /// Everything about modding this game is one folder - "~mods" beside the game's own
@@ -66,6 +130,7 @@ namespace MCDSaveEdit.UI
         private void importButton_Click(object sender, RoutedEventArgs e)
         {
             EventLogger.logEvent("modsImportPak");
+            if (gameIsInTheWay()) { return; }
 
             var dialog = new OpenFileDialog {
                 Filter = "Unreal pak|*.pak",
@@ -116,6 +181,7 @@ namespace MCDSaveEdit.UI
         private void importZipButton_Click(object sender, RoutedEventArgs e)
         {
             EventLogger.logEvent("modsImportArchive");
+            if (gameIsInTheWay()) { return; }
 
             var dialog = new OpenFileDialog {
                 Filter = ModArchive.READ_FILTER,
@@ -190,6 +256,172 @@ namespace MCDSaveEdit.UI
         }
 
         /// <summary>Opens ~mods in Explorer, making it first if it is not there.</summary>
+
+        /// <summary>
+        /// Installs something cooked in an editor into the folder a loader watches.
+        ///
+        /// This is the one thing in the app that cannot be done from the app: a level with a
+        /// blueprint in it is authored in Unreal, and what happens here is only the moving of it.
+        /// So the dialogue asks for a .uasset and nothing else - whoever has one knows what it is,
+        /// and whoever does not is not helped by a longer explanation on a button.
+        /// </summary>
+        private void installPayloadButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (gameIsInTheWay()) { return; }
+            if (payloadWithoutLoaderRefused()) { return; }
+
+            var trigger = (payloadTrigger.SelectedItem as ComboBoxItem)?.Tag as string
+                ?? Logic.Payloads.TRIGGERS[0];
+
+            var picker = new OpenFileDialog {
+                Title = R.MODS_INSTALL_PAYLOAD,
+                Filter = "Cooked level or asset (*.umap;*.uasset)|*.umap;*.uasset",
+                CheckFileExists = true,
+            };
+            if (picker.ShowDialog() != true) { return; }
+
+            try
+            {
+                var name = System.IO.Path.GetFileNameWithoutExtension(picker.FileName);
+                var mod = Logic.Payloads.install(trigger, picker.FileName, name);
+                statusLabel.Text = string.Format(R.MODS_PAYLOAD_INSTALLED,
+                    System.IO.Path.GetFileName(mod.Path), trigger);
+                updateUI();
+            }
+            catch (Exception problem)
+            {
+                //Said in the line rather than thrown at a dialog. Most of the ways this fails are
+                //information - cooked at too long a path, missing its .uexp - rather than faults.
+                statusLabel.Text = problem.Message;
+            }
+        }
+
+        /// <summary>
+        /// Installs a whole cooked tree, which is what a payload past the simplest one is.
+        ///
+        /// A level records what is placed and where; the things placed are a tree of their own
+        /// beside it. Every content mod read while building this is shaped that way - one ships a
+        /// three kilobyte level naming thirty four classes that live in a hundred and forty one
+        /// files elsewhere - and installing only the level gives a map that loads with nothing in
+        /// it, which looks exactly like the loader being broken.
+        /// </summary>
+        private void installPayloadFolderButton_Click(object sender, RoutedEventArgs e)
+        {
+            EventLogger.logEvent("modsInstallPayloadFolder");
+            if (gameIsInTheWay()) { return; }
+            if (payloadWithoutLoaderRefused()) { return; }
+
+            var trigger = (payloadTrigger.SelectedItem as ComboBoxItem)?.Tag as string
+                ?? Logic.Payloads.TRIGGERS[0];
+
+            var picker = new OpenFolderDialog { Title = R.MODS_PAYLOAD_FOLDER_PICK };
+            if (picker.ShowDialog() != true) { return; }
+
+            try
+            {
+                var name = System.IO.Path.GetFileName(picker.FolderName.TrimEnd(
+                    System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
+
+                var mod = Logic.Payloads.installFolder(trigger, picker.FolderName, name);
+
+                //The file count rather than just the name: the whole point of this button over the
+                //other one is that it carried more than one thing, and a number is how somebody
+                //checks it carried what they expected.
+                statusLabel.Text = string.Format(R.MODS_PAYLOAD_INSTALLED_MANY,
+                    System.IO.Path.GetFileName(mod.Path), mod.Size / 1024 + " KB", trigger);
+
+                //Anything left behind is said in the same breath as the success, because a mod
+                //with a hole in it looks exactly like a mod that worked until it is played.
+                if (Logic.Payloads.Skipped.Count > 0)
+                {
+                    statusLabel.Text += " " + string.Format(R.MODS_PAYLOAD_LEFT_OUT,
+                        Logic.Payloads.Skipped.Count,
+                        string.Join(", ", Logic.Payloads.Skipped.Take(4)));
+                }
+                updateUI();
+            }
+            catch (Exception problem)
+            {
+                //Said in the line rather than thrown at a dialog. Most of the ways this fails are
+                //information - no level in the folder, two levels and no way to tell which runs -
+                //rather than faults, and they are long enough to want reading rather than dismissing.
+                statusLabel.Text = problem.Message;
+            }
+        }
+
+        /// <summary>
+        /// Opens the list of everything in the game, so a path can be copied out of it.
+        ///
+        /// Here because this is the modding tab and that is what it is for, though the window it
+        /// opens is not about the mods folder at all - it is for the other half of the work, the
+        /// half that happens in Unreal.
+        /// </summary>
+        private void gameAssetsButton_Click(object sender, RoutedEventArgs e)
+        {
+            EventLogger.logEvent("modsGameAssets");
+
+            var window = new GameAssetsWindow { Owner = Window.GetWindow(this) };
+            window.Show();
+        }
+
+        /// <summary>
+        /// Installs the loader, without which no payload ever runs.
+        ///
+        /// Both halves of it are authored in Unreal, so this takes the folder they were cooked
+        /// into. It is deliberately a separate button from the payload ones: a payload is
+        /// something somebody makes often, and the loader is a thing installed once and then
+        /// forgotten about until it is missing.
+        /// </summary>
+        private void installLoaderButton_Click(object sender, RoutedEventArgs e)
+        {
+            EventLogger.logEvent("modsInstallLoader");
+            if (gameIsInTheWay()) { return; }
+
+            //Already there is a question rather than a refusal: reinstalling is how a rebuilt
+            //loader gets in, and that is the normal thing to be doing while making one.
+            if (Logic.Loader.isInstalled)
+            {
+                var answer = MessageBox.Show(R.MODS_LOADER_REPLACE, R.MODS_TAB, MessageBoxButton.YesNo);
+                if (answer != MessageBoxResult.Yes) { return; }
+                try { Logic.Loader.remove(); }
+                catch (Exception problem) { statusLabel.Text = problem.Message; return; }
+            }
+
+            try
+            {
+                //The one this app carries, rather than a folder to point at. Authoring the loader
+                //needs Unreal; installing it should not, and that is the entire reason the cooked
+                //bytes are built into the exe.
+                var mod = Logic.Loader.installBuiltIn();
+                statusLabel.Text = string.Format(R.MODS_LOADER_INSTALLED,
+                    System.IO.Path.GetFileName(mod.Path));
+
+                //Another mod on the same anchor means one of the two never starts, and which
+                //one is decided by the alphabet. Worth saying at the moment of installing.
+                var clashes = Logic.Loader.clashes();
+                if (clashes.Count > 0)
+                {
+                    statusLabel.Text += " " + string.Format(R.MODS_LOADER_CLASH,
+                        string.Join(", ", clashes.Take(3)));
+                }
+
+                //Stubs are expected here rather than exceptional, so this reads as confirmation
+                //rather than as a warning.
+                if (Logic.Loader.HeldBack.Count > 0)
+                {
+                    statusLabel.Text += " " + string.Format(R.MODS_LOADER_HELD_BACK,
+                        Logic.Loader.HeldBack.Count);
+                }
+                updateUI();
+            }
+            catch (Exception problem)
+            {
+                //Said in the line. Every way this fails is a sentence worth reading - the anchor
+                //cooked at the wrong path, the widget missing - rather than a fault.
+                statusLabel.Text = problem.Message;
+            }
+        }
+
         private void openFolderButton_Click(object sender, RoutedEventArgs e)
         {
             EventLogger.logEvent("modsOpenFolder");
@@ -222,6 +454,25 @@ namespace MCDSaveEdit.UI
             importButton.IsEnabled = CustomSkins.ready;
             openFolderButton.IsEnabled = CustomSkins.ready;
             importZipButton.IsEnabled = CustomSkins.ready;
+            installPayloadButton.IsEnabled = CustomSkins.ready;
+            installPayloadFolderButton.IsEnabled = CustomSkins.ready;
+
+            //The asset list is read straight out of the paks, so it needs them found and nothing
+            //else - no save file, no mods folder.
+            gameAssetsButton.IsEnabled = CustomSkins.ready;
+            installLoaderButton.IsEnabled = CustomSkins.ready;
+
+            //Said before anything is installed rather than after nothing happens. A payload
+            //without a loader writes a perfectly good pak that no part of the game ever reads,
+            //and that is indistinguishable from a broken payload unless somebody says so here.
+            if (CustomSkins.ready && !Logic.Loader.isInstalled)
+            {
+                modsNoteLabel.Text = R.MODS_NO_LOADER;
+            }
+            else
+            {
+                modsNoteLabel.Text = R.CUSTOM_SKINS_MODS_NOTE;
+            }
 
             if (!CustomSkins.ready) { installedCountLabel.Text = string.Empty; return; }
 

@@ -133,6 +133,26 @@
     <value>Gear</value>
     <comment>Gear</comment>
   </data>
+  <data name="MODS_PAYLOAD_OTHER_LOADER" xml:space="preserve">
+    <value>Community loader</value>
+    <comment>Switch to install into the other loader's folders</comment>
+  </data>
+  <data name="MODS_PAYLOAD_OTHER_LOADER_WHY" xml:space="preserve">
+    <value>Installs into the Blueprint Loader's folders rather than this app's own. Useful for proving a payload works against a loader somebody else has already debugged, which keeps "did my level cook correctly" and "does my bootstrap work" as two questions rather than one.</value>
+    <comment>Why the other-loader switch exists</comment>
+  </data>
+  <data name="MODS_INSTALL_PAYLOAD" xml:space="preserve">
+    <value>Install payload</value>
+    <comment>The button that installs a cooked blueprint level</comment>
+  </data>
+  <data name="MODS_INSTALL_PAYLOAD_WHY" xml:space="preserve">
+    <value>Installs something cooked in Unreal - a level with blueprints, lights or models in it - into the folder a blueprint loader watches, so the game runs it at the chosen moment. The menu beside this says when, and Menu is usually the right answer: the main menu is a rendered camp scene, so anything loaded there is created first and stays for the whole session - in the Camp and in missions alike. Lobby and Ingame are for things that should exist only at that moment. Authoring one needs the editor; this only moves it into place.</value>
+    <comment>What the payload button does</comment>
+  </data>
+  <data name="MODS_PAYLOAD_INSTALLED" xml:space="preserve">
+    <value>Installed {0}. It will run {1}.</value>
+    <comment>After a payload is installed</comment>
+  </data>
   <data name="CUSTOM_SKINS_INSTALLED" xml:space="preserve">
     <value>Installed</value>
     <comment>Installed</comment>
@@ -2102,5 +2122,117 @@ The save file is not changed until you save it.</value>
   <data name="MODS_ZIP_EXPORTED" xml:space="preserve">
     <value>{0} mod(s) written to {1}.</value>
     <comment>The export succeeded</comment>
+  </data>
+  <data name="MODS_INSTALL_PAYLOAD_FOLDER" xml:space="preserve">
+    <value>Install payload folder</value>
+    <comment>The button that installs a whole cooked tree</comment>
+  </data>
+  <data name="MODS_INSTALL_PAYLOAD_FOLDER_WHY" xml:space="preserve">
+    <value>Installs everything in a cooked folder at once - the level and the blueprints, models and materials it is built from. This is what a payload past the simplest one looks like: the level only records what is placed and where, and the things placed live in a tree of their own beside it. Installing the level by itself gives a map that loads with nothing in it. Point this at the Content folder under Saved/Cooked/WindowsNoEditor, or at a folder inside it.</value>
+    <comment>What the payload folder button does</comment>
+  </data>
+  <data name="MODS_PAYLOAD_FOLDER_PICK" xml:space="preserve">
+    <value>Choose the cooked folder</value>
+    <comment>Title of the folder picker for a payload</comment>
+  </data>
+  <data name="MODS_PAYLOAD_INSTALLED_MANY" xml:space="preserve">
+    <value>Installed {0} ({1} files). It will run {2}.</value>
+    <comment>After a payload folder is installed</comment>
+  </data>
+  <data name="MODS_GAME_ASSETS" xml:space="preserve">
+    <value>Game assets</value>
+    <comment>The button that opens the game asset browser</comment>
+  </data>
+  <data name="MODS_GAME_ASSETS_WHY" xml:space="preserve">
+    <value>Every asset in the game, searchable, with the path Unreal wants for it. A mod refers to the game's own materials, textures, skeletons and sounds by path, and gets the real one at run time as long as an empty asset of the same name sits at the same path in the editor. This is where those paths come from.</value>
+    <comment>What the game asset browser is for</comment>
+  </data>
+  <data name="ASSETS_TITLE" xml:space="preserve">
+    <value>Game assets</value>
+    <comment>Title of the asset browser window</comment>
+  </data>
+  <data name="ASSETS_SEARCH" xml:space="preserve">
+    <value>Search</value>
+    <comment>Label of the asset search box</comment>
+  </data>
+  <data name="ASSETS_SHOWING" xml:space="preserve">
+    <value>{0} of {1}</value>
+    <comment>How many assets are listed out of how many there are</comment>
+  </data>
+  <data name="ASSETS_COPY_PATH" xml:space="preserve">
+    <value>Copy path</value>
+    <comment>Copies an asset's engine path</comment>
+  </data>
+  <data name="ASSETS_COPY_FOLDER" xml:space="preserve">
+    <value>Copy folder</value>
+    <comment>Copies an asset's engine folder</comment>
+  </data>
+  <data name="ASSETS_COPIED" xml:space="preserve">
+    <value>Copied {0}</value>
+    <comment>After a path is copied</comment>
+  </data>
+  <data name="ASSETS_NONE" xml:space="preserve">
+    <value>Nothing matches that.</value>
+    <comment>When a search finds no assets</comment>
+  </data>
+  <data name="ASSETS_HOW" xml:space="preserve">
+    <value>To use one of these in Unreal: make an empty asset of the same kind, with exactly this name, in exactly this folder, and refer to that. Cook as usual, then leave the empty one out of the pak - the reference is a path, and at run time the game resolves it to the real asset. Every content mod worth reading does this; one read while building it names a hundred and five.</value>
+    <comment>The explanation at the top of the asset browser</comment>
+  </data>
+  <data name="ASSETS_KIND" xml:space="preserve">
+    <value>Kind</value>
+    <comment>Column heading for what type an asset is</comment>
+  </data>
+  <data name="ASSETS_PATH" xml:space="preserve">
+    <value>Path</value>
+    <comment>Column heading for an asset's engine path</comment>
+  </data>
+  <data name="ASSETS_READING" xml:space="preserve">
+    <value>Reading...</value>
+    <comment>While an asset's real type is being read</comment>
+  </data>
+  <data name="MODS_PAYLOAD_LEFT_OUT" xml:space="preserve">
+    <value>{0} left out ({1}) - those were cooked at a path they no longer sit at, so where they belong cannot be known.</value>
+    <comment>When an install skips assets that do not name themselves</comment>
+  </data>
+  <data name="MODS_INSTALL_LOADER" xml:space="preserve">
+    <value>Install loader</value>
+    <comment>The button that installs MCD Reborn's blueprint loader</comment>
+  </data>
+  <data name="MODS_INSTALL_LOADER_WHY" xml:space="preserve">
+    <value>Installs the loader, without which no payload ever runs. It is two blueprints authored in Unreal: one replaces an actor the game already places in 308 of its levels, and starting it is what gets the second one running - a widget that watches whether you are at the menu, in the Camp or on a mission, and loads whatever is in the matching folder. Installed once, then forgotten about.</value>
+    <comment>What the loader button does</comment>
+  </data>
+  <data name="MODS_LOADER_PICK" xml:space="preserve">
+    <value>Choose the folder the loader was cooked into</value>
+    <comment>Title of the folder picker for the loader</comment>
+  </data>
+  <data name="MODS_LOADER_INSTALLED" xml:space="preserve">
+    <value>Loader installed as {0}. Payloads will run from now on.</value>
+    <comment>After the loader is installed</comment>
+  </data>
+  <data name="MODS_LOADER_REPLACE" xml:space="preserve">
+    <value>The loader is already installed. Replace it with this one?</value>
+    <comment>Asked before reinstalling the loader</comment>
+  </data>
+  <data name="MODS_NO_LOADER" xml:space="preserve">
+    <value>The loader is not installed, so nothing here will run a payload yet - a payload would be written correctly and then simply never read. Use Install loader first.</value>
+    <comment>Shown in the mods tab while no loader is installed</comment>
+  </data>
+  <data name="MODS_GAME_RUNNING" xml:space="preserve">
+    <value>Minecraft Dungeons is running. Close it first: while it is open Windows will not let this app write over a pak the game has in use, and any new pak it does write will not be read until the game is started again.</value>
+    <comment>Refused because the game is open</comment>
+  </data>
+  <data name="MODS_NO_LOADER_ASK" xml:space="preserve">
+    <value>No loader is installed, so this payload will be written correctly and then never read by anything. Install it anyway?</value>
+    <comment>Asked before installing a payload with no loader</comment>
+  </data>
+  <data name="MODS_LOADER_HELD_BACK" xml:space="preserve">
+    <value>{0} stub assets were left out, so the game keeps its own.</value>
+    <comment>After stubs are held back from a loader install</comment>
+  </data>
+  <data name="MODS_LOADER_CLASH" xml:space="preserve">
+    <value>Warning: {0} also replaces the same actor, so only one of the two loaders will start. Remove it if payloads do not run.</value>
+    <comment>When another mod replaces the loader anchor</comment>
   </data>
 </root>

@@ -97,6 +97,51 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Community loader.
+        /// </summary>
+        public static string MODS_PAYLOAD_OTHER_LOADER {
+            get {
+                return ResourceManager.GetString("MODS_PAYLOAD_OTHER_LOADER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Installs into the Blueprint Loader's folders rathe.
+        /// </summary>
+        public static string MODS_PAYLOAD_OTHER_LOADER_WHY {
+            get {
+                return ResourceManager.GetString("MODS_PAYLOAD_OTHER_LOADER_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Install payload.
+        /// </summary>
+        public static string MODS_INSTALL_PAYLOAD {
+            get {
+                return ResourceManager.GetString("MODS_INSTALL_PAYLOAD", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Installs something cooked in Unreal - a level with.
+        /// </summary>
+        public static string MODS_INSTALL_PAYLOAD_WHY {
+            get {
+                return ResourceManager.GetString("MODS_INSTALL_PAYLOAD_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Installed {0}. It will run {1}..
+        /// </summary>
+        public static string MODS_PAYLOAD_INSTALLED {
+            get {
+                return ResourceManager.GetString("MODS_PAYLOAD_INSTALLED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Installed.
         /// </summary>
         public static string CUSTOM_SKINS_INSTALLED {
@@ -4523,5 +4568,257 @@ namespace MCDSaveEdit.Properties {
             }
         }
         
-    }
+    
+        /// <summary>
+        ///   Looks up a localized string similar to Install payload folder.
+        /// </summary>
+        public static string MODS_INSTALL_PAYLOAD_FOLDER {
+            get {
+                return ResourceManager.GetString("MODS_INSTALL_PAYLOAD_FOLDER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Installs everything in a cooked folder at once - the level a.
+        /// </summary>
+        public static string MODS_INSTALL_PAYLOAD_FOLDER_WHY {
+            get {
+                return ResourceManager.GetString("MODS_INSTALL_PAYLOAD_FOLDER_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Choose the cooked folder.
+        /// </summary>
+        public static string MODS_PAYLOAD_FOLDER_PICK {
+            get {
+                return ResourceManager.GetString("MODS_PAYLOAD_FOLDER_PICK", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Installed {0} ({1} files). It will run {2}..
+        /// </summary>
+        public static string MODS_PAYLOAD_INSTALLED_MANY {
+            get {
+                return ResourceManager.GetString("MODS_PAYLOAD_INSTALLED_MANY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Game assets.
+        /// </summary>
+        public static string MODS_GAME_ASSETS {
+            get {
+                return ResourceManager.GetString("MODS_GAME_ASSETS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Every asset in the game, searchable, with the path Unreal wa.
+        /// </summary>
+        public static string MODS_GAME_ASSETS_WHY {
+            get {
+                return ResourceManager.GetString("MODS_GAME_ASSETS_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Game assets.
+        /// </summary>
+        public static string ASSETS_TITLE {
+            get {
+                return ResourceManager.GetString("ASSETS_TITLE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Search.
+        /// </summary>
+        public static string ASSETS_SEARCH {
+            get {
+                return ResourceManager.GetString("ASSETS_SEARCH", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} of {1}.
+        /// </summary>
+        public static string ASSETS_SHOWING {
+            get {
+                return ResourceManager.GetString("ASSETS_SHOWING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Copy path.
+        /// </summary>
+        public static string ASSETS_COPY_PATH {
+            get {
+                return ResourceManager.GetString("ASSETS_COPY_PATH", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Copy folder.
+        /// </summary>
+        public static string ASSETS_COPY_FOLDER {
+            get {
+                return ResourceManager.GetString("ASSETS_COPY_FOLDER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Copied {0}.
+        /// </summary>
+        public static string ASSETS_COPIED {
+            get {
+                return ResourceManager.GetString("ASSETS_COPIED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing matches that..
+        /// </summary>
+        public static string ASSETS_NONE {
+            get {
+                return ResourceManager.GetString("ASSETS_NONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to To use one of these in Unreal: make an empty asset of the sa.
+        /// </summary>
+        public static string ASSETS_HOW {
+            get {
+                return ResourceManager.GetString("ASSETS_HOW", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Kind.
+        /// </summary>
+        public static string ASSETS_KIND {
+            get {
+                return ResourceManager.GetString("ASSETS_KIND", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Path.
+        /// </summary>
+        public static string ASSETS_PATH {
+            get {
+                return ResourceManager.GetString("ASSETS_PATH", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Reading....
+        /// </summary>
+        public static string ASSETS_READING {
+            get {
+                return ResourceManager.GetString("ASSETS_READING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} left out ({1}) - those were cooked at a path t.
+        /// </summary>
+        public static string MODS_PAYLOAD_LEFT_OUT {
+            get {
+                return ResourceManager.GetString("MODS_PAYLOAD_LEFT_OUT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Install loader.
+        /// </summary>
+        public static string MODS_INSTALL_LOADER {
+            get {
+                return ResourceManager.GetString("MODS_INSTALL_LOADER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Installs the loader, without which no payload ever runs. It .
+        /// </summary>
+        public static string MODS_INSTALL_LOADER_WHY {
+            get {
+                return ResourceManager.GetString("MODS_INSTALL_LOADER_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Choose the folder the loader was cooked into.
+        /// </summary>
+        public static string MODS_LOADER_PICK {
+            get {
+                return ResourceManager.GetString("MODS_LOADER_PICK", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Loader installed as {0}. Payloads will run from now on..
+        /// </summary>
+        public static string MODS_LOADER_INSTALLED {
+            get {
+                return ResourceManager.GetString("MODS_LOADER_INSTALLED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The loader is already installed. Replace it with this one?.
+        /// </summary>
+        public static string MODS_LOADER_REPLACE {
+            get {
+                return ResourceManager.GetString("MODS_LOADER_REPLACE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Minecraft Dungeons is running. Close it first: while it is o.
+        /// </summary>
+        public static string MODS_GAME_RUNNING {
+            get {
+                return ResourceManager.GetString("MODS_GAME_RUNNING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No loader is installed, so this payload will be written corr.
+        /// </summary>
+        public static string MODS_NO_LOADER_ASK {
+            get {
+                return ResourceManager.GetString("MODS_NO_LOADER_ASK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The loader is not installed, so nothing here will run a payl.
+        /// </summary>
+        public static string MODS_NO_LOADER {
+            get {
+                return ResourceManager.GetString("MODS_NO_LOADER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} stub assets were left out, so the game keeps its own..
+        /// </summary>
+        public static string MODS_LOADER_HELD_BACK {
+            get {
+                return ResourceManager.GetString("MODS_LOADER_HELD_BACK", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Warning: {0} also replaces the same actor, so only one of th.
+        /// </summary>
+        public static string MODS_LOADER_CLASH {
+            get {
+                return ResourceManager.GetString("MODS_LOADER_CLASH", resourceCulture);
+            }
+        }
+}
 }
