@@ -59,10 +59,67 @@
                               Checked="wasd_Changed" Unchecked="wasd_Changed"/>
                     <CheckBox x:Name="mouseButtons" Content="*Clicking attacks*" Margin="0,6,0,0"
                               Checked="mouseButtons_Changed" Unchecked="mouseButtons_Changed"/>
-                    <CheckBox x:Name="followsAim" Content="*Points where you aim*" Margin="0,6,0,0"
-                              Checked="followsAim_Changed" Unchecked="followsAim_Changed"/>
+                    <CheckBox x:Name="canJump" Content="*Q jumps*" Margin="0,6,0,0"
+                              IsChecked="True" Checked="canJump_Changed" Unchecked="canJump_Changed"/>
+                    <DockPanel x:Name="jumpRow" Margin="18,4,0,0">
+                        <TextBlock x:Name="jumpHeightLabel" DockPanel.Dock="Left" Width="120"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock x:Name="jumpCountLabel" DockPanel.Dock="Right" Width="90"
+                                   TextAlignment="Right" Foreground="Gray" VerticalAlignment="Center"/>
+                        <Slider x:Name="jumpHeight" Minimum="600" Maximum="3000" Value="1500"
+                                TickFrequency="50" IsSnapToTickEnabled="True"
+                                VerticalAlignment="Center" ValueChanged="jumpHeight_Changed"/>
+                    </DockPanel>
+                    <DockPanel Margin="18,4,0,0">
+                        <TextBlock x:Name="airControlLabel" DockPanel.Dock="Left" Width="120"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock x:Name="jumpsLabel" DockPanel.Dock="Right" Width="90"
+                                   TextAlignment="Right" Foreground="Gray" VerticalAlignment="Center"/>
+                        <Slider x:Name="airControl" Minimum="0" Maximum="1" Value="0.35"
+                                TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                VerticalAlignment="Center" ValueChanged="airControl_Changed"/>
+                    </DockPanel>
+                    <DockPanel Margin="18,4,0,0">
+                        <TextBlock x:Name="jumpCountCaption" DockPanel.Dock="Left" Width="120"
+                                   VerticalAlignment="Center"/>
+                        <Slider x:Name="jumpCount" Minimum="1" Maximum="4" Value="1"
+                                TickFrequency="1" IsSnapToTickEnabled="True"
+                                VerticalAlignment="Center" ValueChanged="jumpCount_Changed"/>
+                    </DockPanel>
+                    <CheckBox x:Name="rideKey" Content="*R rides*" Margin="0,10,0,0"
+                              IsChecked="True" Checked="rideKey_Changed" Unchecked="rideKey_Changed"/>
+                    <DockPanel Margin="18,6,0,0">
+                        <TextBlock x:Name="mountSpeedLabel" DockPanel.Dock="Left" Width="120"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock x:Name="mountSpeedValue" DockPanel.Dock="Right" Width="90"
+                                   TextAlignment="Right" Foreground="Gray" VerticalAlignment="Center"/>
+                        <Slider x:Name="mountSpeed" Minimum="800" Maximum="6000" Value="2400"
+                                TickFrequency="100" IsSnapToTickEnabled="True"
+                                VerticalAlignment="Center" ValueChanged="mountSpeed_Changed"/>
+                    </DockPanel>
+                    <DockPanel Margin="18,6,0,0">
+                        <ContentControl x:Name="sitHeightLabel" DockPanel.Dock="Left" Width="120"
+                                        VerticalAlignment="Center"/>
+                        <TextBlock x:Name="sitHeightValue" DockPanel.Dock="Right" Width="90"
+                                   TextAlignment="Right" Foreground="Gray" VerticalAlignment="Center"/>
+                        <Slider x:Name="sitHeight" Minimum="-150" Maximum="600" Value="0"
+                                TickFrequency="5" IsSnapToTickEnabled="True"
+                                VerticalAlignment="Center" ValueChanged="sitHeight_Changed"/>
+                    </DockPanel>
 
-                    <DockPanel Margin="0,8,0,0">
+                    <CheckBox x:Name="canFly" Content="*G flies*" Margin="0,6,0,0"
+                              IsChecked="True" Checked="canFly_Changed" Unchecked="canFly_Changed"/>
+                    <DockPanel Margin="18,4,0,0">
+                        <TextBlock x:Name="flySpeedLabel" DockPanel.Dock="Left" Width="120"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock x:Name="flySpeedValue" DockPanel.Dock="Right" Width="90"
+                                   TextAlignment="Right" Foreground="Gray" VerticalAlignment="Center"/>
+                        <Slider x:Name="flySpeed" Minimum="1000" Maximum="12000" Value="4000"
+                                TickFrequency="250" IsSnapToTickEnabled="True"
+                                VerticalAlignment="Center" ValueChanged="flySpeed_Changed"/>
+                    </DockPanel>
+
+<DockPanel Margin="0,8,0,0">
                         <TextBlock x:Name="sensitivityLabel" DockPanel.Dock="Left" Width="120"
                                    VerticalAlignment="Center"/>
                         <CheckBox x:Name="invertPitch" DockPanel.Dock="Right" Content="*Invert*"

@@ -269,3 +269,12 @@ changelog.md
 
 # Research items, wont be committed to the repo
 research/
+
+# Handover builds. Every one of these is a whole runtime with the app inside it - the
+# self-contained flavour is seventy megabytes - and they are rebuilt from source on demand,
+# so nothing is lost by keeping them out and a great deal of repository is saved.
+# One pattern rather than a list: a new flavour gets a new folder every few releases, and
+# every time it was added by hand after turning up in the changes to commit.
+dist/
+publish/
+publish-*/

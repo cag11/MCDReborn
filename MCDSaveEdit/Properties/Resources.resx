@@ -1092,11 +1092,11 @@ The save file is not changed until you save it.</value>
     <comment>No paks</comment>
   </data>
   <data name="WEAPON_SKINS_PICK_ONE" xml:space="preserve">
-    <value>Pick a weapon to see its shape.</value>
+    <value>Pick one to see its shape.</value>
     <comment>Nothing selected</comment>
   </data>
   <data name="WEAPON_SKINS_NO_GEOMETRY" xml:space="preserve">
-    <value>This mesh does not declare its bounds, so its geometry cannot be found and it cannot be reshaped.</value>
+    <value>This mesh's geometry cannot be found, so it cannot be replaced.</value>
     <comment>Unreadable mesh</comment>
   </data>
   <data name="WEAPON_SKINS_MEASUREMENTS" xml:space="preserve">
@@ -1112,7 +1112,7 @@ The save file is not changed until you save it.</value>
     <comment>Applied confirmation</comment>
   </data>
   <data name="WEAPON_SKINS_MODS_NOTE" xml:space="preserve">
-    <value>This replaces the weapon's shape, not its textures or how it behaves. Deleting the pak from ~mods undoes it. Close the game before applying, and start Dungeons.exe directly – launching through the Minecraft Launcher removes mods.</value>
+    <value>This replaces the mesh's shape, not how it behaves. Deleting the pak from ~mods undoes it. Close the game before applying, and start Dungeons.exe directly – launching through the Minecraft Launcher removes mods.</value>
     <comment>Explains what reshaping does</comment>
   </data>
   <data name="WEAPON_SKINS_MODEL" xml:space="preserve">
@@ -1434,5 +1434,505 @@ The save file is not changed until you save it.</value>
   <data name="CAMERA_RESTORED" xml:space="preserve">
     <value>The game's own camera is back.</value>
     <comment>After restore</comment>
+  </data>
+  <data name="ENEMIES_TAB" xml:space="preserve">
+    <value>Enemies</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="ENEMIES_ON" xml:space="preserve">
+    <value>More enemies</value>
+    <comment>Checkbox - applies the multipliers</comment>
+  </data>
+  <data name="ENEMIES_RESTORE" xml:space="preserve">
+    <value>Put it back</value>
+    <comment>Button - restores the level's own numbers</comment>
+  </data>
+  <data name="ENEMIES_HINT" xml:space="preserve">
+    <value>Multiplies what the level's own spawners were told to send. Nothing is written to disk and nothing is injected - quitting the game puts it all back. It follows you into a new level, because each one brings its own spawners.</value>
+    <comment>Explains the tab</comment>
+  </data>
+  <data name="ENEMIES_FOUND" xml:space="preserve">
+    <value>{0} spawner(s) in this level.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="ENEMIES_NONE_HERE" xml:space="preserve">
+    <value>No wave spawners here. The camp has almost none - load into a mission to see what this does.</value>
+    <comment>Status when the level has no spawners</comment>
+  </data>
+  <data name="ENEMIES_APPLIED" xml:space="preserve">
+    <value>Applied to {0} spawner(s).</value>
+    <comment>Status</comment>
+  </data>
+  <data name="ENEMIES_RESTORED" xml:space="preserve">
+    <value>Put {0} spawner(s) back.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="ENEMIES_COUNT" xml:space="preserve">
+    <value>How many</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="ENEMIES_COUNT_WHY" xml:space="preserve">
+    <value>Multiplies every wave's size - where it starts, how much it grows and where it stops. Three is a noticeably busier fight; eight is a swarm.</value>
+    <comment>Slider note</comment>
+  </data>
+  <data name="ENEMIES_RATE" xml:space="preserve">
+    <value>How often</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="ENEMIES_RATE_WHY" xml:space="preserve">
+    <value>How quickly waves arrive. Higher means less breathing room between them, which stacks with the count rather than replacing it.</value>
+    <comment>Slider note</comment>
+  </data>
+  <data name="ENEMIES_SPREAD" xml:space="preserve">
+    <value>How spread out</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="ENEMIES_SPREAD_WHY" xml:space="preserve">
+    <value>The radius a spawner scatters its wave across. Wider surrounds you; narrower drops them in a clump you can meet head on.</value>
+    <comment>Slider note</comment>
+  </data>
+  <data name="ENEMIES_CLOSENESS" xml:space="preserve">
+    <value>How close</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="ENEMIES_CLOSENESS_WHY" xml:space="preserve">
+    <value>How near you they are allowed to appear. Lower gets ambushes, higher gives you the moment to see them coming that the level intended.</value>
+    <comment>Slider note</comment>
+  </data>
+  <data name="STATS_TAB" xml:space="preserve">
+    <value>Difficulty</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="STATS_ENEMIES_ON" xml:space="preserve">
+    <value>Change the enemies</value>
+    <comment>Section switch</comment>
+  </data>
+  <data name="STATS_PLAYER_ON" xml:space="preserve">
+    <value>Change your character</value>
+    <comment>Section switch</comment>
+  </data>
+  <data name="STATS_RESTORE" xml:space="preserve">
+    <value>Put it all back</value>
+    <comment>Button</comment>
+  </data>
+  <data name="STATS_HINT" xml:space="preserve">
+    <value>Applied to the running game and held there, because enemies that appear later are built fresh. Nothing is written to disk - quitting the game puts everything back, and so does the button.</value>
+    <comment>Explains the tab</comment>
+  </data>
+  <data name="STATS_FOUND" xml:space="preserve">
+    <value>{0} enemies in this level.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="STATS_NO_CHARACTER" xml:space="preserve">
+    <value>Waiting for a character - load into the camp or a mission.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="STATS_ENEMIES_BACK" xml:space="preserve">
+    <value>Enemies are back to normal.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="STATS_PLAYER_BACK" xml:space="preserve">
+    <value>Your character is back to normal.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="STATS_ALL_BACK" xml:space="preserve">
+    <value>Everything is back to normal.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="STATS_TOUGH" xml:space="preserve">
+    <value>How tough they are</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="STATS_TOUGH_WHY" xml:space="preserve">
+    <value>How many hits they take to kill. This changes the damage they take rather than the health they have, which is the same thing to play against and does not care what kind of enemy it is.</value>
+    <comment>Slider note</comment>
+  </data>
+  <data name="STATS_ENEMY_SPEED" xml:space="preserve">
+    <value>How fast they are</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="STATS_ENEMY_SPEED_WHY" xml:space="preserve">
+    <value>How quickly they close on you. Small changes here are felt more than large ones anywhere else - a slow enemy you can walk away from is a different enemy at 1.5x.</value>
+    <comment>Slider note</comment>
+  </data>
+  <data name="STATS_YOUR_SPEED" xml:space="preserve">
+    <value>Your speed</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="STATS_YOUR_SPEED_WHY" xml:space="preserve">
+    <value>How fast you move, on top of whatever your gear already gives you.</value>
+    <comment>Slider note</comment>
+  </data>
+  <data name="STATS_DODGE_COOLDOWN" xml:space="preserve">
+    <value>Your roll cooldown</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="STATS_DODGE_COOLDOWN_WHY" xml:space="preserve">
+    <value>Seconds between rolls. The game gives you 2.5.</value>
+    <comment>Slider note</comment>
+  </data>
+  <data name="STATS_DODGE_CHARGES" xml:space="preserve">
+    <value>Your roll charges</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="STATS_DODGE_CHARGES_WHY" xml:space="preserve">
+    <value>How many rolls you can chain before waiting. The game gives you one.</value>
+    <comment>Slider note</comment>
+  </data>
+  <data name="STATS_GRAVITY" xml:space="preserve">
+    <value>Your gravity</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="STATS_GRAVITY_WHY" xml:space="preserve">
+    <value>How heavily you fall. Lower makes every gap and ledge more forgiving.</value>
+    <comment>Slider note</comment>
+  </data>
+  <data name="STATS_ATTACK_SPEED" xml:space="preserve">
+    <value>Your attack speed</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="STATS_ATTACK_SPEED_WHY" xml:space="preserve">
+    <value>How fast you swing and shoot. Applied to both your melee and your ranged weapon, since nobody wants half of it.</value>
+    <comment>Slider note</comment>
+  </data>
+  <data name="STATS_RENDER_ON" xml:space="preserve">
+    <value>Make crowds cheaper</value>
+    <comment>Section switch</comment>
+  </data>
+  <data name="STATS_RENDER_WHY" xml:space="preserve">
+    <value>Third person costs frames for a reason that has nothing to do with this app: looking along a corridor puts far more enemies on screen than looking down at the floor, and each one is a skeleton being posed, drawn and casting a shadow. These make a crowd cheaper without making it smaller.</value>
+    <comment>Explains the section</comment>
+  </data>
+  <data name="STATS_SHADOWS" xml:space="preserve">
+    <value>Enemies cast shadows</value>
+    <comment>Checkbox - off is faster</comment>
+  </data>
+  <data name="STATS_POSE_WHEN_SEEN" xml:space="preserve">
+    <value>Only animate what you can see</value>
+    <comment>Checkbox - on is faster</comment>
+  </data>
+  <data name="STATS_DRAW_DISTANCE" xml:space="preserve">
+    <value>Stop drawing them beyond</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="STATS_DRAW_DISTANCE_WHY" xml:space="preserve">
+    <value>How far away an enemy is still drawn, in centimetres. All the way up means never stop, which is what the game does.</value>
+    <comment>Slider note</comment>
+  </data>
+  <data name="STATS_RENDER_BACK" xml:space="preserve">
+    <value>Enemies are drawn the way the game draws them again.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="STATS_POSE_WHY" xml:space="preserve">
+    <value>The game animates every enemy in the level every frame, including the ones behind you. Unreal has a setting for not doing that and this game does not use it. Measured at 54 frames a second before and 138 after, in a fight with 198 enemies. It changes nothing you can see.</value>
+    <comment>Explains the posing option</comment>
+  </data>
+  <data name="CAMERA_JUMP" xml:space="preserve">
+    <value>Q jumps</value>
+    <comment>Checkbox</comment>
+  </data>
+  <data name="CAMERA_JUMP_WHY" xml:space="preserve">
+    <value>The game has no jump at all. This one is not the character jumping but a launch written straight into its velocity, which is why it works when asking the character nicely does not. On Q rather than space, because a jump that also rolls is harder to aim and harder to stop doing by accident. Needs W A S D switched on.</value>
+    <comment>Explains jumping</comment>
+  </data>
+  <data name="CAMERA_JUMP_HEIGHT" xml:space="preserve">
+    <value>Jump height</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="CAMERA_AIR_CONTROL" xml:space="preserve">
+    <value>Steering in the air</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="CAMERA_JUMP_COUNT" xml:space="preserve">
+    <value>Jumps before landing</value>
+    <comment>Slider</comment>
+  </data>
+  <data name="CAMERA_SMOOTHING" xml:space="preserve">
+    <value>Camera smoothing</value>
+    <comment>Slider for how rigidly the camera follows the character</comment>
+  </data>
+  <data name="CAMERA_FORWARD" xml:space="preserve">
+    <value>Camera forward</value>
+    <comment>Slider for how far in front of the face the camera sits</comment>
+  </data>
+  <data name="MOUNT_RIDE" xml:space="preserve">
+    <value>Ride the nearest creature</value>
+    <comment>Toggle for the mount</comment>
+  </data>
+  <data name="MOUNT_WHY" xml:space="preserve">
+    <value>Press R once to get on, again to get off. Nothing here spawns anything, but the game does: any summoning artifact - Enchanted Grass, Tasty Bone, Golem Kit, Wonderful Wheat - drops a creature beside you, and it does not have to be there when you press R. With nothing underneath you it keeps looking, and climbs onto the first creature that comes within reach. Needs W A S D switched on.</value>
+    <comment>Explains the mount</comment>
+  </data>
+  <data name="MOUNT_SPEED" xml:space="preserve">
+    <value>Riding speed</value>
+    <comment>Slider for mounted speed</comment>
+  </data>
+  <data name="MOUNT_FREEZE" xml:space="preserve">
+    <value>Stop the rider's legs moving</value>
+    <comment>Freezes the player's animation while mounted</comment>
+  </data>
+  <data name="MOUNT_REFRESH" xml:space="preserve">
+    <value>Look around</value>
+    <comment>Button that lists nearby creatures</comment>
+  </data>
+  <data name="MOUNT_FOUND" xml:space="preserve">
+    <value>{0} nearby. Pick one, then tick Ride.</value>
+    <comment>Says how many creatures were found</comment>
+  </data>
+  <data name="MOUNT_FOUND_NONE" xml:space="preserve">
+    <value>Nothing nearby that walks. Ride still works - it will just be speed.</value>
+    <comment>Says nothing was found</comment>
+  </data>
+  <data name="FLY_ON" xml:space="preserve">
+    <value>G flies</value>
+    <comment>Toggle for flying</comment>
+  </data>
+  <data name="FLY_WHY" xml:space="preserve">
+    <value>Press G in game to take off and again to land. Forward goes wherever the camera is pointed, so look down to dive. Gravity is off while flying, which is what holds you up - there is no way to hold a walking character in the air from outside. Needs W A S D switched on.</value>
+    <comment>Explains flying</comment>
+  </data>
+  <data name="FLY_SPEED" xml:space="preserve">
+    <value>Flying speed</value>
+    <comment>Slider for flight speed</comment>
+  </data>
+  <data name="MOUNT_RIDE_KEY" xml:space="preserve">
+    <value>R rides the closest creature</value>
+    <comment>Toggle for the ride hotkey</comment>
+  </data>
+  <data name="BOARD_ON" xml:space="preserve">
+    <value>Board at your feet</value>
+    <comment>Toggle for moving equipment underfoot</comment>
+  </data>
+  <data name="BOARD_WHY" xml:space="preserve">
+    <value>Takes whatever is in your hand off your arm and puts it flat under your feet. Pack a model over the Mace on the Weapon Skins tab first and it becomes a skateboard; without that it is whatever you happen to be holding, lying on the floor.</value>
+    <comment>Explains the board</comment>
+  </data>
+  <data name="BOARD_HEIGHT" xml:space="preserve">
+    <value>Board height</value>
+    <comment>Slider for how high the board sits</comment>
+  </data>
+  <data name="BOARD_FOUND" xml:space="preserve">
+    <value>{0} equipped. Pick one, then tick the board.</value>
+    <comment>Says how many held meshes were found</comment>
+  </data>
+  <data name="BOARD_FOUND_NONE" xml:space="preserve">
+    <value>Nothing equipped that could be a board.</value>
+    <comment>Says nothing was found</comment>
+  </data>
+  <data name="MOUNT_TAB_INTRO" xml:space="preserve">
+    <value>Nothing here spawns anything - spawning is a function call, and this app only writes memory. The Totem of Regeneration does spawn, though: the artifact drops a rigid object on the floor wherever you stand. Replace what that object looks like, and it is your mount.</value>
+    <comment>Intro for the mount tab</comment>
+  </data>
+  <data name="MOUNT_TAB_RIDING" xml:space="preserve">
+    <value>Riding it</value>
+    <comment>Header</comment>
+  </data>
+  <data name="MOUNT_TAB_BOARD" xml:space="preserve">
+    <value>Standing on something you are carrying</value>
+    <comment>Header</comment>
+  </data>
+  <data name="MOUNT_TAB_LOOK" xml:space="preserve">
+    <value>What your mount looks like</value>
+    <comment>Header</comment>
+  </data>
+  <data name="MOUNT_TAB_LOOK_WHY" xml:space="preserve">
+    <value>Your model replaces the Totem of Regeneration, so the totem the artifact drops is whatever you import - a skateboard, a car, anything rigid. Nothing here is written to the game until you press Install, and the game has to be restarted afterwards because paks only load at startup.</value>
+    <comment>Explains the appearance section</comment>
+  </data>
+  <data name="MOUNT_TAB_CHOOSE" xml:space="preserve">
+    <value>Choose a model...</value>
+    <comment>Button to pick a glb</comment>
+  </data>
+  <data name="MOUNT_TAB_SIZE" xml:space="preserve">
+    <value>Size</value>
+    <comment>Scale slider</comment>
+  </data>
+  <data name="MOUNT_TAB_INSTALL" xml:space="preserve">
+    <value>Install it over the totem</value>
+    <comment>Install button</comment>
+  </data>
+  <data name="MOUNT_TAB_READY" xml:space="preserve">
+    <value>Ready to install over {0}. Check the size, then install.</value>
+    <comment>Model loaded</comment>
+  </data>
+  <data name="MOUNT_TAB_INSTALLED" xml:space="preserve">
+    <value>Written to {0}. Restart the game, then equip and use the Totem of Regeneration - what it drops is your mount.</value>
+    <comment>Installed</comment>
+  </data>
+  <data name="MOUNT_TAB_PICK_FIRST" xml:space="preserve">
+    <value>Choose a model first.</value>
+    <comment>No model chosen</comment>
+  </data>
+  <data name="MOUNT_TAB_NO_HOST" xml:space="preserve">
+    <value>Could not find {0} in the game's files.</value>
+    <comment>Host asset missing</comment>
+  </data>
+  <data name="MOUNT_TAB_GLB_FILTER" xml:space="preserve">
+    <value>glTF binary (*.glb)|*.glb</value>
+    <comment>File picker filter</comment>
+  </data>
+  <data name="MOUNT_TAB_PREVIEW" xml:space="preserve">
+    <value>How it will look</value>
+    <comment>Preview header</comment>
+  </data>
+  <data name="MOUNT_TAB_ORBIT" xml:space="preserve">
+    <value>Turn view</value>
+    <comment>Orbit slider</comment>
+  </data>
+  <data name="MOUNT_TAB_TURN" xml:space="preserve">
+    <value>Which way up</value>
+    <comment>Rotation header</comment>
+  </data>
+  <data name="MOUNT_TAB_TURN_WHY" xml:space="preserve">
+    <value>Modelling programs disagree about which axis is up and which is forward, so a model can arrive on its side or facing backwards. There is no way to tell from the file. Turn it here until it looks right standing under the body, and the pak is built that way round.</value>
+    <comment>Explains rotation</comment>
+  </data>
+  <data name="MOUNT_TAB_ROLL" xml:space="preserve">
+    <value>Roll</value>
+    <comment>Rotation X</comment>
+  </data>
+  <data name="MOUNT_TAB_PITCH" xml:space="preserve">
+    <value>Tip</value>
+    <comment>Rotation Y</comment>
+  </data>
+  <data name="MOUNT_TAB_YAW" xml:space="preserve">
+    <value>Spin</value>
+    <comment>Rotation Z</comment>
+  </data>
+  <data name="MOUNT_TAB_MEASURED" xml:space="preserve">
+    <value>{0} long, {1} wide, {2} tall</value>
+    <comment>Model bounds</comment>
+  </data>
+  <data name="MOUNT_TAB_STAND_ON" xml:space="preserve">
+    <value>Stand on top of it</value>
+    <comment>Lift toggle</comment>
+  </data>
+  <data name="MOUNT_TAB_HOST" xml:space="preserve">
+    <value>Made out of</value>
+    <comment>Host asset picker label</comment>
+  </data>
+  <data name="MOUNT_TAB_HOST_WHY" xml:space="preserve">
+    <value>Your model replaces the Totem of Regeneration. A totem is used because it is a rigid object rather than an animated one - animals and armour cannot be replaced this way - and because the artifact drops one on the floor on demand, which is the only way to get a mount where you are standing.</value>
+    <comment>Explains the totem host</comment>
+  </data>
+  <data name="MOUNT_TAB_READY_TOTEM" xml:space="preserve">
+    <value>Loaded. Set the size and which way up it is, then press Install - nothing is written until you do.</value>
+    <comment>Model loaded</comment>
+  </data>
+  <data name="STATS_ENEMY_SIZE" xml:space="preserve">
+    <value>Enemy size</value>
+    <comment>Slider for how big enemies are drawn</comment>
+  </data>
+  <data name="STATS_ENEMY_SIZE_WHY" xml:space="preserve">
+    <value>How big they are drawn, not how big they are to walk into - the shape they collide with is left alone, so a giant will not get stuck in a doorway. Works for the same reason riding one does: a creature is animated every frame, and that is what carries the change to the screen.</value>
+    <comment>Explains enemy size</comment>
+  </data>
+  <data name="MOB_SKINS_TAB" xml:space="preserve">
+    <value>Mob Import</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="MOB_SKINS_MOB" xml:space="preserve">
+    <value>Creature</value>
+    <comment>Which creature to replace</comment>
+  </data>
+  <data name="MOB_SKINS_COUNT" xml:space="preserve">
+    <value>{0} meshes</value>
+    <comment>How many are listed</comment>
+  </data>
+  <data name="MOB_SKINS_SCOPE" xml:space="preserve">
+    <value>About a fifth of the game's creatures can be replaced. The rest are drawn at several levels of detail, in several pieces, or with cloth on them, and are left out rather than listed and refused.</value>
+    <comment>What is and is not in the list</comment>
+  </data>
+  <data name="MOB_SKINS_GHOST_HINT" xml:space="preserve">
+    <value>The outline is the creature as the game knows it. Stand your model on the outline's feet and face it the same way, or it will walk sunk into the floor or backwards.</value>
+    <comment>How to use the ghost</comment>
+  </data>
+  <data name="MOB_SKINS_IMPORT_HINT" xml:space="preserve">
+    <value>A .glb carries the model and its texture in one file. Export one from Blender with File → Export → glTF Binary. The model is attached rigidly, so it rides the creature rather than being animated by it: it will walk, charge and be summoned, but it will not bend.</value>
+    <comment>How to bring a model</comment>
+  </data>
+  <data name="MOB_SKINS_NEEDS_MODEL" xml:space="preserve">
+    <value>Import a model first. A creature's own vertices are moved by its skeleton, so nudging them with the sliders would pull it apart rather than resize it.</value>
+    <comment>Why the sliders alone do nothing</comment>
+  </data>
+  <data name="MOUNT_SIT_HEIGHT" xml:space="preserve">
+    <value>Ride height</value>
+    <comment>How high the rider sits on the mount</comment>
+  </data>
+  <data name="MOUNT_SIT_HEIGHT_WHY" xml:space="preserve">
+    <value>The rider is placed on top of the creature's collision capsule, not on top of what is drawn. Those agree for the game's own animals and stop agreeing the moment you put your own model on one, so this is the difference - raise it until you are sitting on your model rather than inside it.</value>
+    <comment>Why the ride height is a slider</comment>
+  </data>
+  <data name="MODEL_NO_COLOUR" xml:space="preserve">
+    <value>{0}% of this model states no colour of its own and will come out white. That is usually what the model intends - plenty of them are painted with flat colours and leave the white parts white.</value>
+    <comment>A model that arrived without its artwork</comment>
+  </data>
+  <data name="MODS_TAB" xml:space="preserve">
+    <value>Installed Mods</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="MODS_IMPORT" xml:space="preserve">
+    <value>Import Mod</value>
+    <comment>Install a pak this app did not make</comment>
+  </data>
+  <data name="MODS_OPEN_FOLDER" xml:space="preserve">
+    <value>Open Mod Folder</value>
+    <comment>Show ~mods in Explorer</comment>
+  </data>
+  <data name="MODEL_NO_COLOUR_AT_ALL" xml:space="preserve">
+    <value>This model carries no colour anywhere - no texture, and not one material that states a colour - so it will come out entirely white. Its artwork was most likely lost on the way to .glb; downloading the .glb from where the model came from usually keeps it.</value>
+    <comment>A model that lost its artwork completely</comment>
+  </data>
+  <data name="WEAPON_SKINS_WRONG_MASTER" xml:space="preserve">
+    <value>This weapon is dressed by the game's decor material rather than its equipment one - the only two that are. It takes its cut-out and its shine from a texture named separately from its colour, which an import cannot replace, so an imported model on it comes out glossy and dark however good the model is. Both were tried. Pick another weapon.</value>
+    <comment>Why an import will not look right on this one</comment>
+  </data>
+  <data name="WEAPON_SKINS_WRONG_MASTER_TAG" xml:space="preserve">
+    <value>imports come out wrong</value>
+    <comment>The short mark in the list</comment>
+  </data>
+  <data name="MODS_IMPORT_ZIP" xml:space="preserve">
+    <value>Import Zip</value>
+    <comment>Install every mod in an archive</comment>
+  </data>
+  <data name="MODS_EXPORT_ZIP" xml:space="preserve">
+    <value>Export All as Zip</value>
+    <comment>Pack every installed mod into one file</comment>
+  </data>
+  <data name="MODS_IMPORT_ZIP_WHY" xml:space="preserve">
+    <value>Installs every pak inside an archive, wherever in it they are - loose, in a folder, or in several. Anything that is not a pak is left alone. Zip and rar both open.</value>
+    <comment>What importing an archive does</comment>
+  </data>
+  <data name="MODS_EXPORT_ZIP_WHY" xml:space="preserve">
+    <value>Packs every mod listed here into one zip, for sending somebody. They can bring the whole thing back in with Import Zip.</value>
+    <comment>What exporting does</comment>
+  </data>
+  <data name="MODS_ZIP_INSTALLED" xml:space="preserve">
+    <value>{0} installed.</value>
+    <comment>How many mods went in</comment>
+  </data>
+  <data name="MODS_ZIP_REPLACED" xml:space="preserve">
+    <value>{0} replaced.</value>
+    <comment>How many were already there and were updated</comment>
+  </data>
+  <data name="MODS_ZIP_SKIPPED" xml:space="preserve">
+    <value>{0} skipped.</value>
+    <comment>How many were left alone</comment>
+  </data>
+  <data name="MODS_ZIP_REJECTED" xml:space="preserve">
+    <value>Not mod paks, so left out: {0}.</value>
+    <comment>Files named .pak that were not</comment>
+  </data>
+  <data name="MODS_ZIP_IGNORED" xml:space="preserve">
+    <value>{0} other file(s) in the archive were ignored.</value>
+    <comment>Readmes, screenshots</comment>
+  </data>
+  <data name="MODS_ZIP_NOTHING" xml:space="preserve">
+    <value>There were no mod paks in that archive.</value>
+    <comment>An archive with nothing usable in it</comment>
+  </data>
+  <data name="MODS_ZIP_EXPORTED" xml:space="preserve">
+    <value>{0} mod(s) written to {1}.</value>
+    <comment>The export succeeded</comment>
   </data>
 </root>

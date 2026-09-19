@@ -38,6 +38,11 @@ namespace LiveEdit
     /// and swinging as the button goes down - by the time there is a destination to refuse, the
     /// swing has already been declined.
     ///
+    /// It can also jump, which the game cannot. Not by asking the character to jump - the flag
+    /// for that is ignored here - but by writing a launch velocity the movement component picks up
+    /// by itself on its next tick. That keeps a jump on the right side of the line this whole
+    /// project runs on: data can be written from out here, behaviour cannot be called.
+    ///
     /// One thing comes with it. The character's facing normally follows the aim, which is right
     /// for a game played by clicking where you want to go and wrong the moment a keyboard is
     /// involved - the two come apart and the character slides across the floor facing somewhere
@@ -69,13 +74,30 @@ namespace LiveEdit
 
         //Asking Windows for a timer that can actually do that.
         //
-        //Without it every sleep below about 15ms is that long instead. It is a process wide
-        //setting and a rude one, so it is asked for when the keys start driving and given back
-        //the moment they stop.
+        //Without it every sleep below about 15ms is that long instead. It reaches outside this
+        //process, so it is asked for on the first step, given back a second and a half after the
+        //last one, and never held while a menu is open or the game is in the background.
         [DllImport("winmm.dll")] private static extern uint timeBeginPeriod(uint milliseconds);
         [DllImport("winmm.dll")] private static extern uint timeEndPeriod(uint milliseconds);
 
         private const uint TIMER_RESOLUTION_MS = 1;
+
+        //How often to look when nobody is walking.
+        //
+        //The fast rate exists so that no frame of walking goes without input behind it. Standing
+        //still needs none of that - the only reason to write anything is to refuse a destination
+        //a click posted, and once every sixteen milliseconds is plenty for that. Four times fewer
+        //wakeups for the whole time somebody is reading their inventory or picking a mission.
+        private const int IDLE_MS = 16;
+
+        //How long after the last step to keep asking for the fast timer.
+        //
+        //Raising the system timer is the only thing here that reaches outside this process, and
+        //it was being held for the entire session - from the moment the keys were switched on
+        //until they were switched off, whether anybody was walking or not. Now it is asked for on
+        //the first step and given back shortly after the last one, which is the difference between
+        //affecting the machine while you play and affecting it while you walk.
+        private const int KEEP_TIMER_MS = 1500;
 
         //Virtual key codes.
         private const int W = 0x57, A = 0x41, S = 0x53, D = 0x44;
@@ -87,6 +109,77 @@ namespace LiveEdit
         //slow walk would have quietly broken that, and the two would have fought every time:
         //one asking to move gently, the other refusing to move at all.
         private const int SLOWLY = 0xA2;  // Left Control
+
+        //Q, and not the space bar, which was the first idea and was a bad one.
+        //
+        //Sharing the key with the roll sounded like a way to get a roll that leaves the ground.
+        //It can be made to work, and it is worse: a dodge and a jump at once is hard to aim and
+        //hard to stop doing by accident. A jump is better on its own key, and Q is free.
+        private const int JUMP = 0x51;
+
+        //Not here: holding the character's body still.
+        //
+        //The body does not stay put relative to the capsule the camera is bolted to - recorded on a
+        //staircase it swings about thirty units, and with the camera on the crown of the head that
+        //is enough to bring the model into view. Holding it at the bottom of its capsule, where
+        //Unreal puts it, looked like the obvious answer.
+        //
+        //Measured, it is four times worse: the swing went from 31.8 units to 124.4 with the hold
+        //running at four milliseconds. Whatever moves the mesh moves it every frame and does not
+        //take kindly to being argued with, and the argument is louder than the thing it was trying
+        //to quiet. Same shape as correcting the arm length the camera is placed with, and the same
+        //result.
+        //
+        //Left as a note, with the number, so this looks like a good idea to nobody again.
+
+        //G, which nothing in this game uses, and the movement mode that turns gravity off.
+        //
+        //Flying is the one movement mode that does not argue. A walking character pulled upwards is
+        //put straight back down - measured, a lift of 240 units came back as zero - and a flying one
+        //stays exactly where it is put, drifting 0.0 over four seconds. That makes going up a matter
+        //of writing a position rather than fighting for one.
+        //
+        //The direction comes from where the camera is pointed rather than from extra keys. Looking
+        //down and holding forward flies downwards, which is how every flying camera works and needs
+        //nothing bound to it.
+        private const int FLY = 0x47;
+        private const int FLYING_MODE = 5;
+        private const int WALKING_MODE = 1;
+
+        //And the speed flying actually reads, which is not the one walking reads.
+        //
+        //Writing MaxWalkSpeed and then flying is how the first version of this left you hanging in
+        //the air at the game's own six hundred: a flying character never looks at MaxWalkSpeed. It
+        //has its own number, forty two bytes further along, and that is the one that moves you.
+        private const int MAX_FLY_SPEED = 0x01E8;
+        private const int BRAKING_FLYING = 0x0210;
+
+        //Up and down, because looking up is not always possible. The camera's tilt is clamped - as
+        //far as five degrees above level from behind the character - so steering by the camera
+        //alone means never being able to climb. Space goes up, left control goes down, and the
+        //camera's tilt is still added on top for whoever wants to dive by looking.
+        private const int ASCEND = 0x20;
+        //Shift rather than Control, which was doing two jobs: it is also the walk-slowly key, so
+        //creeping along the floor and dropping out of the sky were the same button. Shift is what
+        //Minecraft itself descends on, so it is the one people reach for anyway.
+        private const int DESCEND = 0xA0;  // Left Shift
+
+        //How a character here leaves the ground, which is not how it first looked.
+        //
+        //The obvious way is bPressedJump, the flag Unreal's own jump sets. It does nothing in this
+        //game, and the test that said otherwise was measuring a character already falling off a
+        //ledge - a measurement worth rather more than the conclusion that came out of it.
+        //
+        //PendingLaunchVelocity works. The movement component reads it every tick, copies it into
+        //the velocity, switches to falling and zeroes it again, all by itself. Writing it is the
+        //entire action: nothing to call, and nothing to clean up afterwards.
+        private const int PENDING_LAUNCH_VELOCITY = 0x0408;
+        private const int MOVEMENT_MODE = 0x01B0;
+        private const byte WALKING = 1;
+
+        //UCharacterMovementComponent. Steering in mid-air; the game's own value is 0.05, which is
+        //almost none, and perfectly reasonable for a character that never jumps.
+        private const int AIR_CONTROL = 0x0214;
 
         //The left mouse button, and the key the game roots the player with.
         private const int LEFT_BUTTON = 0x01;
@@ -178,6 +271,15 @@ namespace LiveEdit
         /// by the time anything here knows it is finished, the character it borrowed from may not
         /// exist, and a byte written into that is a byte written into whatever took its place.
         /// </summary>
+        /// <summary>Hands the camera smoothing back, if a jump was holding it rigid.</summary>
+        private void restoreLag()
+        {
+            if (!_rigid) { return; }
+
+            if (_live.find(out _)) { _live.setLagSpeed(LagSpeedWalking); }
+            _rigid = false;
+        }
+
         private void restoreFacing()
         {
             if (_oriented == IntPtr.Zero || _flagsWere is not byte flags) { return; }
@@ -236,6 +338,7 @@ namespace LiveEdit
 
         //ACharacter, and the speed used to prove the pointer.
         private const int CHARACTER_MOVEMENT = 0x0398;
+
         private const int MAX_WALK_SPEED = 0x01DC;
 
         //UCharacterMovementComponent's rotation flags, and the one that stops the moonwalking.
@@ -279,6 +382,61 @@ namespace LiveEdit
         /// </summary>
         public bool ClicksDoNotWalk { get; set; } = true;
 
+        /// <summary>Whether Q leaves the ground.</summary>
+        public bool CanJump { get; set; }
+
+        /// <summary>
+        /// How fast the launch is, which is not the same as how high it goes.
+        ///
+        /// Gravity here is 5000, so the height is this squared over ten thousand: 1000 clears your
+        /// own waist, 1500 clears your head, and 3000 is nine hundred units and a long way down.
+        /// </summary>
+        public float JumpHeight { get; set; } = 1500f;
+
+        /// <summary>How much steering there is in mid-air. The game gives 0.05, which is almost none.</summary>
+        public float AirControl { get; set; } = 0.35f;
+
+        /// <summary>How many jumps before touching the ground again.</summary>
+        public int JumpCount { get; set; } = 1;
+
+        /// <summary>
+        /// How quickly the camera chases the character on the ground, and in the air.
+        ///
+        /// Two numbers because no single one works. The camera lag that stops a jump leaving the
+        /// camera behind is the same lag that was smoothing out every stair step, and measuring it
+        /// properly showed the trade is continuous - there is no value that does both. Recorded
+        /// walking down a staircase and replayed through the engine's own lag maths:
+        ///
+        ///     lag speed   1     shake 0.015     lag speed  25     shake 0.177
+        ///     lag speed  10     shake 0.082     lag speed 100     shake 0.680
+        ///
+        /// against a capsule that jitters 1.717 by itself. One is invisible and a hundred passes
+        /// through two fifths of it.
+        ///
+        /// They are never needed at once, though. Stairs want smoothing while walking; a jump wants
+        /// rigidity while airborne. So the camera is smooth until this launches one, rigid until the
+        /// character lands, and smooth again after - and stairs never enter that state, because
+        /// nothing here launched them.
+        /// </summary>
+        public float LagSpeedWalking { get; set; } = 1f;
+
+        public float LagSpeedJumping { get; set; } = 100f;
+
+        /// <summary>Whether G switches flying on and off.</summary>
+        public bool CanFly { get; set; }
+
+        /// <summary>How fast flying is, which wants to be a lot faster than walking.</summary>
+        public float FlySpeed { get; set; } = 4000f;
+
+        /// <summary>Whether it is currently flying, for anything that wants to show it.</summary>
+        public bool Flying => _flying;
+
+        private bool _flying;
+        private bool _flyHeld;
+        private bool _jumpHeld;
+        private int _jumpsUsed;
+        private bool _rigid;
+
         /// <summary>
         /// Whether holding the left button also plants the character's feet.
         ///
@@ -317,8 +475,7 @@ namespace LiveEdit
             if (_running) { return true; }
 
             _running = true;
-            _thread = new Thread(run) { IsBackground = true, Name = "keyboard movement" };
-            _thread.Start();
+            _thread = Trouble.start("keyboard movement", run);
             return true;
         }
 
@@ -326,19 +483,40 @@ namespace LiveEdit
 
         private void run()
         {
-            timeBeginPeriod(TIMER_RESOLUTION_MS);
             try { drive(); }
-            finally { timeEndPeriod(TIMER_RESOLUTION_MS); }
+            finally { lowerTimer(); }
 
             _running = false;
             stopped?.Invoke();
+        }
+
+        private bool _timerRaised;
+        private int _lastStep;
+
+        private void raiseTimer()
+        {
+            if (_timerRaised) { return; }
+
+            timeBeginPeriod(TIMER_RESOLUTION_MS);
+            _timerRaised = true;
+        }
+
+        private void lowerTimer()
+        {
+            if (!_timerRaised) { return; }
+
+            timeEndPeriod(TIMER_RESOLUTION_MS);
+            _timerRaised = false;
         }
 
         private void drive()
         {
             while (_running)
             {
-                Thread.Sleep(EVERY_MS);
+                //Fast while walking, slow while not. Using last time round's answer costs one
+                //idle frame of latency on the first step and saves three quarters of the wakeups
+                //for all the time in between.
+                Thread.Sleep(_timerRaised ? EVERY_MS : IDLE_MS);
 
                 if (!_game.IsRunning) { break; }
 
@@ -349,6 +527,7 @@ namespace LiveEdit
                     //A key held down when the window changed would stay held, and shift is not a
                     //thing to leave pressed in somebody else's window.
                     releaseRoot();
+                    lowerTimer();
                     continue;
                 }
 
@@ -356,6 +535,7 @@ namespace LiveEdit
                 {
                     //Whatever was being held is let go of, or it stays held into the menu.
                     releaseRoot();
+                    lowerTimer();
                     continue;
                 }
 
@@ -370,6 +550,8 @@ namespace LiveEdit
                 if (movement != _oriented) { orientToMovement(movement); }
 
                 if (AttackRoots) { rootWhileAttacking(); } else { releaseRoot(); }
+                if (CanJump) { jumpOnPress(movement); }
+                if (CanFly) { flyOnPress(movement); }
 
                 var forward = 0f;
                 var sideways = 0f;
@@ -379,10 +561,28 @@ namespace LiveEdit
                 if (down(D)) { sideways += 1f; }
                 if (down(A)) { sideways -= 1f; }
 
+                //Counted as movement while flying, so that rising straight up from a standstill
+                //raises the timer and is written like any other direction. Without this, holding
+                //space and nothing else is a key press that never reaches the game.
+                var climbing = _flying && (down(ASCEND) || down(DESCEND));
+
                 //Standing still is written too, rather than skipped. Leaving the vector alone is
                 //what lets a destination posted by a click quietly move the character while no key
                 //is held - which reads as the character wandering off on its own.
-                if (forward == 0f && sideways == 0f)
+                if (forward != 0f || sideways != 0f || climbing)
+                {
+                    raiseTimer();
+                    _lastStep = Environment.TickCount;
+                }
+                else if (_timerRaised && Environment.TickCount - _lastStep > KEEP_TIMER_MS)
+                {
+                    lowerTimer();
+                }
+
+                //Rising straight up counts as going somewhere. Without the climbing test this
+                //returns here with a zero vector, which is why holding space while flying did
+                //nothing at all: the vertical maths further down was never reached.
+                if (forward == 0f && sideways == 0f && !climbing)
                 {
                     if (ClicksDoNotWalk) { refuseDestination(movement); writeInput(pawn, 0f, 0f); }
                     continue;
@@ -411,10 +611,38 @@ namespace LiveEdit
 
                 //A direction has no magnitude the way a stick does, so going slowly needs a key of
                 //its own.
-                var scale = down(SLOWLY) ? 0.5 : 1.0;
+                var scale = !_flying && down(SLOWLY) ? 0.5 : 1.0;
+
+                //Flying goes where the camera looks, so forward becomes forward and down at once.
+                //Walking does not, because a walking character that tilts is a falling one.
+                var up = 0.0;
+                if (_flying)
+                {
+                    //Rigid while flying, for the same reason a jump is: the character climbs on
+                    //Space far faster than a smoothed camera eases after it, so the view is left
+                    //looking at where you took off from while you are already above it. Landing
+                    //puts the smoothing back, exactly as it does after a jump.
+                    if (!_rigid) { _rigid = _live.setLagSpeed(LagSpeedJumping); }
+
+                    //Where the camera looks, which handles diving without a key for it.
+                    var tilt = (_live.Pitch ?? 0f) * Math.PI / 180.0;
+                    up = Math.Sin(tilt) * forward;
+
+                    var flat = Math.Cos(tilt);
+                    x *= flat;
+                    y *= flat;
+
+                    //And straight up or down regardless of where it is pointed, because the tilt
+                    //is clamped and climbing by looking up is not always available.
+                    if (down(ASCEND)) { up += 1.0; }
+                    if (down(DESCEND)) { up -= 1.0; }
+
+                    if (up > 1.0) { up = 1.0; }
+                    if (up < -1.0) { up = -1.0; }
+                }
 
                 if (ClicksDoNotWalk) { refuseDestination(movement); }
-                writeInput(pawn, (float)(x * scale), (float)(y * scale));
+                writeInput(pawn, (float)(x * scale), (float)(y * scale), (float)(up * scale));
             }
 
         }
@@ -450,12 +678,149 @@ namespace LiveEdit
             SendInput(1, new[] { input }, Marshal.SizeOf<Input>());
         }
 
-        private void writeInput(IntPtr pawn, float x, float y)
+        /// <summary>
+        /// Launches the character upwards on a fresh press of the jump key.
+        ///
+        /// One write per press rather than one per frame, because the movement component consumes
+        /// the launch and zeroes it - writing it every frame would be a character that never comes
+        /// back down. The key has to be let go and pressed again for the next one.
+        ///
+        /// Air jumps are counted here rather than by the game, which has no idea any of this is
+        /// happening. The count resets the moment the character is walking again.
+        /// </summary>
+        private void jumpOnPress(IntPtr movement)
+        {
+            _game.writeFloat(new IntPtr(movement.ToInt64() + AIR_CONTROL), AirControl);
+
+            var mode = _game.read(new IntPtr(movement.ToInt64() + MOVEMENT_MODE), 1);
+            if (mode != null && mode[0] == WALKING)
+            {
+                _jumpsUsed = 0;
+
+                //Back on the ground, so the camera goes back to being smoothed. Landing is the
+                //right moment for it: the camera is already exactly on the character, so there is
+                //nothing to ease and nothing to see.
+                if (_rigid) { _rigid = !_live.setLagSpeed(LagSpeedWalking); }
+            }
+
+            if (!down(JUMP)) { _jumpHeld = false; return; }
+            if (_jumpHeld) { return; }
+
+            _jumpHeld = true;
+            if (_jumpsUsed >= JumpCount) { return; }
+
+            var launch = new byte[12];
+            Buffer.BlockCopy(BitConverter.GetBytes(JumpHeight), 0, launch, 8, 4);
+
+            if (!_game.write(new IntPtr(movement.ToInt64() + PENDING_LAUNCH_VELOCITY), launch)) { return; }
+
+            _jumpsUsed++;
+
+            //Rigid for the length of the jump, or the character rises through a camera that is
+            //still easing towards where it was standing.
+            if (!_rigid) { _rigid = _live.setLagSpeed(LagSpeedJumping); }
+        }
+
+        /// <summary>
+        /// Turns flying on and off, and holds it on while it is.
+        ///
+        /// Held rather than set once, because the movement mode belongs to the character and the
+        /// game puts it back the moment anything lands, respawns or loads. The speed goes on every
+        /// pass for the same reason.
+        /// </summary>
+        private void flyOnPress(IntPtr movement)
+        {
+            var wants = down(FLY);
+            if (wants && !_flyHeld)
+            {
+                _flying = !_flying;
+
+                if (_flying)
+                {
+                    //Read before the first write, so that switching it off can put them back. Two
+                    //fields are about to be overwritten and neither belongs to this - they are the
+                    //character's own, and a character left holding a flight speed of four thousand
+                    //after landing is a setting somebody did not ask for and cannot see.
+                    _flySpeedWas ??= _game.readFloat(new IntPtr(movement.ToInt64() + MAX_FLY_SPEED));
+                    _brakingWas ??= _game.readFloat(new IntPtr(movement.ToInt64() + BRAKING_FLYING));
+                }
+                else
+                {
+                    if (_rigid) { _rigid = !_live.setLagSpeed(LagSpeedWalking); }
+
+                    putFlightBack(movement);
+
+                    //Switching it off has to say so, not just stop saying the opposite. Leaving the
+                    //movement mode on flying and simply not writing it again leaves the character
+                    //hanging exactly where it was - nothing pulls it down, because that is what
+                    //flying means. Putting it back to walking lets the engine notice there is no
+                    //floor under it, and fall - which is also the whole of putting gravity back,
+                    //since gravity is a thing walking has and flying does not.
+                    _game.write(new IntPtr(movement.ToInt64() + MOVEMENT_MODE), new[] { (byte)WALKING_MODE });
+                }
+            }
+
+            _flyHeld = wants;
+
+            if (!_flying) { return; }
+
+            _game.write(new IntPtr(movement.ToInt64() + MOVEMENT_MODE), new[] { (byte)FLYING_MODE });
+            _game.writeFloat(new IntPtr(movement.ToInt64() + MAX_FLY_SPEED), FlySpeed);
+
+            //And enough braking to stop when the keys come up, rather than drifting on for a
+            //second and a half like something on ice.
+            _game.writeFloat(new IntPtr(movement.ToInt64() + BRAKING_FLYING), FlySpeed * 4f);
+        }
+
+        /// <summary>Puts the character back on the floor, whatever it was doing.</summary>
+        private void land()
+        {
+            if (!_flying) { return; }
+            _flying = false;
+
+            if (!_live.find(out _)) { return; }
+
+            var movement = movementOf(_live.Pawn);
+            if (movement == IntPtr.Zero) { return; }
+
+            if (_rigid) { _rigid = !_live.setLagSpeed(LagSpeedWalking); }
+
+            putFlightBack(movement);
+            _game.write(new IntPtr(movement.ToInt64() + MOVEMENT_MODE), new[] { (byte)WALKING_MODE });
+        }
+
+        /// <summary>
+        /// The two flight fields put back the way they were found.
+        ///
+        /// Cleared as well as written, so that the next time flying is switched on it reads them
+        /// again. Keeping the first value forever would mean a second flight restoring a number
+        /// that was already this tool's, which is the same leak arriving a run later.
+        /// </summary>
+        private void putFlightBack(IntPtr movement)
+        {
+            if (_flySpeedWas is float speed)
+            {
+                _game.writeFloat(new IntPtr(movement.ToInt64() + MAX_FLY_SPEED), speed);
+            }
+            if (_brakingWas is float braking)
+            {
+                _game.writeFloat(new IntPtr(movement.ToInt64() + BRAKING_FLYING), braking);
+            }
+
+            _flySpeedWas = null;
+            _brakingWas = null;
+        }
+
+        //What the character's own flight fields held before any of this touched them.
+        private float? _flySpeedWas;
+        private float? _brakingWas;
+
+        private void writeInput(IntPtr pawn, float x, float y, float z = 0f)
         {
             var bytes = new byte[12];
             BitConverter.GetBytes(x).CopyTo(bytes, 0);
             BitConverter.GetBytes(y).CopyTo(bytes, 4);
-            BitConverter.GetBytes(0f).CopyTo(bytes, 8);
+            BitConverter.GetBytes(z).CopyTo(bytes, 8);
 
             _game.write(new IntPtr(pawn.ToInt64() + CONTROL_INPUT_VECTOR), bytes);
         }
@@ -496,6 +861,8 @@ namespace LiveEdit
 
             releaseRoot();
             restoreFacing();
+            restoreLag();
+            land();
         }
     }
 }

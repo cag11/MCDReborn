@@ -2952,6 +2952,888 @@ namespace MCDSaveEdit.Properties {
             }
         }
 
+        /// <summary>
+        ///   Looks up a localized string similar to Enemies
+        /// </summary>
+        public static string ENEMIES_TAB {
+            get {
+                return ResourceManager.GetString("ENEMIES_TAB", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to More enemies
+        /// </summary>
+        public static string ENEMIES_ON {
+            get {
+                return ResourceManager.GetString("ENEMIES_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Put it back
+        /// </summary>
+        public static string ENEMIES_RESTORE {
+            get {
+                return ResourceManager.GetString("ENEMIES_RESTORE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Multiplies what the level's own spawners were told to send. Nothing is written to disk and nothing i....
+        /// </summary>
+        public static string ENEMIES_HINT {
+            get {
+                return ResourceManager.GetString("ENEMIES_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} spawner(s) in this level.
+        /// </summary>
+        public static string ENEMIES_FOUND {
+            get {
+                return ResourceManager.GetString("ENEMIES_FOUND", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No wave spawners here. The camp has almost none - load into a mission to see what this does.
+        /// </summary>
+        public static string ENEMIES_NONE_HERE {
+            get {
+                return ResourceManager.GetString("ENEMIES_NONE_HERE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Applied to {0} spawner(s).
+        /// </summary>
+        public static string ENEMIES_APPLIED {
+            get {
+                return ResourceManager.GetString("ENEMIES_APPLIED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Put {0} spawner(s) back.
+        /// </summary>
+        public static string ENEMIES_RESTORED {
+            get {
+                return ResourceManager.GetString("ENEMIES_RESTORED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How many
+        /// </summary>
+        public static string ENEMIES_COUNT {
+            get {
+                return ResourceManager.GetString("ENEMIES_COUNT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Multiplies every wave's size - where it starts, how much it grows and where it stops. Three is a not....
+        /// </summary>
+        public static string ENEMIES_COUNT_WHY {
+            get {
+                return ResourceManager.GetString("ENEMIES_COUNT_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How often
+        /// </summary>
+        public static string ENEMIES_RATE {
+            get {
+                return ResourceManager.GetString("ENEMIES_RATE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How quickly waves arrive. Higher means less breathing room between them, which stacks with the count....
+        /// </summary>
+        public static string ENEMIES_RATE_WHY {
+            get {
+                return ResourceManager.GetString("ENEMIES_RATE_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How spread out
+        /// </summary>
+        public static string ENEMIES_SPREAD {
+            get {
+                return ResourceManager.GetString("ENEMIES_SPREAD", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The radius a spawner scatters its wave across. Wider surrounds you; narrower drops them in a clump y....
+        /// </summary>
+        public static string ENEMIES_SPREAD_WHY {
+            get {
+                return ResourceManager.GetString("ENEMIES_SPREAD_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How close
+        /// </summary>
+        public static string ENEMIES_CLOSENESS {
+            get {
+                return ResourceManager.GetString("ENEMIES_CLOSENESS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How near you they are allowed to appear. Lower gets ambushes, higher gives you the moment to see the....
+        /// </summary>
+        public static string ENEMIES_CLOSENESS_WHY {
+            get {
+                return ResourceManager.GetString("ENEMIES_CLOSENESS_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Difficulty
+        /// </summary>
+        public static string STATS_TAB {
+            get {
+                return ResourceManager.GetString("STATS_TAB", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Change the enemies
+        /// </summary>
+        public static string STATS_ENEMIES_ON {
+            get {
+                return ResourceManager.GetString("STATS_ENEMIES_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Change your character
+        /// </summary>
+        public static string STATS_PLAYER_ON {
+            get {
+                return ResourceManager.GetString("STATS_PLAYER_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Put it all back
+        /// </summary>
+        public static string STATS_RESTORE {
+            get {
+                return ResourceManager.GetString("STATS_RESTORE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Applied to the running game and held there, because enemies that appear later are built fresh. Nothi....
+        /// </summary>
+        public static string STATS_HINT {
+            get {
+                return ResourceManager.GetString("STATS_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} enemies in this level.
+        /// </summary>
+        public static string STATS_FOUND {
+            get {
+                return ResourceManager.GetString("STATS_FOUND", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Waiting for a character - load into the camp or a mission.
+        /// </summary>
+        public static string STATS_NO_CHARACTER {
+            get {
+                return ResourceManager.GetString("STATS_NO_CHARACTER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Enemies are back to normal.
+        /// </summary>
+        public static string STATS_ENEMIES_BACK {
+            get {
+                return ResourceManager.GetString("STATS_ENEMIES_BACK", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your character is back to normal.
+        /// </summary>
+        public static string STATS_PLAYER_BACK {
+            get {
+                return ResourceManager.GetString("STATS_PLAYER_BACK", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Everything is back to normal.
+        /// </summary>
+        public static string STATS_ALL_BACK {
+            get {
+                return ResourceManager.GetString("STATS_ALL_BACK", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How tough they are
+        /// </summary>
+        public static string STATS_TOUGH {
+            get {
+                return ResourceManager.GetString("STATS_TOUGH", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How many hits they take to kill. This changes the damage they take rather than the health they have,....
+        /// </summary>
+        public static string STATS_TOUGH_WHY {
+            get {
+                return ResourceManager.GetString("STATS_TOUGH_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How fast they are
+        /// </summary>
+        public static string STATS_ENEMY_SPEED {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_SPEED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How quickly they close on you. Small changes here are felt more than large ones anywhere else - a sl....
+        /// </summary>
+        public static string STATS_ENEMY_SPEED_WHY {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_SPEED_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your speed
+        /// </summary>
+        public static string STATS_YOUR_SPEED {
+            get {
+                return ResourceManager.GetString("STATS_YOUR_SPEED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How fast you move, on top of whatever your gear already gives you.
+        /// </summary>
+        public static string STATS_YOUR_SPEED_WHY {
+            get {
+                return ResourceManager.GetString("STATS_YOUR_SPEED_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your roll cooldown
+        /// </summary>
+        public static string STATS_DODGE_COOLDOWN {
+            get {
+                return ResourceManager.GetString("STATS_DODGE_COOLDOWN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Seconds between rolls. The game gives you 2.5.
+        /// </summary>
+        public static string STATS_DODGE_COOLDOWN_WHY {
+            get {
+                return ResourceManager.GetString("STATS_DODGE_COOLDOWN_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your roll charges
+        /// </summary>
+        public static string STATS_DODGE_CHARGES {
+            get {
+                return ResourceManager.GetString("STATS_DODGE_CHARGES", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How many rolls you can chain before waiting. The game gives you one.
+        /// </summary>
+        public static string STATS_DODGE_CHARGES_WHY {
+            get {
+                return ResourceManager.GetString("STATS_DODGE_CHARGES_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your gravity
+        /// </summary>
+        public static string STATS_GRAVITY {
+            get {
+                return ResourceManager.GetString("STATS_GRAVITY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How heavily you fall. Lower makes every gap and ledge more forgiving.
+        /// </summary>
+        public static string STATS_GRAVITY_WHY {
+            get {
+                return ResourceManager.GetString("STATS_GRAVITY_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your attack speed
+        /// </summary>
+        public static string STATS_ATTACK_SPEED {
+            get {
+                return ResourceManager.GetString("STATS_ATTACK_SPEED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How fast you swing and shoot. Applied to both your melee and your ranged weapon, since nobody wants half of it.
+        /// </summary>
+        public static string STATS_ATTACK_SPEED_WHY {
+            get {
+                return ResourceManager.GetString("STATS_ATTACK_SPEED_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Make crowds cheaper
+        /// </summary>
+        public static string STATS_RENDER_ON {
+            get {
+                return ResourceManager.GetString("STATS_RENDER_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Third person costs frames for a reason that has nothing to do with this app: looking along a corrido....
+        /// </summary>
+        public static string STATS_RENDER_WHY {
+            get {
+                return ResourceManager.GetString("STATS_RENDER_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Enemies cast shadows
+        /// </summary>
+        public static string STATS_SHADOWS {
+            get {
+                return ResourceManager.GetString("STATS_SHADOWS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Only animate what you can see
+        /// </summary>
+        public static string STATS_POSE_WHEN_SEEN {
+            get {
+                return ResourceManager.GetString("STATS_POSE_WHEN_SEEN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Stop drawing them beyond
+        /// </summary>
+        public static string STATS_DRAW_DISTANCE {
+            get {
+                return ResourceManager.GetString("STATS_DRAW_DISTANCE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How far away an enemy is still drawn, in centimetres. All the way up means never stop, which is what....
+        /// </summary>
+        public static string STATS_DRAW_DISTANCE_WHY {
+            get {
+                return ResourceManager.GetString("STATS_DRAW_DISTANCE_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Enemies are drawn the way the game draws them again.
+        /// </summary>
+        public static string STATS_RENDER_BACK {
+            get {
+                return ResourceManager.GetString("STATS_RENDER_BACK", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The game animates every enemy in the level every frame, including the ones behind you. Unreal has a ....
+        /// </summary>
+        public static string STATS_POSE_WHY {
+            get {
+                return ResourceManager.GetString("STATS_POSE_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Space also jumps
+        /// </summary>
+        public static string CAMERA_JUMP {
+            get {
+                return ResourceManager.GetString("CAMERA_JUMP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The game can jump and never binds it to anything - a character carries a jump velocity of 1000 and a....
+        /// </summary>
+        public static string CAMERA_JUMP_WHY {
+            get {
+                return ResourceManager.GetString("CAMERA_JUMP_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Jump height
+        /// </summary>
+        public static string CAMERA_JUMP_HEIGHT {
+            get {
+                return ResourceManager.GetString("CAMERA_JUMP_HEIGHT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Steering in the air
+        /// </summary>
+        public static string CAMERA_AIR_CONTROL {
+            get {
+                return ResourceManager.GetString("CAMERA_AIR_CONTROL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Jumps before landing
+        /// </summary>
+        public static string CAMERA_JUMP_COUNT {
+            get {
+                return ResourceManager.GetString("CAMERA_JUMP_COUNT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Camera smoothing.
+        /// </summary>
+        public static string CAMERA_SMOOTHING {
+            get {
+                return ResourceManager.GetString("CAMERA_SMOOTHING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Camera forward.
+        /// </summary>
+        public static string CAMERA_FORWARD {
+            get {
+                return ResourceManager.GetString("CAMERA_FORWARD", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Ride the nearest creature.
+        /// </summary>
+        public static string MOUNT_RIDE {
+            get {
+                return ResourceManager.GetString("MOUNT_RIDE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing is spawned - spawning is a function call and this tool only writes memory. The nea.
+        /// </summary>
+        public static string MOUNT_WHY {
+            get {
+                return ResourceManager.GetString("MOUNT_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Riding speed.
+        /// </summary>
+        public static string MOUNT_SPEED {
+            get {
+                return ResourceManager.GetString("MOUNT_SPEED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Stop the rider's legs moving.
+        /// </summary>
+        public static string MOUNT_FREEZE {
+            get {
+                return ResourceManager.GetString("MOUNT_FREEZE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Look around.
+        /// </summary>
+        public static string MOUNT_REFRESH {
+            get {
+                return ResourceManager.GetString("MOUNT_REFRESH", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} nearby. Pick one, then tick Ride..
+        /// </summary>
+        public static string MOUNT_FOUND {
+            get {
+                return ResourceManager.GetString("MOUNT_FOUND", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing nearby that walks. Ride still works - it will just be speed..
+        /// </summary>
+        public static string MOUNT_FOUND_NONE {
+            get {
+                return ResourceManager.GetString("MOUNT_FOUND_NONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to G flies.
+        /// </summary>
+        public static string FLY_ON {
+            get {
+                return ResourceManager.GetString("FLY_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Press G in game to take off and again to land. Forward goes wherever the camera is pointed.
+        /// </summary>
+        public static string FLY_WHY {
+            get {
+                return ResourceManager.GetString("FLY_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Flying speed.
+        /// </summary>
+        public static string FLY_SPEED {
+            get {
+                return ResourceManager.GetString("FLY_SPEED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to R rides the closest creature.
+        /// </summary>
+        public static string MOUNT_RIDE_KEY {
+            get {
+                return ResourceManager.GetString("MOUNT_RIDE_KEY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Board at your feet.
+        /// </summary>
+        public static string BOARD_ON {
+            get {
+                return ResourceManager.GetString("BOARD_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Takes whatever is in your hand off your arm and puts it flat under your feet. Pa.
+        /// </summary>
+        public static string BOARD_WHY {
+            get {
+                return ResourceManager.GetString("BOARD_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Board height.
+        /// </summary>
+        public static string BOARD_HEIGHT {
+            get {
+                return ResourceManager.GetString("BOARD_HEIGHT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} equipped. Pick one, then tick the board..
+        /// </summary>
+        public static string BOARD_FOUND {
+            get {
+                return ResourceManager.GetString("BOARD_FOUND", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing equipped that could be a board..
+        /// </summary>
+        public static string BOARD_FOUND_NONE {
+            get {
+                return ResourceManager.GetString("BOARD_FOUND_NONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing here spawns anything - spawning is a function call and this app only wri.
+        /// </summary>
+        public static string MOUNT_TAB_INTRO {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_INTRO", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Riding something.
+        /// </summary>
+        public static string MOUNT_TAB_RIDING {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_RIDING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Standing on something you are carrying.
+        /// </summary>
+        public static string MOUNT_TAB_BOARD {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_BOARD", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to What the board looks like.
+        /// </summary>
+        public static string MOUNT_TAB_LOOK {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_LOOK", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to A weapon under your feet is a sword on the floor. Pack a model over the Mace and.
+        /// </summary>
+        public static string MOUNT_TAB_LOOK_WHY {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_LOOK_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Choose a model....
+        /// </summary>
+        public static string MOUNT_TAB_CHOOSE {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_CHOOSE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Size.
+        /// </summary>
+        public static string MOUNT_TAB_SIZE {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_SIZE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Install over the Mace.
+        /// </summary>
+        public static string MOUNT_TAB_INSTALL {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_INSTALL", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Ready to install over {0}. Check the size, then install..
+        /// </summary>
+        public static string MOUNT_TAB_READY {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_READY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Installed as {0}. Restart the game, equip the Mace, then tick the board..
+        /// </summary>
+        public static string MOUNT_TAB_INSTALLED {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_INSTALLED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Choose a model first..
+        /// </summary>
+        public static string MOUNT_TAB_PICK_FIRST {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_PICK_FIRST", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Could not find {0} in the game's files..
+        /// </summary>
+        public static string MOUNT_TAB_NO_HOST {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_NO_HOST", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to glTF binary (*.glb) *.glb.
+        /// </summary>
+        public static string MOUNT_TAB_GLB_FILTER {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_GLB_FILTER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How it will look.
+        /// </summary>
+        public static string MOUNT_TAB_PREVIEW {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_PREVIEW", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Turn view.
+        /// </summary>
+        public static string MOUNT_TAB_ORBIT {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_ORBIT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Which way up.
+        /// </summary>
+        public static string MOUNT_TAB_TURN {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_TURN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Modelling programs disagree about which axis is up and which is forward, so a mo.
+        /// </summary>
+        public static string MOUNT_TAB_TURN_WHY {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_TURN_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Roll.
+        /// </summary>
+        public static string MOUNT_TAB_ROLL {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_ROLL", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Tip.
+        /// </summary>
+        public static string MOUNT_TAB_PITCH {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_PITCH", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Spin.
+        /// </summary>
+        public static string MOUNT_TAB_YAW {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_YAW", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} long, {1} wide, {2} tall.
+        /// </summary>
+        public static string MOUNT_TAB_MEASURED {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_MEASURED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Stand on top of it.
+        /// </summary>
+        public static string MOUNT_TAB_STAND_ON {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_STAND_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Made out of.
+        /// </summary>
+        public static string MOUNT_TAB_HOST {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_HOST", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your model replaces the Totem of Regeneration. A totem is used because it is a r.
+        /// </summary>
+        public static string MOUNT_TAB_HOST_WHY {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_HOST_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Ready. Check the size and which way up it is, then install..
+        /// </summary>
+        public static string MOUNT_TAB_READY_TOTEM {
+            get {
+                return ResourceManager.GetString("MOUNT_TAB_READY_TOTEM", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Enemy size.
+        /// </summary>
+        public static string STATS_ENEMY_SIZE {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_SIZE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to How big they are drawn, not how big they are to walk into - the shape they colli.
+        /// </summary>
+        public static string STATS_ENEMY_SIZE_WHY {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_SIZE_WHY", resourceCulture);
+            }
+        }
+
         public static string CAMERA_LIVE_PREVIEW {
             get {
                 return ResourceManager.GetString("CAMERA_LIVE_PREVIEW", resourceCulture);
@@ -3020,5 +3902,248 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("CAMERA_FACES_AIM", resourceCulture);
             }
         }
+        /// <summary>
+        ///   Looks up a localized string similar to Mob Import.
+        /// </summary>
+        public static string MOB_SKINS_TAB {
+            get {
+                return ResourceManager.GetString("MOB_SKINS_TAB", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Creature.
+        /// </summary>
+        public static string MOB_SKINS_MOB {
+            get {
+                return ResourceManager.GetString("MOB_SKINS_MOB", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} meshes.
+        /// </summary>
+        public static string MOB_SKINS_COUNT {
+            get {
+                return ResourceManager.GetString("MOB_SKINS_COUNT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to About a fifth of the game's creatures can be replaced. The rest are drawn at several le....
+        /// </summary>
+        public static string MOB_SKINS_SCOPE {
+            get {
+                return ResourceManager.GetString("MOB_SKINS_SCOPE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The outline is the creature as the game knows it. Stand your model on the outline's fee....
+        /// </summary>
+        public static string MOB_SKINS_GHOST_HINT {
+            get {
+                return ResourceManager.GetString("MOB_SKINS_GHOST_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A .glb carries the model and its texture in one file. Export one from Blender with File....
+        /// </summary>
+        public static string MOB_SKINS_IMPORT_HINT {
+            get {
+                return ResourceManager.GetString("MOB_SKINS_IMPORT_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Import a model first. A creature's own vertices are moved by its skeleton, so nudging t....
+        /// </summary>
+        public static string MOB_SKINS_NEEDS_MODEL {
+            get {
+                return ResourceManager.GetString("MOB_SKINS_NEEDS_MODEL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Ride height.
+        /// </summary>
+        public static string MOUNT_SIT_HEIGHT {
+            get {
+                return ResourceManager.GetString("MOUNT_SIT_HEIGHT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The rider is placed on top of the creature's collision capsule, not on top of what is d....
+        /// </summary>
+        public static string MOUNT_SIT_HEIGHT_WHY {
+            get {
+                return ResourceManager.GetString("MOUNT_SIT_HEIGHT_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0}% of this model has no colour in the file at all - no texture, and materials that st....
+        /// </summary>
+        public static string MODEL_NO_COLOUR {
+            get {
+                return ResourceManager.GetString("MODEL_NO_COLOUR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Installed Mods.
+        /// </summary>
+        public static string MODS_TAB {
+            get {
+                return ResourceManager.GetString("MODS_TAB", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Import Mod.
+        /// </summary>
+        public static string MODS_IMPORT {
+            get {
+                return ResourceManager.GetString("MODS_IMPORT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Open Mod Folder.
+        /// </summary>
+        public static string MODS_OPEN_FOLDER {
+            get {
+                return ResourceManager.GetString("MODS_OPEN_FOLDER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This model carries no colour anywhere.
+        /// </summary>
+        public static string MODEL_NO_COLOUR_AT_ALL {
+            get {
+                return ResourceManager.GetString("MODEL_NO_COLOUR_AT_ALL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This weapon is dressed by the game's decor material rather than its equipment on....
+        /// </summary>
+        public static string WEAPON_SKINS_WRONG_MASTER {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_WRONG_MASTER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to imports come out wrong....
+        /// </summary>
+        public static string WEAPON_SKINS_WRONG_MASTER_TAG {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_WRONG_MASTER_TAG", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Import Zip.
+        /// </summary>
+        public static string MODS_IMPORT_ZIP {
+            get {
+                return ResourceManager.GetString("MODS_IMPORT_ZIP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export All as Zip.
+        /// </summary>
+        public static string MODS_EXPORT_ZIP {
+            get {
+                return ResourceManager.GetString("MODS_EXPORT_ZIP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Installs every pak inside an archive, wherever in it they are - loose, in a fold.
+        /// </summary>
+        public static string MODS_IMPORT_ZIP_WHY {
+            get {
+                return ResourceManager.GetString("MODS_IMPORT_ZIP_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Packs every mod listed here into one zip, for sending somebody. They can bring t.
+        /// </summary>
+        public static string MODS_EXPORT_ZIP_WHY {
+            get {
+                return ResourceManager.GetString("MODS_EXPORT_ZIP_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} installed..
+        /// </summary>
+        public static string MODS_ZIP_INSTALLED {
+            get {
+                return ResourceManager.GetString("MODS_ZIP_INSTALLED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} replaced..
+        /// </summary>
+        public static string MODS_ZIP_REPLACED {
+            get {
+                return ResourceManager.GetString("MODS_ZIP_REPLACED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} skipped..
+        /// </summary>
+        public static string MODS_ZIP_SKIPPED {
+            get {
+                return ResourceManager.GetString("MODS_ZIP_SKIPPED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Not mod paks, so left out: {0}..
+        /// </summary>
+        public static string MODS_ZIP_REJECTED {
+            get {
+                return ResourceManager.GetString("MODS_ZIP_REJECTED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} other file(s) in the archive were ignored..
+        /// </summary>
+        public static string MODS_ZIP_IGNORED {
+            get {
+                return ResourceManager.GetString("MODS_ZIP_IGNORED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to There were no mod paks in that archive..
+        /// </summary>
+        public static string MODS_ZIP_NOTHING {
+            get {
+                return ResourceManager.GetString("MODS_ZIP_NOTHING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} mod(s) written to {1}..
+        /// </summary>
+        public static string MODS_ZIP_EXPORTED {
+            get {
+                return ResourceManager.GetString("MODS_ZIP_EXPORTED", resourceCulture);
+            }
+        }
+        
     }
 }

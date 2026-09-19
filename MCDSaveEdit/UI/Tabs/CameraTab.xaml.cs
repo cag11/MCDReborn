@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 #nullable enable
 
@@ -48,7 +49,7 @@ namespace MCDSaveEdit.UI
         /// <summary>Whether a preset has been picked, and so is waiting for a game to arrive.</summary>
         private bool _chosen;
 
-        private readonly LiveCameraLink _live = new LiveCameraLink();
+        private readonly LiveCameraLink _live = LiveCameraLink.shared;
 
         public CameraTab()
         {
@@ -57,6 +58,7 @@ namespace MCDSaveEdit.UI
 
             _live.changed += showLive;
 
+            _live.ridePressed += ridePressedInGame;
             _live.lookingStopped += () => Dispatcher.BeginInvoke(new Action(() => {
                 _filling = true;
                 mouseLook.IsChecked = false;
@@ -103,9 +105,118 @@ namespace MCDSaveEdit.UI
             mouseLook.Content = R.CAMERA_MOUSE_LOOK;
             wasd.Content = R.CAMERA_WASD;
             mouseButtons.Content = R.CAMERA_BUTTONS;
-            followsAim.Content = R.CAMERA_FOLLOWS_AIM;
             sensitivityLabel.Text = R.CAMERA_SENSITIVITY;
             invertPitch.Content = R.CAMERA_INVERT;
+            explain(canJump, R.CAMERA_JUMP, R.CAMERA_JUMP_WHY);
+            explain(rideKey, R.MOUNT_RIDE_KEY, R.MOUNT_WHY);
+            mountSpeedLabel.Text = R.MOUNT_SPEED;
+            explain(sitHeightLabel, R.MOUNT_SIT_HEIGHT, R.MOUNT_SIT_HEIGHT_WHY);
+            explain(canFly, R.FLY_ON, R.FLY_WHY);
+            flySpeedLabel.Text = R.FLY_SPEED;
+            jumpHeightLabel.Text = R.CAMERA_JUMP_HEIGHT;
+            airControlLabel.Text = R.CAMERA_AIR_CONTROL;
+            jumpCountCaption.Text = R.CAMERA_JUMP_COUNT;
+        }
+
+        /// <summary>
+        /// A label with its explanation folded into a mark beside it.
+        ///
+        /// These explanations are worth having and were worth writing - each says why a setting
+        /// exists rather than what it does, which is the part nobody can work out by trying it.
+        /// Four of them stacked down one panel is another matter: the paragraph under "Q jumps"
+        /// ran to three lines, and between them they pushed the sliders they were explaining off
+        /// the bottom of the panel. An explanation that hides the thing it explains has cost more
+        /// than it gave.
+        ///
+        /// So they move behind a mark, which is read on purpose rather than in the way. After the
+        /// label rather than before it: the checkbox and its words stay one thing to click at, and
+        /// a mark annotates what has just been read rather than interrupting it.
+        ///
+        /// Beside a checkbox rather than inside it. A mark put in a checkbox's content is part of
+        /// the checkbox: pointing at it is pointing at the checkbox, clicking it ticks the box,
+        /// and that click closes the tooltip and keeps it closed until the pointer has left the
+        /// whole control - so the explanation could be read right up until the moment it was
+        /// acted on, and not afterwards. Sitting next to the checkbox, the mark is hovered,
+        /// clicked and dismissed on its own account whatever the box is doing.
+        /// </summary>
+        private static void explain(ContentControl control, string label, string why)
+        {
+            control.Content = label;
+            var badge = mark(why);
+
+            //Anything that can be clicked has the mark placed next to it. Anything that cannot -
+            //a slider's caption - keeps it inside, where it costs no width from the row.
+            if (control is ToggleButton && control.Parent is Panel parent)
+            {
+                var where = parent.Children.IndexOf(control);
+
+                //The gap above the checkbox belongs to the row now, or the mark would centre
+                //itself against the gap as well and sit high of the words it belongs to.
+                var row = new StackPanel {
+                    Orientation = Orientation.Horizontal,
+                    Margin = control.Margin,
+                };
+                control.Margin = new Thickness(0);
+
+                parent.Children.RemoveAt(where);
+                row.Children.Add(control);
+                row.Children.Add(badge);
+                parent.Children.Insert(where, row);
+                return;
+            }
+
+            var words = new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center };
+
+            var inside = new StackPanel { Orientation = Orientation.Horizontal };
+            inside.Children.Add(words);
+            inside.Children.Add(badge);
+
+            control.Content = inside;
+        }
+
+        /// <summary>The mark itself: a small circled letter that holds the explanation.</summary>
+        private static FrameworkElement mark(string why)
+        {
+            var letter = new TextBlock {
+                Text = "i",
+                FontSize = 9,
+                FontWeight = FontWeights.Bold,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            letter.SetResourceReference(TextBlock.ForegroundProperty, "Brush.TextMuted");
+
+            //Transparent rather than unpainted. A border with no brush at all is hit tested only
+            //where something was drawn - the ring, and the strokes of the letter - so the mark
+            //answered a hover over about a fifth of itself and ignored the rest.
+            var circle = new Border {
+                Width = 14,
+                Height = 14,
+                Background = System.Windows.Media.Brushes.Transparent,
+                CornerRadius = new CornerRadius(7),
+                BorderThickness = new Thickness(1),
+                Margin = new Thickness(7, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Cursor = System.Windows.Input.Cursors.Help,
+                Child = letter,
+            };
+            circle.SetResourceReference(Border.BorderBrushProperty, "Brush.TextMuted");
+
+            //Wrapped and bounded. A tooltip grows to fit its text by default, and these run to
+            //several sentences - unbounded, one would be a single line wider than the window.
+            //WPF moves a tooltip to keep it on screen, but only once it knows how big it is.
+            circle.ToolTip = new ToolTip {
+                Content = new TextBlock {
+                    Text = why,
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 360,
+                },
+            };
+
+            //Long enough to read several sentences. The default gives up after five seconds.
+            ToolTipService.SetInitialShowDelay(circle, 150);
+            ToolTipService.SetShowDuration(circle, 120000);
+            return circle;
         }
 
         public void updateUI()
@@ -137,12 +248,24 @@ namespace MCDSaveEdit.UI
                 p => p.FieldOfView, (p, v) => p.FieldOfView = v);
             addRow(R.CAMERA_PIVOT, -100, 320, 5,
                 p => p.PivotHeight, (p, v) => p.PivotHeight = v);
+            addRow(R.CAMERA_FORWARD, -50, 150, 1,
+                p => p.SocketForward, (p, v) => p.SocketForward = v);
             addRow(R.CAMERA_SIDE, -200, 200, 5,
                 p => p.SocketSide, (p, v) => p.SocketSide = v);
             addRow(R.CAMERA_HEIGHT, -200, 200, 5,
                 p => p.SocketHeight, (p, v) => p.SocketHeight = v);
             addRow(R.CAMERA_LAG, 1, 60, 1,
                 p => p.RotationLagSpeed, (p, v) => p.RotationLagSpeed = v);
+
+            //How hard the camera is bolted to the character, and the one setting here that is a
+            //matter of taste rather than a right answer. Low floats and rides over stairs; high
+            //follows exactly and shows every step the character takes. The game ships it at 1.
+            //
+            //A slider rather than a number chosen here, because both ends of it have been tried
+            //and disliked for opposite reasons, and the person playing can find the middle in ten
+            //seconds where guessing at it took six builds.
+            addRow(R.CAMERA_SMOOTHING, 0.2, 40, 0.2,
+                p => p.LagSpeed, (p, v) => p.LagSpeed = v);
         }
 
         private void addRow(string caption, double minimum, double maximum, double step,
@@ -360,7 +483,10 @@ namespace MCDSaveEdit.UI
             mouseLook.IsEnabled = on;
             wasd.IsEnabled = on;
             mouseButtons.IsEnabled = on;
-            followsAim.IsEnabled = on;
+            canJump.IsEnabled = on;
+            jumpHeight.IsEnabled = on;
+            airControl.IsEnabled = on;
+            jumpCount.IsEnabled = on;
             sensitivity.IsEnabled = on;
             invertPitch.IsEnabled = on;
             restoreButton.IsEnabled = on;
@@ -381,7 +507,6 @@ namespace MCDSaveEdit.UI
             //The game may already have been set up from an earlier session, so the boxes are shown
             //rather than assumed.
             _filling = true;
-            followsAim.IsChecked = _live.followsAim == true;
             mouseButtons.IsChecked = _live.clicksDoNotWalk;
             _filling = false;
 
@@ -433,18 +558,88 @@ namespace MCDSaveEdit.UI
             }
         }
 
+        private void canFly_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            _live.canFly = canFly.IsChecked == true;
+        }
+
+        private void flySpeed_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            flySpeedValue.Text = ((int)flySpeed.Value).ToString();
+            if (_filling) { return; }
+
+            _live.flySpeed = (float)flySpeed.Value;
+        }
+
+        /// <summary>Keeps the checkbox honest when the key is used instead of the mouse.</summary>
+        private void ridePressedInGame()
+        {
+            Dispatcher.Invoke(() => _live.toggleRiding());
+        }
+
+        private void rideKey_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            _live.rideKey = rideKey.IsChecked == true;
+        }
+
+        private void sitHeight_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            sitHeightValue.Text = ((int)sitHeight.Value).ToString();
+            if (_filling) { return; }
+
+            _live.sitHeight = (float)sitHeight.Value;
+        }
+
+        private void mountSpeed_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            mountSpeedValue.Text = ((int)mountSpeed.Value).ToString();
+            if (_filling) { return; }
+
+            _live.mountSpeed = (float)mountSpeed.Value;
+        }
+
+        private void canJump_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            _live.canJump = canJump.IsChecked == true;
+        }
+
+        private void jumpHeight_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (jumpCountLabel != null) { jumpCountLabel.Text = ((int)jumpHeight.Value).ToString(); }
+            if (_filling) { return; }
+
+            _live.jumpHeight = (float)jumpHeight.Value;
+            if (canJump.IsChecked != true) { canJump.IsChecked = true; }
+        }
+
+        private void airControl_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (jumpsLabel != null) { jumpsLabel.Text = airControl.Value.ToString("0.00"); }
+            if (_filling) { return; }
+
+            _live.airControl = (float)airControl.Value;
+            if (canJump.IsChecked != true) { canJump.IsChecked = true; }
+        }
+
+        private void jumpCount_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_filling) { return; }
+
+            _live.jumpCount = (int)jumpCount.Value;
+            if (canJump.IsChecked != true) { canJump.IsChecked = true; }
+        }
+
         private void mouseButtons_Changed(object sender, RoutedEventArgs e)
         {
             if (_filling) { return; }
 
             _live.clicksDoNotWalk = mouseButtons.IsChecked == true;
-        }
-
-        private void followsAim_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_filling) { return; }
-
-            _live.setFollowsAim(followsAim.IsChecked == true);
         }
 
         /// <summary>Restarts the look if it is running, so the change is felt rather than queued.</summary>

@@ -49,7 +49,39 @@ namespace MCDSaveEdit.Logic
         public float SocketHeight { get; set; } = 20f;
 
         /// <summary>How quickly the camera swings to a new angle. Forty is the game's own.</summary>
+        /// <summary>
+        /// How far in front of the character's face the camera sits.
+        ///
+        /// SocketOffset.X, which is the one applied after the view rotation - so it means forward
+        /// from where you are looking. TargetOffset, which the pivot slider writes, is added to the
+        /// world position before any rotation, so its X is world X and would sit in front of your
+        /// face walking one way and behind your head walking the other.
+        ///
+        /// Worth about twenty units in first person, which is a head's radius: enough to put the
+        /// lens outside the mesh so the head cannot be in frame at all. It does swing down a little
+        /// when you look down, being view relative - twenty units forward at forty five degrees is
+        /// fourteen forward and fourteen down, which is small enough not to matter.
+        /// </summary>
+        public float SocketForward { get; set; }
+
         public float RotationLagSpeed { get; set; } = 40f;
+
+        /// <summary>
+        /// How quickly the camera catches up with the character, rather than with its rotation.
+        ///
+        /// The game's own value is 1, which is very slow indeed, and every preset uses it - because
+        /// slow is what stops a staircase shaking the view apart. Recorded walking down one and
+        /// replayed through the engine's lag maths, a lag of 1 passes through 0.015 of a capsule
+        /// that jitters 1.717, and a lag of 100 passes through 0.680.
+        ///
+        /// Raising it was tried, to stop a jump leaving the camera behind, and it is the wrong
+        /// place to fix that: the trade between the two is continuous and there is no value that
+        /// does both. The jump makes the camera rigid for its own duration instead.
+        ///
+        /// Every preset carries a value rather than leaving it alone, so that switching from a
+        /// preset that needed a fast camera back to one that did not actually puts it back.
+        /// </summary>
+        public float LagSpeed { get; set; } = 1f;
 
         /// <summary>Whether the camera pulls in when something is behind you. Matters once it is close.</summary>
         public bool Collision { get; set; } = true;
@@ -72,8 +104,9 @@ namespace MCDSaveEdit.Logic
             return new[] {
                 new CameraPreset {
                     Name = "Third person", BuiltIn = true,
-                    Distance = 800f, Pitch = -12f, FieldOfView = 75f,
+                    Distance = 800f, Pitch = -12f, FieldOfView = 65f,
                     PivotHeight = 170f, SocketSide = 40f, SocketHeight = 20f,
+                    LagSpeed = 1f,
                 },
                 new CameraPreset {
                     Name = "Third person, far", BuiltIn = true,
@@ -81,14 +114,54 @@ namespace MCDSaveEdit.Logic
                     //this far back at a shallow angle spends most of its time looking at a wall.
                     Distance = 1500f, Pitch = -25f, FieldOfView = 70f,
                     PivotHeight = 170f, SocketSide = 30f, SocketHeight = 40f,
+                    LagSpeed = 1f,
                 },
                 new CameraPreset {
                     Name = "First person", BuiltIn = true,
-                    //No arm at all, so the camera sits on the pivot - which is put at eye height
-                    //rather than the shoulders, and moved off the shoulder offset so it is not
-                    //looking out of an ear.
+                    //No arm at all, so the camera sits on the pivot, and two hundred is the right
+                    //number - which took moving it to find out.
+                    //
+                    //The arm hangs ninety units below the capsule centre and the capsule half
+                    //height is 110, so a pivot of 200 puts the camera on the crown of the head.
+                    //Lowering it to eye height sounds better and is not: at 175 the camera is
+                    //inside the body and the view fills with the inside of your own cape. The
+                    //character has no first person model to step into, and the flag that would
+                    //hide it does nothing from out here, so the camera has to sit on top of the
+                    //head rather than in it.
+                    //
+                    //What keeps the head out of frame is not the pivot, it is not being able to
+                    //tip far enough down to look at it. See the pitch limits in MouseLook.
+                    //Two hundred and thirty rather than two hundred, to get the last of the head
+                    //off the bottom of the screen.
+                    //
+                    //Two hundred puts the camera exactly on the crown, which is fine standing still
+                    //and not fine walking: the body shifts about thirty units against the capsule
+                    //the camera is bolted to, and the top of the head crosses into the bottom edge
+                    //on every bob. The head is roughly 34 wide, so clearing it needs the camera
+                    //about twenty units above it - by then the head sits steeper than the bottom of
+                    //the view rather than inside it.
+                    //
+                    //Raise it further and first person starts feeling like a drone again; lower it
+                    //and the head comes back, and at 175 the camera is inside the body entirely.
+                    //It is a slider, so this is a starting point rather than an answer.
                     Distance = 0f, Pitch = 0f, FieldOfView = 90f,
-                    PivotHeight = 200f, SocketSide = 0f, SocketHeight = 0f,
+                    PivotHeight = 230f, SocketSide = 0f, SocketHeight = 0f,
+                    //Twenty, which is a compromise arrived at from both ends rather than picked.
+                    //
+                    //The game's own value is 1. From behind a character that is invisible; from
+                    //inside one it is the whole problem, because the camera trails the climb.
+                    //Measured walking up a staircase, the camera's height above the body varied by
+                    //324 units at a lag of 1 - the model rising into view and then settling as the
+                    //camera caught up.
+                    //
+                    //A hundred fixes that and puts every single step straight into the view. There
+                    //is no value that does both: recorded on a staircase, lag 1 passes through
+                    //0.015 of a capsule that jitters 1.717, lag 20 passes 0.145 and lag 100 passes
+                    //0.680. Twenty keeps a tenth of the shake and most of the responsiveness.
+                    //
+                    //It is a slider on the camera tab, because this is taste and the number that
+                    //suits somebody is not findable from here.
+                    LagSpeed = 20f,
                     //Nothing to collide with when the camera is inside the character.
                     Collision = false,
                 },

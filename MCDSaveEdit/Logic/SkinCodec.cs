@@ -29,11 +29,11 @@ namespace MCDSaveEdit.Logic
     ///
     /// The layout, all little-endian, deflated raw and then base64url:
     ///
-    ///   0      version (1)
-    ///   1      width
-    ///   2      height
-    ///   3..4   palette length N
-    ///   5..    N colours, BGRA, one byte each
+    ///   0      version (2)
+    ///   1..2   width
+    ///   3..4   height
+    ///   5..6   palette length N
+    ///   7..    N colours, BGRA, one byte each
     ///   ..     width*height indices into the palette, one byte each, or two when N is over 256
     ///
     /// Colours are BGRA because that is how the game stores them and how WPF hands them over,
@@ -41,7 +41,15 @@ namespace MCDSaveEdit.Logic
     /// </summary>
     public static class SkinCodec
     {
-        private const byte VERSION = 1;
+        //Version 1 said width and height in one byte each, which put a ceiling of 255 on both and
+        //made an enchantment icon - 256 square, by one pixel too wide - the one thing that could
+        //not travel. Two bytes each now, and version 1 is still read, so a link made before this
+        //still opens.
+        private const byte VERSION = 2;
+
+        //Where the pixels start, per version.
+        private const int HEADER = 7;
+        private const int HEADER_V1 = 5;
 
         /// <summary>
         /// Above this a link starts being refused or truncated by something in the chain. No
@@ -54,7 +62,7 @@ namespace MCDSaveEdit.Logic
         {
             var width = image.PixelWidth;
             var height = image.PixelHeight;
-            if (width > 255 || height > 255)
+            if (width > ushort.MaxValue || height > ushort.MaxValue)
             {
                 throw new InvalidOperationException($"{width}x{height} is too large to put in a link.");
             }
@@ -79,14 +87,16 @@ namespace MCDSaveEdit.Logic
             }
 
             var wide = palette.Count > 256;
-            var raw = new byte[5 + palette.Count * 4 + indices.Length * (wide ? 2 : 1)];
+            var raw = new byte[HEADER + palette.Count * 4 + indices.Length * (wide ? 2 : 1)];
             raw[0] = VERSION;
             raw[1] = (byte)width;
-            raw[2] = (byte)height;
-            raw[3] = (byte)(palette.Count & 0xFF);
-            raw[4] = (byte)(palette.Count >> 8);
+            raw[2] = (byte)(width >> 8);
+            raw[3] = (byte)height;
+            raw[4] = (byte)(height >> 8);
+            raw[5] = (byte)(palette.Count & 0xFF);
+            raw[6] = (byte)(palette.Count >> 8);
 
-            int at = 5;
+            int at = HEADER;
             foreach (var colour in palette)
             {
                 raw[at++] = (byte)colour;
@@ -112,30 +122,34 @@ namespace MCDSaveEdit.Logic
         public static BitmapSource decode(string payload)
         {
             var raw = inflate(fromBase64Url(payload));
-            if (raw.Length < 5 || raw[0] != VERSION)
+            if (raw.Length < HEADER_V1 || (raw[0] != VERSION && raw[0] != 1))
             {
                 throw new InvalidOperationException("That is not a texture this version understands.");
             }
 
-            int width = raw[1];
-            int height = raw[2];
-            int count = raw[3] | (raw[4] << 8);
+            //A link made before the size was widened still opens, because the only thing that
+            //moved is how many bytes the two numbers take.
+            var older = raw[0] == 1;
+            var header = older ? HEADER_V1 : HEADER;
+            int width = older ? raw[1] : raw[1] | (raw[2] << 8);
+            int height = older ? raw[2] : raw[3] | (raw[4] << 8);
+            int count = older ? raw[3] | (raw[4] << 8) : raw[5] | (raw[6] << 8);
             var wide = count > 256;
-            var expected = 5 + count * 4 + width * height * (wide ? 2 : 1);
+            var expected = header + count * 4 + width * height * (wide ? 2 : 1);
             if (width == 0 || height == 0 || count == 0 || raw.Length != expected)
             {
                 throw new InvalidOperationException("That texture data is incomplete.");
             }
 
             var bgra = new byte[width * height * 4];
-            int body = 5 + count * 4;
+            int body = header + count * 4;
             for (int i = 0; i < width * height; i++)
             {
                 int index = wide
                     ? raw[body + i * 2] | (raw[body + i * 2 + 1] << 8)
                     : raw[body + i];
                 if (index >= count) { throw new InvalidOperationException("That texture data is damaged."); }
-                Buffer.BlockCopy(raw, 5 + index * 4, bgra, i * 4, 4);
+                Buffer.BlockCopy(raw, header + index * 4, bgra, i * 4, 4);
             }
 
             var bitmap = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, bgra, width * 4);

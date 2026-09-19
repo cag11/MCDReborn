@@ -1,4 +1,4 @@
-using LiveEdit;
+﻿using LiveEdit;
 using System;
 using System.Windows.Threading;
 #nullable enable
@@ -95,7 +95,11 @@ namespace MCDSaveEdit.Logic
             status = "";
 
             //The game's own camera, before anything has been done to it.
-            _original ??= readPreset();
+            if (_original == null)
+            {
+                _original = readPreset();
+                rememberWholeAngle();
+            }
 
             //A different character than the one third person was set up against - a level load,
             //or a death. The values live on the character, so the new one has the game's own and
@@ -154,6 +158,15 @@ namespace MCDSaveEdit.Logic
             _look = new MouseLook(_game, _camera) { Sensitivity = sensitivity, InvertPitch = invert };
             _look.Suspended = _suspended;
             _look.HoldArmLength = _holdArmLength;
+
+            //And the tilt limits. This line is the entire reason the limits did nothing for two
+            //releases: the distance is decided before the mouse look exists, so applyPitchLimits
+            //ran with nothing to put them on, stored them here, and every mouse look started on the
+            //defaults. The measurement that caught it asked for thirty five degrees and recorded
+            //eighty five.
+            _look.LowestPitch = _pitchLowest;
+            _look.HighestPitch = _pitchHighest;
+
             _look.stopped += () => lookingStopped?.Invoke();
             return _look.start();
         }
@@ -189,6 +202,13 @@ namespace MCDSaveEdit.Logic
 
             _walk.ClicksDoNotWalk = _clicksDoNotWalk;
             _walk.Suspended = _suspended;
+            _walk.CanJump = _canJump;
+            _walk.CanFly = _canFly;
+            _walk.FlySpeed = _flySpeed;
+            _walk.JumpHeight = _jumpHeight;
+            _walk.LagSpeedWalking = _lagSpeedWalking;
+            _walk.AirControl = _airControl;
+            _walk.JumpCount = _jumpCount;
             _walk.stopped += () => walkingStopped?.Invoke();
             return _walk.start();
         }
@@ -217,6 +237,267 @@ namespace MCDSaveEdit.Logic
 
         private bool _clicksDoNotWalk = true;
 
+        /// <summary>
+        /// Tells mouse look how far the camera may tip, given how far back it is.
+        ///
+        /// Called wherever the distance is decided. Nothing here writes anything the game also
+        /// writes - it only clamps a number this app owns, which is why it is the one change around
+        /// this camera that cannot fight the engine.
+        /// </summary>
+        private void applyPitchLimits(float armLength)
+        {
+            MouseLook.limitsFor(armLength, out var lowest, out var highest);
+
+            _pitchLowest = lowest;
+            _pitchHighest = highest;
+
+            if (_look == null) { return; }
+
+            _look.LowestPitch = lowest;
+            _look.HighestPitch = highest;
+        }
+
+        private float _pitchLowest = -85f;
+        private float _pitchHighest = 5f;
+
+        //Below this the camera is in the character rather than behind it.
+        private const float INSIDE_THE_CHARACTER = 150f;
+        /// <summary>
+        /// Riding the nearest creature, which is as close to a mount as this can get.
+        ///
+        /// Nothing is spawned and nothing is attached - both are function calls, and this project
+        /// does not inject. A creature the level already placed is stopped walking and then moved
+        /// under the character every frame, which from the outside is the same thing.
+        /// </summary>
+        public bool startRiding(out string problem)
+        {
+            problem = "";
+            if (_game == null) { problem = "Not attached to the game."; return false; }
+
+            mountReady();
+            _mount.Speed = mountSpeed;
+
+            //Something summoned beats something chosen beats whatever is nearest. Enchanted Grass
+            //puts a sheep beside you, and a sheep that was not there a moment ago is a better guess
+            //at what you meant than a crate two metres closer.
+            var summoned = _mount.newcomer();
+            if (summoned != IntPtr.Zero) { ride = summoned; }
+
+            //Remembered rather than assumed, so ticking it off puts back whatever was there -
+            //including a distance somebody set by hand. Before starting, not after: starting can
+            //find a mount straight away, and getting on pulls the camera back, so reading it
+            //afterwards would remember the mounted distance as the one to go back to.
+            _wasDistance = _holdArmLength;
+
+            if (!_mount.start(ride, out problem) && !_mount.Riding) { _wasDistance = null; return false; }
+
+            //And the camera pulls back, because a first person view from on top of a cow is a view
+            //of a cow.
+            holdArmLength = backFarEnoughFor(_mount.MountHeight);
+            _camera?.setRotation(MOUNTED_PITCH, _camera.Yaw ?? 45f);
+            return true;
+        }
+
+        public void stopRiding()
+        {
+            _mount?.stop();
+
+            if (_wasDistance is float back) { holdArmLength = back; }
+            _wasDistance = null;
+        }
+
+        /// <summary>
+        /// Far enough back to see what you are sitting on, whatever it is.
+        ///
+        /// Nine hundred was right for a cow and wrong for anything large - sit on a boss at nine
+        /// hundred and the camera is somewhere inside it. Fitting something of height H in the frame
+        /// takes about nine tenths of H at this field of view, plus room for the rider on top, so
+        /// the distance is worked out from what is actually underneath rather than fixed.
+        /// </summary>
+        private static float backFarEnoughFor(float mountHeight)
+        {
+            var wanted = (mountHeight + RIDER_HEIGHT) * TO_FIT_IN_FRAME;
+
+            return Math.Max(MOUNTED_NEAREST, Math.Min(MOUNTED_FURTHEST, wanted));
+        }
+
+        private const float MOUNTED_NEAREST = 900f;
+        private const float MOUNTED_FURTHEST = 4000f;
+        private const float TO_FIT_IN_FRAME = 1.4f;
+        private const float RIDER_HEIGHT = 220f;
+        private const float MOUNTED_PITCH = -20f;
+
+        private float? _wasDistance;
+
+        /// <summary>
+        /// The one Mount, made on first use and listened to.
+        ///
+        /// Listened to because getting on no longer only happens when the key is pressed: with
+        /// nothing underneath, the mount keeps looking, so the creature can arrive seconds later -
+        /// which is exactly the summoning case. The camera has to pull back at that moment rather
+        /// than at the moment somebody asked, or riding a summoned sheep is a close-up of a sheep.
+        /// </summary>
+        private void mountReady()
+        {
+            if (_mount != null) { return; }
+
+            _mount = new Mount(_game!);
+            _mount.SitHeight = _sitHeight;
+            _mount.mounted += height => holdArmLength = backFarEnoughFor(height);
+        }
+
+        /// <summary>How much higher than its own capsule the rider sits on the mount.</summary>
+        public float sitHeight
+        {
+            get => _sitHeight;
+            set
+            {
+                _sitHeight = value;
+                if (_mount != null) { _mount.SitHeight = value; }
+            }
+        }
+
+        private float _sitHeight;
+
+        /// <summary>Which creature to ride, or zero for whatever is nearest.</summary>
+        public IntPtr ride { get; set; }
+
+        /// <summary>
+        /// Takes note of what is in the level, so the next thing to appear can be recognised.
+        ///
+        /// Called when the ride key is pressed while not riding, which is the moment before you
+        /// summon something - press it, use the grass, press it again, and the sheep is what you
+        /// get rather than the nearest barrel.
+        /// </summary>
+        public void rememberWhatIsHere()
+        {
+            if (_game == null) { return; }
+
+            mountReady();
+            _mount.remember();
+        }
+
+        /// <summary>
+        /// The one link, shared by every tab that talks to the running game.
+        ///
+        /// One rather than one each. Two links means two watchers, two mounts and two sets of
+        /// writes going to the same character sixty times a second, which is the sort of thing that
+        /// works on a quiet afternoon and produces an unreproducible mess in a fight.
+        /// </summary>
+        public static LiveCameraLink shared { get; } = new LiveCameraLink();
+
+
+        /// <summary>Riding, or not, whichever it is not already.</summary>
+        public void toggleRiding()
+        {
+            if (riding) { stopRiding(); return; }
+
+            startRiding(out _);
+        }
+
+        /// <summary>Everything nearby worth sitting on, nearest first, and what was looked at.</summary>
+        public System.Collections.Generic.List<Mount.Candidate> rideable(out string tell)
+        {
+            if (_game == null)
+            {
+                tell = "Not attached to the game.";
+                return new System.Collections.Generic.List<Mount.Candidate>();
+            }
+
+            mountReady();
+            return _mount.nearby(out tell);
+        }
+
+        public bool riding => _mount?.Riding == true;
+
+        public float mountSpeed
+        {
+            get => _mountSpeed;
+            set
+            {
+                _mountSpeed = value;
+                if (_mount != null) { _mount.Speed = value; }
+            }
+        }
+
+        private Mount? _mount;
+        private float _mountSpeed = 2400f;
+        private float _lagSpeedWalking = 1f;
+
+
+        /// <summary>Whether Q leaves the ground.</summary>
+        public bool canJump
+        {
+            get => _canJump;
+            set
+            {
+                _canJump = value;
+                if (_walk != null) { _walk.CanJump = value; }
+            }
+        }
+
+        /// <summary>Whether G switches flying on and off.</summary>
+        public bool canFly
+        {
+            get => _canFly;
+            set
+            {
+                _canFly = value;
+                if (_walk != null) { _walk.CanFly = value; }
+            }
+        }
+
+        public float flySpeed
+        {
+            get => _flySpeed;
+            set
+            {
+                _flySpeed = value;
+                if (_walk != null) { _walk.FlySpeed = value; }
+            }
+        }
+
+        //On from the start, the way R already was. These are keys the game has no button for at
+        //all, so there is nothing of the game's own for them to clash with, and somebody who has
+        //switched the camera on has already said what they want.
+        private bool _canFly = true;
+        private float _flySpeed = 4000f;
+
+        public float jumpHeight
+        {
+            get => _jumpHeight;
+            set
+            {
+                _jumpHeight = value;
+                if (_walk != null) { _walk.JumpHeight = value; }
+            }
+        }
+
+        public float airControl
+        {
+            get => _airControl;
+            set
+            {
+                _airControl = value;
+                if (_walk != null) { _walk.AirControl = value; }
+            }
+        }
+
+        public int jumpCount
+        {
+            get => _jumpCount;
+            set
+            {
+                _jumpCount = value;
+                if (_walk != null) { _walk.JumpCount = value; }
+            }
+        }
+
+        private bool _canJump = true;
+        private float _jumpHeight = 1500f;
+        private float _airControl = 0.35f;
+        private int _jumpCount = 1;
+
         //What the camera should be held at, or nothing to let the world move it as it likes.
         private float? _holdArmLength;
 
@@ -236,6 +517,27 @@ namespace MCDSaveEdit.Logic
         //puts it back to, and it is why nothing here needs the paks: the game tells us its own
         //settings simply by being asked before we write anything.
         private CameraPreset? _original;
+
+        //The parts of the game's own camera a preset has no field for.
+        //
+        //A preset describes a way of looking at the game, and for that a yaw is meaningless -
+        //third person turns with the mouse, so whatever yaw a preset stated would be gone a second
+        //later. For putting the camera *back* it is the only thing that matters: this game's own
+        //camera is a fixed isometric angle, so its pitch and its yaw together are what "default"
+        //means. Restoring the pitch and keeping whatever yaw the mouse had left behind is a camera
+        //at the right tilt facing the wrong way, which is exactly what it looked like.
+        private float? _originalYaw;
+        private float? _originalRoll;
+        private float? _originalSocketForward;
+
+        private void rememberWholeAngle()
+        {
+            if (_camera == null) { return; }
+
+            _originalYaw = _camera.Yaw;
+            _originalRoll = _camera.Roll;
+            _originalSocketForward = _camera.SocketForward;
+        }
 
         //What is currently applied, so a level change can put it back on the new character.
         private CameraPreset? _applied;
@@ -285,6 +587,9 @@ namespace MCDSaveEdit.Logic
 
             stopLooking();
             stopWalking();
+            stopRiding();
+
+
 
             if (restoreTo != null) { push(restoreTo, snap: true); }
         }
@@ -311,6 +616,7 @@ namespace MCDSaveEdit.Logic
 
             clicksDoNotWalk = true;
             holdArmLength = THIRD_PERSON_DISTANCE;
+            applyPitchLimits(THIRD_PERSON_DISTANCE);
 
             if (!startWalking(out problem)) { return false; }
             if (!startLooking(sensitivity, invert)) { return false; }
@@ -323,7 +629,10 @@ namespace MCDSaveEdit.Logic
         //swing still shows what it hits.
         private const float THIRD_PERSON_DISTANCE = 800f;
         private const float THIRD_PERSON_PITCH = -12f;
-        private const float THIRD_PERSON_FIELD_OF_VIEW = 75f;
+        //Sixty five rather than seventy five, because field of view turned out to be the only
+        //thing that moves the frame rate: measured at a hundred and forty one enemies, 75 ran at
+        //158 and 60 at 179. This keeps most of the width and gives most of the frames back.
+        private const float THIRD_PERSON_FIELD_OF_VIEW = 65f;
 
         //The character's capsule is 110 half height, so its head is 110 above its origin and the
         //arm hangs 90 below it. Raising the pivot by 170 puts it around the shoulders.
@@ -358,9 +667,14 @@ namespace MCDSaveEdit.Logic
             };
 
             _camera.setTargetOffset(0f, 0f, preset.PivotHeight);
-            _camera.setSocketOffset(0f, preset.SocketSide, preset.SocketHeight);
+            _camera.setSocketOffset(preset.SocketForward, preset.SocketSide, preset.SocketHeight);
             _camera.setFieldOfView(preset.FieldOfView);
             _camera.setRotationLagSpeed(preset.RotationLagSpeed);
+            _camera.setLagSpeed(preset.LagSpeed);
+
+            //And the value a jump hands back when it lands.
+            _lagSpeedWalking = preset.LagSpeed;
+            if (_walk != null) { _walk.LagSpeedWalking = preset.LagSpeed; }
             _camera.setCollisionTest(preset.Collision);
             _camera.setArmLength(preset.Distance);
             _camera.setRotation(preset.Pitch, _camera.Yaw ?? 45f);
@@ -406,6 +720,7 @@ namespace MCDSaveEdit.Logic
                 SocketSide = _camera.SocketSide ?? 0f,
                 SocketHeight = _camera.SocketHeight ?? -80f,
                 RotationLagSpeed = _camera.RotationLagSpeed ?? 40f,
+                LagSpeed = _camera.LagSpeed ?? 1f,
                 Collision = _camera.CollisionTest ?? false,
                 MouseLook = looking,
                 Wasd = walking,
@@ -427,15 +742,22 @@ namespace MCDSaveEdit.Logic
             _applied = preset.copy();
 
             _camera.setTargetOffset(0f, 0f, preset.PivotHeight);
-            _camera.setSocketOffset(0f, preset.SocketSide, preset.SocketHeight);
+            _camera.setSocketOffset(preset.SocketForward, preset.SocketSide, preset.SocketHeight);
             _camera.setFieldOfView(preset.FieldOfView);
             _camera.setRotationLagSpeed(preset.RotationLagSpeed);
+            _camera.setLagSpeed(preset.LagSpeed);
+
+            //And the value a jump hands back when it lands.
+            _lagSpeedWalking = preset.LagSpeed;
+            if (_walk != null) { _walk.LagSpeedWalking = preset.LagSpeed; }
             _camera.setCollisionTest(preset.Collision);
             _camera.snapArmLength(preset.Distance);
             _camera.setRotation(preset.Pitch, _camera.Yaw ?? 45f);
 
             //Held from now on, or the first camera volume walked into undoes it.
             holdArmLength = preset.Distance;
+            applyPitchLimits(preset.Distance);
+
 
             if (preset.Wasd && !walking && !startWalking(out problem)) { return false; }
             if (!preset.Wasd && walking) { stopWalking(); }
@@ -459,13 +781,25 @@ namespace MCDSaveEdit.Logic
 
             if (_camera == null || _original == null) { return; }
 
+            //The limits a preset put on how far the view can tilt go with it, or the next time
+            //mouse look is switched on it is still fenced in by a camera that is no longer there.
+            _pitchLowest = -85f;
+            _pitchHighest = 5f;
+
             _camera.setTargetOffset(0f, 0f, _original.PivotHeight);
-            _camera.setSocketOffset(0f, _original.SocketSide, _original.SocketHeight);
+            _camera.setSocketOffset(_originalSocketForward ?? 0f, _original.SocketSide, _original.SocketHeight);
             _camera.setFieldOfView(_original.FieldOfView);
             _camera.setRotationLagSpeed(_original.RotationLagSpeed);
+            _camera.setLagSpeed(_original.LagSpeed);
             _camera.setCollisionTest(_original.Collision);
             _camera.snapArmLength(_original.Distance);
-            _camera.setRotation(_original.Pitch, _camera.Yaw ?? 45f);
+
+            //All three of them. The yaw used to be read back off the camera as it stood, which put
+            //the tilt right and left the view pointing wherever the mouse had last been.
+            _camera.setRotation(
+                _original.Pitch,
+                _originalYaw ?? _camera.Yaw ?? 45f,
+                _originalRoll ?? 0f);
         }
 
         /// <summary>What the game's camera is set to right now, or nothing.</summary>
@@ -508,6 +842,7 @@ namespace MCDSaveEdit.Logic
                 //Dragging the slider moves what is being held, or the next camera volume would
                 //put it straight back to whatever third person started with.
                 if (_holdArmLength != null) { holdArmLength = arm; }
+                applyPitchLimits(arm);
 
                 if (snap ? _camera.snapArmLength(arm) : _camera.setArmLength(arm)) { done++; }
             }
@@ -561,6 +896,9 @@ namespace MCDSaveEdit.Logic
         //F10. Out of the way of anything Dungeons binds, and of the usual screenshot keys.
         private const int TOGGLE_KEY = 0x79;
 
+        //R, which this game does not use, for getting on and off without opening anything.
+        private const int RIDE_KEY = 0x52;
+
         //The keys that open something you need a pointer for.
         //
         //Watched rather than detected. The obvious way would be to ask the game whether a menu is
@@ -590,6 +928,13 @@ namespace MCDSaveEdit.Logic
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         private static extern short GetAsyncKeyState(int key);
 
+        /// <summary>Whether R gets on and off a mount.</summary>
+        public bool rideKey { get; set; } = true;
+
+        /// <summary>Raised on the way down, for the tab to keep its checkbox honest.</summary>
+        public event Action? ridePressed;
+
+        private bool _rideWasDown;
         private System.Threading.Thread? _hotkey;
         private volatile bool _watchingHotkey;
         private bool _wasDown;
@@ -623,7 +968,10 @@ namespace MCDSaveEdit.Logic
         private void watchHotkey()
         {
             _watchingHotkey = true;
-            _hotkey = new System.Threading.Thread(() => {
+
+            //Through the same guard as the rest. An exception in here used to close the whole
+            //application without a word, because that is what an unhandled one on a thread does.
+            _hotkey = LiveEdit.Trouble.start("hotkey watcher", () => {
                 while (_watchingHotkey)
                 {
                     System.Threading.Thread.Sleep(60);
@@ -633,6 +981,16 @@ namespace MCDSaveEdit.Logic
                     var down = (GetAsyncKeyState(TOGGLE_KEY) & 0x8000) != 0;
                     if (down && !_wasDown) { togglePressed?.Invoke(); }
                     _wasDown = down;
+
+                    //And R, which gets on and off whatever is beside you. Two presses around a
+                    //summon: the first notes what is already there, the second rides what arrived.
+                    var wantsRide = (GetAsyncKeyState(RIDE_KEY) & 0x8000) != 0;
+                    if (wantsRide && !_rideWasDown && rideKey)
+                    {
+                        if (!riding) { rememberWhatIsHere(); }
+                        ridePressed?.Invoke();
+                    }
+                    _rideWasDown = wantsRide;
 
                     //The game itself, when it will say. This is the whole of it: the pointer goes
                     //back the instant a menu opens and is taken again the instant it closes, with
@@ -665,8 +1023,7 @@ namespace MCDSaveEdit.Logic
                         break;
                     }
                 }
-            }) { IsBackground = true, Name = "third person hotkey" };
-            _hotkey.Start();
+            });
         }
 
         public void Dispose()

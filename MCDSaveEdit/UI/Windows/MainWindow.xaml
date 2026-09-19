@@ -78,15 +78,27 @@
             </TabItem>
 
             <TabItem x:Name="weaponSkinsTabItem" Header="*Weapon Import*" Selector.Selected="OnTabSelected">
-                <local:WeaponSkinsTab x:Name="weaponSkinsTab"/>
+                <local:MeshWorkshopTab x:Name="weaponSkinsTab" Catalogue="Weapons"/>
+            </TabItem>
+
+            <TabItem x:Name="mobSkinsTabItem" Header="*Mob Import*" Selector.Selected="OnTabSelected">
+                <local:MeshWorkshopTab x:Name="mobSkinsTab" Catalogue="Mobs"/>
             </TabItem>
 
             <TabItem x:Name="cameraTabItem" Header="*Camera*" Selector.Selected="OnTabSelected">
                 <local:CameraTab x:Name="cameraTab"/>
             </TabItem>
 
+            <TabItem x:Name="enemiesTabItem" Header="*Enemies*" Selector.Selected="OnTabSelected">
+                <local:EnemiesTab x:Name="enemiesTab"/>
+            </TabItem>
+
             <TabItem x:Name="statsTabItem" Header="*Stats/Counters*" Selector.Selected="OnTabSelected">
                 <local:StatsTab x:Name="statsTab"/>
+            </TabItem>
+
+            <TabItem x:Name="modsTabItem" Header="*Installed Mods*" Selector.Selected="OnTabSelected">
+                <local:ModsTab x:Name="modsTab"/>
             </TabItem>
 
         </TabControl>

@@ -30,12 +30,17 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **The Tower** tab: tower runs that you have started and saved will show here, allow modifying gear and floor progress
 * 36 new enchantments the game carries but never offers, under the **Other** toggle
 * Bulk Delete items on the inventory and storage chest tabs
+* **Difficulty Tab:** Change how hard the game is while it is running. How tough and how fast the enemies are, and your own speed, roll cooldown, roll charges, gravity and attack speed
+* **Installed Mods Tab:** * **Every mod pak in one place**. You can import and export multiple mods via a zip package.
 
 #### Camera Feature
 * **Change the camera while the game is running** - distance, angle, field of view, where it looks, shoulder offset and swing smoothing, all applied as you drag the slider. No mod pak, nothing written to disk, and quitting the game puts everything back
 * **Third person and first person**, in a game that has neither: mouse look turns the view, W A S D move you, and clicking attacks instead of walking you there
 * **Presets** - third person, third person far, first person - and you can save your own under a name and bring it back in one click
 * F10 turns the camera setup on and off from inside the game
+* **Ride**, which is a mount without a mount: nothing can be spawned from outside a process, so the nearest creature is stopped where it stands and carried under you instead. Press R once and it keeps looking - use a summoning artifact afterwards and it climbs onto the sheep, wolf or llama as soon as that arrives. Speed and how high you sit are adjustable, the rider's legs can be frozen, and the creature is put back under you five hundred times a second, with its gravity taken away for as long as you are on it, so it neither steps along behind you nor sinks between one correction and the next
+* **Jump** on Q, which the game has no button for at all - not the character jumping but a launch written straight into its velocity, which is why it works when asking the character politely does not. Height, steering in mid-air and the number of jumps before landing are all adjustable
+* **Fly on G**, off again on G: the character lifts out of the level entirely, and switching it off drops them back to the floor with gravity and their own flight settings put back exactly as they were found
 
 #### Custom Builds Feature
 * **Open in MCD Builder**: send the equipped loadout straight to [mcdbuilder.vercel.app](https://mcdbuilder.vercel.app/)
@@ -47,6 +52,7 @@ https://github.com/user-attachments/assets/509496fd-7186-4422-a639-9d10272be407
 * **Recolor Gear**: put your own artwork on a piece of gear, installed as a mod pak beside the game's own; the originals are never modified and Remove undoes it completely
 * Armor, melee, ranged, artifacts, **capes, pets, enchantment icons and the interface and HUD**, picked one category at a time
 * The texture travels to [mcddesigner.vercel.app](https://mcddesigner.vercel.app/) and back. Find, upload and download again
+* **Any size up to 1024 square**, including the 256×256 enchantment icons - the designer takes a file at whatever size it is, and the link carries it
 
 https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 
@@ -54,8 +60,11 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 * **Import your own model** onto any weapon: export a `.glb` from Blender (File -> Export -> glTF Binary) and the weapon comes out wearing it, mesh and texture together, weapons installed as a mod pak beside the game's own so deleting it undoes everything
 * **Or just reshape the game's own model**: resize from a tenth up to **8x**, move and rotate it - a claymore at half size, a dagger the length of a spear, or something absurd
 * A live 3D preview **painted with the real texture**, which you can drag to turn and scroll to zoom, with the **original ghosted behind your model**. That outline is where the game already knows how to hold the weapon, so keeping the handle end of your model on the handle end of the outline is all there is to aligning it
-* Imported models are **fitted on arrival** - scaled to the weapon's size and centred on it - so the sliders start somewhere sensible instead of at a speck or a wall
-* It replaces the weapon's model and texture - not its stats, and not how it behaves. A weapon using several materials is refused rather than mangled, and the three whips are skeletal so they are out entirely
+
+#### Mob Import Feature
+* **Import your own model onto a creature**: export a `.glb` from Blender the same way, pick a sheep, a pig, a wolf or any of 122 other meshes, and the creature comes out wearing it. A skateboard, a mount, a truck - anything that should move under its own power, because a creature is the one thing the engine already animates
+* Grouped into **creatures and props**, with a search box. Props are the game's animated scenery - gates, doors, windmills, banners
+* **Summoned creatures come out right too.** An artifact does not summon the animal that wanders the level - it summons a variant with its own skin and a coloured glow, which is why an imported model used to arrive pink. Every skin a creature has is painted, and the game's colouring is turned off, so the model you brought is the model you get
 
 #### DISCLAIMER: Please keep backups of your save files! This app does not guarantee your save file to be playable after editing!
 
@@ -107,6 +116,23 @@ Microsoft Store:
 `C:\XboxGames\Minecraft Dungeons\Content\Dungeons\Content\Paks`
 
 If you're not sure which version you have, additional information may be found on [Dokustash - stash.dokucraft.co.uk](https://stash.dokucraft.co.uk/?help=modding-dungeons)
+
+##### Version numbers
+
+This is numbered after the game it works against rather than on a line of its own: **1.17.0.0** is
+Minecraft Dungeons' last update, and the number the Store package carries in its folder name. A
+release of this and a copy of the game that share a number belong together.
+
+##### If it closes by itself
+
+It keeps a log at `%LOCALAPPDATA%\MCDReborn\log.txt`, and anything that went wrong is in it with
+the full stack. Ordinarily it writes a handful of lines a session. For the whole story of what you
+were doing, use the `-debug` build, or put an empty file called `verbose.txt` beside the exe.
+
+The first thing that log caught was quitting the game while the camera was on: asking Windows about
+a process that has just gone throws rather than answering, and the loops that drive the camera ask
+hundreds of times a second. Fixed in 1.6.9.10 - closing the game now puts the camera panel back to
+waiting for one, wherever you are when you do it.
 
 ##### Application Stopped Working
 

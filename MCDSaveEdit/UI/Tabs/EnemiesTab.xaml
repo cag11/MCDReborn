@@ -1,0 +1,58 @@
+﻿<UserControl x:Class="MCDSaveEdit.UI.EnemiesTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             mc:Ignorable="d"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             d:DesignHeight="640" d:DesignWidth="900">
+
+    <DockPanel Margin="8">
+        <Label x:Name="titleLabel" DockPanel.Dock="Top" Content="*Difficulty*" Padding="0,0,0,4"/>
+
+        <Border DockPanel.Dock="Top" Margin="0,0,0,10" Padding="0,0,0,10"
+                BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Brush.Border}">
+            <StackPanel>
+                <TextBlock x:Name="liveHint" Foreground="Gray" TextWrapping="Wrap"/>
+
+                <DockPanel Margin="0,8,0,0">
+                    <Button x:Name="restoreButton" DockPanel.Dock="Right" Content="*Put it all back*"
+                            Height="26" Padding="10,0" Margin="8,0,0,0"
+                            Click="restoreButton_Click"/>
+                    <TextBlock/>
+                </DockPanel>
+            </StackPanel>
+        </Border>
+
+        <TextBlock x:Name="statusLabel" DockPanel.Dock="Bottom" Margin="0,8,0,0"
+                   TextWrapping="Wrap" Foreground="Gray"/>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Them -->
+                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                    <CheckBox x:Name="enemiesOn" Content="*Change the enemies*" FontWeight="Bold"
+                              Checked="enemiesOn_Changed" Unchecked="enemiesOn_Changed"/>
+                    <StackPanel x:Name="enemyStack"/>
+                </StackPanel>
+
+                <!-- You -->
+                <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                    <CheckBox x:Name="playerOn" Content="*Change your character*" FontWeight="Bold"
+                              Checked="playerOn_Changed" Unchecked="playerOn_Changed"/>
+                    <StackPanel x:Name="playerStack"/>
+
+                    <CheckBox x:Name="poseOnlyWhenSeen" Content="*Only animate what you can see*"
+                              FontWeight="Bold" Margin="0,24,0,0" IsChecked="True"
+                              Checked="poseOnlyWhenSeen_Changed" Unchecked="poseOnlyWhenSeen_Changed"/>
+                    <TextBlock x:Name="poseWhy" Foreground="Gray" TextWrapping="Wrap"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

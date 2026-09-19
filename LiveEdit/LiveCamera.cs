@@ -1,4 +1,4 @@
-using System;
+﻿ using System;
 
 namespace LiveEdit
 {
@@ -25,7 +25,56 @@ namespace LiveEdit
     public sealed class LiveCamera
     {
         //Where the engine keeps the world, as an offset into the game's own image.
-        private const int GWORLD = 0x04795230;
+        //
+        //Shared, because everything that reaches into this game starts from the same world - the
+        //camera hangs off the character in it, and the spawners are actors in its level.
+        //
+        //A guess rather than a fact. This one was measured against the Steam build and is right
+        //for it, and it is wrong for the copy the Minecraft Launcher installs - a different
+        //executable, with its own layout, where this address holds something else entirely. That
+        //came back as "GWorld is null", which sounds like a game sitting in a menu and was in fact
+        //a game this could not read at all.
+        //
+        //So it is tried first and, when it leads nowhere, looked for instead. See findWorld.
+        internal const int GWORLD_OFFSET = 0x04795230;
+        private const int GWORLD = GWORLD_OFFSET;
+
+        //The same variable in the Store build, which is what the Minecraft Launcher installs:
+        //`Dungeons.exe` out of `WindowsApps\Microsoft.Lovika_…`, a separate compile of the same
+        //game. Everything else about it matches - the game instance, the local players, the
+        //controller, the pawn, the spring arm and every field on the arm are all at the offsets
+        //the Steam build uses, which is what makes this one number the whole difference between
+        //the two. Only the address of the variable moved, because the binary is laid out
+        //differently.
+        private const int GWORLD_STORE = 0x047540B0;
+
+        //Tried in order before anything is searched for. Two known builds resolve instantly;
+        //a third would be found by findWorld and cost one scan.
+        private static readonly int[] KNOWN_WORLDS = { GWORLD_OFFSET, GWORLD_STORE };
+
+        /// <summary>Where the world pointer turned out to live, for the other readers of it.</summary>
+        internal static int WorldOffset => _worldOffset;
+
+        //Where it actually turned out to be, once. Remembered for the life of the process because
+        //the variable does not move - the world it points at changes with every level, the address
+        //holding that pointer does not.
+        private static int _worldOffset = GWORLD_OFFSET;
+
+        //Once the offset has led to a real world, it is right, and searching again would be work
+        //done to reach the same answer. Before that it may be wrong - so the search is allowed,
+        //but not often: find() is called many times a second by everything that reaches into the
+        //game, and a menu has no world at all, so without this a player sitting on the title
+        //screen would have the whole image scanned over and over for something that is not there
+        //yet.
+        private static bool _worldProven;
+        private static DateTime _lastSearch = DateTime.MinValue;
+
+        //Which game the settled answer belongs to. Windows hands out process ids again once a
+        //process is gone, so this is not proof of identity - but the answer it guards is checked
+        //against the running game every time anyway, and this only decides whether to start from
+        //a blank sheet.
+        private static int _provenFor;
+        private static readonly TimeSpan BETWEEN_SEARCHES = TimeSpan.FromSeconds(5);
 
         private const int WORLD_GAME_INSTANCE = 0x0160;
         private const int GAME_INSTANCE_LOCAL_PLAYERS = 0x0038;
@@ -53,6 +102,29 @@ namespace LiveEdit
         //for a whole transform before ComponentVelocity.
         private const int ATTACH_PARENT = 0x0108;
         private const int WORLD_ROTATION = 0x0190;
+
+        //Not here: turning off the character's network smoothing.
+        //
+        //This game runs a server even on your own machine, so the character is smoothed the way a
+        //networked one is - NetworkSmoothingMode at 0x01B2 on the movement component, Exponential
+        //here. Walking down a staircase the mesh swings eighty six units above where it rests, and
+        //with the camera on the crown of the head that is the body riding up through the view.
+        //
+        //Turning it off was tried, and it is a mistake, because that smoothing is also what absorbs
+        //the capsule snapping up a full step at a time on the way up. Measured going down it looked
+        //like a clean win; reported going up it shook, and the descent turned floaty. One direction
+        //is not enough evidence to take a smoothing system away from a game that needs it in both.
+        //
+        //Left as a note. The head near walls turned out to be the arm length hold rather than this.
+
+        //Not here: hiding the character in first person.
+        //
+        //bHiddenInGame is at 0x01CC bit 6 and the bit flips perfectly. Nothing happens. The flag
+        //is only read when the component's render state is rebuilt, which SetHiddenInGame does by
+        //calling MarkRenderStateDirty - and calling is the one thing this project cannot do.
+        //Verified by watching LastRenderTime, which kept climbing with the bit set.
+        //
+        //A note rather than code, because the bit flipping is convincing and the effect is nil.
 
         //UCameraComponent.
         private const int FIELD_OF_VIEW = 0x0258;
@@ -140,6 +212,9 @@ namespace LiveEdit
 
         public IntPtr Pawn { get; private set; }
 
+        /// <summary>The world itself, for anything that needs the level rather than the player.</summary>
+        public IntPtr World { get; private set; }
+
         /// <summary>The player's controller, which is where the game keeps what it is doing.</summary>
         public IntPtr Controller { get; private set; }
 
@@ -162,11 +237,72 @@ namespace LiveEdit
             problem = "";
             SpringArm = IntPtr.Zero;
 
-            var image = _game.Process.MainModule?.BaseAddress ?? IntPtr.Zero;
+            var image = _game.image(out _);
             if (image == IntPtr.Zero) { problem = "Could not find the game's own module."; return false; }
 
-            var world = follow(new IntPtr(image.ToInt64() + GWORLD));
-            if (world == IntPtr.Zero) { problem = "GWorld is null - the game has no world loaded."; return false; }
+            //A different game than the one that settled the answer below. The offset is kept for
+            //the life of the editor rather than the life of a game, because three readers share
+            //it - but the two builds do not share an address, so what was learned from one is
+            //wrong for the other. Quitting one copy and starting the other, without closing this,
+            //asks the question again from the beginning.
+            if (_provenFor != _game.Id)
+            {
+                _provenFor = _game.Id;
+                _worldProven = false;
+                _worldOffset = GWORLD_OFFSET;
+                _lastSearch = DateTime.MinValue;
+            }
+
+            var world = follow(new IntPtr(image.ToInt64() + _worldOffset));
+
+            //Nothing there. Either the game has no world yet, or this is a build whose world lives
+            //somewhere else - and those need telling apart, because one of them is worth waiting
+            //out and the other never resolves on its own.
+            if (world != IntPtr.Zero && looksLikeWorld(world))
+            {
+                //It works, so it is right, and the image need not be scanned for a better one.
+                _worldProven = true;
+            }
+            else
+            {
+                //The other build, before anything is scanned for. Not gated on whether an answer
+                //was settled earlier: this is four reads, and the case it exists for is somebody
+                //who quits one copy of the game and starts the other while the editor stays open.
+                //An answer that was right for the last game is not a reason to refuse to look at
+                //this one.
+                foreach (var known in KNOWN_WORLDS)
+                {
+                    var there = follow(new IntPtr(image.ToInt64() + known));
+                    if (there == IntPtr.Zero || !looksLikeWorld(there)) { continue; }
+
+                    _worldOffset = known;
+                    _worldProven = true;
+                    world = there;
+                    break;
+                }
+
+                if (world == IntPtr.Zero && !_worldProven
+                    && DateTime.UtcNow - _lastSearch > BETWEEN_SEARCHES)
+                {
+                    _lastSearch = DateTime.UtcNow;
+
+                    if (findWorld(image, out var found))
+                    {
+                        _worldOffset = found;
+                        _worldProven = true;
+                        world = follow(new IntPtr(image.ToInt64() + found));
+                    }
+                }
+            }
+
+            if (world == IntPtr.Zero)
+            {
+                problem = "GWorld is null - load into the Camp or a mission first. "
+                    + "If you are already in one, this build of the game is not one these offsets fit.";
+                return false;
+            }
+
+            World = world;
 
             var instance = follow(new IntPtr(world.ToInt64() + WORLD_GAME_INSTANCE));
             if (instance == IntPtr.Zero) { problem = "The world has no game instance."; return false; }
@@ -229,6 +365,9 @@ namespace LiveEdit
         public float? LagSpeed => readFloat(CAMERA_LAG_SPEED);
 
         /// <summary>Sideways from the character, at the camera end of the arm.</summary>
+        /// <summary>How far in front of the character the arm sits, which is the one nobody read.</summary>
+        public float? SocketForward => readFloat(SOCKET_OFFSET);
+
         public float? SocketSide => readFloat(SOCKET_OFFSET + 4);
 
         public float? SocketHeight => readFloat(SOCKET_OFFSET + 8);
@@ -523,6 +662,155 @@ namespace LiveEdit
             return writeFloat(SOCKET_OFFSET, x)
                 && writeFloat(SOCKET_OFFSET + 4, y)
                 && writeFloat(SOCKET_OFFSET + 8, z);
+        }
+
+        /// <summary>
+        /// Looks through the game's own image for the variable holding the world.
+        ///
+        /// Only ever reached when the written-down offset leads nowhere, which means either a
+        /// different build of the game or a version this has not seen. Both have the same answer:
+        /// the offset is not knowable in advance, but the *shape* of what it points at is, and a
+        /// shape can be searched for.
+        ///
+        /// What makes this cheap enough to do is that almost nothing survives the first test. The
+        /// world is scanned for as an eight byte value that is a plausible pointer, whose target
+        /// has a plausible pointer where a game instance belongs - and a run of unrelated bytes
+        /// fails that immediately. Whatever is left is put through the whole walk, which is a
+        /// stricter test than any signature: a false positive would have to be a pointer to
+        /// something that leads, through five more pointers, to a spring arm.
+        ///
+        /// It finds nothing while the game is in a menu, because then there genuinely is no world.
+        /// That is not a failure of the search and the message says so.
+        /// </summary>
+        private bool findWorld(IntPtr image, out int offset)
+        {
+            offset = 0;
+
+            var size = 0;
+            if (_game.image(out size) == IntPtr.Zero || size <= 0) { return false; }
+
+            //A megabyte at a time, because a read per candidate would be a million system calls
+            //and a read of the whole image would be a hundred megabytes held for no reason.
+            const int block = 1024 * 1024;
+            var buffer = new byte[block];
+
+            var top = image.ToInt64() + size;
+
+            //The same value appears in many slots - a hundred megabytes of image holds the same
+            //few hundred thousand distinct pointers over and over - and checking one of them is
+            //seven reads out of the game. Each is followed once.
+            var seen = new HashSet<long>();
+
+            for (long at = 0; at < size; at += block)
+            {
+                var length = (int)Math.Min(block, size - at);
+                if (!_game.tryRead(new IntPtr(image.ToInt64() + at), buffer, length)) { continue; }
+
+                for (int i = 0; i + 8 <= length; i += 8)
+                {
+                    var candidate = BitConverter.ToInt64(buffer, i);
+
+                    //What the world pointer cannot be, decided without touching the game: below
+                    //the four gigabyte line or above the user mode ceiling, unaligned, or an
+                    //address inside the image itself - the last being every relocation in the
+                    //file, which is most of the pointer shaped things in it. An engine object is
+                    //allocated on the heap.
+                    if (candidate < 0x100000000L || candidate >= 0x7FFFFFFFFFFF) { continue; }
+                    if ((candidate & 7) != 0) { continue; }
+                    if (candidate >= image.ToInt64() && candidate < top) { continue; }
+
+                    if (!seen.Add(candidate)) { continue; }
+
+                    if (!isTheWorld(new IntPtr(candidate), image, size)) { continue; }
+
+                    offset = (int)(at + i);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Whether something is an engine object at all, judged by its first eight bytes.
+        ///
+        /// Every UObject begins with a vtable pointer, and a vtable lives in the executable. So an
+        /// object points into the image and a number that merely looks like an address does not.
+        /// One read, and it throws out almost everything that is not an object.
+        /// </summary>
+        private bool isObject(IntPtr candidate, IntPtr image, int size)
+        {
+            if (candidate == IntPtr.Zero) { return false; }
+
+            var table = follow(candidate).ToInt64();
+            return table >= image.ToInt64() && table < image.ToInt64() + size;
+        }
+
+        /// <summary>
+        /// Whether a known address holds the world, cheaply enough to ask every time.
+        ///
+        /// Stops at the game instance deliberately. A menu has a world and no pawn, so anything
+        /// that insisted on a character would call the right address wrong for as long as somebody
+        /// sat on the title screen - and then go looking for a better one, which is a scan of the
+        /// whole image to arrive back where it started. The instance, unlike the pawn, is there
+        /// for the whole session.
+        ///
+        /// Two objects in a row is enough here because the address was not guessed: it is one of
+        /// the two written down, and the question is only which build this is. The offset that
+        /// does not belong to this build holds a null, not a near miss.
+        /// </summary>
+        private bool looksLikeWorld(IntPtr world)
+        {
+            var image = _game.image(out var size);
+            if (image == IntPtr.Zero) { return false; }
+
+            if (!isObject(world, image, size)) { return false; }
+
+            var instance = follow(new IntPtr(world.ToInt64() + WORLD_GAME_INSTANCE));
+            return isObject(instance, image, size);
+        }
+
+        /// <summary>
+        /// Whether something really is the world, judged by the whole walk to the camera.
+        ///
+        /// This is the test for a candidate nobody wrote down - one of the quarter of a million
+        /// pointers in the image - and it has to be strict, because a loose one is worse than no
+        /// search at all. The first version asked for a game instance, a player list and a
+        /// controller, without checking that any of them were objects. Two hundred and thirty six
+        /// addresses in the Store build passed it, the search took the first, and everything after
+        /// that failed against an address that was never the world. A search that latches onto the
+        /// wrong answer cannot be retried, because it believes it is finished.
+        ///
+        /// So every step has to be a real object, and the walk has to reach the spring arm - the
+        /// thing the camera actually needs. Of those two hundred and thirty six, one survives,
+        /// which is the right number.
+        ///
+        /// It needs a character to be possessed, so it only answers while somebody is in the Camp
+        /// or a mission. That is the right moment to search anyway: in a menu there is nothing to
+        /// find and nothing to point a camera at.
+        /// </summary>
+        private bool isTheWorld(IntPtr world, IntPtr image, int size)
+        {
+            if (!isObject(world, image, size)) { return false; }
+
+            var instance = follow(new IntPtr(world.ToInt64() + WORLD_GAME_INSTANCE));
+            if (!isObject(instance, image, size)) { return false; }
+
+            //A TArray of pointers: the array itself is a plain allocation rather than an object,
+            //so only what it holds is checked.
+            var players = follow(new IntPtr(instance.ToInt64() + GAME_INSTANCE_LOCAL_PLAYERS));
+            if (players == IntPtr.Zero) { return false; }
+
+            var player = follow(players);
+            if (!isObject(player, image, size)) { return false; }
+
+            var controller = follow(new IntPtr(player.ToInt64() + PLAYER_CONTROLLER));
+            if (!isObject(controller, image, size)) { return false; }
+
+            var pawn = follow(new IntPtr(controller.ToInt64() + CONTROLLER_PAWN));
+            if (!isObject(pawn, image, size)) { return false; }
+
+            return isObject(follow(new IntPtr(pawn.ToInt64() + CHARACTER_SPRING_ARM)), image, size);
         }
 
         private IntPtr follow(IntPtr at)

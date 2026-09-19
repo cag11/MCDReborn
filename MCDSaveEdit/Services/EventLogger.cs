@@ -29,10 +29,12 @@ namespace MCDSaveEdit.Services
             {
                 string fieldsStr = string.Join(" ", fields.Select(pair => $"{pair.Key}={pair.Value}"));
                 Debug.WriteLine($"[EVENT] {eventId} fields: {fieldsStr}");
+                Journal.remark($"{eventId} {fieldsStr}");
             }
             else
             {
                 Debug.WriteLine($"[EVENT] {eventId}");
+                Journal.remark(eventId);
             }
         }
 
