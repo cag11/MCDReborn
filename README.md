@@ -63,10 +63,11 @@ https://github.com/user-attachments/assets/509496fd-7186-4422-a639-9d10272be407
 https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 
 #### Difficulty Feature
-* **Change how hard the game is while it is running** - how tough the enemies are, and your own speed, roll cooldown, roll charges, gravity and attack speed
-* Toughness changes the damage enemies take rather than their health, so it works the same on every kind of enemy
+* **Change how hard the game is while it is running** - how tough and how fast the enemies are, and your own speed, roll cooldown, roll charges, gravity and attack speed
+* Toughness changes the damage enemies take rather than their health, so it works the same on every kind of enemy - measured on screen, 300 a hit becomes 80 with toughness at four
+* **Including the one swinging at you.** An enemy that stops to attack has a walk speed of zero, and the list used to want a believable walk speed before it would count something as an enemy - so the creature in your face was the one creature the settings skipped
 * **Every enemy in the level, not a handful.** This game streams its levels, so a mission is built from tiles that arrive as levels of their own and the enemies live in those. Measured in one mission: 321 enemies across the loaded levels, and none at all in the one the game started with - which is all the settings used to reach, and why they used to work on one run and not the next
-* **Enemy speed does not work yet, and the slider is honest about it.** The walk speed can be written and held, and the enemies carry on at the speed they were: the cap is not what limits them. What they obey is the speed their own behaviour asks for, which has not been found. Everything else on this tab is unaffected
+* Enemy speed is set through the game's own speed multiplier rather than by writing a walk speed over it. Writing the walk speed does nothing - the enemies are not moving at their cap, so raising the cap changes nothing, and the game puts it back within a frame anyway. The multiplier is what the game recomputes from, and it takes hold as each enemy is next recalculated, which in a fight is quickly
 * Held against the game rather than set once: enemies that appear later, a new level, or dying and respawning all get the settings put back within half a second
 * Nothing is written to disk - quitting the game puts everything back, and so does the button
 * Your own damage reduction is left alone on purpose, because that number comes from your gear

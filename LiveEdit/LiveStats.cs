@@ -229,16 +229,25 @@ namespace LiveEdit
                 var actor = new IntPtr(value);
                 if (actor == Player) { continue; }
 
-                //A believable walk speed is what tells a character from the other things in a
-                //level that happen to have two pointers in the right places - which is what an
-                //earlier, looser test kept picking up. Anything at all in this field is not
-                //enough: scenery turns up here with a walk speed of a millionth of a unit.
+                //Having a movement component at all is what makes something a character rather
+                //than a crate, and the attribute set below is what makes it a creature rather
+                //than a character shaped thing.
                 var movement = follow(new IntPtr(actor.ToInt64() + MOVEMENT_COMPONENT));
                 if (movement == IntPtr.Zero) { continue; }
 
+                //Not how fast it is going. This used to insist on a believable walk speed, and
+                //an enemy standing still to swing at you has a walk speed of zero - so the one
+                //creature actually fighting you was the one creature the settings skipped.
+                //Reported from the damage numbers on screen: everything at arm's length took 80
+                //a hit with toughness on, and the one in your face took 300.
+                //
+                //A range is still worth checking, because a nonsense value means this is not a
+                //movement component - but zero is not nonsense, it is a mob mid swing.
                 var walk = _game.readFloat(new IntPtr(movement.ToInt64() + MAX_WALK_SPEED));
-                if (walk == null || walk < 1f || walk > 20000f) { continue; }
+                if (walk == null || float.IsNaN(walk.Value) || walk < 0f || walk > 20000f) { continue; }
 
+                //The real test, and the one that keeps scenery out: the same health attribute
+                //set your own character has, found by class rather than by what it contains.
                 if (setOf(actor, _healthSetClass) == IntPtr.Zero) { continue; }
 
                 into.Add(actor);
