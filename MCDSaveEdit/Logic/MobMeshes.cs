@@ -1,4 +1,4 @@
-using MCDSaveEdit.Services;
+﻿using MCDSaveEdit.Services;
 using PakReader.Pak;
 using System;
 using System.Collections.Generic;
@@ -145,7 +145,7 @@ namespace MCDSaveEdit.Logic
         /// <see cref="CreatureVariants"/>.
         /// </summary>
         public static CustomSkins.InstalledMod import(string assetPath, GlbModel model,
-            MeshEdit.Transform transform, string modName)
+            MeshEdit.Transform transform, string modName, IEnumerable<PakWriter.Entry>? extra = null)
         {
             var package = readPackage(assetPath)
                 ?? throw new InvalidOperationException($"Could not read {assetPath}.");
@@ -177,6 +177,8 @@ namespace MCDSaveEdit.Logic
             }
 
             entries.AddRange(CreatureVariants.calm(assetPath, out _));
+
+            if (extra != null) { entries.AddRange(extra); }
 
             return CustomSkins.writeModPak(modName, entries);
         }
@@ -224,7 +226,10 @@ namespace MCDSaveEdit.Logic
             foreach (var word in words)
             {
                 if (text.Length > 0) { text.Append(' '); }
-                text.Append(CultureInfo.CurrentCulture.TextInfo.ToTitleCase(word));
+                //Invariant rather than the machine's own language. These are English asset
+                //names, and a Turkish Windows title-cases "Item" as "ıtem" - the dotless i is
+                //correct for Turkish words and wrong for a file called FireworksArrowItem.
+                text.Append(CultureInfo.InvariantCulture.TextInfo.ToTitleCase(word));
             }
             return text.Length == 0 ? raw : text.ToString();
         }
@@ -240,8 +245,8 @@ namespace MCDSaveEdit.Logic
             public override BitmapSource? textureFor(string assetPath) => MobMeshes.textureFor(assetPath);
 
             public override CustomSkins.InstalledMod replace(string assetPath, GlbModel model,
-                MeshEdit.Transform transform, string modName)
-                => import(assetPath, model, transform, modName);
+                MeshEdit.Transform transform, string modName, IEnumerable<PakWriter.Entry>? extra = null)
+                => import(assetPath, model, transform, modName, extra);
 
             //A creature's vertices are driven by its skeleton, so moving them without moving the
             //bones leaves a mesh that comes apart the moment it walks. Replacing is offered and

@@ -1,4 +1,4 @@
-using MCDSaveEdit.Services;
+﻿using MCDSaveEdit.Services;
 using PakReader.Pak;
 using System;
 using System.Collections.Generic;
@@ -25,7 +25,11 @@ namespace MCDSaveEdit.Logic
     /// </summary>
     public static class WeaponMeshes
     {
-        public enum Category { Melee, Ranged, Armor }
+        public enum Category { Melee, Ranged, Armor, Projectile }
+
+        /// <summary>The headings the list can be narrowed to.</summary>
+        public const string WEAPONS = "Weapons";
+        public const string PROJECTILES = "Projectiles";
 
         /// <summary>
         /// Where the meshes that can be imported onto live.
@@ -45,6 +49,37 @@ namespace MCDSaveEdit.Logic
         /// </summary>
         private static readonly (string folder, Category category)[] PLACES = {
             ("/actors/equipment/meleeweapons/", Category.Melee),
+        };
+
+        /// <summary>
+        /// The things the game throws, which are static meshes like any other.
+        ///
+        /// Named one at a time rather than found by a rule, because they do not follow one. They
+        /// are scattered across the item folders, the enemy folders and a shared effects folder,
+        /// and the ordinary arrow - the one every bow fires - is at `Models/Weapons/Arrow/Arrow`
+        /// with no `SM_` in front of it, so every rule written around that prefix misses the most
+        /// useful one in the game.
+        ///
+        /// Every path here was read through this catalogue's own reader before being listed, so
+        /// nothing is offered that cannot be imported onto. The ordinary arrow is 120 vertices and
+        /// 60 triangles; the smallest, a pumpkin seed, is 24 and 12.
+        ///
+        /// Matched by the end of the path, because the same asset arrives with a different prefix
+        /// depending on which pak it came out of.
+        /// </summary>
+        private static readonly string[] PROJECTILE_ASSETS = {
+            "/models/weapons/arrow/arrow",                              // every ordinary bow
+            "/actors/items/tormentquiver/sm_tormentarrow",
+            "/actors/items/heavyharpoon/sm_harpoonarrow",
+            "/actors/items/fireworksarrowitem/sm_firework",
+            "/actors/items/arrow/jackolantern/sm_pumpkinseed",
+            "/actors/items/corruptedseeds/sm_corruptedseeds",
+            "/rangedweapons/windbow/sm_galearrow_helix",
+            "/arrows/traps/tntarrow/sm_tntarrowbox",
+            "/illusioner_arrow/sm_illusioner_arrow",
+            "/spider/vfx/sm_spiderwebprojectilemesh",
+            "/effects/materials/projectiles/sm_fireballprojectile",
+            "/effects/materials/projectiles/sm_projectile_rectangular",
         };
 
         private static List<MeshEntry>? _catalogue;
@@ -67,6 +102,22 @@ namespace MCDSaveEdit.Logic
                 var at = path.IndexOf("//", StringComparison.Ordinal);
                 if (at >= 0) { path = path.Substring(at + 1); }
 
+                //The things the game throws, before the prefix test below, because the one that
+                //matters most does not carry the prefix.
+                if (isProjectile(path))
+                {
+                    if (seen.Add(path))
+                    {
+                        //No caution. The tag in the list means "an import onto this comes out
+                        //wrong", which is a thing that was measured on two weapons - and nothing
+                        //of the sort is known about any projectile. What they do need saying is
+                        //advice rather than a warning, so it goes under the list instead.
+                        found.Add(new MeshEntry(path, PROJECTILES, prettyName(path),
+                            folderName(path)));
+                    }
+                    continue;
+                }
+
                 //Only the static meshes. A name beginning SM_ is not a promise - the game uses the
                 //same prefix for SoundMix assets and for Skeletons - but a path under an equipment
                 //folder narrows it enough that the rest is caught when the geometry fails to read.
@@ -77,14 +128,15 @@ namespace MCDSaveEdit.Logic
                 {
                     if (path.IndexOf(folder, StringComparison.OrdinalIgnoreCase) < 0) { continue; }
                     if (!seen.Add(path)) { break; }
-                    found.Add(new MeshEntry(path, category.ToString(), prettyName(path),
+                    found.Add(new MeshEntry(path, WEAPONS, prettyName(path),
                         folderName(path), cautionFor(path)));
                     break;
                 }
             }
 
+            //Weapons first, projectiles second, whatever the alphabet thinks.
             _catalogue = found
-                .OrderBy(mesh => mesh.Group, StringComparer.Ordinal)
+                .OrderBy(mesh => mesh.Group == PROJECTILES ? 1 : 0)
                 .ThenBy(mesh => mesh.Name, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
             return _catalogue;
@@ -146,7 +198,8 @@ namespace MCDSaveEdit.Logic
         /// One pak per reshaped mesh, named after it, so that undoing one does not undo the rest
         /// and so the list of installed mods says what each of them did.
         /// </summary>
-        public static CustomSkins.InstalledMod apply(string assetPath, MeshEdit.Transform transform, string modName)
+        public static CustomSkins.InstalledMod apply(string assetPath, MeshEdit.Transform transform,
+            string modName, IEnumerable<PakWriter.Entry>? extra = null)
         {
             var package = readPackage(assetPath)
                 ?? throw new InvalidOperationException($"Could not read {assetPath}.");
@@ -188,7 +241,7 @@ namespace MCDSaveEdit.Logic
         /// apart would let somebody install half of it.
         /// </summary>
         public static CustomSkins.InstalledMod import(string assetPath, GlbModel model,
-            MeshEdit.Transform transform, string modName)
+            MeshEdit.Transform transform, string modName, IEnumerable<PakWriter.Entry>? extra = null)
         {
             var package = readPackage(assetPath)
                 ?? throw new InvalidOperationException($"Could not read {assetPath}.");
@@ -223,6 +276,8 @@ namespace MCDSaveEdit.Logic
             //pixel at all from a texture that is not the one being replaced - see the note on
             //unmask - and an imported model then arrives with whole pieces of it missing.
             entries.AddRange(CreatureVariants.unmask(assetPath, out _));
+
+            if (extra != null) { entries.AddRange(extra); }
 
             return CustomSkins.writeModPak(modName, entries);
         }
@@ -292,6 +347,17 @@ namespace MCDSaveEdit.Logic
             return R.WEAPON_SKINS_WRONG_MASTER;
         }
 
+
+        /// <summary>Whether a path is one of the things the game throws.</summary>
+        private static bool isProjectile(string path)
+        {
+            foreach (var tail in PROJECTILE_ASSETS)
+            {
+                if (path.EndsWith(tail, StringComparison.OrdinalIgnoreCase)) { return true; }
+            }
+            return false;
+        }
+
         private static string folderName(string assetPath)
         {
             var parts = assetPath.TrimEnd('/').Split('/');
@@ -323,15 +389,21 @@ namespace MCDSaveEdit.Logic
             public override BitmapSource? textureFor(string assetPath) => WeaponMeshes.textureFor(assetPath);
 
             public override CustomSkins.InstalledMod replace(string assetPath, GlbModel model,
-                MeshEdit.Transform transform, string modName)
-                => import(assetPath, model, transform, modName);
+                MeshEdit.Transform transform, string modName, IEnumerable<PakWriter.Entry>? extra = null)
+                => import(assetPath, model, transform, modName, extra);
 
-            public override CustomSkins.InstalledMod reshape(string assetPath, MeshEdit.Transform transform, string modName)
-                => apply(assetPath, transform, modName);
+            public override CustomSkins.InstalledMod reshape(string assetPath, MeshEdit.Transform transform,
+                string modName, IEnumerable<PakWriter.Entry>? extra = null)
+                => apply(assetPath, transform, modName, extra);
 
             public override string subjectLabel => R.WEAPON_SKINS_WEAPON;
             public override string countFormat => R.WEAPON_SKINS_COUNT;
-            public override string scopeNote => R.WEAPON_SKINS_MELEE_ONLY;
+            public override IReadOnlyList<string> groups() => new[] { WEAPONS, PROJECTILES };
+
+            public override string noteFor(string? group)
+                => group == PROJECTILES ? R.WEAPON_SKINS_PROJECTILE_NOTE : string.Empty;
+
+            public override string scopeNote => R.WEAPON_SKINS_SCOPE;
             public override string ghostHint => R.WEAPON_SKINS_GHOST_HINT;
             public override string importHint => R.WEAPON_SKINS_IMPORT_HINT;
             public override string nothingToDo => R.WEAPON_SKINS_NOTHING_TO_DO;
@@ -344,7 +416,10 @@ namespace MCDSaveEdit.Logic
             foreach (var word in words)
             {
                 if (text.Length > 0) { text.Append(' '); }
-                text.Append(CultureInfo.CurrentCulture.TextInfo.ToTitleCase(word));
+                //Invariant rather than the machine's own language. These are English asset
+                //names, and a Turkish Windows title-cases "Item" as "ıtem" - the dotless i is
+                //correct for Turkish words and wrong for a file called FireworksArrowItem.
+                text.Append(CultureInfo.InvariantCulture.TextInfo.ToTitleCase(word));
             }
             return text.Length == 0 ? raw : text.ToString();
         }

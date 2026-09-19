@@ -627,6 +627,195 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_IGNITE=<mesh path>;<r>;<g>;<b>;<power> - runs the glow writer and reads the
+            //result back out of the bytes it produced. Nothing is installed: this is the check
+            //that the offsets written to are the ones that were found.
+            var probeIgnite = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_IGNITE="));
+            if (probeIgnite != null)
+            {
+                var bits = probeIgnite.Substring("PROBE_IGNITE=".Length).Trim('"').Split(';');
+                float number(int i, float fallback)
+                    => bits.Length > i && float.TryParse(bits[i], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : fallback;
+
+                var entries = Logic.Glow.ignite(bits[0], number(1, 7f), number(2, 0.3f), number(3, 0f),
+                    number(4, 125f), out var lit).ToList();
+                Console.WriteLine($"[ignite] {bits[0]} -> {lit.Count} material(s), {entries.Count} file(s)");
+
+                foreach (var name in lit) { Console.WriteLine($"    lit {name}"); }
+
+                for (int i = 0; i + 1 < entries.Count; i++)
+                {
+                    if (!entries[i].Path.EndsWith(".uasset", StringComparison.OrdinalIgnoreCase)) { continue; }
+                    if (!entries[i + 1].Path.EndsWith(".uexp", StringComparison.OrdinalIgnoreCase)) { continue; }
+
+                    Console.WriteLine($"    {entries[i].Path}");
+                    foreach (var (name, value) in Logic.Glow.readParameters(entries[i].Data, entries[i + 1].Data))
+                    {
+                        Console.WriteLine($"        {name,-20} {string.Join(", ", value.Select(v => v.ToString("G6")))}");
+                    }
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_GLOW=<material path>[;<material path>] - what the glow writer thinks each
+            //emissive parameter reads. Checked against the values the package itself declares:
+            //if the offsets are right these agree, and if they are wrong they are nonsense.
+            var probeGlow = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_GLOW="));
+            if (probeGlow != null)
+            {
+                foreach (var path in probeGlow.Substring("PROBE_GLOW=".Length).Trim('"').Split(';'))
+                {
+                    if (string.IsNullOrWhiteSpace(path)) { continue; }
+                    Console.WriteLine($"[glow] {path.Trim()}");
+                    foreach (var (name, value) in Logic.Glow.readParameters(path.Trim()))
+                    {
+                        Console.WriteLine($"    {name,-20} {string.Join(", ", value.Select(v => v.ToString("G6")))}");
+                    }
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_PARAM=<material path>;<parameter name> - where a named parameter sits
+            //inside the parameter arrays, and what follows it. The layout of one array element
+            //is what turns "the emissive is 125" into "the float at byte 1731".
+            var probeParam = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_PARAM="));
+            if (probeParam != null)
+            {
+                var parts = probeParam.Substring("PROBE_PARAM=".Length).Trim('"').Split(';');
+                var paks = Logic.CustomSkins.index;
+                var read = paks?.extractPackage(parts[0]);
+                if (read == null) { Console.WriteLine("unreadable"); this.Shutdown(); return; }
+
+                var uasset = read.Value.UAsset.ToArray();
+                var uexp = read.Value.UExp.ToArray();
+                var names = Logic.CookedProperties.readNamesOf(uasset);
+                var wanted = parts.Length > 1 ? parts[1] : "EmissivePower";
+
+                var index = -1;
+                for (int i = 0; i < names.Count; i++)
+                {
+                    if (string.Equals(names[i], wanted, StringComparison.Ordinal)) { index = i; break; }
+                }
+                Console.WriteLine($"[param] \"{wanted}\" is name #{index} of {names.Count}");
+                if (index < 0) { this.Shutdown(); return; }
+
+                var pattern = BitConverter.GetBytes(index);
+                for (int at = 0; at + 4 <= uexp.Length; at++)
+                {
+                    if (uexp[at] != pattern[0] || uexp[at + 1] != pattern[1]
+                        || uexp[at + 2] != pattern[2] || uexp[at + 3] != pattern[3]) { continue; }
+
+                    var line = new System.Text.StringBuilder($"  at {at}: ");
+                    for (int step = 0; step <= 32 && at + step + 4 <= uexp.Length; step += 4)
+                    {
+                        line.Append($"[+{step}]{BitConverter.ToSingle(uexp, at + step):G6} ");
+                    }
+                    Console.WriteLine(line.ToString());
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_MATERIAL=<mesh asset path> - the materials a mesh wears, what each one
+            //descends from, and every parameter it overrides. Which levers exist on a material
+            //decides whether anything can be done to it from outside the process.
+            var probeMaterial = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_MATERIAL="));
+            if (probeMaterial != null)
+            {
+                var mesh = probeMaterial.Substring("PROBE_MATERIAL=".Length).Trim('"');
+                var paks = Logic.CustomSkins.index;
+                Console.WriteLine($"[material] mesh {mesh}");
+                Console.WriteLine($"[material] masters: {string.Join(", ", Logic.CreatureVariants.mastersOf(mesh))}");
+
+                foreach (var path in Logic.CreatureVariants.materialsOf(mesh))
+                {
+                    Console.WriteLine($"[material] {path}");
+                    if (paks == null) { continue; }
+
+                    var read = paks.extractPackage(path);
+                    if (read == null || !read.Value.HasExport()) { Console.WriteLine("    unreadable"); continue; }
+
+                    System.Text.Json.Nodes.JsonNode? root;
+                    try { root = System.Text.Json.Nodes.JsonNode.Parse(read.Value.JsonData); }
+                    catch (System.Text.Json.JsonException) { Console.WriteLine("    unparseable"); continue; }
+                    if (root is not System.Text.Json.Nodes.JsonArray exports) { continue; }
+
+                    foreach (var property in Logic.CookedProperties.readAll(read.Value.UAsset.ToArray(), read.Value.UExp.ToArray()))
+                    {
+                        Console.WriteLine($"    prop  {property.Export}.{property.Name} ({property.Type}) at {property.At} size {property.Size}");
+                    }
+
+                    foreach (var export in exports)
+                    {
+                        var value = export?["ExportValue"];
+                        if (value == null) { continue; }
+
+                        var parent = value["Parent"]?.ToString();
+                        if (!string.IsNullOrWhiteSpace(parent)) { Console.WriteLine($"    parent: {parent}"); }
+
+                        foreach (var kind in new[] { "VectorParameterValues", "ScalarParameterValues", "TextureParameterValues" })
+                        {
+                            if (value[kind] is not System.Text.Json.Nodes.JsonArray list) { continue; }
+                            foreach (var parameter in list)
+                            {
+                                var name = parameter?["ParameterInfo"]?["Name"]?.ToString();
+                                var was = parameter?["ParameterValue"]?.ToJsonString();
+                                Console.WriteLine($"    {kind.Replace("ParameterValues", ""),-8} {name,-28} {was}");
+                            }
+                        }
+                    }
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_CATALOGUE - what the workshop list offers, by heading.
+            if (_startupArguments.Any(a => a == "PROBE_CATALOGUE"))
+            {
+                foreach (var group in Logic.WeaponMeshes.catalogue.groups())
+                {
+                    var entries = Logic.WeaponMeshes.catalogue.all().Where(m => m.Group == group).ToList();
+                    Console.WriteLine($"[catalogue] {group}: {entries.Count}");
+                    foreach (var entry in entries.Take(entries.Count > 20 ? 3 : 20))
+                    {
+                        Console.WriteLine($"    {entry.Name}  ({entry.Variant})  {entry.AssetPath}");
+                    }
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_MESH=<asset path>[;<asset path>...] - whether the geometry pipeline can read
+            //a mesh at all, which is the question that decides whether anything can be imported
+            //over it. Prints what it found rather than yes or no, because a mesh that reads with
+            //no triangles is a different problem from one that does not read.
+            var probeMesh = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_MESH="));
+            if (probeMesh != null)
+            {
+                foreach (var path in probeMesh.Substring("PROBE_MESH=".Length).Trim('"').Split(';'))
+                {
+                    if (string.IsNullOrWhiteSpace(path)) { continue; }
+
+                    var shape = Logic.WeaponMeshes.read(path.Trim());
+                    if (shape == null)
+                    {
+                        Console.WriteLine($"[mesh] {path.Trim()}  UNREADABLE");
+                        continue;
+                    }
+
+                    Console.WriteLine($"[mesh] {path.Trim()}");
+                    Console.WriteLine($"         {shape.Positions.Count} vertices, {shape.TriangleCount} triangles,"
+                        + $" {shape.TexCoords.Count} uvs");
+                    Console.WriteLine($"         extent {shape.Extent.X:F1} x {shape.Extent.Y:F1} x {shape.Extent.Z:F1}"
+                        + $", longest side {shape.LongestSide:F1}, radius {shape.Radius:F1}");
+                }
+                this.Shutdown();
+                return;
+            }
+
             //PRINT_GEAR_TEXTURES=<item id fragment> - every pak entry under a piece of gear,
             //which one textureFor picks, and whether it actually decodes.
             var gearTextures = _startupArguments.FirstOrDefault(a => a.StartsWith("PRINT_GEAR_TEXTURES="));

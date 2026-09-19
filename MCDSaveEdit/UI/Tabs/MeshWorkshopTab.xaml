@@ -151,6 +151,23 @@
                               Checked="ghostCheckBox_Changed" Unchecked="ghostCheckBox_Changed"/>
                     <TextBlock x:Name="ghostHint" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
 
+                    <TextBlock x:Name="glowHeader" FontWeight="Bold" Margin="0,14,0,2"/>
+                    <CheckBox x:Name="glowCheckBox" Margin="0,2,0,0"
+                              Checked="glow_Changed" Unchecked="glow_Changed"/>
+                    <DockPanel x:Name="glowColourRow" Margin="0,6,0,0">
+                        <TextBlock x:Name="glowColourCaption" Width="70" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="glowColourCombo" SelectionChanged="glow_Changed"/>
+                    </DockPanel>
+                    <DockPanel x:Name="glowPowerRow" Margin="0,4,0,0">
+                        <TextBlock x:Name="glowPowerCaption" Width="70" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="glowPowerValue" DockPanel.Dock="Right" Width="56"
+                                   TextAlignment="Right" VerticalAlignment="Center"/>
+                        <Slider x:Name="glowPowerSlider" Minimum="1" Maximum="250" Value="125"
+                                TickFrequency="1" IsSnapToTickEnabled="True"
+                                ValueChanged="glowPower_Changed"/>
+                    </DockPanel>
+                    <TextBlock x:Name="glowHint" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
                     <Button x:Name="resetButton" Content="*Reset*" Height="26" Margin="0,12,0,0"
                             Click="resetButton_Click"/>
 

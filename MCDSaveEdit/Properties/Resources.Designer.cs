@@ -2383,6 +2383,132 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Glow.
+        /// </summary>
+        public static string WEAPON_SKINS_GLOW {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_GLOW", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Make it glow.
+        /// </summary>
+        public static string WEAPON_SKINS_GLOW_ON {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_GLOW_ON", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Colour.
+        /// </summary>
+        public static string WEAPON_SKINS_GLOW_COLOUR {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_GLOW_COLOUR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Strength.
+        /// </summary>
+        public static string WEAPON_SKINS_GLOW_POWER {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_GLOW_POWER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Turns up the emissive the material already carries - the same numbers that make the Torment arrow glow blue, which sits at 125. Nothing is added: a material with no emissive value cannot be lit this way, and says so after applying..
+        /// </summary>
+        public static string WEAPON_SKINS_GLOW_HINT {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_GLOW_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} material(s) lit..
+        /// </summary>
+        public static string WEAPON_SKINS_GLOW_LIT {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_GLOW_LIT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Red.
+        /// </summary>
+        public static string WEAPON_SKINS_GLOW_RED {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_GLOW_RED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Green.
+        /// </summary>
+        public static string WEAPON_SKINS_GLOW_GREEN {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_GLOW_GREEN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Blue.
+        /// </summary>
+        public static string WEAPON_SKINS_GLOW_BLUE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_GLOW_BLUE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Purple.
+        /// </summary>
+        public static string WEAPON_SKINS_GLOW_PURPLE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_GLOW_PURPLE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Orange.
+        /// </summary>
+        public static string WEAPON_SKINS_GLOW_ORANGE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_GLOW_ORANGE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to White.
+        /// </summary>
+        public static string WEAPON_SKINS_GLOW_WHITE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_GLOW_WHITE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to what the workshop list covers.
+        /// </summary>
+        public static string WEAPON_SKINS_SCOPE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_SCOPE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to the warning shown against every projectile.
+        /// </summary>
+        public static string WEAPON_SKINS_PROJECTILE_NOTE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_PROJECTILE_NOTE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Melee only for now. Bows change shape as they are drawn, and armour is several pieces that have to match..
         /// </summary>
         public static string WEAPON_SKINS_MELEE_ONLY {

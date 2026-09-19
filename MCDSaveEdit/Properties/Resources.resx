@@ -1151,6 +1151,62 @@ The save file is not changed until you save it.</value>
     <value>Show texture</value>
     <comment>Textured preview toggle</comment>
   </data>
+  <data name="WEAPON_SKINS_GLOW" xml:space="preserve">
+    <value>Glow</value>
+    <comment>Heading for the glow controls</comment>
+  </data>
+  <data name="WEAPON_SKINS_GLOW_ON" xml:space="preserve">
+    <value>Make it glow</value>
+    <comment>The glow switch</comment>
+  </data>
+  <data name="WEAPON_SKINS_GLOW_COLOUR" xml:space="preserve">
+    <value>Colour</value>
+    <comment>Caption for the glow colour</comment>
+  </data>
+  <data name="WEAPON_SKINS_GLOW_POWER" xml:space="preserve">
+    <value>Strength</value>
+    <comment>Caption for the glow strength</comment>
+  </data>
+  <data name="WEAPON_SKINS_GLOW_HINT" xml:space="preserve">
+    <value>Turns up the emissive the material already carries - the same numbers that make the Torment arrow glow blue, which sits at 125. Nothing is added: a material with no emissive value cannot be lit this way, and says so after applying.</value>
+    <comment>Under the glow controls</comment>
+  </data>
+  <data name="WEAPON_SKINS_GLOW_LIT" xml:space="preserve">
+    <value>{0} material(s) lit.</value>
+    <comment>Appended after applying</comment>
+  </data>
+  <data name="WEAPON_SKINS_GLOW_RED" xml:space="preserve">
+    <value>Red</value>
+    <comment>A glow colour</comment>
+  </data>
+  <data name="WEAPON_SKINS_GLOW_GREEN" xml:space="preserve">
+    <value>Green</value>
+    <comment>A glow colour</comment>
+  </data>
+  <data name="WEAPON_SKINS_GLOW_BLUE" xml:space="preserve">
+    <value>Blue</value>
+    <comment>A glow colour</comment>
+  </data>
+  <data name="WEAPON_SKINS_GLOW_PURPLE" xml:space="preserve">
+    <value>Purple</value>
+    <comment>A glow colour</comment>
+  </data>
+  <data name="WEAPON_SKINS_GLOW_ORANGE" xml:space="preserve">
+    <value>Orange</value>
+    <comment>A glow colour</comment>
+  </data>
+  <data name="WEAPON_SKINS_GLOW_WHITE" xml:space="preserve">
+    <value>White</value>
+    <comment>A glow colour</comment>
+  </data>
+  <data name="WEAPON_SKINS_SCOPE" xml:space="preserve">
+    <value>Melee weapons and the things the game throws. Bows change shape as they are drawn, and armour is several pieces that have to match, so neither is here yet.</value>
+    <comment>What the workshop list covers</comment>
+  </data>
+  <data name="WEAPON_SKINS_PROJECTILE_NOTE" xml:space="preserve">
+    <value>A projectile flies along its own length, so a model whose nose points somewhere else will fly sideways - turn it with the sliders until it does. The ordinary arrow is shared by every bow, so changing it changes them all.</value>
+    <comment>Shown against every projectile in the list</comment>
+  </data>
   <data name="WEAPON_SKINS_MELEE_ONLY" xml:space="preserve">
     <value>Melee only for now. Bows change shape as they are drawn, and armour is several pieces that have to match.</value>
     <comment>Why ranged and armour are absent</comment>

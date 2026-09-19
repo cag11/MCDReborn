@@ -1,4 +1,5 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using PakReader.Pak;
 using System.Windows.Media.Imaging;
 #nullable enable
 
@@ -60,9 +61,16 @@ namespace MCDSaveEdit.Logic
         /// <summary>The artwork it is painted with, for showing the preview as it really looks.</summary>
         public abstract BitmapSource? textureFor(string assetPath);
 
-        /// <summary>Writes a mod pak replacing the mesh with an imported model.</summary>
+        /// <summary>
+        /// Writes a mod pak replacing the mesh with an imported model.
+        ///
+        /// `extra` is anything else that belongs in the same pak - the glow, at the moment. It
+        /// goes in here rather than being written as a pak of its own, because two paks changing
+        /// one weapon are two things to remember to remove.
+        /// </summary>
         public abstract CustomSkins.InstalledMod replace(string assetPath, GlbModel model,
-            MeshEdit.Transform transform, string modName);
+            MeshEdit.Transform transform, string modName,
+            IEnumerable<PakWriter.Entry>? extra = null);
 
         /// <summary>
         /// Writes a mod pak moving the mesh's own vertices, without changing how many there are.
@@ -71,7 +79,8 @@ namespace MCDSaveEdit.Logic
         /// moving a creature's makes a creature whose skeleton no longer matches its skin, which
         /// looks like a fault rather than an edit, so the creature catalogue declines it.
         /// </summary>
-        public virtual CustomSkins.InstalledMod reshape(string assetPath, MeshEdit.Transform transform, string modName)
+        public virtual CustomSkins.InstalledMod reshape(string assetPath, MeshEdit.Transform transform,
+            string modName, IEnumerable<PakWriter.Entry>? extra = null)
             => throw new System.NotSupportedException();
 
         public virtual bool canReshape => true;
@@ -85,6 +94,14 @@ namespace MCDSaveEdit.Logic
         public abstract string importHint { get; }
         /// <summary>What to say when the sliders have been moved but nothing has been imported.</summary>
         public abstract string nothingToDo { get; }
+
+        /// <summary>
+        /// Anything worth saying about one heading in particular, under the list.
+        ///
+        /// Advice rather than warning. The mark against an entry means an import onto it comes
+        /// out wrong, and putting ordinary guidance there makes every entry look broken.
+        /// </summary>
+        public virtual string noteFor(string? group) => string.Empty;
 
         /// <summary>The headings the list can be filtered by, or nothing when there is only one.</summary>
         public virtual IReadOnlyList<string> groups() => System.Array.Empty<string>();

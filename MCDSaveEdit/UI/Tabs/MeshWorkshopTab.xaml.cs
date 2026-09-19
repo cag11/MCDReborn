@@ -1,4 +1,5 @@
-using MCDSaveEdit.Logic;
+﻿using MCDSaveEdit.Logic;
+using PakReader.Pak;
 using MCDSaveEdit.Services;
 using Microsoft.Win32;
 using System;
@@ -135,6 +136,13 @@ namespace MCDSaveEdit.UI
             clearModelButton.Content = R.WEAPON_SKINS_CLEAR_MODEL;
             importHint.Text = _catalogue.importHint;
             texturedCheckBox.Content = R.WEAPON_SKINS_TEXTURED;
+            glowHeader.Text = R.WEAPON_SKINS_GLOW;
+            glowCheckBox.Content = R.WEAPON_SKINS_GLOW_ON;
+            glowColourCaption.Text = R.WEAPON_SKINS_GLOW_COLOUR;
+            glowPowerCaption.Text = R.WEAPON_SKINS_GLOW_POWER;
+            glowHint.Text = R.WEAPON_SKINS_GLOW_HINT;
+            fillGlowColours();
+            showGlow();
         }
 
         public void updateUI()
@@ -221,8 +229,12 @@ namespace MCDSaveEdit.UI
                 meshList.Items.Add(new ListBoxItem { Content = row, Tag = mesh, ToolTip = mesh.Caution.Length > 0 ? mesh.Caution : null });
             }
 
+            //Advice about the chosen heading goes here rather than against every entry, where it
+            //would wear the mark that means an import onto this one comes out wrong.
+            var note = _catalogue.noteFor(group);
             countLabel.Text = string.Format(_catalogue.countFormat, matching.Count)
-                + "\n" + _catalogue.scopeNote;
+                + "\n" + _catalogue.scopeNote
+                + (note.Length > 0 ? "\n" + note : string.Empty);
             _filling = false;
 
             if (meshList.Items.Count > 0) { meshList.SelectedIndex = 0; }
@@ -628,12 +640,97 @@ namespace MCDSaveEdit.UI
 
         #region Applying
 
+
+        #region Glow
+
+        /// <summary>
+        /// The colours offered, and what each is worth as light.
+        ///
+        /// Brighter than one, because these are multiplied by the strength below and a material
+        /// lit to exactly white washes out to a flat shape with no edges. The game's own glowing
+        /// arrows sit around seven on their strongest channel.
+        /// </summary>
+        private static readonly (string key, float r, float g, float b)[] GLOW_COLOURS = {
+            ("RED", 7f, 0.3f, 0f),
+            ("GREEN", 0.3f, 7f, 0.5f),
+            ("BLUE", 0f, 2f, 7f),
+            ("PURPLE", 5f, 0f, 7f),
+            ("ORANGE", 7f, 2f, 0f),
+            ("WHITE", 5f, 5f, 5f),
+        };
+
+        private void fillGlowColours()
+        {
+            if (glowColourCombo.Items.Count > 0) { return; }
+
+            foreach (var (key, _, _, _) in GLOW_COLOURS)
+            {
+                glowColourCombo.Items.Add(new ComboBoxItem { Content = colourName(key), Tag = key });
+            }
+            glowColourCombo.SelectedIndex = 0;
+        }
+
+        private static string colourName(string key) => key switch {
+            "RED" => R.WEAPON_SKINS_GLOW_RED,
+            "GREEN" => R.WEAPON_SKINS_GLOW_GREEN,
+            "BLUE" => R.WEAPON_SKINS_GLOW_BLUE,
+            "PURPLE" => R.WEAPON_SKINS_GLOW_PURPLE,
+            "ORANGE" => R.WEAPON_SKINS_GLOW_ORANGE,
+            _ => R.WEAPON_SKINS_GLOW_WHITE,
+        };
+
+        private void glow_Changed(object sender, RoutedEventArgs e) => showGlow();
+
+        private void glow_Changed(object sender, SelectionChangedEventArgs e) => showGlow();
+
+        private void glowPower_Changed(object sender, RoutedPropertyChangedEventArgs<double> e) => showGlow();
+
+        private void showGlow()
+        {
+            if (!IsInitialized) { return; }
+
+            var on = glowCheckBox.IsChecked == true;
+            glowColourRow.IsEnabled = on;
+            glowPowerRow.IsEnabled = on;
+            glowPowerValue.Text = ((int)glowPowerSlider.Value).ToString();
+        }
+
+        /// <summary>
+        /// The material files that make this one glow, or nothing when it is not asked for.
+        ///
+        /// Nothing is also the answer when the materials have no emissive entry to write into.
+        /// That is a real outcome rather than a failure - a value that was never in the file
+        /// cannot be changed in place - and it is said in the status line afterwards.
+        /// </summary>
+        private IEnumerable<PakWriter.Entry>? glowEntries(out List<string> lit)
+        {
+            lit = new List<string>();
+            if (_selected == null || glowCheckBox.IsChecked != true) { return null; }
+
+            var key = (glowColourCombo.SelectedItem as ComboBoxItem)?.Tag as string ?? "RED";
+            var colour = GLOW_COLOURS[0];
+            foreach (var one in GLOW_COLOURS)
+            {
+                if (one.key == key) { colour = one; break; }
+            }
+
+            var entries = Glow.ignite(_selected.AssetPath, colour.r, colour.g, colour.b,
+                (float)glowPowerSlider.Value, out lit).ToList();
+
+            return entries.Count > 0 ? entries : null;
+        }
+
+        #endregion
+
         private void applyButton_Click(object sender, RoutedEventArgs e)
         {
             if (_selected == null) { return; }
 
             var transform = currentTransform;
-            if (_imported == null && (transform.isNothing || !_catalogue.canReshape))
+            var glow = glowEntries(out var lit);
+
+            //A glow on its own is a change worth writing, even where the shape is untouched.
+            if (_imported == null && glow == null && (transform.isNothing || !_catalogue.canReshape))
             {
                 statusLabel.Text = _catalogue.nothingToDo;
                 return;
@@ -642,9 +739,11 @@ namespace MCDSaveEdit.UI
             try
             {
                 var mod = _imported != null
-                    ? _catalogue.replace(_selected.AssetPath, _imported, transform, _selected.Name + " " + _imported.Name)
-                    : _catalogue.reshape(_selected.AssetPath, transform, _selected.Name);
-                statusLabel.Text = string.Format(R.WEAPON_SKINS_APPLIED, System.IO.Path.GetFileName(mod.Path));
+                    ? _catalogue.replace(_selected.AssetPath, _imported, transform,
+                        _selected.Name + " " + _imported.Name, glow)
+                    : _catalogue.reshape(_selected.AssetPath, transform, _selected.Name, glow);
+                statusLabel.Text = string.Format(R.WEAPON_SKINS_APPLIED, System.IO.Path.GetFileName(mod.Path))
+                    + (lit.Count > 0 ? " " + string.Format(R.WEAPON_SKINS_GLOW_LIT, lit.Count) : string.Empty);
             }
             catch (Exception problem)
             {
