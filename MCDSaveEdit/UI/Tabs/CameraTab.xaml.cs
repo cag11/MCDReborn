@@ -173,7 +173,7 @@ namespace MCDSaveEdit.UI
         {
             if (_filling) { return; }
 
-            _current.CrosshairStyle = (crosshairStyle.SelectedItem as ComboBoxItem)?.Tag as string ?? "Doom";
+            _current.CrosshairStyle = (crosshairStyle.SelectedItem as ComboBoxItem)?.Tag as string ?? "Cross";
             _current.CrosshairColour = (crosshairColour.SelectedItem as ComboBoxItem)?.Tag as string ?? "Green";
             _crosshair?.look(_current.CrosshairStyle, _current.CrosshairColour, _current.CrosshairSize);
         }

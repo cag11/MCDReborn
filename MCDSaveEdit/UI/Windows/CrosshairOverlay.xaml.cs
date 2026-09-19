@@ -43,7 +43,7 @@ namespace MCDSaveEdit.UI
         private struct Rect { public int Left, Top, Right, Bottom; }
 
         /// <summary>The shapes on offer, in the order they are listed.</summary>
-        public static readonly string[] STYLES = { "Doom", "Cross", "Chevron", "Circle", "Dot", "Brackets" };
+        public static readonly string[] STYLES = { "Cross", "Chevron", "Circle", "Dot", "Brackets" };
 
         /// <summary>
         /// The colours on offer.
@@ -67,7 +67,7 @@ namespace MCDSaveEdit.UI
         private readonly DispatcherTimer _tick;
         private static readonly TimeSpan EVERY = TimeSpan.FromMilliseconds(250);
 
-        private string _style = "Doom";
+        private string _style = "Cross";
         private string _colour = "Green";
         private double _size = 1.0;
 
@@ -86,7 +86,7 @@ namespace MCDSaveEdit.UI
         /// <summary>Changes what is drawn, while it is being looked at.</summary>
         public void look(string style, string colour, double size)
         {
-            _style = string.IsNullOrWhiteSpace(style) ? "Doom" : style;
+            _style = string.IsNullOrWhiteSpace(style) ? "Cross" : style;
             _colour = string.IsNullOrWhiteSpace(colour) ? "Green" : colour;
             _size = size <= 0 ? 1.0 : size;
             if (IsLoaded) { draw(); }
@@ -136,17 +136,6 @@ namespace MCDSaveEdit.UI
         {
             switch (style)
             {
-                //Short, thick, and well clear of the centre. The shape a shooter uses when it
-                //wants the middle of the screen readable while something is being shot at.
-                case "Doom":
-                    return new Shape[] {
-                        bar(middle, 0, -22 * size, 0, -48 * size, 7, size, brush, extra),
-                        bar(middle, 0, 22 * size, 0, 48 * size, 7, size, brush, extra),
-                        bar(middle, -22 * size, 0, -48 * size, 0, 7, size, brush, extra),
-                        bar(middle, 22 * size, 0, 48 * size, 0, 7, size, brush, extra),
-                        dot(middle, 3.5 * size, brush, extra),
-                    };
-
                 case "Cross":
                     return new[] {
                         bar(middle, 0, -9 * size, 0, -42 * size, 3, size, brush, extra),

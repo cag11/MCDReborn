@@ -99,7 +99,7 @@ namespace MCDSaveEdit.Logic
         public bool Crosshair { get; set; }
 
         /// <summary>Which crosshair is drawn. See CrosshairOverlay for what each one looks like.</summary>
-        public string CrosshairStyle { get; set; } = "Doom";
+        public string CrosshairStyle { get; set; } = "Cross";
 
         /// <summary>Its colour, as one of the names the overlay knows.</summary>
         public string CrosshairColour { get; set; } = "Green";
