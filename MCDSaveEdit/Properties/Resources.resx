@@ -1155,6 +1155,70 @@ The save file is not changed until you save it.</value>
     <value>{0} enemies thrown into the air.</value>
     <comment>After the jump key is pressed</comment>
   </data>
+  <data name="ESCALATION_EVERY" xml:space="preserve">
+    <value>A stage lasts</value>
+    <comment>Caption for the escalation interval</comment>
+  </data>
+  <data name="ESCALATION_EVERY_WHY" xml:space="preserve">
+    <value>How long before everything gets worse. A minute is a starting point rather than a finding - somebody who clears a level in four minutes and somebody who searches it for twenty want very different numbers here.</value>
+    <comment>Why the interval is adjustable</comment>
+  </data>
+  <data name="ESCALATION_TOUGH_STEP" xml:space="preserve">
+    <value>Tougher by</value>
+    <comment>Caption for the toughness step</comment>
+  </data>
+  <data name="ESCALATION_TOUGH_STEP_WHY" xml:space="preserve">
+    <value>What each stage adds to how much punishment enemies take. Zero leaves toughness out of the ramp entirely.</value>
+    <comment>Why the toughness step is adjustable</comment>
+  </data>
+  <data name="ESCALATION_SPEED_STEP" xml:space="preserve">
+    <value>Faster by</value>
+    <comment>Caption for the speed step</comment>
+  </data>
+  <data name="ESCALATION_SPEED_STEP_WHY" xml:space="preserve">
+    <value>And to how fast they move, which wants a much smaller number. Toughness at ten times is a fight that takes ten times as long; speed at ten times is not a fight at all, because they cross the room faster than the camera turns. Zero leaves speed alone.</value>
+    <comment>Why the speed step is smaller</comment>
+  </data>
+  <data name="ESCALATION_MOST_TOUGH" xml:space="preserve">
+    <value>Tough stops at</value>
+    <comment>Caption for the toughness cap</comment>
+  </data>
+  <data name="ESCALATION_MOST_TOUGH_WHY" xml:space="preserve">
+    <value>Where toughness stops climbing. Ten times is a tenth of your damage landing, which is slow rather than impossible.</value>
+    <comment>Why the toughness cap exists</comment>
+  </data>
+  <data name="ESCALATION_MOST_SPEED" xml:space="preserve">
+    <value>Fast stops at</value>
+    <comment>Caption for the speed cap</comment>
+  </data>
+  <data name="ESCALATION_MOST_SPEED_WHY" xml:space="preserve">
+    <value>Where speed stops climbing. Three times is about as fast as an enemy can be and still be something you can back away from. Wind it up if you want the version where the level eventually wins.</value>
+    <comment>Why the speed cap exists</comment>
+  </data>
+  <data name="ESCALATION_ON" xml:space="preserve">
+    <value>Enemies get worse the longer you stay</value>
+    <comment>The escalation switch</comment>
+  </data>
+  <data name="ESCALATION_WHY" xml:space="preserve">
+    <value>Every minute in a level adds 0.2 to how tough and how fast the enemies are, stopping at ten times tough and three times fast. The sliders above become where the ramp starts rather than what is written. A bar over the game says which stage you are in and how long until the next one. The clock restarts when you load into a new level, and not when you die.</value>
+    <comment>Why escalation exists</comment>
+  </data>
+  <data name="ESCALATION_STAGE" xml:space="preserve">
+    <value>Stage {0} - {1}</value>
+    <comment>Stage number and name on the overlay</comment>
+  </data>
+  <data name="ESCALATION_NUMBERS" xml:space="preserve">
+    <value>tough {0:0.#}x   fast {1:0.##}x</value>
+    <comment>The multipliers on the overlay</comment>
+  </data>
+  <data name="ESCALATION_NEXT" xml:space="preserve">
+    <value>next in {0}:{1:00}</value>
+    <comment>Countdown on the overlay</comment>
+  </data>
+  <data name="ESCALATION_TOPPED" xml:space="preserve">
+    <value>as bad as it gets</value>
+    <comment>Shown once both multipliers have capped</comment>
+  </data>
   <data name="STATS_ENEMY_JUMP" xml:space="preserve">
     <value>J throws every enemy into the air</value>
     <comment>The enemy jump key switch</comment>

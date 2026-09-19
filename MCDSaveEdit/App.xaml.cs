@@ -788,6 +788,38 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //SHOW_OVERLAY - puts the escalation overlay up for fifteen seconds against the
+            //running game, and writes down where it decided to sit. The only part of it that
+            //cannot be checked by reading the code is whether it lands over the game.
+            if (_startupArguments.Any(a => a == "SHOW_OVERLAY"))
+            {
+                var live = new Logic.LiveStatsLink { escalationOn = true, enemiesOn = false };
+                var overlay = new UI.EscalationOverlay(live);
+                overlay.Show();
+
+                var watch = new System.Windows.Threading.DispatcherTimer {
+                    Interval = TimeSpan.FromSeconds(3),
+                };
+                var seen = 0;
+                watch.Tick += (_, _) => {
+                    Console.WriteLine($"[overlay] visible={overlay.Visibility}"
+                        + $" at {overlay.Left:F0},{overlay.Top:F0} size {overlay.Width}x{overlay.Height}"
+                        + $" | game window 0x{live.gameWindow.ToInt64():X} attached={live.attached} status=\"{live.status}\""
+                        + $" | stage {live.escalation.stage} ({live.escalation.stageName})"
+                        + $" tough {live.toughnessNow:0.##} fast {live.speedNow:0.##}"
+                        + $" through {live.escalation.through:P0}");
+                    if (++seen >= 5)
+                    {
+                        watch.Stop();
+                        overlay.Close();
+                        live.Dispose();
+                        this.Shutdown();
+                    }
+                };
+                watch.Start();
+                return;
+            }
+
             //PROBE_MESH=<asset path>[;<asset path>...] - whether the geometry pipeline can read
             //a mesh at all, which is the question that decides whether anything can be imported
             //over it. Prints what it found rather than yes or no, because a mesh that reads with

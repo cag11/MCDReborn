@@ -75,13 +75,18 @@ namespace MCDSaveEdit.UI
             if (window == null) { return; }
 
             _hookedClose = true;
-            window.Closed += (s, e) => _live.Dispose();
+            window.Closed += (s, e) => {
+                _overlay?.Close();
+                _live.Dispose();
+            };
         }
 
         private void translateStaticStrings()
         {
             titleLabel.Content = R.STATS_TAB;
             enemiesOn.Content = R.STATS_ENEMIES_ON;
+            escalationOn.Content = R.ESCALATION_ON;
+            escalationHint.Text = R.ESCALATION_WHY;
             enemyJumpKey.Content = R.STATS_ENEMY_JUMP;
             enemyJumpHint.Text = R.STATS_ENEMY_JUMP_WHY;
             playerOn.Content = R.STATS_PLAYER_ON;
@@ -111,6 +116,19 @@ namespace MCDSaveEdit.UI
             //and a tenth barely reads as different from normal.
             addRow(enemyStack, _enemyRows, R.STATS_ENEMY_GRAVITY, R.STATS_ENEMY_GRAVITY_WHY, 0.025, 3, 0.025, "x",
                 l => l.enemyGravity, (l, v) => l.enemyGravity = v);
+
+            //Every number the ramp uses, because what it is worth is a matter of taste: how fast
+            //somebody clears a level decides whether a minute is generous or nothing at all.
+            addRow(escalationStack, _enemyRows, R.ESCALATION_EVERY, R.ESCALATION_EVERY_WHY,
+                10, 300, 5, "s", l => l.escalationEvery, (l, v) => l.escalationEvery = v);
+            addRow(escalationStack, _enemyRows, R.ESCALATION_TOUGH_STEP, R.ESCALATION_TOUGH_STEP_WHY,
+                0, 5, 0.1, "x", l => l.escalationToughnessStep, (l, v) => l.escalationToughnessStep = v);
+            addRow(escalationStack, _enemyRows, R.ESCALATION_SPEED_STEP, R.ESCALATION_SPEED_STEP_WHY,
+                0, 1, 0.05, "x", l => l.escalationSpeedStep, (l, v) => l.escalationSpeedStep = v);
+            addRow(escalationStack, _enemyRows, R.ESCALATION_MOST_TOUGH, R.ESCALATION_MOST_TOUGH_WHY,
+                1, 20, 0.5, "x", l => l.escalationMostToughness, (l, v) => l.escalationMostToughness = v);
+            addRow(escalationStack, _enemyRows, R.ESCALATION_MOST_SPEED, R.ESCALATION_MOST_SPEED_WHY,
+                1, 6, 0.1, "x", l => l.escalationMostSpeed, (l, v) => l.escalationMostSpeed = v);
 
             //Its own switch and its own stack, because this one is a key rather than a setting -
             //nothing happens until it is pressed, so it does not belong under "change the
@@ -172,6 +190,7 @@ namespace MCDSaveEdit.UI
             });
 
             row.Switch = ReferenceEquals(into, enemyJumpStack) ? enemyJumpKey
+                : ReferenceEquals(into, escalationStack) ? escalationOn
                 : ReferenceEquals(into, enemyStack) ? enemiesOn : playerOn;
 
             into.Children.Add(panel);
@@ -185,6 +204,7 @@ namespace MCDSaveEdit.UI
             var on = _live.attached;
 
             enemiesOn.IsEnabled = on;
+            escalationOn.IsEnabled = on;
             enemyJumpKey.IsEnabled = on;
             playerOn.IsEnabled = on;
             restoreButton.IsEnabled = on;
@@ -216,11 +236,40 @@ namespace MCDSaveEdit.UI
 
             _filling = true;
             enemiesOn.IsChecked = _live.enemiesOn;
+            escalationOn.IsChecked = _live.escalationOn;
             enemyJumpKey.IsChecked = _live.enemyJumpKey;
             playerOn.IsChecked = _live.playerOn;
             _filling = false;
         }
 
+
+
+        //The overlay belongs to the switch: there is nothing to watch when the clock is not
+        //running, and a window left over the game afterwards is litter.
+        private EscalationOverlay? _overlay;
+
+        private void escalationOn_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            var on = escalationOn.IsChecked == true;
+            _live.escalationOn = on;
+
+            //Escalation writes through the enemy settings, so it needs them switched on.
+            if (on && enemiesOn.IsChecked != true) { enemiesOn.IsChecked = true; }
+
+            if (on)
+            {
+                _overlay ??= new EscalationOverlay(_live);
+                _overlay.Closed += (_, _) => _overlay = null;
+                _overlay.Show();
+            }
+            else
+            {
+                _overlay?.Close();
+                _overlay = null;
+            }
+        }
 
         private void enemyJumpKey_Changed(object sender, RoutedEventArgs e)
         {

@@ -57,6 +57,81 @@ namespace MCDSaveEdit.Logic
         /// <summary>How heavily enemies fall, as a multiple of their own weight.</summary>
         public float enemyGravity { get; set; } = 1f;
 
+        /// <summary>
+        /// Whether the enemies get worse the longer you stay in a level.
+        ///
+        /// The sliders stop being what is written and become where the ramp starts from, so
+        /// moving one still means something while this is on.
+        /// </summary>
+        public bool escalationOn
+        {
+            get => _escalationOn;
+            set
+            {
+                if (_escalationOn == value) { return; }
+
+                _escalationOn = value;
+                if (value) { escalation.restart(); }
+            }
+        }
+
+        private bool _escalationOn;
+
+        /// <summary>How long you have been here and what that has cost, for the overlay to show.</summary>
+        public Escalation escalation { get; } = new Escalation();
+
+        //The ramp's own settings, reached through the link because that is what the sliders on the
+        //tab are wired to. They live on the Escalation rather than here, so that the arithmetic and
+        //the numbers it uses stay in one place.
+        public float escalationEvery
+        {
+            get => escalation.every;
+            set => escalation.every = value;
+        }
+
+        public float escalationToughnessStep
+        {
+            get => escalation.toughnessStep;
+            set => escalation.toughnessStep = value;
+        }
+
+        public float escalationSpeedStep
+        {
+            get => escalation.speedStep;
+            set => escalation.speedStep = value;
+        }
+
+        public float escalationMostToughness
+        {
+            get => escalation.mostToughness;
+            set => escalation.mostToughness = value;
+        }
+
+        public float escalationMostSpeed
+        {
+            get => escalation.mostSpeed;
+            set => escalation.mostSpeed = value;
+        }
+
+        /// <summary>The numbers actually being written, which are the ramp's while it is running.</summary>
+        public float toughnessNow => escalationOn ? escalation.toughnessFrom(enemyToughness) : enemyToughness;
+        public float speedNow => escalationOn ? escalation.speedFrom(enemySpeed) : enemySpeed;
+
+        /// <summary>The game's own window, for the overlay to sit over. Zero when there is none.</summary>
+        public IntPtr gameWindow
+        {
+            get
+            {
+                try { return _game?.Process.MainWindowHandle ?? IntPtr.Zero; }
+                catch (Exception) { return IntPtr.Zero; }
+            }
+        }
+
+        /// <summary>Raised when a stage passes, for saying so.</summary>
+        public event Action<int>? stageChanged;
+
+        private int _saidStage = -1;
+
         /// <summary>Whether J throws every enemy into the air.</summary>
         public bool enemyJumpKey { get; set; }
 
@@ -200,7 +275,18 @@ namespace MCDSaveEdit.Logic
                     + $" - toughness {enemyToughness}, speed {enemySpeed}, size {enemySize}, gravity {enemyGravity}");
             }
 
-            if (enemiesOn) { _stats.applyToEnemies(enemyToughness, enemySpeed, enemySize, enemyGravity); }
+            //The clock belongs to the character, so it restarts when the level does.
+            escalation.watch(_stats.Player);
+
+            if (escalationOn && escalation.stage != _saidStage)
+            {
+                _saidStage = escalation.stage;
+                Services.Journal.note($"escalation stage {escalation.stage} ({escalation.stageName})"
+                    + $" - toughness {toughnessNow:0.##}, speed {speedNow:0.##}");
+                stageChanged?.Invoke(escalation.stage);
+            }
+
+            if (enemiesOn) { _stats.applyToEnemies(toughnessNow, speedNow, enemySize, enemyGravity); }
             _stats.applyPosing(poseOnlyWhenSeen);
             if (playerOn)
             {
