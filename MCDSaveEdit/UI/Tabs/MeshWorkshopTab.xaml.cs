@@ -579,6 +579,12 @@ namespace MCDSaveEdit.UI
                 //lost on the way to .glb imports correctly and comes out blank, which looks like
                 //this having gone wrong.
                 if (model.Note.Length > 0) { modelLabel.Text += "\n" + model.Note; }
+
+                //And the one thing a model can be missing that looks exactly like a broken
+                //import: no colour at all. It imports perfectly and comes out wearing whatever
+                //the weapon it replaced was painted with.
+                if (model.BaseColourPng == null) { modelLabel.Text += "\n" + R.WEAPON_SKINS_NO_COLOUR; }
+
                 clearModelButton.Visibility = Visibility.Visible;
                 statusLabel.Text = string.Empty;
                 redraw();

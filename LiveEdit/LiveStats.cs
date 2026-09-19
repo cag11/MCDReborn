@@ -38,6 +38,16 @@ namespace LiveEdit
         //to falling and zeroes it again. Writing it is the entire action.
         private const int PENDING_LAUNCH_VELOCITY = 0x0408;
 
+        //Aiming for you, which is a component of its own hanging off the player character.
+        //
+        //From the blueprint class rather than an engine one, which makes it the least certain
+        //offset here - so it is checked before it is used: the pointer has to lead to something
+        //with a vtable inside the game's own image, the way every other object here is proved.
+        private const int AUTO_AIM_COMPONENT = 0x11D0;
+        private const int AUTO_AIM = 0x0419;
+        private const int AUTO_AIM_ANGLE = 0x041C;
+        private const int AUTO_AIM_RANGE = 0x0420;
+
         private const int PERSISTENT_LEVEL = 0x0030;
 
         //UWorld::Levels - every level currently loaded, streamed ones included.
@@ -652,6 +662,79 @@ namespace LiveEdit
         }
 
         #endregion
+
+        #region Aiming
+
+        /// <summary>
+        /// The thing that aims your ranged attacks for you, or nothing when it cannot be found.
+        ///
+        /// Proved rather than trusted. This offset comes from the player's blueprint class, which
+        /// is the kind that moves between builds, so the pointer has to lead to a real engine
+        /// object before anything is written through it.
+        /// </summary>
+        private IntPtr aimAssistComponent()
+        {
+            if (Player == IntPtr.Zero) { return IntPtr.Zero; }
+
+            var component = follow(new IntPtr(Player.ToInt64() + AUTO_AIM_COMPONENT));
+            if (component == IntPtr.Zero) { return IntPtr.Zero; }
+
+            var image = _game.image(out var size);
+            if (image == IntPtr.Zero) { return IntPtr.Zero; }
+
+            var table = follow(component).ToInt64();
+            var real = table >= image.ToInt64() && table < image.ToInt64() + size;
+            return real ? component : IntPtr.Zero;
+        }
+
+        /// <summary>Whether aiming for you is something this game can be talked out of.</summary>
+        public bool canAim => aimAssistComponent() != IntPtr.Zero;
+
+        /// <summary>What the game is doing about aiming right now, for the switches to start from.</summary>
+        public (bool on, float angle, float range)? aimAssistNow()
+        {
+            var component = aimAssistComponent();
+            if (component == IntPtr.Zero) { return null; }
+
+            var on = _game.read(new IntPtr(component.ToInt64() + AUTO_AIM), 1);
+            var angle = _game.readFloat(new IntPtr(component.ToInt64() + AUTO_AIM_ANGLE));
+            var range = _game.readFloat(new IntPtr(component.ToInt64() + AUTO_AIM_RANGE));
+            if (on == null || angle == null || range == null) { return null; }
+
+            return (on[0] != 0, angle.Value, range.Value);
+        }
+
+        //What it was before any of this, so switching off puts back what the game shipped with
+        //rather than what somebody guessed the game shipped with.
+        private (bool on, float angle, float range)? _aimWas;
+
+        /// <summary>Sets how much the game helps you aim. Says whether it could.</summary>
+        public bool applyAim(bool on, float angle, float range)
+        {
+            var component = aimAssistComponent();
+            if (component == IntPtr.Zero) { return false; }
+
+            _aimWas ??= aimAssistNow();
+
+            _game.write(new IntPtr(component.ToInt64() + AUTO_AIM), new[] { (byte)(on ? 1 : 0) });
+            _game.writeFloat(new IntPtr(component.ToInt64() + AUTO_AIM_ANGLE), angle);
+            _game.writeFloat(new IntPtr(component.ToInt64() + AUTO_AIM_RANGE), range);
+            return true;
+        }
+
+        /// <summary>Puts aiming back the way the game had it.</summary>
+        public bool restoreAim()
+        {
+            if (_aimWas == null) { return true; }
+
+            var was = _aimWas.Value;
+            var put = applyAim(was.on, was.angle, was.range);
+            _aimWas = null;
+            return put;
+        }
+
+        #endregion
+
 
         private IEnumerable<IntPtr> setsOf(IntPtr actor)
         {

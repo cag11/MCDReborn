@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -239,8 +239,25 @@ namespace MCDSaveEdit.Logic
 
             foreach (var materialNode in materials)
             {
-                var pbr = (materialNode as JsonObject)?["pbrMetallicRoughness"] as JsonObject;
+                var material = materialNode as JsonObject;
+                var pbr = material?["pbrMetallicRoughness"] as JsonObject;
                 var textureIndex = intOf((pbr?["baseColorTexture"] as JsonObject)?["index"], -1);
+
+                //Or where the older exporters put it.
+                //
+                //A model out of 3D Coat arrived with four embedded pictures, a material, and no
+                //base colour at all - and imported as a shape wearing whatever the weapon it
+                //replaced was painted with. Its colour was there the whole time, filed under
+                //KHR_materials_pbrSpecularGlossiness as `diffuseTexture`, which is what glTF used
+                //before metallic-roughness and what a good deal of modelling software still
+                //writes. Looked at only when there is no base colour, so a file carrying both is
+                //read the modern way.
+                if (textureIndex < 0)
+                {
+                    var glossy = (material?["extensions"] as JsonObject)?["KHR_materials_pbrSpecularGlossiness"] as JsonObject;
+                    textureIndex = intOf((glossy?["diffuseTexture"] as JsonObject)?["index"], -1);
+                }
+
                 if (textureIndex < 0 || textureIndex >= textures.Count) { continue; }
 
                 var source = intOf((textures[textureIndex] as JsonObject)?["source"], -1);
@@ -613,6 +630,15 @@ namespace MCDSaveEdit.Logic
             if (material == null) { return null; }
 
             var factor = material["pbrMetallicRoughness"]?["baseColorFactor"] as JsonArray;
+
+            //The same older extension as above, which calls it a diffuse rather than a base
+            //colour. A model with no picture and a colour only in there is otherwise white.
+            if (factor == null || factor.Count < 3)
+            {
+                factor = (material["extensions"] as JsonObject)?["KHR_materials_pbrSpecularGlossiness"]
+                    ?["diffuseFactor"] as JsonArray;
+            }
+
             if (factor == null || factor.Count < 3)
             {
                 factor = material["emissiveFactor"] as JsonArray;

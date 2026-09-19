@@ -2707,6 +2707,33 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to A bow is four meshes - the shapes it takes as the .
+        /// </summary>
+        public static string WEAPON_SKINS_BOW_CAUTION {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_BOW_CAUTION", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This model brings no colour, so it will wear the a.
+        /// </summary>
+        public static string WEAPON_SKINS_NO_COLOUR {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_NO_COLOUR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Only the first draw state of each bow is listed. Y.
+        /// </summary>
+        public static string WEAPON_SKINS_BOW_NOTE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_BOW_NOTE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to the warning shown against every projectile.
         /// </summary>
         public static string WEAPON_SKINS_PROJECTILE_NOTE {

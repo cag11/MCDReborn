@@ -38,7 +38,7 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 #### Camera Feature
 * **Change the camera while the game is running** - distance, angle, field of view, where it looks, shoulder offset and swing smoothing, all applied as you drag the slider. No mod pak, nothing written to disk, and quitting the game puts everything back
 * **Third person and first person**, in a game that has neither: mouse look turns the view, W A S D move you, and clicking attacks instead of walking you there
-* **Presets** - third person, third person far, first person - and you can save your own under a name and bring it back in one click
+* **Presets** - third person, third person far, first person, first person shooter - and you can save your own under a name and bring it back in one click
 - **Ride**, can summon and ride the nearest creature, your summons, even your custom mounts via imported texture
 - **Jump**, you can activate jump buy pressing the Q key when enabled which allows improved movement. 
 - **Fly**, the default hotkey is G: makes character lift out of the level entirely, and switching it off drops them back to the floor. Space climbs and C drops, and forward follows wherever the camera points
@@ -62,6 +62,7 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 * **Import your own model** onto any weapon: export a `.glb` from Blender (File -> Export -> glTF Binary) and the weapon comes out wearing it, mesh and texture together, weapons installed as a mod pak beside the game's own so deleting it undoes everything
 * **Or just reshape the game's own model**: resize from a tenth up to **8x**, move and rotate it - a claymore at half size, a dagger the length of a spear, or something absurd
 * A live 3D preview **painted with the real texture**, which you can drag to turn and scroll to zoom, with the **original ghosted behind your model**. That outline is where the game already knows how to hold the weapon, so keeping the handle end of your model on the handle end of the outline is all there is to aligning it
+* **And onto bows and crossbows** - all 58 of them. A bow is four meshes, the shapes it takes as the string is drawn, so only the first is listed and your model goes into all four when you apply. It stops bending as it is drawn, which is a small price for a bow that is a fish
 * **And onto the things the game throws.** A dropdown at the top of the list switches between **Weapons** and **Projectiles**: the ordinary arrow every bow fires, the Torment and Harpoon arrows, the Gale Arrow, fireworks, pumpkin seeds, the TNT box, fireballs and more - twelve in all. Fire a sword, a fish, or a bolt of your own shape
 * A projectile flies along its own length, so a model whose nose points elsewhere flies sideways - the turn sliders straighten it. The ordinary arrow is shared by every bow, so changing it changes them all
 * **Make it glow.** A switch, a colour and a strength, turning up the emissive the material already carries - the same numbers that make the Torment arrow glow blue, which sits at 125. Laser bolts are a thin model and a bright colour. Nothing new is compiled: the shader doing the glow is already in the game, which is why this works at all. A material with no emissive value cannot be lit, and the status line says how many were

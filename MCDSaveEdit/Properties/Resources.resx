@@ -1295,6 +1295,18 @@ The save file is not changed until you save it.</value>
     <value>Melee weapons and the things the game throws. Bows change shape as they are drawn, and armour is several pieces that have to match, so neither is here yet.</value>
     <comment>What the workshop list covers</comment>
   </data>
+  <data name="WEAPON_SKINS_BOW_CAUTION" xml:space="preserve">
+    <value>A bow is four meshes - the shapes it takes as the string is pulled - and your model goes into all four. So it stops bending as it is drawn: the draw animation is still played, but every frame of it is the same shape. Arrange it against this one and the other three follow.</value>
+    <comment>Shown against every bow</comment>
+  </data>
+  <data name="WEAPON_SKINS_NO_COLOUR" xml:space="preserve">
+    <value>This model brings no colour, so it will wear the artwork of whatever it replaces - which usually looks wrong. Export it again with its texture in the material, or with a base colour set.</value>
+    <comment>Shown when an imported model has no artwork</comment>
+  </data>
+  <data name="WEAPON_SKINS_BOW_NOTE" xml:space="preserve">
+    <value>Only the first draw state of each bow is listed. Your model is written into all of them when you apply, so the weapon looks the same drawn as it does at rest.</value>
+    <comment>Under the list when bows are shown</comment>
+  </data>
   <data name="WEAPON_SKINS_PROJECTILE_NOTE" xml:space="preserve">
     <value>A projectile flies along its own length, so a model whose nose points somewhere else will fly sideways - turn it with the sliders until it does. The ordinary arrow is shared by every bow, so changing it changes them all.</value>
     <comment>Shown against every projectile in the list</comment>

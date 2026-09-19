@@ -778,7 +778,8 @@ namespace MCDSaveEdit
                 foreach (var group in Logic.WeaponMeshes.catalogue.groups())
                 {
                     var entries = Logic.WeaponMeshes.catalogue.all().Where(m => m.Group == group).ToList();
-                    Console.WriteLine($"[catalogue] {group}: {entries.Count}");
+                    var warned = entries.Count(m => m.Caution.Length > 0);
+                    Console.WriteLine($"[catalogue] {group}: {entries.Count}, {warned} marked \"imports come out wrong\"");
                     foreach (var entry in entries.Take(entries.Count > 20 ? 3 : 20))
                     {
                         Console.WriteLine($"    {entry.Name}  ({entry.Variant})  {entry.AssetPath}");
@@ -817,6 +818,28 @@ namespace MCDSaveEdit
                     }
                 };
                 watch.Start();
+                return;
+            }
+
+            //PROBE_GLB=<file> - what an imported model brings with it, and in particular
+            //whether it brings a colour. A model with none wears whatever the weapon it replaces
+            //was painted with, which looks like a fault in the importer and is not one.
+            var probeGlb = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_GLB="));
+            if (probeGlb != null)
+            {
+                var file = probeGlb.Substring("PROBE_GLB=".Length).Trim('"');
+                try
+                {
+                    var model = Logic.GlbModel.read(file);
+                    Console.WriteLine($"[glb] {model.Name}");
+                    Console.WriteLine($"      {model.Positions.Count} vertices, {model.Indices.Count / 3} triangles");
+                    Console.WriteLine($"      base colour: {(model.BaseColourPng == null ? "NONE" : model.BaseColourPng.Length.ToString("N0") + " bytes of PNG")}");
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[glb] could not read it: {problem.Message}");
+                }
+                this.Shutdown();
                 return;
             }
 

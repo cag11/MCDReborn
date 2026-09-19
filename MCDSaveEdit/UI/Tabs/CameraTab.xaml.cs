@@ -80,8 +80,12 @@ namespace MCDSaveEdit.UI
             _live.togglePressed += () => Dispatcher.BeginInvoke(new Action(() => {
                 if (!_live.attached) { return; }
 
-                if (_live.thirdPersonOn) { _live.restoreOriginal(); }
-                else { _live.apply(_current, (float)sensitivity.Value, invertPitch.IsChecked == true, out _); }
+                if (_live.thirdPersonOn) { _live.restoreOriginal(); showCrosshair(false); }
+                else
+                {
+                    _live.apply(_current, (float)sensitivity.Value, invertPitch.IsChecked == true, out _);
+                    showCrosshair(_current.Crosshair);
+                }
 
                 showSwitches();
             }));
@@ -102,6 +106,26 @@ namespace MCDSaveEdit.UI
         }
 
 
+
+        //The crosshair belongs to whichever preset asked for one, so it arrives and leaves with
+        //the camera rather than being a switch somebody has to remember.
+        private CrosshairOverlay? _crosshair;
+
+        private void showCrosshair(bool wanted)
+        {
+            if (wanted)
+            {
+                _crosshair ??= new CrosshairOverlay(_live);
+                _crosshair.Closed += (_, _) => _crosshair = null;
+                _crosshair.Show();
+            }
+            else
+            {
+                _crosshair?.Close();
+                _crosshair = null;
+            }
+        }
+
         private bool _hookedClose;
 
         private void keepUntilTheWindowCloses()
@@ -112,7 +136,10 @@ namespace MCDSaveEdit.UI
             if (window == null) { return; }
 
             _hookedClose = true;
-            window.Closed += (s, e) => _live.Dispose();
+            window.Closed += (s, e) => {
+                showCrosshair(false);
+                _live.Dispose();
+            };
         }
 
         private void translateStaticStrings()
@@ -351,6 +378,7 @@ namespace MCDSaveEdit.UI
             _chosen = true;
 
             _live.apply(_current, (float)sensitivity.Value, invertPitch.IsChecked == true, out var problem);
+            showCrosshair(_current.Crosshair);
             if (problem.Length > 0) { statusLabel.Text = problem; }
         }
 
@@ -682,6 +710,7 @@ namespace MCDSaveEdit.UI
         private void restoreButton_Click(object sender, RoutedEventArgs e)
         {
             _live.restoreOriginal();
+            showCrosshair(false);
             showSwitches();
 
             _filling = true;

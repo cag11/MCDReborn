@@ -48,6 +48,16 @@ namespace MCDSaveEdit.Logic
 
         public bool attached => _camera != null && _camera.SpringArm != IntPtr.Zero;
 
+        /// <summary>The game's own window, for anything drawn over it. Zero when there is none.</summary>
+        public IntPtr gameWindow
+        {
+            get
+            {
+                try { return _game?.Process.MainWindowHandle ?? IntPtr.Zero; }
+                catch (Exception) { return IntPtr.Zero; }
+            }
+        }
+
         /// <summary>Why it is not attached, in words worth showing someone.</summary>
         public string status { get; private set; } = "";
 

@@ -30,6 +30,7 @@ namespace MCDSaveEdit.Logic
         /// <summary>The headings the list can be narrowed to.</summary>
         public const string WEAPONS = "Weapons";
         public const string PROJECTILES = "Projectiles";
+        public const string BOWS = "Bows and crossbows";
 
         /// <summary>
         /// Where the meshes that can be imported onto live.
@@ -49,6 +50,7 @@ namespace MCDSaveEdit.Logic
         /// </summary>
         private static readonly (string folder, Category category)[] PLACES = {
             ("/actors/equipment/meleeweapons/", Category.Melee),
+            ("/actors/equipment/rangedweapons/", Category.Ranged),
         };
 
         /// <summary>
@@ -83,6 +85,62 @@ namespace MCDSaveEdit.Logic
         };
 
         private static List<MeshEntry>? _catalogue;
+
+        //Every asset path, once. Built on demand and kept, because working out a bow's family
+        //means asking whether a sibling exists, and asking eighty thousand entries that question
+        //once per bow is two hundred passes over the index to answer what one pass could.
+        private static HashSet<string>? _paths;
+
+        private static HashSet<string> paths()
+        {
+            if (_paths != null) { return _paths; }
+
+            var found = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var paks = CustomSkins.index;
+            if (paks != null)
+            {
+                foreach (var entry in paks)
+                {
+                    var path = entry.Replace("\\", "/");
+                    var at = path.IndexOf("//", StringComparison.Ordinal);
+                    if (at >= 0) { path = path.Substring(at + 1); }
+                    found.Add(path);
+                }
+            }
+
+            _paths = found;
+            return found;
+        }
+
+        /// <summary>A mesh's trailing number and the name in front of it, or nothing.</summary>
+        private static (string stem, int number, int digits)? statedName(string assetPath)
+        {
+            var digits = 0;
+            while (digits < assetPath.Length && char.IsDigit(assetPath[assetPath.Length - 1 - digits])) { digits++; }
+            if (digits == 0) { return null; }
+
+            if (!int.TryParse(assetPath.Substring(assetPath.Length - digits),
+                    NumberStyles.Integer, CultureInfo.InvariantCulture, out var number)) { return null; }
+
+            return (assetPath.Substring(0, assetPath.Length - digits), number, digits);
+        }
+
+        private static string stateNamed((string stem, int number, int digits) parts, int number)
+            => parts.stem + number.ToString(new string('0', parts.digits), CultureInfo.InvariantCulture);
+
+        /// <summary>
+        /// Whether this is the first of its draw states, which is the only one worth listing.
+        ///
+        /// Asked by looking below rather than for a particular number, because a bow's states
+        /// start at one in some folders and at nought in others.
+        /// </summary>
+        private static bool firstState(string assetPath)
+        {
+            var parts = statedName(assetPath);
+            if (parts == null) { return false; }
+
+            return !paths().Contains(stateNamed(parts.Value, parts.Value.number - 1));
+        }
 
         public static bool ready => CustomSkins.ready;
 
@@ -128,6 +186,27 @@ namespace MCDSaveEdit.Logic
                 {
                     if (path.IndexOf(folder, StringComparison.OrdinalIgnoreCase) < 0) { continue; }
                     if (!seen.Add(path)) { break; }
+
+                    //A bow is its draw states, and only the first of them is offered: the model
+                    //goes into all of them on apply, so listing four would be four ways to do a
+                    //quarter of the job each. Anything else in that folder - a quiver, a mesh
+                    //with no states - is not a bow and is left out rather than half handled.
+                    if (category == Category.Ranged)
+                    {
+                        //The first of its states, and one that has states at all. A quiver or a
+                        //one-off mesh in a ranged folder is not a bow.
+                        if (!firstState(path) || drawStatesOf(path).Count < 2) { break; }
+                        //The caution is the same one every other weapon gets - whether its
+                        //material makes imports come out wrong - and nothing else. What a bow
+                        //needs said is advice rather than a warning, and it goes under the list:
+                        //the mark against an entry means "this one will disappoint you", and
+                        //putting guidance there makes every entry look broken. Which it did,
+                        //for the second time.
+                        found.Add(new MeshEntry(path, BOWS, bowName(path),
+                            folderName(path), cautionFor(path)));
+                        break;
+                    }
+
                     found.Add(new MeshEntry(path, WEAPONS, prettyName(path),
                         folderName(path), cautionFor(path)));
                     break;
@@ -136,7 +215,7 @@ namespace MCDSaveEdit.Logic
 
             //Weapons first, projectiles second, whatever the alphabet thinks.
             _catalogue = found
-                .OrderBy(mesh => mesh.Group == PROJECTILES ? 1 : 0)
+                .OrderBy(mesh => mesh.Group == WEAPONS ? 0 : mesh.Group == BOWS ? 1 : 2)
                 .ThenBy(mesh => mesh.Name, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
             return _catalogue;
@@ -243,6 +322,101 @@ namespace MCDSaveEdit.Logic
         public static CustomSkins.InstalledMod import(string assetPath, GlbModel model,
             MeshEdit.Transform transform, string modName, IEnumerable<PakWriter.Entry>? extra = null)
         {
+            var entries = new List<PakWriter.Entry>();
+
+            //A bow is four meshes rather than one - the draw states - and the model goes into
+            //every one of them. Anything else changes shape halfway through being fired.
+            //
+            //The same geometry into all four, which is what makes this work at all: the fit is
+            //absolute, decided by the model and the sliders and nothing about the mesh being
+            //replaced, so an arrangement made against the first state is the right arrangement
+            //for the other three. What is lost is the draw animation, and a bow that does not
+            //bend is a small price for a bow that is a fish.
+            foreach (var state in drawStatesOf(assetPath))
+            {
+                //The first one has to work. A later state that cannot be read is skipped rather
+                //than fatal - three states replaced is a weapon that mostly looks right, and
+                //refusing outright would leave one that does not look right at all.
+                try { entries.AddRange(rewrite(state, model, transform)); }
+                catch (Exception) when (state != assetPath) { }
+            }
+
+            if (model.BaseColourPng != null)
+            {
+                entries.AddRange(CustomSkins.texturePatchFor(assetPath, model.BaseColourPng));
+            }
+
+            //And the weapon's cut-out turned off. Some of these materials decide whether to draw a
+            //pixel at all from a texture that is not the one being replaced - see the note on
+            //unmask - and an imported model then arrives with whole pieces of it missing.
+            entries.AddRange(CreatureVariants.unmask(assetPath, out _));
+
+            if (extra != null) { entries.AddRange(extra); }
+
+            return CustomSkins.writeModPak(modName, entries);
+        }
+
+
+
+        /// <summary>
+        /// Every draw state of a weapon, or just the weapon when it has only one.
+        ///
+        /// A bow is `SM_Bow1` through `SM_Bow4` in one folder, and the game swaps between them as
+        /// the string is pulled. Only the first is offered in the list, because four entries for
+        /// one weapon is four ways to do three quarters of the job.
+        ///
+        /// Found by looking rather than assumed to be four: the family is however many siblings
+        /// the pak actually holds, counted up from the name ending in one.
+        /// </summary>
+        private static IReadOnlyList<string> drawStatesOf(string assetPath)
+        {
+            var family = new List<string> { assetPath };
+
+            //However the states are numbered, which is not one way. `SM_Bow1` counts in single
+            //digits and `SM_WindBow_01` counts in two, so the width is taken from the name rather
+            //than assumed - padded wrongly, every bow but the plainest finds no siblings at all.
+            var parts = statedName(assetPath);
+            if (parts == null) { return family; }
+
+            var known = paths();
+
+            //Counting up until one is missing, rather than to four: nothing says a weapon has
+            //exactly four states and a gap would be skipped in silence.
+            for (int state = parts.Value.number + 1; state <= parts.Value.number + 15; state++)
+            {
+                var next = stateNamed(parts.Value, state);
+                if (!known.Contains(next)) { break; }
+                family.Add(next);
+            }
+
+            return family;
+        }
+
+
+        /// <summary>
+        /// A bow's name without the draw state number on the end of it.
+        ///
+        /// `SM_WindBow_01` is the Wind Bow, not the Wind Bow nought one. Trailing digits and
+        /// whatever separates them come off - all of them, since they run to two digits in most
+        /// folders and one in the rest.
+        /// </summary>
+        private static string bowName(string assetPath)
+        {
+            var cut = assetPath.Length;
+            while (cut > 0 && char.IsDigit(assetPath[cut - 1])) { cut--; }
+            while (cut > 0 && (assetPath[cut - 1] == '_' || assetPath[cut - 1] == ' ')) { cut--; }
+
+            //Nothing but a number, which is not a name. Better the raw one than an empty row.
+            var trimmed = assetPath.Substring(0, cut);
+            return trimmed.EndsWith("/", StringComparison.Ordinal) || cut == 0
+                ? prettyName(assetPath)
+                : prettyName(trimmed);
+        }
+
+        /// <summary>One mesh rewritten to hold an imported model, as the files that go in a pak.</summary>
+        private static IEnumerable<PakWriter.Entry> rewrite(string assetPath, GlbModel model,
+            MeshEdit.Transform transform)
+        {
             var package = readPackage(assetPath)
                 ?? throw new InvalidOperationException($"Could not read {assetPath}.");
 
@@ -267,21 +441,8 @@ namespace MCDSaveEdit.Logic
                 entries.Add(new PakWriter.Entry(insidePak + ".ubulk", package.UBulk.Value.ToArray()));
             }
 
-            if (model.BaseColourPng != null)
-            {
-                entries.AddRange(CustomSkins.texturePatchFor(assetPath, model.BaseColourPng));
-            }
-
-            //And the weapon's cut-out turned off. Some of these materials decide whether to draw a
-            //pixel at all from a texture that is not the one being replaced - see the note on
-            //unmask - and an imported model then arrives with whole pieces of it missing.
-            entries.AddRange(CreatureVariants.unmask(assetPath, out _));
-
-            if (extra != null) { entries.AddRange(extra); }
-
-            return CustomSkins.writeModPak(modName, entries);
+            return entries;
         }
-
 
         /// <summary>
         /// The artwork a weapon is painted with, for showing the preview as it really looks.
@@ -398,10 +559,12 @@ namespace MCDSaveEdit.Logic
 
             public override string subjectLabel => R.WEAPON_SKINS_WEAPON;
             public override string countFormat => R.WEAPON_SKINS_COUNT;
-            public override IReadOnlyList<string> groups() => new[] { WEAPONS, PROJECTILES };
+            public override IReadOnlyList<string> groups() => new[] { WEAPONS, BOWS, PROJECTILES };
 
             public override string noteFor(string? group)
-                => group == PROJECTILES ? R.WEAPON_SKINS_PROJECTILE_NOTE : string.Empty;
+                => group == PROJECTILES ? R.WEAPON_SKINS_PROJECTILE_NOTE
+                : group == BOWS ? R.WEAPON_SKINS_BOW_NOTE
+                : string.Empty;
 
             public override string scopeNote => R.WEAPON_SKINS_SCOPE;
             public override string ghostHint => R.WEAPON_SKINS_GHOST_HINT;
