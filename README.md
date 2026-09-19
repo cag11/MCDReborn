@@ -30,23 +30,17 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **The Tower** tab: tower runs that you have started and saved will show here, allow modifying gear and floor progress
 * 36 new enchantments the game carries but never offers, under the **Other** toggle
 * Bulk Delete items on the inventory and storage chest tabs
+* **Difficulty Tab:** Change how hard the game is while it is running. How tough and how fast the enemies are, and your own speed, roll cooldown, roll charges, gravity and attack speed
+* **Installed Mods Tab:** * **Every mod pak in one place**. You can import and export multiple mods via a zip package.
 
 #### Camera Feature
 * **Change the camera while the game is running** - distance, angle, field of view, where it looks, shoulder offset and swing smoothing, all applied as you drag the slider. No mod pak, nothing written to disk, and quitting the game puts everything back
 * **Third person and first person**, in a game that has neither: mouse look turns the view, W A S D move you, and clicking attacks instead of walking you there
 * **Presets** - third person, third person far, first person - and you can save your own under a name and bring it back in one click
 * F10 turns the camera setup on and off from inside the game
-* **Works on both copies of the game** - the Steam one and the one the Minecraft Launcher installs. They are separate compiles of the same game and differ by a single address, the one the engine keeps its world at. Nothing is configured and nothing is detected from the launcher: both addresses are tried against the running game and the one that answers is the one that is used, which takes a couple of milliseconds. Switch copies with the editor open and it works that out too. On a copy that is neither, the address is searched for instead
-* **Camera smoothing**, which matters most in first person and has no right answer - low and the camera trails you up a staircase until your own model rises into view, high and every step goes straight into it. It is a slider because it is taste: first person starts at 20, third person at the game's own 1
 * **Ride**, which is a mount without a mount: nothing can be spawned from outside a process, so the nearest creature is stopped where it stands and carried under you instead. Press R once and it keeps looking - use a summoning artifact afterwards and it climbs onto the sheep, wolf or llama as soon as that arrives. Speed and how high you sit are adjustable, the rider's legs can be frozen, and the creature is put back under you five hundred times a second, with its gravity taken away for as long as you are on it, so it neither steps along behind you nor sinks between one correction and the next
-* **Camera forward**, which slides the lens out in front of the character's face - the setting that can put the head out of frame entirely in first person
 * **Jump** on Q, which the game has no button for at all - not the character jumping but a launch written straight into its velocity, which is why it works when asking the character politely does not. Height, steering in mid-air and the number of jumps before landing are all adjustable
-
-* A **Ride height** slider, because the rider is placed on the creature's collision capsule rather than on what is drawn - fine for the game's own animals, and the difference you have to make up when your own model is on one
-* The camera goes rigid while flying, so climbing on Space does not leave the view behind
 * **Fly on G**, off again on G: the character lifts out of the level entirely, and switching it off drops them back to the floor with gravity and their own flight settings put back exactly as they were found
-* Q, G and R are all live the moment the camera is switched on - the game has no button for any of them, so there is nothing of its own to clash with
-* Each of those settings carries a small circled **i** beside it, held back until you hover it: why the setting exists rather than what it does, which is the part nobody works out by trying it. It sits next to the checkbox rather than in it, so reading one never ticks anything
 
 #### Custom Builds Feature
 * **Open in MCD Builder**: send the equipped loadout straight to [mcdbuilder.vercel.app](https://mcdbuilder.vercel.app/)
@@ -62,47 +56,15 @@ https://github.com/user-attachments/assets/509496fd-7186-4422-a639-9d10272be407
 
 https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 
-#### Difficulty Feature
-* **Change how hard the game is while it is running** - how tough and how fast the enemies are, and your own speed, roll cooldown, roll charges, gravity and attack speed
-* Toughness changes the damage enemies take rather than their health, so it works the same on every kind of enemy - measured on screen, 300 a hit becomes 80 with toughness at four
-* **Including the one swinging at you.** An enemy that stops to attack has a walk speed of zero, and the list used to want a believable walk speed before it would count something as an enemy - so the creature in your face was the one creature the settings skipped
-* **Every enemy in the level, not a handful.** This game streams its levels, so a mission is built from tiles that arrive as levels of their own and the enemies live in those. Measured in one mission: 321 enemies across the loaded levels, and none at all in the one the game started with - which is all the settings used to reach, and why they used to work on one run and not the next
-* Enemy speed is set through the game's own speed multiplier rather than by writing a walk speed over it. Writing the walk speed does nothing - the enemies are not moving at their cap, so raising the cap changes nothing, and the game puts it back within a frame anyway. The multiplier is what the game recomputes from, and it takes hold as each enemy is next recalculated, which in a fight is quickly
-* Held against the game rather than set once: enemies that appear later, a new level, or dying and respawning all get the settings put back within half a second
-* Nothing is written to disk - quitting the game puts everything back, and so does the button
-* Your own damage reduction is left alone on purpose, because that number comes from your gear
-* **Only animate what you can see**: the game poses every enemy in the level every frame, including the ones behind you. Turning that off measured 54 frames a second to 138 in a fight with 198 enemies, and changes nothing you can see
-
 #### Weapon Import Feature
 * **Import your own model** onto any weapon: export a `.glb` from Blender (File -> Export -> glTF Binary) and the weapon comes out wearing it, mesh and texture together, weapons installed as a mod pak beside the game's own so deleting it undoes everything
 * **Or just reshape the game's own model**: resize from a tenth up to **8x**, move and rotate it - a claymore at half size, a dagger the length of a spear, or something absurd
 * A live 3D preview **painted with the real texture**, which you can drag to turn and scroll to zoom, with the **original ghosted behind your model**. That outline is where the game already knows how to hold the weapon, so keeping the handle end of your model on the handle end of the outline is all there is to aligning it
-* **Models painted with flat material colours come out in those colours.** Many models carry no texture at all, just a colour per material; those get one built for them, painted in blocks big enough to survive being resized down to the tiny colour ramps this game dresses some of its weapons with
-* **A model with no texture still comes out right.** Plenty of models colour themselves with flat material colours and carry no picture at all; those get one made from those colours, rather than arriving in the old weapon's colours and half transparent
-* Models arrive **the right way up and in one piece**: a .glb states where each part goes through a tree of nodes, including the turn from the modelling world's up to the game's, and all of it is followed
-* Imported models are **fitted on arrival** - scaled to the weapon's size and centred on it - so the sliders start somewhere sensible instead of at a speck or a wall
-* **It tells you when a model arrived without its artwork.** A .glb converted from another format often loses its texture, leaving materials that state no colour - which glTF says is white, so the import is correct and the result is blank. The percentage of the model that will come out white is shown when you bring it in
-* **The two weapons that will not work are marked in the list.** The Anchor and the Anchor Unique are the only melee weapons dressed by the game's *decor* material, which reads its cut-out and its shine in a way an import cannot replace - so they are flagged before you spend an evening on one. The other seventy nine come out right
-* Weapons that **cut themselves out with a mask** are handled: some decide whether to draw a pixel at all from a texture an import never replaces, which left models with whole pieces missing. The threshold is turned off so your model arrives whole
-* Delete a weapon's old mod pak before importing onto it again - the installed one shadows the game's own copy
-* It replaces the weapon's model and texture - not its stats, and not how it behaves. A weapon using several materials is refused rather than mangled
 
 #### Mob Import Feature
 * **Import your own model onto a creature**: export a `.glb` from Blender the same way, pick a sheep, a pig, a wolf or any of 122 other meshes, and the creature comes out wearing it. A skateboard, a mount, a truck - anything that should move under its own power, because a creature is the one thing the engine already animates
-* **It rides rather than bends.** The model is attached rigidly to the skeleton's root, so it walks, charges and gets summoned by an artifact without being deformed by the walk cycle. For a vehicle that is the point rather than a compromise
-* The same live 3D preview as the weapon tab - drag to turn, scroll to zoom, real texture, **original ghosted behind**. Stand your model on the outline's feet and face it the same way, or it will walk sunk into the floor or backwards
 * Grouped into **creatures and props**, with a search box. Props are the game's animated scenery - gates, doors, windmills, banners
 * **Summoned creatures come out right too.** An artifact does not summon the animal that wanders the level - it summons a variant with its own skin and a coloured glow, which is why an imported model used to arrive pink. Every skin a creature has is painted, and the game's colouring is turned off, so the model you brought is the model you get
-* Installed as a mod pak beside the game's own, so deleting it undoes everything
-* Creatures drawn at several levels of detail, in several pieces, or with cloth on them are **left out of the list rather than listed and refused**
-
-#### Installed Mods Feature
-* **Every mod pak in one place**, on the last tab: what is installed, how big it is, when it went in, and Remove beside each one
-* **Export All as Zip** packs every mod you have into one file to send someone, and **Import Zip** takes one apart and installs all of it - however it was put together, with the paks loose or in folders, readmes and screenshots left alone
-* A rar somebody sent you opens too; zip is what it writes, because nothing can make a rar without WinRAR installed and a zip opens anywhere
-* **Import Mod** installs a pak this app did not make - it finds or creates the `~mods` folder for you, which is the part people get wrong
-* **Open Mod Folder** shows it in Explorer
-* Paks you added yourself are marked as yours, because Remove deletes them from disk
 
 #### DISCLAIMER: Please keep backups of your save files! This app does not guarantee your save file to be playable after editing!
 
@@ -154,6 +116,12 @@ Microsoft Store:
 `C:\XboxGames\Minecraft Dungeons\Content\Dungeons\Content\Paks`
 
 If you're not sure which version you have, additional information may be found on [Dokustash - stash.dokucraft.co.uk](https://stash.dokucraft.co.uk/?help=modding-dungeons)
+
+##### Version numbers
+
+This is numbered after the game it works against rather than on a line of its own: **1.17.0.0** is
+Minecraft Dungeons' last update, and the number the Store package carries in its folder name. A
+release of this and a copy of the game that share a number belong together.
 
 ##### If it closes by itself
 
