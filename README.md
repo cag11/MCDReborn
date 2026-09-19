@@ -6,7 +6,7 @@
 [![GitHub all releases](https://img.shields.io/github/downloads/cag11/MCDReborn/total)](https://github.com/cag11/MCDReborn/releases)
 [![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 
- A companion app for [Minecraft: Dungeons](https://www.minecraft.net/en-us/about-dungeons/) edit your save, restyle your heroes and gear, and change the camera while you play.
+ A companion app and modding platform for [Minecraft: Dungeons](https://www.minecraft.net/en-us/about-dungeons/) edit your save, restyle your heroes and gear, and change the camera while you play.
  This is extended Reborn version of [MCDSaveEdit](https://github.com/CutFlame/MCDSaveEdit) by CutFlame.
 
 https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
@@ -116,22 +116,11 @@ Microsoft Store:
 
 If you're not sure which version you have, additional information may be found on [Dokustash - stash.dokucraft.co.uk](https://stash.dokucraft.co.uk/?help=modding-dungeons)
 
-##### Version numbers
-
-This is numbered after the game it works against rather than on a line of its own: **1.17.0.0** is
-Minecraft Dungeons' last update, and the number the Store package carries in its folder name. A
-release of this and a copy of the game that share a number belong together.
-
 ##### If it closes by itself
 
 It keeps a log at `%LOCALAPPDATA%\MCDReborn\log.txt`, and anything that went wrong is in it with
 the full stack. Ordinarily it writes a handful of lines a session. For the whole story of what you
 were doing, use the `-debug` build, or put an empty file called `verbose.txt` beside the exe.
-
-The first thing that log caught was quitting the game while the camera was on: asking Windows about
-a process that has just gone throws rather than answering, and the loops that drive the camera ask
-hundreds of times a second. Fixed in 1.6.9.10 - closing the game now puts the camera panel back to
-waiting for one, wherever you are when you do it.
 
 ##### Application Stopped Working
 
