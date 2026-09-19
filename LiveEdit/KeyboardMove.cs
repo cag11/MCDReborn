@@ -475,8 +475,7 @@ namespace LiveEdit
             if (_running) { return true; }
 
             _running = true;
-            _thread = new Thread(run) { IsBackground = true, Name = "keyboard movement" };
-            _thread.Start();
+            _thread = Trouble.start("keyboard movement", run);
             return true;
         }
 

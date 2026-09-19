@@ -87,11 +87,60 @@ namespace LiveEdit
         private GameProcess(Process process, IntPtr handle)
         {
             Process = process;
+            Id = process.Id;
             _handle = handle;
         }
 
         public Process Process { get; }
+
+        /// <summary>
+        /// Which process this is, taken while it is certainly alive.
+        ///
+        /// Read once here rather than asked for later, for the same reason the module is: a
+        /// process that has gone answers questions about itself by throwing.
+        /// </summary>
+        public int Id { get; }
         public bool IsRunning => !Process.HasExited;
+
+        private IntPtr _image;
+        private int _imageSize;
+
+        /// <summary>
+        /// Where the game's own module sits and how big it is, or zero once the game has gone.
+        ///
+        /// Asking Windows for a process's main module is not a question that stays answerable.
+        /// When the game closes it throws rather than returning null - "No process is associated
+        /// with this object" - and it is asked from the loops that run hundreds of times a second,
+        /// so the moment somebody quits the game while the camera is on, a loop dies of it. That
+        /// was the crash with nothing on screen to explain it: the application closing while
+        /// somebody was, as far as they could tell, only playing with the sliders.
+        ///
+        /// Asked once and remembered. A module does not move for as long as the process it belongs
+        /// to is alive, so nothing is lost by caching it, and a system call per loop iteration is
+        /// saved as well.
+        /// </summary>
+        public IntPtr image(out int size)
+        {
+            if (_image == IntPtr.Zero)
+            {
+                try
+                {
+                    var module = Process.MainModule;
+                    _image = module?.BaseAddress ?? IntPtr.Zero;
+                    _imageSize = module?.ModuleMemorySize ?? 0;
+                }
+                catch (Exception)
+                {
+                    //Gone, or going. Either way there is nothing here to read and saying so is
+                    //the whole job - the caller has a message for it and the loop carries on.
+                    _image = IntPtr.Zero;
+                    _imageSize = 0;
+                }
+            }
+
+            size = _imageSize;
+            return _image;
+        }
 
         /// <summary>
         /// Opens the running game, or says why it could not.

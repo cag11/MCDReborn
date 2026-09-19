@@ -237,8 +237,7 @@ namespace LiveEdit
 
             _level = levelOf();
             _running = true;
-            _thread = new Thread(loop) { IsBackground = true, Name = "mount" };
-            _thread.Start();
+            _thread = Trouble.start("mount", loop);
             return true;
         }
 

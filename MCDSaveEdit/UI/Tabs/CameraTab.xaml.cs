@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 #nullable enable
 
@@ -104,24 +105,118 @@ namespace MCDSaveEdit.UI
             mouseLook.Content = R.CAMERA_MOUSE_LOOK;
             wasd.Content = R.CAMERA_WASD;
             mouseButtons.Content = R.CAMERA_BUTTONS;
-            followsAim.Content = R.CAMERA_FOLLOWS_AIM;
             sensitivityLabel.Text = R.CAMERA_SENSITIVITY;
             invertPitch.Content = R.CAMERA_INVERT;
-            canJump.Content = R.CAMERA_JUMP;
-            jumpWhy.Text = R.CAMERA_JUMP_WHY;
-            rideKey.Content = R.MOUNT_RIDE_KEY;
-            mountWhy.Text = R.MOUNT_WHY;
-            riding.Content = R.MOUNT_RIDE;
-            refreshMounts.Content = R.MOUNT_REFRESH;
+            explain(canJump, R.CAMERA_JUMP, R.CAMERA_JUMP_WHY);
+            explain(rideKey, R.MOUNT_RIDE_KEY, R.MOUNT_WHY);
             mountSpeedLabel.Text = R.MOUNT_SPEED;
-            sitHeightLabel.Text = R.MOUNT_SIT_HEIGHT;
-            sitHeightWhy.Text = R.MOUNT_SIT_HEIGHT_WHY;
-            canFly.Content = R.FLY_ON;
-            flyWhy.Text = R.FLY_WHY;
+            explain(sitHeightLabel, R.MOUNT_SIT_HEIGHT, R.MOUNT_SIT_HEIGHT_WHY);
+            explain(canFly, R.FLY_ON, R.FLY_WHY);
             flySpeedLabel.Text = R.FLY_SPEED;
             jumpHeightLabel.Text = R.CAMERA_JUMP_HEIGHT;
             airControlLabel.Text = R.CAMERA_AIR_CONTROL;
             jumpCountCaption.Text = R.CAMERA_JUMP_COUNT;
+        }
+
+        /// <summary>
+        /// A label with its explanation folded into a mark beside it.
+        ///
+        /// These explanations are worth having and were worth writing - each says why a setting
+        /// exists rather than what it does, which is the part nobody can work out by trying it.
+        /// Four of them stacked down one panel is another matter: the paragraph under "Q jumps"
+        /// ran to three lines, and between them they pushed the sliders they were explaining off
+        /// the bottom of the panel. An explanation that hides the thing it explains has cost more
+        /// than it gave.
+        ///
+        /// So they move behind a mark, which is read on purpose rather than in the way. After the
+        /// label rather than before it: the checkbox and its words stay one thing to click at, and
+        /// a mark annotates what has just been read rather than interrupting it.
+        ///
+        /// Beside a checkbox rather than inside it. A mark put in a checkbox's content is part of
+        /// the checkbox: pointing at it is pointing at the checkbox, clicking it ticks the box,
+        /// and that click closes the tooltip and keeps it closed until the pointer has left the
+        /// whole control - so the explanation could be read right up until the moment it was
+        /// acted on, and not afterwards. Sitting next to the checkbox, the mark is hovered,
+        /// clicked and dismissed on its own account whatever the box is doing.
+        /// </summary>
+        private static void explain(ContentControl control, string label, string why)
+        {
+            control.Content = label;
+            var badge = mark(why);
+
+            //Anything that can be clicked has the mark placed next to it. Anything that cannot -
+            //a slider's caption - keeps it inside, where it costs no width from the row.
+            if (control is ToggleButton && control.Parent is Panel parent)
+            {
+                var where = parent.Children.IndexOf(control);
+
+                //The gap above the checkbox belongs to the row now, or the mark would centre
+                //itself against the gap as well and sit high of the words it belongs to.
+                var row = new StackPanel {
+                    Orientation = Orientation.Horizontal,
+                    Margin = control.Margin,
+                };
+                control.Margin = new Thickness(0);
+
+                parent.Children.RemoveAt(where);
+                row.Children.Add(control);
+                row.Children.Add(badge);
+                parent.Children.Insert(where, row);
+                return;
+            }
+
+            var words = new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center };
+
+            var inside = new StackPanel { Orientation = Orientation.Horizontal };
+            inside.Children.Add(words);
+            inside.Children.Add(badge);
+
+            control.Content = inside;
+        }
+
+        /// <summary>The mark itself: a small circled letter that holds the explanation.</summary>
+        private static FrameworkElement mark(string why)
+        {
+            var letter = new TextBlock {
+                Text = "i",
+                FontSize = 9,
+                FontWeight = FontWeights.Bold,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+            };
+            letter.SetResourceReference(TextBlock.ForegroundProperty, "Brush.TextMuted");
+
+            //Transparent rather than unpainted. A border with no brush at all is hit tested only
+            //where something was drawn - the ring, and the strokes of the letter - so the mark
+            //answered a hover over about a fifth of itself and ignored the rest.
+            var circle = new Border {
+                Width = 14,
+                Height = 14,
+                Background = System.Windows.Media.Brushes.Transparent,
+                CornerRadius = new CornerRadius(7),
+                BorderThickness = new Thickness(1),
+                Margin = new Thickness(7, 0, 0, 0),
+                VerticalAlignment = VerticalAlignment.Center,
+                Cursor = System.Windows.Input.Cursors.Help,
+                Child = letter,
+            };
+            circle.SetResourceReference(Border.BorderBrushProperty, "Brush.TextMuted");
+
+            //Wrapped and bounded. A tooltip grows to fit its text by default, and these run to
+            //several sentences - unbounded, one would be a single line wider than the window.
+            //WPF moves a tooltip to keep it on screen, but only once it knows how big it is.
+            circle.ToolTip = new ToolTip {
+                Content = new TextBlock {
+                    Text = why,
+                    TextWrapping = TextWrapping.Wrap,
+                    MaxWidth = 360,
+                },
+            };
+
+            //Long enough to read several sentences. The default gives up after five seconds.
+            ToolTipService.SetInitialShowDelay(circle, 150);
+            ToolTipService.SetShowDuration(circle, 120000);
+            return circle;
         }
 
         public void updateUI()
@@ -392,7 +487,6 @@ namespace MCDSaveEdit.UI
             jumpHeight.IsEnabled = on;
             airControl.IsEnabled = on;
             jumpCount.IsEnabled = on;
-            followsAim.IsEnabled = on;
             sensitivity.IsEnabled = on;
             invertPitch.IsEnabled = on;
             restoreButton.IsEnabled = on;
@@ -413,7 +507,6 @@ namespace MCDSaveEdit.UI
             //The game may already have been set up from an earlier session, so the boxes are shown
             //rather than assumed.
             _filling = true;
-            followsAim.IsChecked = _live.followsAim == true;
             mouseButtons.IsChecked = _live.clicksDoNotWalk;
             _filling = false;
 
@@ -483,13 +576,7 @@ namespace MCDSaveEdit.UI
         /// <summary>Keeps the checkbox honest when the key is used instead of the mouse.</summary>
         private void ridePressedInGame()
         {
-            Dispatcher.Invoke(() => {
-                _live.toggleRiding();
-
-                _filling = true;
-                riding.IsChecked = _live.riding;
-                _filling = false;
-            });
+            Dispatcher.Invoke(() => _live.toggleRiding());
         }
 
         private void rideKey_Changed(object sender, RoutedEventArgs e)
@@ -497,28 +584,6 @@ namespace MCDSaveEdit.UI
             if (_filling) { return; }
 
             _live.rideKey = rideKey.IsChecked == true;
-        }
-
-        private void refreshMounts_Click(object sender, RoutedEventArgs e)
-        {
-            var found = _live.rideable(out var tell);
-
-            _filling = true;
-            mountPick.ItemsSource = found;
-            mountPick.SelectedIndex = found.Count > 0 ? 0 : -1;
-            _filling = false;
-
-            _live.ride = found.Count > 0 ? found[0].Actor : IntPtr.Zero;
-            statusLabel.Text = tell;
-        }
-
-        private void mountPick_Changed(object sender, SelectionChangedEventArgs e)
-        {
-            if (_filling) { return; }
-
-            _live.ride = mountPick.SelectedItem is LiveEdit.Mount.Candidate one
-                ? one.Actor
-                : IntPtr.Zero;
         }
 
         private void sitHeight_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -535,22 +600,6 @@ namespace MCDSaveEdit.UI
             if (_filling) { return; }
 
             _live.mountSpeed = (float)mountSpeed.Value;
-        }
-
-        private void riding_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_filling) { return; }
-
-            if (riding.IsChecked != true) { _live.stopRiding(); return; }
-
-            if (!_live.startRiding(out var problem))
-            {
-                _filling = true;
-                riding.IsChecked = false;
-                _filling = false;
-            }
-
-            if (problem.Length > 0) { statusLabel.Text = problem; }
         }
 
         private void canJump_Changed(object sender, RoutedEventArgs e)
@@ -591,13 +640,6 @@ namespace MCDSaveEdit.UI
             if (_filling) { return; }
 
             _live.clicksDoNotWalk = mouseButtons.IsChecked == true;
-        }
-
-        private void followsAim_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_filling) { return; }
-
-            _live.setFollowsAim(followsAim.IsChecked == true);
         }
 
         /// <summary>Restarts the look if it is running, so the change is felt rather than queued.</summary>

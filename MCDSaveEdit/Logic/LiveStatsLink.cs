@@ -27,6 +27,7 @@ namespace MCDSaveEdit.Logic
         private GameProcess? _game;
         private LiveStats? _stats;
 
+
         public LiveStatsLink()
         {
             _watch = new DispatcherTimer { Interval = APPLY_EVERY };

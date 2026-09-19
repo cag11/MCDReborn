@@ -203,8 +203,7 @@ namespace LiveEdit
             _yaw = _camera.Yaw ?? 45f;
 
             _running = true;
-            _thread = new Thread(run) { IsBackground = true, Name = "mouse look" };
-            _thread.Start();
+            _thread = Trouble.start("mouse look", run);
             return true;
         }
 

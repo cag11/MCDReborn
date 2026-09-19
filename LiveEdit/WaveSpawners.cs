@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace LiveEdit
@@ -63,10 +63,10 @@ namespace LiveEdit
         /// </summary>
         public bool look()
         {
-            var image = _game.Process.MainModule?.BaseAddress ?? IntPtr.Zero;
+            var image = _game.image(out _);
             if (image == IntPtr.Zero) { return false; }
 
-            var world = follow(new IntPtr(image.ToInt64() + LiveCamera.GWORLD_OFFSET));
+            var world = follow(new IntPtr(image.ToInt64() + LiveCamera.WorldOffset));
             if (world == IntPtr.Zero) { return false; }
 
             var level = follow(new IntPtr(world.ToInt64() + PERSISTENT_LEVEL));

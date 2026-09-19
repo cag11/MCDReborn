@@ -36,9 +36,9 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **Third person and first person**, in a game that has neither: mouse look turns the view, W A S D move you, and clicking attacks instead of walking you there
 * **Presets** - third person, third person far, first person - and you can save your own under a name and bring it back in one click
 * F10 turns the camera setup on and off from inside the game
-* **Works on other copies of the game**, not only the Steam one: where the address the engine keeps its world at does not match, it is searched for instead
+* **Works on both copies of the game** - the Steam one and the one the Minecraft Launcher installs. They are separate compiles of the same game and differ by a single address, the one the engine keeps its world at. Nothing is configured and nothing is detected from the launcher: both addresses are tried against the running game and the one that answers is the one that is used, which takes a couple of milliseconds. Switch copies with the editor open and it works that out too. On a copy that is neither, the address is searched for instead
 * **Camera smoothing**, which matters most in first person and has no right answer - low and the camera trails you up a staircase until your own model rises into view, high and every step goes straight into it. It is a slider because it is taste: first person starts at 20, third person at the game's own 1
-* **Ride**, which is a mount without a mount: nothing can be spawned from outside a process, so the nearest creature is stopped where it stands and carried under you instead. Press R once and it keeps looking - use a summoning artifact afterwards and it climbs onto the sheep, wolf or llama as soon as that arrives. Speed is adjustable, the rider's legs can be frozen, and the creature is put back under you five hundred times a second, with its gravity taken away for as long as you are on it, so it neither steps along behind you nor sinks between one correction and the next
+* **Ride**, which is a mount without a mount: nothing can be spawned from outside a process, so the nearest creature is stopped where it stands and carried under you instead. Press R once and it keeps looking - use a summoning artifact afterwards and it climbs onto the sheep, wolf or llama as soon as that arrives. Speed and how high you sit are adjustable, the rider's legs can be frozen, and the creature is put back under you five hundred times a second, with its gravity taken away for as long as you are on it, so it neither steps along behind you nor sinks between one correction and the next
 * **Camera forward**, which slides the lens out in front of the character's face - the setting that can put the head out of frame entirely in first person
 * **Jump** on Q, which the game has no button for at all - not the character jumping but a launch written straight into its velocity, which is why it works when asking the character politely does not. Height, steering in mid-air and the number of jumps before landing are all adjustable
 
@@ -46,6 +46,7 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * The camera goes rigid while flying, so climbing on Space does not leave the view behind
 * **Fly on G**, off again on G: the character lifts out of the level entirely, and switching it off drops them back to the floor with gravity and their own flight settings put back exactly as they were found
 * Q, G and R are all live the moment the camera is switched on - the game has no button for any of them, so there is nothing of its own to clash with
+* Each of those settings carries a small circled **i** beside it, held back until you hover it: why the setting exists rather than what it does, which is the part nobody works out by trying it. It sits next to the checkbox rather than in it, so reading one never ticks anything
 
 #### Custom Builds Feature
 * **Open in MCD Builder**: send the equipped loadout straight to [mcdbuilder.vercel.app](https://mcdbuilder.vercel.app/)
@@ -62,8 +63,10 @@ https://github.com/user-attachments/assets/509496fd-7186-4422-a639-9d10272be407
 https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 
 #### Difficulty Feature
-* **Change how hard the game is while it is running** - how tough and how fast the enemies are, and your own speed, roll cooldown, roll charges, gravity and attack speed
+* **Change how hard the game is while it is running** - how tough the enemies are, and your own speed, roll cooldown, roll charges, gravity and attack speed
 * Toughness changes the damage enemies take rather than their health, so it works the same on every kind of enemy
+* **Every enemy in the level, not a handful.** This game streams its levels, so a mission is built from tiles that arrive as levels of their own and the enemies live in those. Measured in one mission: 321 enemies across the loaded levels, and none at all in the one the game started with - which is all the settings used to reach, and why they used to work on one run and not the next
+* **Enemy speed does not work yet, and the slider is honest about it.** The walk speed can be written and held, and the enemies carry on at the speed they were: the cap is not what limits them. What they obey is the speed their own behaviour asks for, which has not been found. Everything else on this tab is unaffected
 * Held against the game rather than set once: enemies that appear later, a new level, or dying and respawning all get the settings put back within half a second
 * Nothing is written to disk - quitting the game puts everything back, and so does the button
 * Your own damage reduction is left alone on purpose, because that number comes from your gear
@@ -150,6 +153,17 @@ Microsoft Store:
 `C:\XboxGames\Minecraft Dungeons\Content\Dungeons\Content\Paks`
 
 If you're not sure which version you have, additional information may be found on [Dokustash - stash.dokucraft.co.uk](https://stash.dokucraft.co.uk/?help=modding-dungeons)
+
+##### If it closes by itself
+
+It keeps a log at `%LOCALAPPDATA%\MCDReborn\log.txt`, and anything that went wrong is in it with
+the full stack. Ordinarily it writes a handful of lines a session. For the whole story of what you
+were doing, use the `-debug` build, or put an empty file called `verbose.txt` beside the exe.
+
+The first thing that log caught was quitting the game while the camera was on: asking Windows about
+a process that has just gone throws rather than answering, and the loops that drive the camera ask
+hundreds of times a second. Fixed in 1.6.9.10 - closing the game now puts the camera panel back to
+waiting for one, wherever you are when you do it.
 
 ##### Application Stopped Working
 

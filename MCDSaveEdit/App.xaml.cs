@@ -28,10 +28,65 @@ namespace MCDSaveEdit
         private SplashWindow? _splashWindow = null;
         private Window? _busyWindow = null;
 
+        /// <summary>
+        /// Everywhere an exception can end a run, written down before it does.
+        ///
+        /// Four of them, because .NET has four different ways of losing one and each is reported
+        /// through its own event:
+        ///
+        /// - the background threads, through <see cref="Trouble"/>, which is the one this was
+        ///   built for - the live camera runs four loops and any of them throwing used to close
+        ///   the application with no window, no message and nothing written anywhere;
+        /// - the interface thread, which shows a dialog and can often carry on afterwards;
+        /// - a task nobody awaited, which is otherwise silent entirely;
+        /// - and everything else, which is already fatal by the time it arrives here, so the only
+        ///   thing to do is get it on disk before the process goes.
+        /// </summary>
+        private void watchForTrouble()
+        {
+            LiveEdit.Trouble.reporter = (where, problem) => Services.Journal.trouble(where, problem);
+
+            AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            {
+                if (args.ExceptionObject is Exception problem)
+                {
+                    Services.Journal.trouble("the application", problem);
+                }
+                Services.Journal.note("---- ended badly ----");
+            };
+
+            DispatcherUnhandledException += (_, args) =>
+            {
+                Services.Journal.trouble("the window", args.Exception);
+
+                //Not marked handled. Carrying on after an unknown fault means carrying on with an
+                //unknown state, and the log now has the fault either way - which is the thing that
+                //was missing, rather than the crash itself.
+            };
+
+            System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, args) =>
+            {
+                Services.Journal.trouble("a background task", args.Exception);
+                args.SetObserved();
+            };
+        }
+
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
             _startupArguments = e.Args;
+
+            //Before anything else, so that whatever happens next is written down.
+#if VERBOSE
+            Services.Journal.loud = true;
+#endif
+            if (_startupArguments.Any(a => string.Equals(a, "--verbose", StringComparison.OrdinalIgnoreCase)))
+            {
+                Services.Journal.loud = true;
+            }
+
+            Services.Journal.begin();
+            watchForTrouble();
 
             //A class handler rather than per-window wiring: dialogs are created all over the
             //app, and any one that was missed would pop up with a white title bar. Loaded is

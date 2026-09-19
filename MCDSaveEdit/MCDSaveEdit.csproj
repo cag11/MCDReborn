@@ -42,6 +42,13 @@
          Harmless - it holds only binding redirects, which .NET ignores - so left alone. -->
   </PropertyGroup>
 
+  <!-- The talkative build. Published with -p:Verbose=true, which turns the log all the way up
+       from the first line rather than waiting for a file to be dropped beside the exe. Added to
+       the existing symbols rather than replacing them, or this would quietly switch off TRACE. -->
+  <PropertyGroup Condition="'$(Verbose)' == 'true'">
+    <DefineConstants>$(DefineConstants);VERBOSE</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <!-- WPF compiles these as resources; .png is not globbed by default. -->
     <Resource Include="Images\**\*.png" />

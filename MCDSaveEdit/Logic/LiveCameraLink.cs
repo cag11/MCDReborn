@@ -95,7 +95,11 @@ namespace MCDSaveEdit.Logic
             status = "";
 
             //The game's own camera, before anything has been done to it.
-            _original ??= readPreset();
+            if (_original == null)
+            {
+                _original = readPreset();
+                rememberWholeAngle();
+            }
 
             //A different character than the one third person was set up against - a level load,
             //or a death. The values live on the character, so the new one has the game's own and
@@ -514,6 +518,27 @@ namespace MCDSaveEdit.Logic
         //settings simply by being asked before we write anything.
         private CameraPreset? _original;
 
+        //The parts of the game's own camera a preset has no field for.
+        //
+        //A preset describes a way of looking at the game, and for that a yaw is meaningless -
+        //third person turns with the mouse, so whatever yaw a preset stated would be gone a second
+        //later. For putting the camera *back* it is the only thing that matters: this game's own
+        //camera is a fixed isometric angle, so its pitch and its yaw together are what "default"
+        //means. Restoring the pitch and keeping whatever yaw the mouse had left behind is a camera
+        //at the right tilt facing the wrong way, which is exactly what it looked like.
+        private float? _originalYaw;
+        private float? _originalRoll;
+        private float? _originalSocketForward;
+
+        private void rememberWholeAngle()
+        {
+            if (_camera == null) { return; }
+
+            _originalYaw = _camera.Yaw;
+            _originalRoll = _camera.Roll;
+            _originalSocketForward = _camera.SocketForward;
+        }
+
         //What is currently applied, so a level change can put it back on the new character.
         private CameraPreset? _applied;
 
@@ -756,14 +781,25 @@ namespace MCDSaveEdit.Logic
 
             if (_camera == null || _original == null) { return; }
 
+            //The limits a preset put on how far the view can tilt go with it, or the next time
+            //mouse look is switched on it is still fenced in by a camera that is no longer there.
+            _pitchLowest = -85f;
+            _pitchHighest = 5f;
+
             _camera.setTargetOffset(0f, 0f, _original.PivotHeight);
-            _camera.setSocketOffset(0f, _original.SocketSide, _original.SocketHeight);
+            _camera.setSocketOffset(_originalSocketForward ?? 0f, _original.SocketSide, _original.SocketHeight);
             _camera.setFieldOfView(_original.FieldOfView);
             _camera.setRotationLagSpeed(_original.RotationLagSpeed);
             _camera.setLagSpeed(_original.LagSpeed);
             _camera.setCollisionTest(_original.Collision);
             _camera.snapArmLength(_original.Distance);
-            _camera.setRotation(_original.Pitch, _camera.Yaw ?? 45f);
+
+            //All three of them. The yaw used to be read back off the camera as it stood, which put
+            //the tilt right and left the view pointing wherever the mouse had last been.
+            _camera.setRotation(
+                _original.Pitch,
+                _originalYaw ?? _camera.Yaw ?? 45f,
+                _originalRoll ?? 0f);
         }
 
         /// <summary>What the game's camera is set to right now, or nothing.</summary>
@@ -932,7 +968,10 @@ namespace MCDSaveEdit.Logic
         private void watchHotkey()
         {
             _watchingHotkey = true;
-            _hotkey = new System.Threading.Thread(() => {
+
+            //Through the same guard as the rest. An exception in here used to close the whole
+            //application without a word, because that is what an unhandled one on a thread does.
+            _hotkey = LiveEdit.Trouble.start("hotkey watcher", () => {
                 while (_watchingHotkey)
                 {
                     System.Threading.Thread.Sleep(60);
@@ -984,8 +1023,7 @@ namespace MCDSaveEdit.Logic
                         break;
                     }
                 }
-            }) { IsBackground = true, Name = "third person hotkey" };
-            _hotkey.Start();
+            });
         }
 
         public void Dispose()

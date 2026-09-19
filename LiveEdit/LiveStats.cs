@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace LiveEdit
@@ -30,6 +30,10 @@ namespace LiveEdit
         private const int MAX_WALK_SPEED = 0x01DC;
 
         private const int PERSISTENT_LEVEL = 0x0030;
+
+        //UWorld::Levels - every level currently loaded, streamed ones included.
+        private const int WORLD_LEVELS = 0x0138;
+        private const int WORLD_LEVELS_COUNT = 0x0140;
         private const int LEVEL_ACTORS = 0x0098;
         private const int LEVEL_ACTORS_COUNT = 0x00A0;
 
@@ -89,6 +93,8 @@ namespace LiveEdit
         //measuring again.
 
         private const int MOST_ACTORS = 40000;
+        private const int MOST_LEVELS = 256;
+
 
         private readonly GameProcess _game;
         private readonly LiveCamera _chain;
@@ -140,40 +146,103 @@ namespace LiveEdit
             learnFromPlayer();
             if (!Ready) { return false; }
 
-            var image = _game.Process.MainModule?.BaseAddress ?? IntPtr.Zero;
-            var world = follow(new IntPtr(image.ToInt64() + LiveCamera.GWORLD_OFFSET));
-            var level = world == IntPtr.Zero ? IntPtr.Zero : follow(new IntPtr(world.ToInt64() + PERSISTENT_LEVEL));
-            if (level == IntPtr.Zero) { return true; }
-
-            var actors = follow(new IntPtr(level.ToInt64() + LEVEL_ACTORS));
-            var countBytes = _game.read(new IntPtr(level.ToInt64() + LEVEL_ACTORS_COUNT), 4);
-            if (actors == IntPtr.Zero || countBytes == null) { return true; }
-
-            var count = BitConverter.ToInt32(countBytes, 0);
-            if (count < 1 || count > MOST_ACTORS) { return true; }
+            var image = _game.image(out _);
+            var world = follow(new IntPtr(image.ToInt64() + LiveCamera.WorldOffset));
+            if (world == IntPtr.Zero) { return true; }
 
             var enemies = new List<IntPtr>();
-            for (int i = 0; i < count; i++)
+            foreach (var level in levelsOf(world))
             {
-                var actor = follow(new IntPtr(actors.ToInt64() + i * 8));
-                if (actor == IntPtr.Zero || actor == Player) { continue; }
-
-                //A believable walk speed is what tells a character from the other things in a
-                //level that happen to have two pointers in the right places - which is what an
-                //earlier, looser test kept picking up.
-                var movement = follow(new IntPtr(actor.ToInt64() + MOVEMENT_COMPONENT));
-                if (movement == IntPtr.Zero) { continue; }
-
-                var walk = _game.readFloat(new IntPtr(movement.ToInt64() + MAX_WALK_SPEED));
-                if (walk == null || walk <= 0f || walk > 20000f) { continue; }
-
-                if (setOf(actor, _healthSetClass) == IntPtr.Zero) { continue; }
-
-                enemies.Add(actor);
+                gatherFrom(level, enemies);
             }
 
             Enemies = enemies;
             return true;
+        }
+
+
+        /// <summary>
+        /// Every level the game has loaded, not only the one it started with.
+        ///
+        /// This is the whole reason the enemy settings were unreliable. The persistent level is
+        /// the empty frame a mission is built in: this game streams its levels, so the Camp and
+        /// every mission are assembled from tiles that arrive as separate levels, and what lives
+        /// in them lives there rather than in the frame. Measured standing in the Camp: no
+        /// enemies at all in the persistent level, against thirty one levels loaded. Whether
+        /// anything was found came down to whether some stray actor had been placed in the frame
+        /// itself, which is why it worked on one mission and not the next, and why loading again
+        /// sometimes changed the answer.
+        /// </summary>
+        private List<IntPtr> levelsOf(IntPtr world)
+        {
+            var found = new List<IntPtr>();
+
+            var array = follow(new IntPtr(world.ToInt64() + WORLD_LEVELS));
+            var countBytes = _game.read(new IntPtr(world.ToInt64() + WORLD_LEVELS_COUNT), 4);
+
+            if (array != IntPtr.Zero && countBytes != null)
+            {
+                var count = BitConverter.ToInt32(countBytes, 0);
+                if (count > 0 && count <= MOST_LEVELS)
+                {
+                    for (int i = 0; i < count; i++)
+                    {
+                        var level = follow(new IntPtr(array.ToInt64() + i * 8));
+                        if (level != IntPtr.Zero) { found.Add(level); }
+                    }
+                }
+            }
+
+            //The frame itself, in case the list could not be read. It is where this used to look
+            //and it is occasionally not empty, so it is a worse answer rather than no answer.
+            if (found.Count == 0)
+            {
+                var persistent = follow(new IntPtr(world.ToInt64() + PERSISTENT_LEVEL));
+                if (persistent != IntPtr.Zero) { found.Add(persistent); }
+            }
+
+            return found;
+        }
+
+        /// <summary>Adds the enemies in one level to the list.</summary>
+        private void gatherFrom(IntPtr level, List<IntPtr> into)
+        {
+            var actors = follow(new IntPtr(level.ToInt64() + LEVEL_ACTORS));
+            var countBytes = _game.read(new IntPtr(level.ToInt64() + LEVEL_ACTORS_COUNT), 4);
+            if (actors == IntPtr.Zero || countBytes == null) { return; }
+
+            var count = BitConverter.ToInt32(countBytes, 0);
+            if (count < 1 || count > MOST_ACTORS) { return; }
+
+            //The whole array in one read rather than one read per actor. Thirty levels of a few
+            //hundred actors each is tens of thousands of pointers, and this runs on a timer -
+            //fetched one at a time it would be tens of thousands of system calls, several times
+            //a second, to build a list that is mostly scenery.
+            var buffer = new byte[count * 8];
+            if (!_game.tryRead(actors, buffer, buffer.Length)) { return; }
+
+            for (int i = 0; i < count; i++)
+            {
+                var value = BitConverter.ToInt64(buffer, i * 8);
+                if (value <= 0x10000 || value >= 0x7FFFFFFFFFFF) { continue; }
+
+                var actor = new IntPtr(value);
+                if (actor == Player) { continue; }
+
+                //A believable walk speed is what tells a character from the other things in a
+                //level that happen to have two pointers in the right places - which is what an
+                //earlier, looser test kept picking up. Anything at all in this field is not
+                //enough: scenery turns up here with a walk speed of a millionth of a unit.
+                var movement = follow(new IntPtr(actor.ToInt64() + MOVEMENT_COMPONENT));
+                if (movement == IntPtr.Zero) { continue; }
+
+                var walk = _game.readFloat(new IntPtr(movement.ToInt64() + MAX_WALK_SPEED));
+                if (walk == null || walk < 1f || walk > 20000f) { continue; }
+
+                if (setOf(actor, _healthSetClass) == IntPtr.Zero) { continue; }
+
+                into.Add(actor);
+            }
         }
 
         /// <summary>
@@ -339,28 +408,31 @@ namespace LiveEdit
                     writeFloat(movement, SPEED_MULTIPLIER, speed);
                 }
 
-                //And the walk speed itself.
+                //Not the walk speed, which used to be written here as well and never did
+                //anything. Measured against a running mission: the game rewrites that field
+                //every frame or two - 234 written as 701, back to 234 within thirty
+                //milliseconds - so the write from this timer survived about one frame in ten.
                 //
-                //The multiplier is the game's own way of saying this, and whether it reaches a
-                //mob's movement was never established - there were no enemies in the level the
-                //day it was tested. The walk speed is not in question: it is the number the
-                //movement component uses, the same one the player's own speed was measured from.
-                //Writing both means the slider works whichever way the game does it.
-                var walker = follow(new IntPtr(enemy.ToInt64() + MOVEMENT_COMPONENT));
-                if (walker != IntPtr.Zero)
-                {
-                    var wasWalking = baseWalkOf(enemy, walker);
-                    if (wasWalking != null)
-                    {
-                        _game.writeFloat(new IntPtr(walker.ToInt64() + MAX_WALK_SPEED), wasWalking.Value * speed);
-                    }
-                }
+                //Writing it faster does not help either, which is the part worth writing down.
+                //A loop a millisecond apart wins the field outright: sampled a hundred and
+                //fifty times, a hundred and fifty readings were ours. The enemies moved at
+                //1.02 times their old speed. The cap is not what limits them - an idle mob
+                //sits at 564 to 677 while one chasing moves at about 200 - so raising it
+                //changes nothing. What they obey is the speed their behaviour asks for, and
+                //that has not been found yet.
+                //
+                //The multiplier above is the one thing that has ever visibly moved a mob: set
+                //it to four and nothing happens until, a second or so later, something makes
+                //the game recalculate and the walk speed becomes exactly four times what it
+                //was. It is left in because a recalculation is free when it comes - but it
+                //comes when the game decides, which is why the slider cannot be trusted yet.
             }
 
             return done;
         }
 
         public int restoreEnemies() => applyToEnemies(1f, 1f, 1f);
+
 
         /// <summary>Sets how big a creature is drawn, leaving what it collides with alone.</summary>
         private void scaleOf(IntPtr actor, float size)
