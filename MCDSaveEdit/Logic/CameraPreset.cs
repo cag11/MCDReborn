@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
@@ -89,6 +89,24 @@ namespace MCDSaveEdit.Logic
         public bool MouseLook { get; set; } = true;
         public bool Wasd { get; set; } = true;
 
+        /// <summary>
+        /// Whether a crosshair is drawn over the middle of the game.
+        ///
+        /// On the preset rather than a switch of its own, because it is not a thing somebody wants
+        /// on its own: the game aims with the cursor, and a crosshair only means anything once the
+        /// cursor has been taken away and the camera is doing the aiming.
+        /// </summary>
+        public bool Crosshair { get; set; }
+
+        /// <summary>Which crosshair is drawn. See CrosshairOverlay for what each one looks like.</summary>
+        public string CrosshairStyle { get; set; } = "Cross";
+
+        /// <summary>Its colour, as one of the names the overlay knows.</summary>
+        public string CrosshairColour { get; set; } = "Green";
+
+        /// <summary>How big, as a multiple of the size it is drawn at.</summary>
+        public float CrosshairSize { get; set; } = 1f;
+
         public CameraPreset copy() => (CameraPreset)MemberwiseClone();
 
         /// <summary>
@@ -115,6 +133,19 @@ namespace MCDSaveEdit.Logic
                     Distance = 1500f, Pitch = -25f, FieldOfView = 70f,
                     PivotHeight = 170f, SocketSide = 30f, SocketHeight = 40f,
                     LagSpeed = 1f,
+                },
+                new CameraPreset {
+                    //The same camera as first person, with something to aim it by.
+                    //
+                    //A separate preset rather than a crosshair on the existing one, because first
+                    //person is also how somebody looks at the scenery, and a reticle pinned over
+                    //the view is in the way of that.
+                    Name = "First person shooter", BuiltIn = true,
+                    Distance = 0f, Pitch = 0f, FieldOfView = 90f,
+                    PivotHeight = 230f, SocketSide = 0f, SocketHeight = 0f,
+                    LagSpeed = 20f,
+                    Collision = false,
+                    Crosshair = true,
                 },
                 new CameraPreset {
                     Name = "First person", BuiltIn = true,

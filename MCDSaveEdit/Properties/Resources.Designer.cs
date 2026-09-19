@@ -2383,6 +2383,213 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to {0} enemies thrown into the air..
+        /// </summary>
+        public static string STATS_ENEMY_JUMP_DONE {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_JUMP_DONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A stage lasts.
+        /// </summary>
+        public static string ESCALATION_EVERY {
+            get {
+                return ResourceManager.GetString("ESCALATION_EVERY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to How long before everything gets worse. A minute is.
+        /// </summary>
+        public static string ESCALATION_EVERY_WHY {
+            get {
+                return ResourceManager.GetString("ESCALATION_EVERY_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Tougher by.
+        /// </summary>
+        public static string ESCALATION_TOUGH_STEP {
+            get {
+                return ResourceManager.GetString("ESCALATION_TOUGH_STEP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to What each stage adds to how much punishment enemie.
+        /// </summary>
+        public static string ESCALATION_TOUGH_STEP_WHY {
+            get {
+                return ResourceManager.GetString("ESCALATION_TOUGH_STEP_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Faster by.
+        /// </summary>
+        public static string ESCALATION_SPEED_STEP {
+            get {
+                return ResourceManager.GetString("ESCALATION_SPEED_STEP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to And to how fast they move, which wants a much smal.
+        /// </summary>
+        public static string ESCALATION_SPEED_STEP_WHY {
+            get {
+                return ResourceManager.GetString("ESCALATION_SPEED_STEP_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Tough stops at.
+        /// </summary>
+        public static string ESCALATION_MOST_TOUGH {
+            get {
+                return ResourceManager.GetString("ESCALATION_MOST_TOUGH", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Where toughness stops climbing. Ten times is a ten.
+        /// </summary>
+        public static string ESCALATION_MOST_TOUGH_WHY {
+            get {
+                return ResourceManager.GetString("ESCALATION_MOST_TOUGH_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Fast stops at.
+        /// </summary>
+        public static string ESCALATION_MOST_SPEED {
+            get {
+                return ResourceManager.GetString("ESCALATION_MOST_SPEED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Where speed stops climbing. Three times is about a.
+        /// </summary>
+        public static string ESCALATION_MOST_SPEED_WHY {
+            get {
+                return ResourceManager.GetString("ESCALATION_MOST_SPEED_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enemies get worse the longer you stay.
+        /// </summary>
+        public static string ESCALATION_ON {
+            get {
+                return ResourceManager.GetString("ESCALATION_ON", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Every minute in a level adds 0.2 to how tough and .
+        /// </summary>
+        public static string ESCALATION_WHY {
+            get {
+                return ResourceManager.GetString("ESCALATION_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Stage {0} - {1}.
+        /// </summary>
+        public static string ESCALATION_STAGE {
+            get {
+                return ResourceManager.GetString("ESCALATION_STAGE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to tough {0:0.#}x   fast {1:0.##}x.
+        /// </summary>
+        public static string ESCALATION_NUMBERS {
+            get {
+                return ResourceManager.GetString("ESCALATION_NUMBERS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to next in {0}:{1:00}.
+        /// </summary>
+        public static string ESCALATION_NEXT {
+            get {
+                return ResourceManager.GetString("ESCALATION_NEXT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to as bad as it gets.
+        /// </summary>
+        public static string ESCALATION_TOPPED {
+            get {
+                return ResourceManager.GetString("ESCALATION_TOPPED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to J throws every enemy into the air.
+        /// </summary>
+        public static string STATS_ENEMY_JUMP {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_JUMP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Press J while the game has the keyboard and every enemy.
+        /// </summary>
+        public static string STATS_ENEMY_JUMP_WHY {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_JUMP_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Jump strength.
+        /// </summary>
+        public static string STATS_ENEMY_JUMP_POWER {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_JUMP_POWER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to How hard J throws them. Written as a launch the movemen.
+        /// </summary>
+        public static string STATS_ENEMY_JUMP_POWER_WHY {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_JUMP_POWER_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enemy gravity.
+        /// </summary>
+        public static string STATS_ENEMY_GRAVITY {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_GRAVITY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to How heavily enemies fall, as a multiple of their own weight..
+        /// </summary>
+        public static string STATS_ENEMY_GRAVITY_WHY {
+            get {
+                return ResourceManager.GetString("STATS_ENEMY_GRAVITY_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Glow.
         /// </summary>
         public static string WEAPON_SKINS_GLOW {
@@ -2496,6 +2703,33 @@ namespace MCDSaveEdit.Properties {
         public static string WEAPON_SKINS_SCOPE {
             get {
                 return ResourceManager.GetString("WEAPON_SKINS_SCOPE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A bow is four meshes - the shapes it takes as the .
+        /// </summary>
+        public static string WEAPON_SKINS_BOW_CAUTION {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_BOW_CAUTION", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This model brings no colour, so it will wear the a.
+        /// </summary>
+        public static string WEAPON_SKINS_NO_COLOUR {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_NO_COLOUR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Only the first draw state of each bow is listed. Y.
+        /// </summary>
+        public static string WEAPON_SKINS_BOW_NOTE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_BOW_NOTE", resourceCulture);
             }
         }
         
@@ -3543,6 +3777,24 @@ namespace MCDSaveEdit.Properties {
         public static string CAMERA_AIR_CONTROL {
             get {
                 return ResourceManager.GetString("CAMERA_AIR_CONTROL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Crosshair.
+        /// </summary>
+        public static string CAMERA_CROSSHAIR {
+            get {
+                return ResourceManager.GetString("CAMERA_CROSSHAIR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Crosshair size.
+        /// </summary>
+        public static string CAMERA_CROSSHAIR_SIZE {
+            get {
+                return ResourceManager.GetString("CAMERA_CROSSHAIR_SIZE", resourceCulture);
             }
         }
         

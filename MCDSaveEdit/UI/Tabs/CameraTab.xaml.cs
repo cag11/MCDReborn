@@ -80,17 +80,127 @@ namespace MCDSaveEdit.UI
             _live.togglePressed += () => Dispatcher.BeginInvoke(new Action(() => {
                 if (!_live.attached) { return; }
 
-                if (_live.thirdPersonOn) { _live.restoreOriginal(); }
-                else { _live.apply(_current, (float)sensitivity.Value, invertPitch.IsChecked == true, out _); }
+                if (_live.thirdPersonOn) { _live.restoreOriginal(); showCrosshair(false); }
+                else
+                {
+                    _live.apply(_current, (float)sensitivity.Value, invertPitch.IsChecked == true, out _);
+                    showCrosshair(_current.Crosshair);
+                }
 
                 showSwitches();
             }));
 
-            Unloaded += (s, e) => _live.Dispose();
+            //Let go of when the window closes, and not before.
+            //
+            //This used to be Unloaded, which WPF raises when a tab control switches away from its
+            //content - so opening any other tab disposed the live camera. The link is shared and
+            //there is only ever one of it, so it never came back: the camera kept the shape it had
+            //already written into the game and nothing could change it again, the walking loop was
+            //stopped along with it, and the log said "the game went away" about a game that was
+            //still running.
+            Loaded += (s, e) => keepUntilTheWindowCloses();
 
             buildRows();
+            fillCrosshairChoices();
             loadPresets();
             updateUI();
+        }
+
+
+
+        //The crosshair belongs to whichever preset asked for one, so it arrives and leaves with
+        //the camera rather than being a switch somebody has to remember.
+        private CrosshairOverlay? _crosshair;
+
+        private void showCrosshair(bool wanted)
+        {
+            crosshairRow.Visibility = wanted ? Visibility.Visible : Visibility.Collapsed;
+            crosshairSizeRow.Visibility = crosshairRow.Visibility;
+
+            if (wanted)
+            {
+                _crosshair ??= new CrosshairOverlay(_live);
+                _crosshair.Closed += (_, _) => _crosshair = null;
+                _crosshair.Show();
+                _crosshair.look(_current.CrosshairStyle, _current.CrosshairColour, _current.CrosshairSize);
+            }
+            else
+            {
+                _crosshair?.Close();
+                _crosshair = null;
+            }
+        }
+
+        private void fillCrosshairChoices()
+        {
+            foreach (var style in CrosshairOverlay.STYLES)
+            {
+                crosshairStyle.Items.Add(new ComboBoxItem { Content = style, Tag = style });
+            }
+            foreach (var (name, colour) in CrosshairOverlay.COLOURS)
+            {
+                //Shown as the colour it is, since the name of a colour is a poor picture of one.
+                crosshairColour.Items.Add(new ComboBoxItem {
+                    Content = name,
+                    Tag = name,
+                    Foreground = new System.Windows.Media.SolidColorBrush(colour),
+                });
+            }
+
+            showCrosshairChoice();
+        }
+
+        private void showCrosshairChoice()
+        {
+            _filling = true;
+            pick(crosshairStyle, _current.CrosshairStyle);
+            pick(crosshairColour, _current.CrosshairColour);
+            crosshairSize.Value = _current.CrosshairSize;
+            crosshairSizeValue.Text = _current.CrosshairSize.ToString("0.##") + "x";
+            _filling = false;
+        }
+
+        private static void pick(ComboBox box, string wanted)
+        {
+            foreach (var item in box.Items)
+            {
+                if ((item as ComboBoxItem)?.Tag as string == wanted) { box.SelectedItem = item; return; }
+            }
+            if (box.Items.Count > 0) { box.SelectedIndex = 0; }
+        }
+
+        private void crosshair_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            _current.CrosshairStyle = (crosshairStyle.SelectedItem as ComboBoxItem)?.Tag as string ?? "Cross";
+            _current.CrosshairColour = (crosshairColour.SelectedItem as ComboBoxItem)?.Tag as string ?? "Green";
+            _crosshair?.look(_current.CrosshairStyle, _current.CrosshairColour, _current.CrosshairSize);
+        }
+
+        private void crosshairSize_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_filling) { return; }
+
+            _current.CrosshairSize = (float)crosshairSize.Value;
+            crosshairSizeValue.Text = _current.CrosshairSize.ToString("0.##") + "x";
+            _crosshair?.look(_current.CrosshairStyle, _current.CrosshairColour, _current.CrosshairSize);
+        }
+
+        private bool _hookedClose;
+
+        private void keepUntilTheWindowCloses()
+        {
+            if (_hookedClose) { return; }
+
+            var window = Window.GetWindow(this);
+            if (window == null) { return; }
+
+            _hookedClose = true;
+            window.Closed += (s, e) => {
+                showCrosshair(false);
+                _live.Dispose();
+            };
         }
 
         private void translateStaticStrings()
@@ -116,6 +226,8 @@ namespace MCDSaveEdit.UI
             jumpHeightLabel.Text = R.CAMERA_JUMP_HEIGHT;
             airControlLabel.Text = R.CAMERA_AIR_CONTROL;
             jumpCountCaption.Text = R.CAMERA_JUMP_COUNT;
+            crosshairLabel.Text = R.CAMERA_CROSSHAIR;
+            crosshairSizeLabel.Text = R.CAMERA_CROSSHAIR_SIZE;
         }
 
         /// <summary>
@@ -329,6 +441,7 @@ namespace MCDSaveEdit.UI
             _chosen = true;
 
             _live.apply(_current, (float)sensitivity.Value, invertPitch.IsChecked == true, out var problem);
+            showCrosshair(_current.Crosshair);
             if (problem.Length > 0) { statusLabel.Text = problem; }
         }
 
@@ -660,6 +773,7 @@ namespace MCDSaveEdit.UI
         private void restoreButton_Click(object sender, RoutedEventArgs e)
         {
             _live.restoreOriginal();
+            showCrosshair(false);
             showSwitches();
 
             _filling = true;

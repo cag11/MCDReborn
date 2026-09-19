@@ -29,6 +29,25 @@ namespace LiveEdit
         private const int MOVEMENT_COMPONENT = 0x0398;
         private const int MAX_WALK_SPEED = 0x01DC;
 
+        //UCharacterMovementComponent::GravityScale - what the mount already uses to take a
+        //creature's weight away while somebody is standing on it.
+        private const int GRAVITY_SCALE = 0x0198;
+
+        //And how a character here leaves the ground, which the jump key found: the movement
+        //component reads PendingLaunchVelocity every tick, copies it into the velocity, switches
+        //to falling and zeroes it again. Writing it is the entire action.
+        private const int PENDING_LAUNCH_VELOCITY = 0x0408;
+
+        //Aiming for you, which is a component of its own hanging off the player character.
+        //
+        //From the blueprint class rather than an engine one, which makes it the least certain
+        //offset here - so it is checked before it is used: the pointer has to lead to something
+        //with a vtable inside the game's own image, the way every other object here is proved.
+        private const int AUTO_AIM_COMPONENT = 0x11D0;
+        private const int AUTO_AIM = 0x0419;
+        private const int AUTO_AIM_ANGLE = 0x041C;
+        private const int AUTO_AIM_RANGE = 0x0420;
+
         private const int PERSISTENT_LEVEL = 0x0030;
 
         //UWorld::Levels - every level currently loaded, streamed ones included.
@@ -107,11 +126,10 @@ namespace LiveEdit
         //and nobody wants only half of "attack faster".
         private readonly List<long> _attackSetClasses = new List<long>();
 
-        //What each enemy walks at before anything here touched it, so speed can be a multiplier
-        //of its own kind rather than one number for a skeleton and a phantom alike. Dropped when
-        //the level changes, because the addresses go with it.
-        private readonly Dictionary<long, float> _enemyWalk = new Dictionary<long, float>();
-        private IntPtr _walkFor;
+        //What each one weighed before any of this touched it. A creature's own gravity is not
+        //always one, so putting it back means knowing what it was.
+        private readonly Dictionary<long, float> _enemyGravity = new Dictionary<long, float>();
+        private IntPtr _gravityFor;
 
         public LiveStats(GameProcess game)
         {
@@ -384,7 +402,7 @@ namespace LiveEdit
         /// Applied over and over rather than once, because enemies that appear later are built
         /// fresh and arrive at the game's own numbers.
         /// </summary>
-        public int applyToEnemies(float toughness, float speed, float size)
+        public int applyToEnemies(float toughness, float speed, float size, float gravity = 1f)
         {
             var done = 0;
 
@@ -417,6 +435,22 @@ namespace LiveEdit
                     writeFloat(movement, SPEED_MULTIPLIER, speed);
                 }
 
+                //And how heavily it falls.
+                //
+                //Written straight onto the movement component rather than through the attribute
+                //set, which is the same place the mount takes a creature's weight away and the
+                //one number here that is known to stay written. Nothing recomputes it: a mob
+                //knocked into the air at a tenth of its weight is still up there next frame.
+                var walker = follow(new IntPtr(enemy.ToInt64() + MOVEMENT_COMPONENT));
+                if (walker != IntPtr.Zero)
+                {
+                    var weighed = baseGravityOf(enemy, walker);
+                    if (weighed != null)
+                    {
+                        _game.writeFloat(new IntPtr(walker.ToInt64() + GRAVITY_SCALE), weighed.Value * gravity);
+                    }
+                }
+
                 //Not the walk speed, which used to be written here as well and never did
                 //anything. Measured against a running mission: the game rewrites that field
                 //every frame or two - 234 written as 701, back to 234 within thirty
@@ -440,7 +474,41 @@ namespace LiveEdit
             return done;
         }
 
-        public int restoreEnemies() => applyToEnemies(1f, 1f, 1f);
+        public int restoreEnemies() => applyToEnemies(1f, 1f, 1f, 1f);
+
+        /// <summary>
+        /// Throws every enemy into the air. Says how many were thrown.
+        ///
+        /// This exists because gravity on its own is invisible. A mob that walks never leaves the
+        /// ground, and a number saying how hard it would fall changes nothing while it is standing
+        /// on something. Measured, with ten enemies launched at the same strength:
+        ///
+        /// | gravity | highest any of them reached |
+        /// | --- | --- |
+        /// | 1 | 143 units |
+        /// | 0.1 | 1440 |
+        /// | 0.025 | 2996 |
+        ///
+        /// So the two belong together: this puts them up, and the gravity slider decides how long
+        /// they stay there.
+        /// </summary>
+        public int launchEnemies(float upwards)
+        {
+            var thrown = 0;
+            var velocity = new byte[12];
+            BitConverter.GetBytes(upwards).CopyTo(velocity, 8);
+
+            foreach (var enemy in Enemies)
+            {
+                var walker = follow(new IntPtr(enemy.ToInt64() + MOVEMENT_COMPONENT));
+                if (walker == IntPtr.Zero) { continue; }
+
+                if (_game.write(new IntPtr(walker.ToInt64() + PENDING_LAUNCH_VELOCITY), velocity)) { thrown++; }
+            }
+
+            return thrown;
+        }
+
 
 
         /// <summary>Sets how big a creature is drawn, leaving what it collides with alone.</summary>
@@ -499,27 +567,32 @@ namespace LiveEdit
         }
 
 
+
         /// <summary>
-        /// What an enemy walked at before this touched it.
+        /// What one creature's gravity was before any of this touched it.
         ///
-        /// Remembered rather than read each time, because after the first write the number on the
-        /// enemy is already a multiple of itself - reading it again and multiplying would make a
-        /// slider set to two mean four, then eight.
+        /// Remembered rather than assumed to be one, because it is not: a creature that floats or
+        /// falls heavily by design does so through this number, and writing one over it would be
+        /// a change nobody asked for dressed as putting things back.
         /// </summary>
-        private float? baseWalkOf(IntPtr enemy, IntPtr movement)
+        private float? baseGravityOf(IntPtr enemy, IntPtr movement)
         {
-            //Addresses belong to a level. Keeping them across one would be remembering a speed
-            //for whatever now lives at that address.
-            if (_walkFor != _chain.Pawn) { _enemyWalk.Clear(); _walkFor = _chain.Pawn; }
+            //Addresses belong to a level, so what was remembered about one is meaningless in the
+            //next. Its own marker, not the walk speed's: the walk speed is no longer written, so
+            //that marker is never set - and a cache that clears on every call would read back the
+            //gravity this just wrote and treat it as the original, driving it to nothing over a
+            //few seconds and putting back the wrong number afterwards.
+            if (_gravityFor != _chain.Pawn) { _enemyGravity.Clear(); _gravityFor = _chain.Pawn; }
 
-            if (_enemyWalk.TryGetValue(enemy.ToInt64(), out var already)) { return already; }
+            if (_enemyGravity.TryGetValue(enemy.ToInt64(), out var already)) { return already; }
 
-            var now = _game.readFloat(new IntPtr(movement.ToInt64() + MAX_WALK_SPEED));
-            if (now == null || now <= 0f || now > 20000f) { return null; }
+            var now = _game.readFloat(new IntPtr(movement.ToInt64() + GRAVITY_SCALE));
+            if (now == null || now < 0f || now > 100f) { return null; }
 
-            _enemyWalk[enemy.ToInt64()] = now.Value;
+            _enemyGravity[enemy.ToInt64()] = now.Value;
             return now.Value;
         }
+
 
         #endregion
 
@@ -589,6 +662,79 @@ namespace LiveEdit
         }
 
         #endregion
+
+        #region Aiming
+
+        /// <summary>
+        /// The thing that aims your ranged attacks for you, or nothing when it cannot be found.
+        ///
+        /// Proved rather than trusted. This offset comes from the player's blueprint class, which
+        /// is the kind that moves between builds, so the pointer has to lead to a real engine
+        /// object before anything is written through it.
+        /// </summary>
+        private IntPtr aimAssistComponent()
+        {
+            if (Player == IntPtr.Zero) { return IntPtr.Zero; }
+
+            var component = follow(new IntPtr(Player.ToInt64() + AUTO_AIM_COMPONENT));
+            if (component == IntPtr.Zero) { return IntPtr.Zero; }
+
+            var image = _game.image(out var size);
+            if (image == IntPtr.Zero) { return IntPtr.Zero; }
+
+            var table = follow(component).ToInt64();
+            var real = table >= image.ToInt64() && table < image.ToInt64() + size;
+            return real ? component : IntPtr.Zero;
+        }
+
+        /// <summary>Whether aiming for you is something this game can be talked out of.</summary>
+        public bool canAim => aimAssistComponent() != IntPtr.Zero;
+
+        /// <summary>What the game is doing about aiming right now, for the switches to start from.</summary>
+        public (bool on, float angle, float range)? aimAssistNow()
+        {
+            var component = aimAssistComponent();
+            if (component == IntPtr.Zero) { return null; }
+
+            var on = _game.read(new IntPtr(component.ToInt64() + AUTO_AIM), 1);
+            var angle = _game.readFloat(new IntPtr(component.ToInt64() + AUTO_AIM_ANGLE));
+            var range = _game.readFloat(new IntPtr(component.ToInt64() + AUTO_AIM_RANGE));
+            if (on == null || angle == null || range == null) { return null; }
+
+            return (on[0] != 0, angle.Value, range.Value);
+        }
+
+        //What it was before any of this, so switching off puts back what the game shipped with
+        //rather than what somebody guessed the game shipped with.
+        private (bool on, float angle, float range)? _aimWas;
+
+        /// <summary>Sets how much the game helps you aim. Says whether it could.</summary>
+        public bool applyAim(bool on, float angle, float range)
+        {
+            var component = aimAssistComponent();
+            if (component == IntPtr.Zero) { return false; }
+
+            _aimWas ??= aimAssistNow();
+
+            _game.write(new IntPtr(component.ToInt64() + AUTO_AIM), new[] { (byte)(on ? 1 : 0) });
+            _game.writeFloat(new IntPtr(component.ToInt64() + AUTO_AIM_ANGLE), angle);
+            _game.writeFloat(new IntPtr(component.ToInt64() + AUTO_AIM_RANGE), range);
+            return true;
+        }
+
+        /// <summary>Puts aiming back the way the game had it.</summary>
+        public bool restoreAim()
+        {
+            if (_aimWas == null) { return true; }
+
+            var was = _aimWas.Value;
+            var put = applyAim(was.on, was.angle, was.range);
+            _aimWas = null;
+            return put;
+        }
+
+        #endregion
+
 
         private IEnumerable<IntPtr> setsOf(IntPtr actor)
         {

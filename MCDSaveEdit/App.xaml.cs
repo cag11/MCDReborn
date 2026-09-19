@@ -778,11 +778,138 @@ namespace MCDSaveEdit
                 foreach (var group in Logic.WeaponMeshes.catalogue.groups())
                 {
                     var entries = Logic.WeaponMeshes.catalogue.all().Where(m => m.Group == group).ToList();
-                    Console.WriteLine($"[catalogue] {group}: {entries.Count}");
+                    var warned = entries.Count(m => m.Caution.Length > 0);
+                    Console.WriteLine($"[catalogue] {group}: {entries.Count}, {warned} marked \"imports come out wrong\"");
                     foreach (var entry in entries.Take(entries.Count > 20 ? 3 : 20))
                     {
                         Console.WriteLine($"    {entry.Name}  ({entry.Variant})  {entry.AssetPath}");
                     }
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //SHOW_OVERLAY - puts the escalation overlay up for fifteen seconds against the
+            //running game, and writes down where it decided to sit. The only part of it that
+            //cannot be checked by reading the code is whether it lands over the game.
+            if (_startupArguments.Any(a => a == "SHOW_OVERLAY"))
+            {
+                var live = new Logic.LiveStatsLink { escalationOn = true, enemiesOn = false };
+                var overlay = new UI.EscalationOverlay(live);
+                overlay.Show();
+
+                var watch = new System.Windows.Threading.DispatcherTimer {
+                    Interval = TimeSpan.FromSeconds(3),
+                };
+                var seen = 0;
+                watch.Tick += (_, _) => {
+                    Console.WriteLine($"[overlay] visible={overlay.Visibility}"
+                        + $" at {overlay.Left:F0},{overlay.Top:F0} size {overlay.Width}x{overlay.Height}"
+                        + $" | game window 0x{live.gameWindow.ToInt64():X} attached={live.attached} status=\"{live.status}\""
+                        + $" | stage {live.escalation.stage} ({live.escalation.stageName})"
+                        + $" tough {live.toughnessNow:0.##} fast {live.speedNow:0.##}"
+                        + $" through {live.escalation.through:P0}");
+                    if (++seen >= 5)
+                    {
+                        watch.Stop();
+                        overlay.Close();
+                        live.Dispose();
+                        this.Shutdown();
+                    }
+                };
+                watch.Start();
+                return;
+            }
+
+            //DRAW_CROSSHAIRS=<folder> - every crosshair rendered to a picture, so how they
+            //look is something that can be looked at rather than imagined.
+            var drawThem = _startupArguments.FirstOrDefault(a => a.StartsWith("DRAW_CROSSHAIRS="));
+            if (drawThem != null)
+            {
+                var folder = drawThem.Substring("DRAW_CROSSHAIRS=".Length).Trim('"');
+                System.IO.Directory.CreateDirectory(folder);
+
+                foreach (var style in UI.CrosshairOverlay.STYLES)
+                {
+                    var overlay = new UI.CrosshairOverlay(Logic.LiveCameraLink.shared);
+                    overlay.Left = -4000;   //off screen, since it only has to be rendered
+                    overlay.Show();
+                    overlay.look(style, "Green", 1.0);
+                    overlay.UpdateLayout();
+
+                    var board = overlay.Content as System.Windows.FrameworkElement;
+                    var size = 240;
+                    var picture = new System.Windows.Media.Imaging.RenderTargetBitmap(
+                        size, size, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+
+                    //On a mid grey, because a crosshair drawn on nothing says nothing about
+                    //whether it would be visible on a floor.
+                    var visual = new System.Windows.Media.DrawingVisual();
+                    using (var paint = visual.RenderOpen())
+                    {
+                        paint.DrawRectangle(new System.Windows.Media.SolidColorBrush(
+                            System.Windows.Media.Color.FromRgb(0x6B, 0x6B, 0x66)), null,
+                            new Rect(0, 0, size, size));
+                        //At its own size. A VisualBrush stretches what it is given to fill the
+                        //rectangle by default, which makes every crosshair look like it fills the
+                        //screen and hides the one thing being checked.
+                        paint.DrawRectangle(new System.Windows.Media.VisualBrush(board) {
+                            Stretch = System.Windows.Media.Stretch.None,
+                            AlignmentX = System.Windows.Media.AlignmentX.Center,
+                            AlignmentY = System.Windows.Media.AlignmentY.Center,
+                        }, null, new Rect(0, 0, size, size));
+                    }
+                    picture.Render(visual);
+
+                    var file = System.IO.Path.Combine(folder, style + ".png");
+                    var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                    encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(picture));
+                    using (var stream = System.IO.File.Create(file)) { encoder.Save(stream); }
+
+                    overlay.Close();
+                    Console.WriteLine($"[crosshair] {file}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //DUMP_TEXTURE=<asset path>;<file> - the artwork the game would load for an asset,
+            //saved as a picture. Which is how "the texture is wrong" and "something is tinting
+            //it" get told apart without guessing.
+            var dumpTexture = _startupArguments.FirstOrDefault(a => a.StartsWith("DUMP_TEXTURE="));
+            if (dumpTexture != null)
+            {
+                var bits = dumpTexture.Substring("DUMP_TEXTURE=".Length).Trim('"').Split(';');
+                var picture = Services.ImageResolver.instance.imageSource(bits[0]);
+                if (picture == null) { Console.WriteLine("[texture] could not decode it"); this.Shutdown(); return; }
+
+                var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(picture));
+                using (var stream = System.IO.File.Create(bits[1])) { encoder.Save(stream); }
+
+                Console.WriteLine($"[texture] {picture.PixelWidth}x{picture.PixelHeight} -> {bits[1]}");
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_GLB=<file> - what an imported model brings with it, and in particular
+            //whether it brings a colour. A model with none wears whatever the weapon it replaces
+            //was painted with, which looks like a fault in the importer and is not one.
+            var probeGlb = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_GLB="));
+            if (probeGlb != null)
+            {
+                var file = probeGlb.Substring("PROBE_GLB=".Length).Trim('"');
+                try
+                {
+                    var model = Logic.GlbModel.read(file);
+                    Console.WriteLine($"[glb] {model.Name}");
+                    Console.WriteLine($"      {model.Positions.Count} vertices, {model.Indices.Count / 3} triangles");
+                    Console.WriteLine($"      base colour: {(model.BaseColourPng == null ? "NONE" : model.BaseColourPng.Length.ToString("N0") + " bytes of PNG")}");
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[glb] could not read it: {problem.Message}");
                 }
                 this.Shutdown();
                 return;

@@ -30,16 +30,19 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **The Tower** tab: tower runs that you have started and saved will show here, allow modifying gear and floor progress
 * 36 new enchantments the game carries but never offers, under the **Other** toggle
 * Bulk Delete items on the inventory and storage chest tabs
-* **Difficulty Tab:** Change how hard the game is while it is running. How tough and how fast the enemies are, and your own speed, roll cooldown, roll charges, gravity and attack speed
+* **Difficulty Tab:** Change how hard the game is while it is running. How tough, how fast and how heavy the enemies are, and your own speed, roll cooldown, roll charges, gravity and attack speed
+* **Escalation**: enemies get worse the longer you stay in a level - by default a stage a minute, adding 1 to toughness and 0.2 to speed, stopping at ten times tough and three times fast. All five numbers are sliders: how long a stage lasts, what each one adds, and where each stops - wind the caps up and you get the version where the level eventually wins. A slim bar over the game says which of the nine stages you are in, how long until the next one, and what the multipliers are now. The clock restarts when you load a new level, not when you die. The overlay needs the game in borderless rather than exclusive fullscreen, which is how it runs by default
+* **Press J to throw every enemy in the level into the air**, with the enemy gravity slider deciding how long they stay there - at normal weight they reach 141 units, at a fortieth nearly 3000. The two go together: gravity does nothing to a mob standing on the floor
 * **Installed Mods Tab:** Every mod pak in one place. You can import and export multiple mods via a zip package.
 
 #### Camera Feature
 * **Change the camera while the game is running** - distance, angle, field of view, where it looks, shoulder offset and swing smoothing, all applied as you drag the slider. No mod pak, nothing written to disk, and quitting the game puts everything back
 * **Third person and first person**, in a game that has neither: mouse look turns the view, W A S D move you, and clicking attacks instead of walking you there
-* **Presets** - third person, third person far, first person - and you can save your own under a name and bring it back in one click
+* **Presets** - third person, third person far, first person, first person shooter
+* **A crosshair** for the shooter preset, in five shapes - cross, chevron, circle, dot, brackets - eight colours and any size. 
 - **Ride**, can summon and ride the nearest creature, your summons, even your custom mounts via imported texture
 - **Jump**, you can activate jump buy pressing the Q key when enabled which allows improved movement. 
-- **Fly**, the default hotkey is G: makes character lift out of the level entirely, and switching it off drops them back to the floor.
+- **Fly**, the default hotkey is G: makes character lift out of the level entirely, and switching it off drops them back to the floor. Space climbs and C drops, and forward follows wherever the camera points
 * F10 turns the camera setup on and off from inside the game
 
 #### Custom Builds Feature
@@ -52,17 +55,13 @@ https://github.com/user-attachments/assets/509496fd-7186-4422-a639-9d10272be407
 * **Recolor Gear**: put your own artwork on a piece of gear, installed as a mod pak beside the game's own; the originals are never modified and Remove undoes it completely
 * Armor, melee, ranged, artifacts, **capes, pets, enchantment icons and the interface and HUD**, picked one category at a time
 * The texture travels to [mcddesigner.vercel.app](https://mcddesigner.vercel.app/) and back. Find, upload and download again
-* **Any size up to 1024 square**, including the 256×256 enchantment icons - the designer takes a file at whatever size it is, and the link carries it
 
 https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 
 #### Weapon Import Feature
-* **Import your own model** onto any weapon: export a `.glb` from Blender (File -> Export -> glTF Binary) and the weapon comes out wearing it, mesh and texture together, weapons installed as a mod pak beside the game's own so deleting it undoes everything
+* **Import your own model** onto any weapon and projectiles: export a `.glb` from Blender (File -> Export -> glTF Binary) and the weapon comes out wearing it, mesh and texture together, weapons installed as a mod pak beside the game's own so deleting it undoes everything
+* Two things worth knowing before you model: this game's weapon textures are tiny - often 32 square - and your artwork is scaled to whatever the one you are replacing uses, so fine detail cannot survive. And an **enchanted** weapon wears the game's purple glint over whatever it is; on a dark model that is most of what you will see, so export brighter than feels right
 * **Or just reshape the game's own model**: resize from a tenth up to **8x**, move and rotate it - a claymore at half size, a dagger the length of a spear, or something absurd
-* A live 3D preview **painted with the real texture**, which you can drag to turn and scroll to zoom, with the **original ghosted behind your model**. That outline is where the game already knows how to hold the weapon, so keeping the handle end of your model on the handle end of the outline is all there is to aligning it
-* **And onto the things the game throws.** A dropdown at the top of the list switches between **Weapons** and **Projectiles**: the ordinary arrow every bow fires, the Torment and Harpoon arrows, the Gale Arrow, fireworks, pumpkin seeds, the TNT box, fireballs and more - twelve in all. Fire a sword, a fish, or a bolt of your own shape
-* A projectile flies along its own length, so a model whose nose points elsewhere flies sideways - the turn sliders straighten it. The ordinary arrow is shared by every bow, so changing it changes them all
-* **Make it glow.** A switch, a colour and a strength, turning up the emissive the material already carries - the same numbers that make the Torment arrow glow blue, which sits at 125. Laser bolts are a thin model and a bright colour. Nothing new is compiled: the shader doing the glow is already in the game, which is why this works at all. A material with no emissive value cannot be lit, and the status line says how many were
 
 #### Mob Import Feature
 * **Import your own model onto a creature**: export a `.glb` from Blender the same way, pick a sheep, a pig, a wolf or any of 122 other meshes, and the creature comes out wearing it. A skateboard, a mount, a truck - anything is possible as long as you have 3D design for it.

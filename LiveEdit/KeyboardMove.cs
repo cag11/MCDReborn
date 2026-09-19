@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 
@@ -162,7 +162,14 @@ namespace LiveEdit
         //Shift rather than Control, which was doing two jobs: it is also the walk-slowly key, so
         //creeping along the floor and dropping out of the sky were the same button. Shift is what
         //Minecraft itself descends on, so it is the one people reach for anyway.
-        private const int DESCEND = 0xA0;  // Left Shift
+        //C, and not Shift, which is what this was and should never have been: the game plants
+        //your feet with Shift so you can swing at something out of reach, and this project's own
+        //note about the movement keys says Shift is left alone for exactly that reason. Bound to
+        //both, a press meant descend and root at once, and the game won that argument.
+        //
+        //Not Ctrl either. That walks slowly, and it was tried and taken off this for the same
+        //kind of clash.
+        private const int DESCEND = 0x43;  // C
 
         //How a character here leaves the ground, which is not how it first looked.
         //

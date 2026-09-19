@@ -1,0 +1,28 @@
+<Window x:Class="MCDSaveEdit.UI.EscalationOverlay"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ShowInTaskbar="False" Topmost="True" ResizeMode="NoResize"
+        SizeToContent="Manual" Width="520" Height="64" Focusable="False">
+
+    <!-- Dark enough to read over a bright floor, transparent enough not to be a window. -->
+    <Border Background="#C0101418" CornerRadius="6" Padding="12,7" BorderThickness="1"
+            BorderBrush="#40FFFFFF">
+        <StackPanel>
+            <DockPanel>
+                <TextBlock x:Name="stageLabel" DockPanel.Dock="Left" Foreground="#FFEFEFEF"
+                           FontSize="14" FontWeight="Bold"/>
+                <TextBlock x:Name="clockLabel" DockPanel.Dock="Right" Foreground="#FFB9C2CC"
+                           FontSize="13" TextAlignment="Right"/>
+                <TextBlock x:Name="numbersLabel" Foreground="#FFB9C2CC" FontSize="13"
+                           Margin="12,1,12,0"/>
+            </DockPanel>
+
+            <!-- The bar fills toward the next stage. -->
+            <Border Margin="0,6,0,0" Height="6" CornerRadius="3" Background="#30FFFFFF">
+                <Border x:Name="barFill" HorizontalAlignment="Left" CornerRadius="3"
+                        Background="#FFE0A33C" Width="0"/>
+            </Border>
+        </StackPanel>
+    </Border>
+</Window>
