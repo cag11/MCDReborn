@@ -38,7 +38,7 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **Third person and first person**, in a game that has neither: mouse look turns the view, W A S D move you, and clicking attacks instead of walking you there
 * **Presets** - third person, third person far, first person - and you can save your own under a name and bring it back in one click
 - **Ride**, can summon and ride the nearest creature, your summons, even your custom mounts via imported texture
-- **Jump*, you can activate jump buy pressing the Q key when enabled which allows improved movement. 
+- **Jump**, you can activate jump buy pressing the Q key when enabled which allows improved movement. 
 - **Fly**, the default hotkey is G: makes character lift out of the level entirely, and switching it off drops them back to the floor.
 * F10 turns the camera setup on and off from inside the game
 
