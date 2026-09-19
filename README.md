@@ -31,7 +31,7 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * 36 new enchantments the game carries but never offers, under the **Other** toggle
 * Bulk Delete items on the inventory and storage chest tabs
 * **Difficulty Tab:** Change how hard the game is while it is running. How tough, how fast and how heavy the enemies are, and your own speed, roll cooldown, roll charges, gravity and attack speed
-* **Escalation**: enemies get worse the longer you stay in a level - by default a stage a minute, adding 1 to toughness and 0.2 to speed, stopping at ten times tough and three times fast. All five numbers are sliders: how long a stage lasts, what each one adds, and where each stops - wind the caps up and you get the version where the level eventually wins. A slim bar over the game says which of the nine stages you are in, how long until the next one, and what the multipliers are now. The clock restarts when you load a new level, not when you die. The overlay needs the game in borderless rather than exclusive fullscreen, which is how it runs by default
+* **Escalation Mode:** Enemies get worse the longer you stay in a level. A slim bar over the game says which of the nine stages you are in, how long until the next one, and what the multipliers are now. The clock restarts when you load a new level.
 * **Press J to throw every enemy in the level into the air**, with the enemy gravity slider deciding how long they stay there - at normal weight they reach 141 units, at a fortieth nearly 3000. The two go together: gravity does nothing to a mob standing on the floor
 * **Installed Mods Tab:** Every mod pak in one place. You can import and export multiple mods via a zip package.
 
@@ -40,9 +40,9 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **Third person and first person**, in a game that has neither: mouse look turns the view, W A S D move you, and clicking attacks instead of walking you there
 * **Presets** - third person, third person far, first person, first person shooter
 * **A crosshair** for the shooter preset, in five shapes - cross, chevron, circle, dot, brackets - eight colours and any size. 
-- **Ride**, can summon and ride the nearest creature, your summons, even your custom mounts via imported texture
-- **Jump**, you can activate jump buy pressing the Q key when enabled which allows improved movement. 
-- **Fly**, the default hotkey is G: makes character lift out of the level entirely, and switching it off drops them back to the floor. Space climbs and C drops, and forward follows wherever the camera points
+* **Ride**, can summon and ride the nearest creature, your summons, even your custom mounts via imported texture
+* **Jump**, you can activate jump buy pressing the Q key when enabled which allows improved movement. 
+* **Fly**, the default hotkey is G: makes character lift out of the level entirely, and switching it off drops them back to the floor. Space climbs and C drops, and forward follows wherever the camera points
 * F10 turns the camera setup on and off from inside the game
 
 #### Custom Builds Feature
