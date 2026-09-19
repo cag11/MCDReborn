@@ -3,38 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ShowInTaskbar="False" Topmost="True" ResizeMode="NoResize"
-        Width="160" Height="160" Focusable="False">
+        Width="240" Height="240" Focusable="False">
 
-    <!-- Drawn twice: a dark wide stroke under a bright thin one, so it stays visible against a
-         white floor and against a dark wall without being a solid block in the middle of the view. -->
-    <Canvas Width="160" Height="160">
-        <Canvas.Resources>
-            <Style TargetType="Line" x:Key="Under">
-                <Setter Property="Stroke" Value="#C0000000"/>
-                <Setter Property="StrokeThickness" Value="5"/>
-                <Setter Property="StrokeStartLineCap" Value="Round"/>
-                <Setter Property="StrokeEndLineCap" Value="Round"/>
-            </Style>
-            <Style TargetType="Line" x:Key="Over">
-                <Setter Property="Stroke" Value="#F0FFFFFF"/>
-                <Setter Property="StrokeThickness" Value="2"/>
-                <Setter Property="StrokeStartLineCap" Value="Round"/>
-                <Setter Property="StrokeEndLineCap" Value="Round"/>
-            </Style>
-        </Canvas.Resources>
-
-        <!-- A gap in the middle, so what is being aimed at is not the thing covered up. -->
-        <Line Style="{StaticResource Under}" X1="80" Y1="28" X2="80" Y2="64"/>
-        <Line Style="{StaticResource Under}" X1="80" Y1="96" X2="80" Y2="132"/>
-        <Line Style="{StaticResource Under}" X1="28" Y1="80" X2="64" Y2="80"/>
-        <Line Style="{StaticResource Under}" X1="96" Y1="80" X2="132" Y2="80"/>
-
-        <Line Style="{StaticResource Over}" X1="80" Y1="28" X2="80" Y2="64"/>
-        <Line Style="{StaticResource Over}" X1="80" Y1="96" X2="80" Y2="132"/>
-        <Line Style="{StaticResource Over}" X1="28" Y1="80" X2="64" Y2="80"/>
-        <Line Style="{StaticResource Over}" X1="96" Y1="80" X2="132" Y2="80"/>
-
-        <Ellipse Canvas.Left="77" Canvas.Top="77" Width="6" Height="6"
-                 Fill="#F0FFFFFF" Stroke="#C0000000" StrokeThickness="1.5"/>
-    </Canvas>
+    <!-- Drawn from code rather than laid out here, because the shape is a choice. -->
+    <Canvas x:Name="board" Width="240" Height="240"/>
 </Window>

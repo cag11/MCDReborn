@@ -1803,6 +1803,14 @@ The save file is not changed until you save it.</value>
     <value>Steering in the air</value>
     <comment>Slider</comment>
   </data>
+  <data name="CAMERA_CROSSHAIR" xml:space="preserve">
+    <value>Crosshair</value>
+    <comment>Caption for the crosshair style and colour</comment>
+  </data>
+  <data name="CAMERA_CROSSHAIR_SIZE" xml:space="preserve">
+    <value>Crosshair size</value>
+    <comment>Caption for the crosshair size</comment>
+  </data>
   <data name="CAMERA_JUMP_COUNT" xml:space="preserve">
     <value>Jumps before landing</value>
     <comment>Slider</comment>

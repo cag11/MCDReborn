@@ -3781,6 +3781,24 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Crosshair.
+        /// </summary>
+        public static string CAMERA_CROSSHAIR {
+            get {
+                return ResourceManager.GetString("CAMERA_CROSSHAIR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Crosshair size.
+        /// </summary>
+        public static string CAMERA_CROSSHAIR_SIZE {
+            get {
+                return ResourceManager.GetString("CAMERA_CROSSHAIR_SIZE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Jumps before landing
         /// </summary>
         public static string CAMERA_JUMP_COUNT {

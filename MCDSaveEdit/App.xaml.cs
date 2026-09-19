@@ -821,6 +821,78 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //DRAW_CROSSHAIRS=<folder> - every crosshair rendered to a picture, so how they
+            //look is something that can be looked at rather than imagined.
+            var drawThem = _startupArguments.FirstOrDefault(a => a.StartsWith("DRAW_CROSSHAIRS="));
+            if (drawThem != null)
+            {
+                var folder = drawThem.Substring("DRAW_CROSSHAIRS=".Length).Trim('"');
+                System.IO.Directory.CreateDirectory(folder);
+
+                foreach (var style in UI.CrosshairOverlay.STYLES)
+                {
+                    var overlay = new UI.CrosshairOverlay(Logic.LiveCameraLink.shared);
+                    overlay.Left = -4000;   //off screen, since it only has to be rendered
+                    overlay.Show();
+                    overlay.look(style, "Green", 1.0);
+                    overlay.UpdateLayout();
+
+                    var board = overlay.Content as System.Windows.FrameworkElement;
+                    var size = 240;
+                    var picture = new System.Windows.Media.Imaging.RenderTargetBitmap(
+                        size, size, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+
+                    //On a mid grey, because a crosshair drawn on nothing says nothing about
+                    //whether it would be visible on a floor.
+                    var visual = new System.Windows.Media.DrawingVisual();
+                    using (var paint = visual.RenderOpen())
+                    {
+                        paint.DrawRectangle(new System.Windows.Media.SolidColorBrush(
+                            System.Windows.Media.Color.FromRgb(0x6B, 0x6B, 0x66)), null,
+                            new Rect(0, 0, size, size));
+                        //At its own size. A VisualBrush stretches what it is given to fill the
+                        //rectangle by default, which makes every crosshair look like it fills the
+                        //screen and hides the one thing being checked.
+                        paint.DrawRectangle(new System.Windows.Media.VisualBrush(board) {
+                            Stretch = System.Windows.Media.Stretch.None,
+                            AlignmentX = System.Windows.Media.AlignmentX.Center,
+                            AlignmentY = System.Windows.Media.AlignmentY.Center,
+                        }, null, new Rect(0, 0, size, size));
+                    }
+                    picture.Render(visual);
+
+                    var file = System.IO.Path.Combine(folder, style + ".png");
+                    var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                    encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(picture));
+                    using (var stream = System.IO.File.Create(file)) { encoder.Save(stream); }
+
+                    overlay.Close();
+                    Console.WriteLine($"[crosshair] {file}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //DUMP_TEXTURE=<asset path>;<file> - the artwork the game would load for an asset,
+            //saved as a picture. Which is how "the texture is wrong" and "something is tinting
+            //it" get told apart without guessing.
+            var dumpTexture = _startupArguments.FirstOrDefault(a => a.StartsWith("DUMP_TEXTURE="));
+            if (dumpTexture != null)
+            {
+                var bits = dumpTexture.Substring("DUMP_TEXTURE=".Length).Trim('"').Split(';');
+                var picture = Services.ImageResolver.instance.imageSource(bits[0]);
+                if (picture == null) { Console.WriteLine("[texture] could not decode it"); this.Shutdown(); return; }
+
+                var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(picture));
+                using (var stream = System.IO.File.Create(bits[1])) { encoder.Save(stream); }
+
+                Console.WriteLine($"[texture] {picture.PixelWidth}x{picture.PixelHeight} -> {bits[1]}");
+                this.Shutdown();
+                return;
+            }
+
             //PROBE_GLB=<file> - what an imported model brings with it, and in particular
             //whether it brings a colour. A model with none wears whatever the weapon it replaces
             //was painted with, which looks like a fault in the importer and is not one.

@@ -129,6 +129,24 @@
                                 TickFrequency="0.1" IsSnapToTickEnabled="True"
                                 VerticalAlignment="Center"/>
                     </DockPanel>
+
+                    <!-- Only worth showing while something is drawing one. -->
+                    <DockPanel x:Name="crosshairRow" Margin="0,8,0,0" Visibility="Collapsed">
+                        <TextBlock x:Name="crosshairLabel" DockPanel.Dock="Left" Width="120"
+                                   VerticalAlignment="Center"/>
+                        <ComboBox x:Name="crosshairColour" DockPanel.Dock="Right" Width="96"
+                                  Margin="6,0,0,0" SelectionChanged="crosshair_Changed"/>
+                        <ComboBox x:Name="crosshairStyle" SelectionChanged="crosshair_Changed"/>
+                    </DockPanel>
+                    <DockPanel x:Name="crosshairSizeRow" Margin="0,4,0,0" Visibility="Collapsed">
+                        <TextBlock x:Name="crosshairSizeLabel" DockPanel.Dock="Left" Width="120"
+                                   VerticalAlignment="Center"/>
+                        <TextBlock x:Name="crosshairSizeValue" DockPanel.Dock="Right" Width="56"
+                                   TextAlignment="Right" VerticalAlignment="Center"/>
+                        <Slider x:Name="crosshairSize" Minimum="0.4" Maximum="2.5" Value="1"
+                                TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                VerticalAlignment="Center" ValueChanged="crosshairSize_Changed"/>
+                    </DockPanel>
                 </StackPanel>
             </Border>
 

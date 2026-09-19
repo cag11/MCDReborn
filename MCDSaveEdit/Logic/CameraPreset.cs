@@ -98,6 +98,15 @@ namespace MCDSaveEdit.Logic
         /// </summary>
         public bool Crosshair { get; set; }
 
+        /// <summary>Which crosshair is drawn. See CrosshairOverlay for what each one looks like.</summary>
+        public string CrosshairStyle { get; set; } = "Doom";
+
+        /// <summary>Its colour, as one of the names the overlay knows.</summary>
+        public string CrosshairColour { get; set; } = "Green";
+
+        /// <summary>How big, as a multiple of the size it is drawn at.</summary>
+        public float CrosshairSize { get; set; } = 1f;
+
         public CameraPreset copy() => (CameraPreset)MemberwiseClone();
 
         /// <summary>

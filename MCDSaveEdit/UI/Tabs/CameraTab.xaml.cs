@@ -101,6 +101,7 @@ namespace MCDSaveEdit.UI
             Loaded += (s, e) => keepUntilTheWindowCloses();
 
             buildRows();
+            fillCrosshairChoices();
             loadPresets();
             updateUI();
         }
@@ -113,17 +114,77 @@ namespace MCDSaveEdit.UI
 
         private void showCrosshair(bool wanted)
         {
+            crosshairRow.Visibility = wanted ? Visibility.Visible : Visibility.Collapsed;
+            crosshairSizeRow.Visibility = crosshairRow.Visibility;
+
             if (wanted)
             {
                 _crosshair ??= new CrosshairOverlay(_live);
                 _crosshair.Closed += (_, _) => _crosshair = null;
                 _crosshair.Show();
+                _crosshair.look(_current.CrosshairStyle, _current.CrosshairColour, _current.CrosshairSize);
             }
             else
             {
                 _crosshair?.Close();
                 _crosshair = null;
             }
+        }
+
+        private void fillCrosshairChoices()
+        {
+            foreach (var style in CrosshairOverlay.STYLES)
+            {
+                crosshairStyle.Items.Add(new ComboBoxItem { Content = style, Tag = style });
+            }
+            foreach (var (name, colour) in CrosshairOverlay.COLOURS)
+            {
+                //Shown as the colour it is, since the name of a colour is a poor picture of one.
+                crosshairColour.Items.Add(new ComboBoxItem {
+                    Content = name,
+                    Tag = name,
+                    Foreground = new System.Windows.Media.SolidColorBrush(colour),
+                });
+            }
+
+            showCrosshairChoice();
+        }
+
+        private void showCrosshairChoice()
+        {
+            _filling = true;
+            pick(crosshairStyle, _current.CrosshairStyle);
+            pick(crosshairColour, _current.CrosshairColour);
+            crosshairSize.Value = _current.CrosshairSize;
+            crosshairSizeValue.Text = _current.CrosshairSize.ToString("0.##") + "x";
+            _filling = false;
+        }
+
+        private static void pick(ComboBox box, string wanted)
+        {
+            foreach (var item in box.Items)
+            {
+                if ((item as ComboBoxItem)?.Tag as string == wanted) { box.SelectedItem = item; return; }
+            }
+            if (box.Items.Count > 0) { box.SelectedIndex = 0; }
+        }
+
+        private void crosshair_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            _current.CrosshairStyle = (crosshairStyle.SelectedItem as ComboBoxItem)?.Tag as string ?? "Doom";
+            _current.CrosshairColour = (crosshairColour.SelectedItem as ComboBoxItem)?.Tag as string ?? "Green";
+            _crosshair?.look(_current.CrosshairStyle, _current.CrosshairColour, _current.CrosshairSize);
+        }
+
+        private void crosshairSize_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_filling) { return; }
+
+            _current.CrosshairSize = (float)crosshairSize.Value;
+            crosshairSizeValue.Text = _current.CrosshairSize.ToString("0.##") + "x";
+            _crosshair?.look(_current.CrosshairStyle, _current.CrosshairColour, _current.CrosshairSize);
         }
 
         private bool _hookedClose;
@@ -165,6 +226,8 @@ namespace MCDSaveEdit.UI
             jumpHeightLabel.Text = R.CAMERA_JUMP_HEIGHT;
             airControlLabel.Text = R.CAMERA_AIR_CONTROL;
             jumpCountCaption.Text = R.CAMERA_JUMP_COUNT;
+            crosshairLabel.Text = R.CAMERA_CROSSHAIR;
+            crosshairSizeLabel.Text = R.CAMERA_CROSSHAIR_SIZE;
         }
 
         /// <summary>
