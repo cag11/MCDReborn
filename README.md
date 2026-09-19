@@ -31,16 +31,16 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * 36 new enchantments the game carries but never offers, under the **Other** toggle
 * Bulk Delete items on the inventory and storage chest tabs
 * **Difficulty Tab:** Change how hard the game is while it is running. How tough and how fast the enemies are, and your own speed, roll cooldown, roll charges, gravity and attack speed
-* **Installed Mods Tab:** * **Every mod pak in one place**. You can import and export multiple mods via a zip package.
+* **Installed Mods Tab:** Every mod pak in one place. You can import and export multiple mods via a zip package.
 
 #### Camera Feature
 * **Change the camera while the game is running** - distance, angle, field of view, where it looks, shoulder offset and swing smoothing, all applied as you drag the slider. No mod pak, nothing written to disk, and quitting the game puts everything back
 * **Third person and first person**, in a game that has neither: mouse look turns the view, W A S D move you, and clicking attacks instead of walking you there
 * **Presets** - third person, third person far, first person - and you can save your own under a name and bring it back in one click
+- **Ride**, can summon and ride the nearest creature, your summons, even your custom mounts via imported texture
+- **Jump*, you can activate jump buy pressing the Q key when enabled which allows improved movement. 
+- **Fly**, the default hotkey is G: makes character lift out of the level entirely, and switching it off drops them back to the floor.
 * F10 turns the camera setup on and off from inside the game
-* **Ride**, which is a mount without a mount: nothing can be spawned from outside a process, so the nearest creature is stopped where it stands and carried under you instead. Press R once and it keeps looking - use a summoning artifact afterwards and it climbs onto the sheep, wolf or llama as soon as that arrives. Speed and how high you sit are adjustable, the rider's legs can be frozen, and the creature is put back under you five hundred times a second, with its gravity taken away for as long as you are on it, so it neither steps along behind you nor sinks between one correction and the next
-* **Jump** on Q, which the game has no button for at all - not the character jumping but a launch written straight into its velocity, which is why it works when asking the character politely does not. Height, steering in mid-air and the number of jumps before landing are all adjustable
-* **Fly on G**, off again on G: the character lifts out of the level entirely, and switching it off drops them back to the floor with gravity and their own flight settings put back exactly as they were found
 
 #### Custom Builds Feature
 * **Open in MCD Builder**: send the equipped loadout straight to [mcdbuilder.vercel.app](https://mcdbuilder.vercel.app/)
@@ -62,9 +62,8 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 * A live 3D preview **painted with the real texture**, which you can drag to turn and scroll to zoom, with the **original ghosted behind your model**. That outline is where the game already knows how to hold the weapon, so keeping the handle end of your model on the handle end of the outline is all there is to aligning it
 
 #### Mob Import Feature
-* **Import your own model onto a creature**: export a `.glb` from Blender the same way, pick a sheep, a pig, a wolf or any of 122 other meshes, and the creature comes out wearing it. A skateboard, a mount, a truck - anything that should move under its own power, because a creature is the one thing the engine already animates
-* Grouped into **creatures and props**, with a search box. Props are the game's animated scenery - gates, doors, windmills, banners
-* **Summoned creatures come out right too.** An artifact does not summon the animal that wanders the level - it summons a variant with its own skin and a coloured glow, which is why an imported model used to arrive pink. Every skin a creature has is painted, and the game's colouring is turned off, so the model you brought is the model you get
+* **Import your own model onto a creature**: export a `.glb` from Blender the same way, pick a sheep, a pig, a wolf or any of 122 other meshes, and the creature comes out wearing it. A skateboard, a mount, a truck - anything is possible as long as you have 3D design for it.
+* **Summoned creatures come out right too.** An artifact summons a variant with its own custom skin, you can change skin to achieve custom looking summons. 
 
 #### DISCLAIMER: Please keep backups of your save files! This app does not guarantee your save file to be playable after editing!
 
