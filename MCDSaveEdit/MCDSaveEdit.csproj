@@ -51,6 +51,11 @@
 
   <ItemGroup>
     <!-- WPF compiles these as resources; .png is not globbed by default. -->
+    <!-- The blueprint loader, cooked once in Unreal and carried inside the exe. It is two
+         assets and twenty kilobytes, and embedding them is what makes the loader installable by
+         anybody rather than only by somebody with UE 4.22 and an afternoon. -->
+    <EmbeddedResource Include="Logic\LoaderAssets\*.uasset" />
+    <EmbeddedResource Include="Logic\LoaderAssets\*.uexp" />
     <Resource Include="Images\**\*.png" />
     <Resource Include="Properties\icon.ico" />
   </ItemGroup>
@@ -71,6 +76,8 @@
 
   <!-- ===================== packages ===================== -->
   <ItemGroup>
+    <PackageReference Include="NLayer" Version="3.0.0" />
+    <PackageReference Include="OggVorbisEncoder" Version="1.2.2" />
     <PackageReference Include="SharpCompress" Version="0.50.4" />
     <PackageReference Include="SkiaSharp" Version="2.88.9" />
     <PackageReference Include="System.Reactive" Version="6.0.1" />

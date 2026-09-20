@@ -1,0 +1,66 @@
+﻿<UserControl x:Class="MCDSaveEdit.UI.MusicTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:local="clr-namespace:MCDSaveEdit.UI"
+             mc:Ignorable="d"
+             d:DesignHeight="450"
+             d:DesignWidth="900">
+
+    <!-- One column, and every row that is not the list has a fixed height.
+         The two column version moved things about as you clicked: the chosen track's path was a
+         wrapping TextBlock, so a longer name made its box taller and pushed the buttons and the
+         status line down with it. Single line and trimmed, so nothing below ever shifts. -->
+    <DockPanel Margin="10,6,10,10">
+
+        <Label x:Name="tracksLabel" DockPanel.Dock="Top" Content="*Game music*" Padding="0,0,0,4"/>
+
+        <TextBlock x:Name="tracksHint" DockPanel.Dock="Top" Foreground="Gray" TextWrapping="Wrap"
+                   FontSize="11" Margin="2,0,2,8"/>
+
+        <Grid DockPanel.Dock="Top" Margin="2,0,2,8">
+            <TextBox x:Name="searchBox" Height="26" VerticalContentAlignment="Center"
+                     TextChanged="searchBox_TextChanged"/>
+            <TextBlock x:Name="searchHint" Text="Search…" Margin="9,0,0,0" Foreground="Gray"
+                       IsHitTestVisible="False" VerticalAlignment="Center"/>
+        </Grid>
+
+        <!-- Everything below the list is docked to the bottom, so the list takes whatever is left
+             and the controls never move. -->
+        <TextBlock x:Name="statusLabel" DockPanel.Dock="Bottom" TextWrapping="NoWrap"
+                   TextTrimming="CharacterEllipsis" Margin="2,8,2,0" FontSize="11" Height="18"/>
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="2,8,2,0">
+            <Button x:Name="pickButton" Content="*Choose audio…*" Padding="10,5" Margin="0,0,6,0"
+                    Click="pickButton_Click"/>
+            <Button x:Name="installButton" Content="*Install*" Padding="10,5" Margin="0,0,6,0"
+                    Click="installButton_Click"/>
+            <Button x:Name="removeButton" Content="*Remove*" Padding="10,5"
+                    Click="removeButton_Click"/>
+
+            <TextBlock x:Name="chosenFileLabel" VerticalAlignment="Center" Margin="12,0,0,0"
+                       FontSize="11" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
+        </StackPanel>
+
+        <Border DockPanel.Dock="Bottom" Margin="2,8,2,0" Padding="8,5"
+                Background="#11FFFFFF" CornerRadius="3" Height="44">
+            <StackPanel>
+                <TextBlock x:Name="chosenTrackLabel" FontWeight="SemiBold" TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis"/>
+                <TextBlock x:Name="chosenTrackDetail" Foreground="Gray" FontSize="11"
+                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- What is already replaced. Kept short: it is a reminder, not a workspace. -->
+        <ScrollViewer DockPanel.Dock="Bottom" MaxHeight="80" VerticalScrollBarVisibility="Auto"
+                      Margin="2,8,2,0">
+            <StackPanel x:Name="installedStack"/>
+        </ScrollViewer>
+
+        <ListBox x:Name="trackList" BorderThickness="0" Background="Transparent"
+                 SelectionChanged="trackList_SelectionChanged"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+    </DockPanel>
+</UserControl>

@@ -187,6 +187,31 @@ namespace PakReader.Pak
             return false;
         }
 
+        /// <summary>
+        /// Every entry, with the record that describes it.
+        ///
+        /// GetEnumerator yields paths and nothing else, which is all most callers want. This yields
+        /// the FPakEntry beside the path, so a caller can ask how big something is without reading
+        /// and decompressing it - the index already knows, and for a catalogue of a thousand sound
+        /// files that is the difference between instant and a minute of decompression.
+        ///
+        /// Note the shape of what comes back. Paks.Merge folds a .uexp and a .ubulk into their
+        /// parent .uasset rather than listing them separately, so the key has no extension and the
+        /// audio or texture payload is on entry.Uexp / entry.Ubulk.
+        /// </summary>
+        public IEnumerable<KeyValuePair<string, FPakEntry>> AllEntries()
+        {
+            foreach (var pak in PakFiles)
+            {
+                if (!pak.Initialized)
+                    continue;
+                foreach (var file in pak)
+                {
+                    yield return new KeyValuePair<string, FPakEntry>(pak.MountPoint + file.Key, file.Value);
+                }
+            }
+        }
+
         public IEnumerator<string> GetEnumerator()
         {
             foreach(var pak in PakFiles)

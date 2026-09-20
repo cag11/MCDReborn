@@ -85,6 +85,10 @@
                 <local:MeshWorkshopTab x:Name="mobSkinsTab" Catalogue="Mobs"/>
             </TabItem>
 
+            <TabItem x:Name="musicTabItem" Header="*Music*" Selector.Selected="OnTabSelected">
+                <local:MusicTab x:Name="musicTab"/>
+            </TabItem>
+
             <TabItem x:Name="cameraTabItem" Header="*Camera*" Selector.Selected="OnTabSelected">
                 <local:CameraTab x:Name="cameraTab"/>
             </TabItem>

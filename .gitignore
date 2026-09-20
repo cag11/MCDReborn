@@ -278,3 +278,38 @@ research/
 dist/
 publish/
 publish-*/
+
+# Built mod paks. The app writes these into the game's own Paks folder rather than here, but they
+# turn up in the repo the moment somebody exports a zip or stages one to test - and every one is
+# rebuildable from the sources beside it, so none of them is worth carrying.
+*.pak
+
+# Unreal working directories, in case a project is ever kept under Tools. None of it is source:
+# Saved holds the cooked output, Intermediate and DerivedDataCache are caches, Binaries is built.
+# The cooked assets that matter are checked in deliberately, as their own files - see below.
+Tools/**/Saved/
+Tools/**/Intermediate/
+Tools/**/DerivedDataCache/
+Tools/**/Binaries/
+Tools
+
+# The loader's cooked blueprints are SOURCE, and must stay tracked.
+#
+# They look exactly like build output - four binary Unreal files - and the obvious tidy-up is to
+# add *.uasset to this file. That silently breaks the build: MCDSaveEdit.csproj embeds them
+#
+#     <EmbeddedResource Include="Logic\LoaderAssets\*.uasset" />
+#     <EmbeddedResource Include="Logic\LoaderAssets\*.uexp" />
+#
+# and the app installs the loader by reading them back out of itself. Without them the project
+# still compiles and then throws "This build does not carry BP_Tent.uasset" at the one moment
+# somebody presses Install loader.
+#
+# They cannot be regenerated from this repository either. They are cooked in Unreal 4.22 with the
+# UnrealEnginePython plugin, from the scripts in Tools/loader, and the editor is not part of this
+# project. These four files are the only copy.
+#
+# The exceptions are written out now so that adding a blanket rule later cannot take them.
+!MCDSaveEdit/Logic/LoaderAssets/
+!MCDSaveEdit/Logic/LoaderAssets/*.uasset
+!MCDSaveEdit/Logic/LoaderAssets/*.uexp

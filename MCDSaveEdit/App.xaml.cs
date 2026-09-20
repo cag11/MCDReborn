@@ -915,6 +915,889 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_COPY=<source>;<target folder>;<wanted name> - copies one asset to another
+            //path and reads the result back, which is the only way to know a rename took.
+            var probeCopy = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_COPY="));
+            if (probeCopy != null)
+            {
+                var bits = probeCopy.Substring("PROBE_COPY=".Length).Trim('"').Split(';');
+                var name = Logic.AssetCopy.nameFor(bits[0], bits[1], bits.Length > 2 ? bits[2] : "copy");
+                Console.WriteLine($"[copy] {bits[0]}");
+                Console.WriteLine($"       would become {name ?? "(no name fits)"}");
+
+                if (name == null) { this.Shutdown(); return; }
+
+                //Back to how the paks spell it, which is what the writer wants.
+                var target = "/Dungeons/Content/" + name.Substring("/Game/".Length);
+                var entries = Logic.AssetCopy.copy(bits[0], target).ToList();
+                Console.WriteLine($"       {entries.Count} file(s): {string.Join(", ", entries.Select(e => System.IO.Path.GetFileName(e.Path)))}");
+
+                foreach (var entry in entries)
+                {
+                    if (!entry.Path.EndsWith(".uasset", StringComparison.OrdinalIgnoreCase)) { continue; }
+
+                    var names = Logic.CookedProperties.readNamesOf(entry.Data);
+                    Console.WriteLine($"       the copy calls itself:");
+                    foreach (var known in names)
+                    {
+                        if (known.StartsWith("/Game/", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Console.WriteLine($"         \"{known}\"");
+                        }
+                    }
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_SCRIPT[=<how many assets>] - what /Script/Dungeons actually exposes.
+            //
+            //The stub module makes a cast compile by being NAMED Dungeons; what it cannot do is say
+            //which names are worth declaring. A cooked package writes every native class and
+            //function it touches into its import table, so the game's own blueprints are a list of
+            //its C++ surface - the only one readable without a decompiler.
+            var probeScript = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_SCRIPT"));
+            if (probeScript != null)
+            {
+                var many = 4000;
+                var at = probeScript.IndexOf('=');
+                if (at > 0) { int.TryParse(probeScript.Substring(at + 1), out many); }
+
+                var index = Logic.CustomSkins.index;
+                if (index == null)
+                {
+                    Console.WriteLine("[script] the game's paks are not loaded");
+                    this.Shutdown();
+                    return;
+                }
+
+                //class name -> function name -> how many assets call it. The count is the useful
+                //part: a function one asset touches may be incidental, one that four hundred touch
+                //is the game's spine.
+                var byClass = new Dictionary<string, Dictionary<string, int>>(StringComparer.Ordinal);
+                var classes = new Dictionary<string, int>(StringComparer.Ordinal);
+                var structs = new Dictionary<string, int>(StringComparer.Ordinal);
+                var enums = new Dictionary<string, int>(StringComparer.Ordinal);
+
+                void tally(Dictionary<string, int> into, string key)
+                {
+                    into.TryGetValue(key, out var was);
+                    into[key] = was + 1;
+                }
+
+                var looked = 0;
+                var read = 0;
+                var withDungeons = 0;
+                var clock = System.Diagnostics.Stopwatch.StartNew();
+
+                foreach (var entry in index.AllEntries())
+                {
+                    if (looked >= many) { break; }
+                    looked++;
+
+                    byte[] uasset;
+                    try
+                    {
+                        var package = index.extractPackage("/" + entry.Key
+                            .Replace(System.IO.Path.DirectorySeparatorChar, '/').TrimStart('/'));
+                        if (package == null) { continue; }
+                        uasset = package.Value.UAsset.ToArray();
+                    }
+                    catch (Exception)
+                    {
+                        continue;
+                    }
+
+                    read++;
+
+                    var imports = Logic.CookedPackage.readImports(uasset);
+                    if (imports.Count == 0) { continue; }
+
+                    //An import's outer chain says which module a name belongs to: a function's
+                    //outer is its class, and that class's outer is the package. Following it is the
+                    //only way to tell Dungeons.GetHealth from Engine.GetHealth.
+                    Logic.CookedPackage.Import? outerOf(Logic.CookedPackage.Import one)
+                    {
+                        var to = one.Outer;
+                        if (to >= 0) { return null; }
+                        var i = -to - 1;
+                        return i < imports.Count ? imports[i] : null;
+                    }
+
+                    bool inDungeons(Logic.CookedPackage.Import? one)
+                        => one != null && one.ObjectName == "/Script/Dungeons";
+
+                    var any = false;
+                    foreach (var one in imports)
+                    {
+                        var outer = outerOf(one);
+
+                        if (one.ClassName == "Function")
+                        {
+                            //The owner, and the package the owner is in.
+                            if (outer == null || !inDungeons(outerOf(outer))) { continue; }
+
+                            if (!byClass.TryGetValue(outer.ObjectName, out var functions))
+                            {
+                                functions = new Dictionary<string, int>(StringComparer.Ordinal);
+                                byClass[outer.ObjectName] = functions;
+                            }
+                            tally(functions, one.ObjectName);
+                            any = true;
+                            continue;
+                        }
+
+                        if (!inDungeons(outer)) { continue; }
+
+                        if (one.ClassName == "Class") { tally(classes, one.ObjectName); any = true; }
+                        else if (one.ClassName == "ScriptStruct") { tally(structs, one.ObjectName); any = true; }
+                        else if (one.ClassName == "Enum") { tally(enums, one.ObjectName); any = true; }
+                    }
+
+                    if (any) { withDungeons++; }
+                }
+
+                Console.WriteLine($"[script] looked at {looked:N0} entries, read {read:N0}, "
+                    + $"{withDungeons:N0} refer to /Script/Dungeons ({clock.Elapsed.TotalSeconds:F0}s)");
+
+                void top(string what, Dictionary<string, int> of, int howMany)
+                {
+                    Console.WriteLine($"[script] --- {what} ({of.Count:N0}) ---");
+                    foreach (var one in of.OrderByDescending(x => x.Value).Take(howMany))
+                    {
+                        Console.WriteLine($"[script]   {one.Value,5}  {one.Key}");
+                    }
+                }
+
+                var all = _startupArguments.Any(a => a == "ALL");
+                top("classes", classes, all ? int.MaxValue : 60);
+                top("structs", structs, all ? int.MaxValue : 30);
+                top("enums", enums, all ? int.MaxValue : 30);
+
+                Console.WriteLine($"[script] --- functions, by class ({byClass.Count:N0} classes, "
+                    + $"{byClass.Values.Sum(x => x.Count):N0} distinct functions) ---");
+                foreach (var owner in byClass.OrderByDescending(x => x.Value.Values.Sum())
+                    .Take(all ? int.MaxValue : 40))
+                {
+                    Console.WriteLine($"[script]   {owner.Key}");
+                    foreach (var one in owner.Value.OrderByDescending(x => x.Value)
+                        .Take(all ? int.MaxValue : 40))
+                    {
+                        Console.WriteLine($"[script]       {one.Value,5}  {one.Key}");
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_MUSIC_SET=<engine path>;<audio file> - replaces one track for real, and says
+            //what it produced. The chain is long enough that a failure anywhere in it looks the
+            //same from the tab, so each stage reports its own numbers.
+            var probeMusicSet = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_MUSIC_SET="));
+            if (probeMusicSet != null)
+            {
+                var bits = probeMusicSet.Substring("PROBE_MUSIC_SET=".Length).Trim('"').Split(';');
+                try
+                {
+                    var track = Logic.GameMusic.all()
+                        .FirstOrDefault(one => one.EnginePath.Equals(bits[0], StringComparison.OrdinalIgnoreCase));
+
+                    if (track == null)
+                    {
+                        Console.WriteLine($"[set] no track called {bits[0]}");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    Console.WriteLine($"[set] {track.Label}, {track.Bytes / 1024:N0} KB");
+                    Console.WriteLine($"[set] engine: {track.EnginePath}");
+                    Console.WriteLine($"[set] pak:    {track.PakPath}");
+
+                    var audio = Logic.MusicEncode.read(bits[1]);
+                    Console.WriteLine($"[set] encoded {System.IO.Path.GetFileName(bits[1])}: "
+                        + $"{audio.Ogg.Length:N0} bytes of Ogg, {audio.SampleRate} Hz, "
+                        + $"{audio.Channels} ch, {audio.Samples:N0} samples, {audio.Duration:F1}s");
+
+                    var mod = Logic.MusicMod.install(track, audio);
+                    Console.WriteLine($"[set] {System.IO.Path.GetFileName(mod.Path)}, {mod.Size:N0} bytes");
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[set] refused: {problem.Message}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_MUSIC[=<how many>] - the game's music, biggest first. Which is the whole
+            //question the Music tab turns on: 1,658 assets are called bgm_ and most of them are
+            //stings rather than tracks, and nothing but size tells them apart.
+            var probeMusic = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_MUSIC"));
+            if (probeMusic != null)
+            {
+                var many = 20;
+                var at = probeMusic.IndexOf('=');
+                if (at > 0) { int.TryParse(probeMusic.Substring(at + 1), out many); }
+
+                Console.WriteLine($"[music] paks folder = {Logic.CustomSkins.paksFolder ?? "<null>"}");
+
+                var tracks = Logic.GameMusic.all();
+                Console.WriteLine($"[music] {tracks.Count} music assets found");
+                foreach (var note in Logic.GameMusic.Notes.Take(8))
+                {
+                    Console.WriteLine($"[music]   {note}");
+                }
+
+                //Where the rest of a streamed track lives, if it is streamed. The cluster of
+                //entries at exactly 256 KB is a chunk boundary rather than a coincidence.
+                var index = Logic.CustomSkins.index;
+                var bulky = 0;
+                if (index != null)
+                {
+                    foreach (var entry in index.AllEntries())
+                    {
+                        var p = entry.Key.Replace(System.IO.Path.DirectorySeparatorChar, '/');
+                        if (p.IndexOf("02_audio_soundWave", StringComparison.OrdinalIgnoreCase) < 0) { continue; }
+                        if (!System.IO.Path.GetFileName(p).StartsWith("bgm", StringComparison.OrdinalIgnoreCase)) { continue; }
+
+                        if (entry.Value.Ubulk != null)
+                        {
+                            if (bulky < 4)
+                            {
+                                Console.WriteLine($"[music]   ubulk: {entry.Value.Ubulk.UncompressedSize / 1024:N0} KB for {System.IO.Path.GetFileName(p)}");
+                            }
+                            bulky++;
+                        }
+                    }
+                }
+                Console.WriteLine($"[music] {bulky} of them carry a .ubulk");
+
+                foreach (var track in tracks.Take(many))
+                {
+                    Console.WriteLine($"[music]   {track.Bytes / 1024,7:N0} KB  ~{track.Seconds,4}s  {track.Label}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_EXTRACT=<asset path>[;<folder>] - writes one of the game's own cooked assets
+            //out to disk, unchanged.
+            //
+            //Which is the missing half of reading this game. PROBE_ASSETS says what exists and
+            //PROBE_PROPS says what an asset stores - but PROBE_PROPS reads from disk, and
+            //everything interesting is inside a 1.2 GB pak. So anything of the game's own could be
+            //listed and never opened, which is how "what is actually inside UMG_IngameMenu" stayed
+            //unanswered while being the one thing worth knowing.
+            //
+            //Read-only in every sense: it takes a copy and changes nothing in the game folder.
+            var probeExtract = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_EXTRACT="));
+            if (probeExtract != null)
+            {
+                var bits = probeExtract.Substring("PROBE_EXTRACT=".Length).Trim('"').Split(';');
+                var where = bits.Length > 1 ? bits[1] : System.IO.Path.Combine(
+                    System.IO.Path.GetTempPath(), "mcdreborn-extract");
+
+                var read = Logic.CustomSkins.index?.extractPackage(bits[0]);
+                if (read == null)
+                {
+                    Console.WriteLine($"[extract] could not read {bits[0]}");
+                    this.Shutdown();
+                    return;
+                }
+
+                System.IO.Directory.CreateDirectory(where);
+                var stem = System.IO.Path.Combine(where, System.IO.Path.GetFileName(bits[0]));
+
+                var uasset = read.Value.UAsset.ToArray();
+                var uexp = read.Value.UExp.ToArray();
+                System.IO.File.WriteAllBytes(stem + ".uasset", uasset);
+                System.IO.File.WriteAllBytes(stem + ".uexp", uexp);
+
+                Console.WriteLine($"[extract] {bits[0]}");
+                Console.WriteLine($"[extract]   {stem}.uasset  {uasset.Length:N0} bytes");
+                Console.WriteLine($"[extract]   {stem}.uexp    {uexp.Length:N0} bytes");
+                //Spelled the way PROBE_PROPS wants it, so the next command can be pasted rather
+                //than retyped with the slashes turned round.
+                var asProbe = stem.Replace(System.IO.Path.DirectorySeparatorChar, '/');
+                Console.WriteLine($"[extract] now readable with PROBE_PROPS={asProbe}");
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_PAYLOAD=<asset path>;<folder>;<trigger>;<name> - takes one of the game's
+            //own assets, writes it out as a cooked file the way an editor would, installs it as a
+            //payload, then reads back what landed and removes it again. Which exercises the whole
+            //chain without anybody having to cook anything first.
+            var probePayload = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_PAYLOAD="));
+            if (probePayload != null)
+            {
+                var bits = probePayload.Substring("PROBE_PAYLOAD=".Length).Trim('"').Split(';');
+                var read = Logic.CustomSkins.index?.extractPackage(bits[0]);
+                if (read == null) { Console.WriteLine("[payload] could not read the source"); this.Shutdown(); return; }
+
+                System.IO.Directory.CreateDirectory(bits[1]);
+                var stem = System.IO.Path.Combine(bits[1], System.IO.Path.GetFileName(bits[0]));
+                System.IO.File.WriteAllBytes(stem + ".uasset", read.Value.UAsset.ToArray());
+                System.IO.File.WriteAllBytes(stem + ".uexp", read.Value.UExp.ToArray());
+                Console.WriteLine($"[payload] pretending {stem}.uasset came out of an editor");
+
+                try
+                {
+                    var mod = Logic.Payloads.install(bits[2], stem + ".uasset", bits[3]);
+                    Console.WriteLine($"[payload] installed {System.IO.Path.GetFileName(mod.Path)}");
+
+                    foreach (var one in Logic.Payloads.installed())
+                    {
+                        Console.WriteLine($"[payload]   listed as trigger \"{one.Trigger}\", name \"{one.Name}\"");
+                    }
+
+                    //What actually went in, read out of the pak that was written.
+                    foreach (var line in System.IO.File.ReadAllBytes(mod.Path) is byte[] raw
+                        ? new[] { System.Text.Encoding.ASCII.GetString(raw) } : new string[0])
+                    {
+                        var at = line.IndexOf("Dungeons/Content/MCDReborn", StringComparison.Ordinal);
+                        while (at >= 0)
+                        {
+                            var end = at;
+                            while (end < line.Length && (char.IsLetterOrDigit(line[end]) || "/._-".IndexOf(line[end]) >= 0)) { end++; }
+                            Console.WriteLine($"[payload]   holds {line.Substring(at, end - at)}");
+                            at = line.IndexOf("Dungeons/Content/MCDReborn", end, StringComparison.Ordinal);
+                        }
+                    }
+
+                    foreach (var one in Logic.Payloads.installed()) { Logic.Payloads.remove(one); }
+                    Console.WriteLine($"[payload] removed again, {Logic.Payloads.installed().Count} left");
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[payload] refused: {problem.Message}");
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_TREE=<folder>;<trigger>;<name> - what installing a whole cooked folder would
+            //put in a pak, without writing one. Points at somebody else's unpacked mod for
+            //preference: a real content mod is the only honest test of this, because the shape
+            //that matters - a small level naming blueprints that live in a tree elsewhere - is
+            //not one anybody produces by accident.
+            var probeTree = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_TREE="));
+            if (probeTree != null)
+            {
+                var bits = probeTree.Substring("PROBE_TREE=".Length).Trim('"').Split(';');
+                try
+                {
+                    var would = Logic.Payloads.preview(
+                        bits.Length > 1 ? bits[1] : "Ingame",
+                        bits[0],
+                        bits.Length > 2 ? bits[2] : "probe");
+
+                    Console.WriteLine($"[tree] {would.Count} files would go in");
+                    foreach (var left in Logic.Payloads.Skipped)
+                    {
+                        Console.WriteLine($"[tree]   LEFT OUT {left}");
+                    }
+
+                    //Levels first and by themselves, because which level ends up where is the one
+                    //decision this makes and the rest is carrying.
+                    foreach (var path in would.Where(p => p.EndsWith(".umap", StringComparison.Ordinal)))
+                    {
+                        Console.WriteLine($"[tree]   LEVEL {path}");
+                    }
+
+                    foreach (var folder in would
+                        .Where(p => !p.EndsWith(".umap", StringComparison.Ordinal))
+                        .Select(p => p.Substring(0, p.LastIndexOf('/')))
+                        .GroupBy(p => p)
+                        .OrderByDescending(g => g.Count()))
+                    {
+                        Console.WriteLine($"[tree]   {folder.Count(),4} in {folder.Key}");
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[tree] refused: {problem.Message}");
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_LOADER=<folder> - the loader install, end to end, without an editor.
+            //
+            //The two blueprints are authored in Unreal and cannot be written from here, but
+            //everything either side of them can be checked: that the anchor is recognised by the
+            //path it records for itself, that a missing half is refused with a sentence rather
+            //than a stack, and that what lands can be found and removed again.
+            //
+            //The stand-in for the widget is the game's own BP_SoundCue, renamed. It works because
+            //its path is exactly as long as the widget's - thirty five characters - so the rename
+            //is bytes over bytes. It is not a loader and would do nothing in game; what is being
+            //tested here is the installing, not the loading.
+            var probeLoader = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_LOADER="));
+            if (probeLoader != null)
+            {
+                var folder = probeLoader.Substring("PROBE_LOADER=".Length).Trim('"');
+                System.IO.Directory.CreateDirectory(folder);
+
+                void lay(string from, string? renameTo)
+                {
+                    var read = Logic.CustomSkins.index?.extractPackage(from);
+                    if (read == null) { Console.WriteLine($"[loader] could not read {from}"); return; }
+
+                    var uasset = read.Value.UAsset.ToArray();
+                    if (renameTo != null)
+                    {
+                        var was = Logic.AssetCopy.selfNameIn(uasset, System.IO.Path.GetFileName(from));
+                        if (was == null || !Logic.AssetCopy.rename(uasset, was, renameTo))
+                        {
+                            Console.WriteLine($"[loader] could not rename {from}");
+                            return;
+                        }
+                    }
+
+                    var stem = System.IO.Path.Combine(folder,
+                        renameTo != null
+                            ? renameTo.Substring(renameTo.LastIndexOf('/') + 1)
+                            : System.IO.Path.GetFileName(from));
+                    System.IO.File.WriteAllBytes(stem + ".uasset", uasset);
+                    System.IO.File.WriteAllBytes(stem + ".uexp", read.Value.UExp.ToArray());
+                }
+
+                //The anchor first, by itself, which should be refused for want of the widget.
+                foreach (var stale in System.IO.Directory.GetFiles(folder)) { System.IO.File.Delete(stale); }
+                lay("/Dungeons/Content/Decor/Prefabs/Tent/BP_Tent", null);
+                try
+                {
+                    Logic.Loader.install(folder);
+                    Console.WriteLine("[loader] WRONG - a folder with no widget was accepted");
+                }
+                catch (Exception expected)
+                {
+                    Console.WriteLine($"[loader] half a loader refused: {expected.Message}");
+                }
+
+                //Now both halves, and a stub of one of the game's own game modes beside them -
+                //which is what an editor project that can refer to those classes actually
+                //contains, and the thing that must on no account be installed.
+                lay("/Dungeons/Content/Actors/PropActors/BP_SoundCue", Logic.Loader.WIDGET);
+                lay("/Dungeons/Content/GameModes/Lobby/BP_LobbyGameMode", null);
+                try
+                {
+                    var mod = Logic.Loader.install(folder);
+                    Console.WriteLine($"[loader] installed {System.IO.Path.GetFileName(mod.Path)}, {mod.Size:N0} bytes");
+                    Console.WriteLine($"[loader] isInstalled = {Logic.Loader.isInstalled}");
+                    foreach (var other in Logic.Loader.clashes())
+                    {
+                        Console.WriteLine($"[loader]   CLASHES WITH {other}");
+                    }
+                    foreach (var stub in Logic.Loader.HeldBack)
+                    {
+                        Console.WriteLine($"[loader]   HELD BACK {stub} (the game already has it)");
+                    }
+
+                    var raw = System.Text.Encoding.ASCII.GetString(System.IO.File.ReadAllBytes(mod.Path));
+                    foreach (var wanted in new[] { Logic.Loader.ANCHOR, Logic.Loader.WIDGET })
+                    {
+                        var inPak = "Dungeons/Content/" + wanted.Substring("/Game/".Length);
+                        Console.WriteLine($"[loader]   holds {inPak}: {raw.Contains(inPak, StringComparison.Ordinal)}");
+                    }
+
+                    Logic.Loader.remove();
+                    Console.WriteLine($"[loader] removed, isInstalled = {Logic.Loader.isInstalled}");
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[loader] refused: {problem.Message}");
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_WHERE=<engine path> - which of the game's levels place a given actor.
+            //
+            //Counting how many levels an anchor is in says how broadly a loader would start.
+            //It does not say *where*, and where is the question that decides whether the thing
+            //works at all: an anchor in three hundred mission tiles and not in the Camp is a
+            //loader that never runs at the one moment somebody is trying to test a payload.
+            var probeWhere = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_WHERE="));
+            if (probeWhere != null)
+            {
+                var wanted = probeWhere.Substring("PROBE_WHERE=".Length).Trim('"');
+                var levels = Logic.GameAssets.all().Where(one => one.Kind == "Level").ToList();
+                var inThem = new List<string>();
+
+                foreach (var level in levels)
+                {
+                    var inPak = "/Dungeons/Content/" + level.EnginePath.Substring("/Game/".Length);
+                    try
+                    {
+                        var package = Logic.CustomSkins.index?.extractPackage(inPak);
+                        if (package == null) { continue; }
+
+                        var names = Logic.CookedProperties.readNamesOf(package.Value.UAsset.ToArray());
+                        if (names.Any(name => name.Equals(wanted, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            inThem.Add(level.EnginePath);
+                        }
+                    }
+                    catch (Exception) { }
+                }
+
+                Console.WriteLine($"[where] {wanted} is placed in {inThem.Count} of {levels.Count} levels");
+
+                //Named individually when there are few enough to read. Which folder an anchor is
+                //in says how broadly it spreads; which *level* says whether it is one somebody
+                //actually walks through, and for an anchor that is the whole question.
+                if (inThem.Count <= 40)
+                {
+                    foreach (var one in inThem) { Console.WriteLine($"[where]   {one}"); }
+                }
+
+                foreach (var folder in inThem
+                    .Select(path => path.Substring(0, path.LastIndexOf('/')))
+                    .GroupBy(path => path)
+                    .OrderByDescending(group => group.Count())
+                    .Take(18))
+                {
+                    Console.WriteLine($"[where] {folder.Count(),4} in {folder.Key}");
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_RUNNING - says whether this build can tell that the game is open. Which is
+            //worth being able to check without the game, because the answer it gives when it is
+            //wrong is "go ahead", and going ahead with the game up is the failure that looks
+            //like no failure at all: the pak is written, nothing reads it, and the mod is blamed.
+            if (_startupArguments.Any(a => a == "PROBE_RUNNING"))
+            {
+                var found = Logic.GameRunning.found();
+                Console.WriteLine($"[running] isUp = {Logic.GameRunning.isUp}");
+                Console.WriteLine($"[running] found = {(found.Count == 0 ? "nothing" : string.Join(", ", found))}");
+                Console.WriteLine($"[running] paks  = {Logic.CustomSkins.paksFolder ?? "<not found>"}");
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_BUILTIN - installs the loader carried inside this exe, reads back what
+            //landed, and puts things back as they were. Which is the whole claim being made by
+            //embedding it: that a build with no Unreal anywhere near it can still produce a
+            //working loader pak.
+            //
+            //"As they were" is the part that had to be learned. This used to finish by removing
+            //what it installed, which is right when nothing was installed before - and quietly
+            //destroys a working setup when something was. Running a read-only-sounding probe
+            //uninstalled the live loader more than once while the actual bug was elsewhere, and
+            //every payload then did nothing, which sent the search in the wrong direction for
+            //several rounds. So whatever was there is kept and written back.
+            if (_startupArguments.Any(a => a == "PROBE_BUILTIN"))
+            {
+                var wasThere = Logic.Loader.installed();
+                var keptBytes = wasThere != null && System.IO.File.Exists(wasThere)
+                    ? System.IO.File.ReadAllBytes(wasThere)
+                    : null;
+                if (keptBytes != null)
+                {
+                    Console.WriteLine($"[builtin] a loader is already installed ({System.IO.Path.GetFileName(wasThere!)}, {keptBytes.Length:N0} bytes) - it will be put back");
+                }
+
+                try
+                {
+                    var mod = Logic.Loader.installBuiltIn();
+                    Console.WriteLine($"[builtin] installed {System.IO.Path.GetFileName(mod.Path)}, {mod.Size:N0} bytes");
+
+                    var raw = System.Text.Encoding.ASCII.GetString(System.IO.File.ReadAllBytes(mod.Path));
+                    foreach (var wanted in new[] { Logic.Loader.ANCHOR, Logic.Loader.WIDGET })
+                    {
+                        var inPak = "Dungeons/Content/" + wanted.Substring("/Game/".Length);
+                        Console.WriteLine($"[builtin]   holds {inPak}: {raw.Contains(inPak, StringComparison.Ordinal)}");
+                    }
+
+                    //And that what came out is the loader rather than merely the right size: the
+                    //widget has to still name the folders it watches.
+                    foreach (var trigger in Logic.Payloads.TRIGGERS)
+                    {
+                        var folder = "/Game/MCDReborn/" + trigger;
+                        Console.WriteLine($"[builtin]   scans {folder}: {raw.Contains(folder, StringComparison.Ordinal)}");
+                    }
+
+                    Logic.Loader.remove();
+                    Console.WriteLine($"[builtin] removed, isInstalled = {Logic.Loader.isInstalled}");
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[builtin] refused: {problem.Message}");
+                }
+                finally
+                {
+                    //In a finally, because a probe that fails half way is exactly the moment the
+                    //loader is most likely to be left missing, and the least likely moment for
+                    //anybody to think to check.
+                    if (keptBytes != null)
+                    {
+                        try
+                        {
+                            System.IO.File.WriteAllBytes(wasThere!, keptBytes);
+                            Console.WriteLine($"[builtin] put back {System.IO.Path.GetFileName(wasThere!)}, isInstalled = {Logic.Loader.isInstalled}");
+                        }
+                        catch (Exception problem)
+                        {
+                            Console.WriteLine($"[builtin] COULD NOT put the old loader back ({problem.Message}) - reinstall it");
+                        }
+                    }
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_GAMELEVEL=<engine path>[;<trigger>] - turns one of the game's own levels into
+            //a payload, reads back what landed, and removes it again. The claim being tested is
+            //that a payload need not be authored at all: the game is full of levels, and a level
+            //in the loader's folder is a payload by definition.
+            var probeGameLevel = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_GAMELEVEL="));
+            if (probeGameLevel != null)
+            {
+                var bits = probeGameLevel.Substring("PROBE_GAMELEVEL=".Length).Trim('"').Split(';');
+                var trigger = bits.Length > 1 ? bits[1] : "Lobby";
+                var name = bits[0].Substring(bits[0].LastIndexOf('/') + 1);
+
+                try
+                {
+                    var mod = Logic.Payloads.installGameLevel(trigger, bits[0], name);
+                    Console.WriteLine($"[level] installed {System.IO.Path.GetFileName(mod.Path)}, {mod.Size:N0} bytes");
+
+                    var raw = System.Text.Encoding.ASCII.GetString(System.IO.File.ReadAllBytes(mod.Path));
+                    var at = raw.IndexOf("Dungeons/Content/MCDReborn/", StringComparison.Ordinal);
+                    while (at >= 0)
+                    {
+                        var end = at;
+                        while (end < raw.Length && (char.IsLetterOrDigit(raw[end]) || "/._-".IndexOf(raw[end]) >= 0)) { end++; }
+                        Console.WriteLine($"[level]   holds {raw.Substring(at, end - at)}");
+                        at = raw.IndexOf("Dungeons/Content/MCDReborn/", end, StringComparison.Ordinal);
+                    }
+
+                    //The old address must be gone, or the game has two levels claiming one path.
+                    Console.WriteLine($"[level]   still names its old path: {raw.Contains(bits[0].Substring("/Game/".Length), StringComparison.OrdinalIgnoreCase)}");
+
+                    foreach (var one in Logic.Payloads.installed()) { Logic.Payloads.remove(one); }
+                    Console.WriteLine($"[level] removed, {Logic.Payloads.installed().Count} payloads left");
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[level] refused: {problem.Message}");
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_INSTALL_TREE=<folder>;<trigger>;<name> - installs a payload folder for real,
+            //rather than previewing it. The same thing the button does, reachable without one,
+            //which is what narrowing a payload down to the asset that broke the game needs.
+            var probeInstallTree = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_INSTALL_TREE="));
+            if (probeInstallTree != null)
+            {
+                var bits = probeInstallTree.Substring("PROBE_INSTALL_TREE=".Length).Trim('"').Split(';');
+                try
+                {
+                    var mod = Logic.Payloads.installFolder(
+                        bits.Length > 1 ? bits[1] : "Lobby", bits[0], bits.Length > 2 ? bits[2] : "probe");
+
+                    Console.WriteLine($"[install] {System.IO.Path.GetFileName(mod.Path)}, {mod.Size:N0} bytes");
+                    foreach (var left in Logic.Payloads.Skipped)
+                    {
+                        Console.WriteLine($"[install]   LEFT OUT {left}");
+                    }
+
+                    var raw = System.Text.Encoding.ASCII.GetString(System.IO.File.ReadAllBytes(mod.Path));
+                    var at = raw.IndexOf("Dungeons/Content/", StringComparison.Ordinal);
+                    while (at >= 0)
+                    {
+                        var end = at;
+                        while (end < raw.Length && (char.IsLetterOrDigit(raw[end]) || "/._-".IndexOf(raw[end]) >= 0)) { end++; }
+                        Console.WriteLine($"[install]   holds {raw.Substring(at, end - at)}");
+                        at = raw.IndexOf("Dungeons/Content/", end, StringComparison.Ordinal);
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[install] refused: {problem.Message}");
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_INSTALL_LOADER - installs the built-in loader and leaves it there.
+            //
+            //Distinct from PROBE_BUILTIN, which installs, verifies and removes again: that one
+            //answers "can this build produce a loader", and removing is the point of it. This one
+            //is the button, without the button.
+            if (_startupArguments.Any(a => a == "PROBE_INSTALL_LOADER"))
+            {
+                try
+                {
+                    var mod = Logic.Loader.installBuiltIn();
+                    Console.WriteLine($"[loader] installed {System.IO.Path.GetFileName(mod.Path)}, {mod.Size:N0} bytes");
+                    Console.WriteLine($"[loader] isInstalled = {Logic.Loader.isInstalled}");
+                    foreach (var other in Logic.Loader.clashes())
+                    {
+                        Console.WriteLine($"[loader]   CLASHES WITH {other}");
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[loader] refused: {problem.Message}");
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_PROPS=<path without extension> - every tagged property in a cooked asset on
+            //disk, with its type. Name tables say which strings an asset mentions; this says what
+            //it actually stores, which is the difference between "both mention SlateFontInfo" and
+            //"one of them has a font set".
+            var probeProps = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_PROPS="));
+            if (probeProps != null)
+            {
+                var stem = probeProps.Substring("PROBE_PROPS=".Length).Trim('"');
+                try
+                {
+                    var header = System.IO.File.Exists(stem + ".uasset") ? stem + ".uasset" : stem + ".umap";
+                    var uasset = System.IO.File.ReadAllBytes(header);
+                    var uexp = System.IO.File.ReadAllBytes(stem + ".uexp");
+
+                    var values = Logic.CookedProperties.readAll(uasset, uexp);
+                    Console.WriteLine($"[props] {System.IO.Path.GetFileName(stem)}: {values.Count} properties");
+                    foreach (var value in values)
+                    {
+                        Console.WriteLine($"[props]   {value.Export,-32} {value.Name,-34} {value.Type}"
+                            + (string.IsNullOrEmpty(value.StructName) ? "" : " (" + value.StructName + ")"));
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[props] failed: {problem.Message}");
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_ANCHOR - which blueprint the most of the game's levels place.
+            //
+            //A loader needs an anchor: an actor the game already spawns, replaced with one that
+            //also starts the loader. Which actor decides where the loader works, and the honest
+            //way to choose is to count rather than to guess - the community's loader uses the
+            //camp tent, and whether that is a good choice or a convenient one is a question the
+            //maps can answer.
+            var probeAnchor = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_ANCHOR"));
+            if (probeAnchor != null)
+            {
+                //An optional filter, because coverage is not the question it first looks like.
+                //Counting across the whole game says how many levels an anchor is in; counting
+                //across the Camp says whether the loader ever starts where somebody is actually
+                //testing. The second turned out to matter more than the first.
+                var only = probeAnchor.StartsWith("PROBE_ANCHOR=")
+                    ? probeAnchor.Substring("PROBE_ANCHOR=".Length).Trim('"')
+                    : null;
+
+                var levels = Logic.GameAssets.all()
+                    .Where(one => one.Kind == "Level")
+                    .Where(one => only == null
+                        || one.EnginePath.IndexOf(only, StringComparison.OrdinalIgnoreCase) >= 0)
+                    .ToList();
+                var counted = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                var read = 0;
+
+                foreach (var level in levels)
+                {
+                    var inPak = "/Dungeons/Content/" + level.EnginePath.Substring("/Game/".Length);
+                    IReadOnlyList<string> names;
+                    try
+                    {
+                        var package = Logic.CustomSkins.index?.extractPackage(inPak);
+                        if (package == null) { continue; }
+                        names = Logic.CookedProperties.readNamesOf(package.Value.UAsset.ToArray());
+                    }
+                    catch (Exception) { continue; }
+
+                    read++;
+
+                    //Once per level rather than once per placement: an anchor wants to be in many
+                    //levels, and a level with forty of the same urn in it is still one level.
+                    foreach (var name in names.Distinct(StringComparer.OrdinalIgnoreCase))
+                    {
+                        if (!name.StartsWith("/Game/", StringComparison.OrdinalIgnoreCase)) { continue; }
+                        var leaf = name.Substring(name.LastIndexOf('/') + 1);
+                        if (!leaf.StartsWith("BP_", StringComparison.OrdinalIgnoreCase)) { continue; }
+
+                        counted.TryGetValue(name, out var was);
+                        counted[name] = was + 1;
+                    }
+                }
+
+                Console.WriteLine($"[anchor] read {read} of {levels.Count} levels");
+                foreach (var pair in counted.OrderByDescending(one => one.Value).Take(25))
+                {
+                    Console.WriteLine($"[anchor] {pair.Value,5} levels  {pair.Key}");
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_ASSETS=<words>[;<kind>] - the game asset list the browser is built on, which
+            //is the half of it worth checking from a command line: whether the paths come out
+            //spelled the way the engine wants them, and whether a kind read from a package
+            //agrees with the one guessed from the name.
+            var probeAssets = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_ASSETS="));
+            if (probeAssets != null)
+            {
+                var bits = probeAssets.Substring("PROBE_ASSETS=".Length).Trim('"').Split(';');
+                var (shown, matched) = Logic.GameAssets.search(bits[0], bits.Length > 1 ? bits[1] : null);
+
+                Console.WriteLine($"[assets] {Logic.GameAssets.all().Count} in the paks, {matched} matched");
+
+                foreach (var raw in (Logic.CustomSkins.index ?? Enumerable.Empty<string>()).Take(3))
+                {
+                    Console.WriteLine($"[assets]   raw entry \"{raw}\"");
+                }
+
+                foreach (var asset in shown.Take(15))
+                {
+                    var real = Logic.GameAssets.readKindOf(asset.EnginePath);
+                    var agreed = real == null ? "unread" : real == asset.Kind ? "agrees" : $"REALLY {real}";
+                    Console.WriteLine($"[assets]   {asset.Kind,-18} {agreed,-22} {asset.EnginePath}");
+                }
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_NAMES=<asset path> - the name table of a cooked asset, filtered to the
+            //entries that look like paths. A package records the path it was cooked at, and
+            //whether that can be rewritten decides whether one asset can be copied over another.
+            var probeNames = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_NAMES="));
+            if (probeNames != null)
+            {
+                var path = probeNames.Substring("PROBE_NAMES=".Length).Trim('"');
+                var read = Logic.CustomSkins.index?.extractPackage(path);
+                if (read == null) { Console.WriteLine("[names] could not read it"); this.Shutdown(); return; }
+
+                var uasset = read.Value.UAsset.ToArray();
+                var names = Logic.CookedProperties.readNamesOf(uasset);
+                Console.WriteLine($"[names] {path}");
+                Console.WriteLine($"        uasset {uasset.Length:N0} bytes, {names.Count} names");
+
+                for (int i = 0; i < names.Count; i++)
+                {
+                    if (names[i].IndexOf('/') < 0) { continue; }
+                    Console.WriteLine($"          [{i}] \"{names[i]}\"  ({names[i].Length} chars)");
+                }
+                this.Shutdown();
+                return;
+            }
+
             //PROBE_MESH=<asset path>[;<asset path>...] - whether the geometry pipeline can read
             //a mesh at all, which is the question that decides whether anything can be imported
             //over it. Prints what it found rather than yes or no, because a mesh that reads with

@@ -33,7 +33,9 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **Difficulty Tab:** Change how hard the game is while it is running. How tough, how fast and how heavy the enemies are, and your own speed, roll cooldown, roll charges, gravity and attack speed
 * **Escalation Mode:** Enemies get worse the longer you stay in a level. A slim bar over the game says which of the nine stages you are in, how long until the next one, and what the multipliers are now. The clock restarts when you load a new level.
 * **Press J to throw every enemy in the level into the air**, with the enemy gravity slider deciding how long they stay there - at normal weight they reach 141 units, at a fortieth nearly 3000. The two go together: gravity does nothing to a mob standing on the floor
+* **Music Tab:** Play your own MP3 over any of the game's 112 music tracks, installed as a mod pak beside the game's own so removing it puts the original back
 * **Installed Mods Tab:** Every mod pak in one place. You can import and export multiple mods via a zip package.
+* **Payload loader**, built into the app one button. Install a payload folder, point it at a folder cooked in Unreal and the whole tree is installed at once, the level and the blueprints, models, materials and resource packs it is built from. 
 
 #### Camera Feature
 * **Change the camera while the game is running** - distance, angle, field of view, where it looks, shoulder offset and swing smoothing, all applied as you drag the slider. No mod pak, nothing written to disk, and quitting the game puts everything back
@@ -129,10 +131,7 @@ were doing, use the `-debug` build, or put an empty file called `verbose.txt` be
 If during launch you get a popup saying that the application has stopped working,
 this means an internal error occurred and could mean various issues.
 
-The releases are self-contained and need no runtime installed. If you are running a
-framework-dependent build instead, it needs the .NET 10 Desktop Runtime:
-
-- [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)
+The releases are self-contained and need no runtime installed.
 
 ---
 
