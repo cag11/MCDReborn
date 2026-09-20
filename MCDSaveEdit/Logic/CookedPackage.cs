@@ -85,6 +85,77 @@ namespace MCDSaveEdit.Logic
         }
 
         /// <summary>
+        /// One thing a package contains.
+        ///
+        /// A cooked blueprint keeps each of its functions as an export, and that function's
+        /// parameters as further exports whose Outer is the function. Which is the only readable
+        /// record of a native signature anywhere: the import table gives a name and nothing else,
+        /// so the way to learn what Dungeons.RemoveItem takes is to read the parameters off the
+        /// one blueprint that overrides or calls it.
+        /// </summary>
+        public sealed class Export
+        {
+            public Export(string name, int classIndex, int outer, int superIndex)
+            {
+                Name = name;
+                ClassIndex = classIndex;
+                Outer = outer;
+                SuperIndex = superIndex;
+            }
+
+            public string Name { get; }
+
+            /// <summary>An FPackageIndex naming what kind of thing this is - IntProperty, Function.</summary>
+            public int ClassIndex { get; }
+
+            /// <summary>An FPackageIndex: for a parameter, the function that owns it.</summary>
+            public int Outer { get; }
+
+            public int SuperIndex { get; }
+        }
+
+        /// <summary>
+        /// Every export in a package, in table order, so an index can be followed.
+        ///
+        /// The entry layout is the one already relied on for the serial size and offset, read from
+        /// the front instead of the middle: ClassIndex, SuperIndex, TemplateIndex, OuterIndex,
+        /// ObjectName.
+        /// </summary>
+        public static IReadOnlyList<Export> readExports(byte[] uasset)
+        {
+            var names = CookedProperties.readNamesOf(uasset);
+            if (names.Count == 0) { return Array.Empty<Export>(); }
+
+            int count, offset;
+            try
+            {
+                count = exportTableCount(uasset, out offset);
+            }
+            catch (Exception)
+            {
+                return Array.Empty<Export>();
+            }
+
+            if (count <= 0 || offset <= 0) { return Array.Empty<Export>(); }
+            if (offset + count * EXPORT_ENTRY_SIZE > uasset.Length) { return Array.Empty<Export>(); }
+
+            var found = new List<Export>(count);
+            for (int i = 0; i < count; i++)
+            {
+                var entry = offset + i * EXPORT_ENTRY_SIZE;
+                var nameIndex = BitConverter.ToInt32(uasset, entry + 16);
+
+                found.Add(new Export(
+                    nameIndex >= 0 && nameIndex < names.Count ? names[nameIndex] : "?",
+                    BitConverter.ToInt32(uasset, entry + 0),
+                    BitConverter.ToInt32(uasset, entry + 12),
+                    BitConverter.ToInt32(uasset, entry + 4)));
+            }
+
+            return found;
+        }
+
+        /// <summary>
         /// Every import in a package, in table order, so an index can be followed.
         ///
         /// Returns nothing rather than throwing for anything that does not parse: this is run

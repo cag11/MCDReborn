@@ -64,7 +64,6 @@ namespace MCDSaveEdit.UI
 #endif
 
             inventoryTab.model = _model.profileModel;
-            statsTab.model = _model.profileModel;
             heroTab.model = _model.profileModel;
             heroTab.requestSave = () => handleFileSaveAsync(_model.profileModel.filePath);
             towerTab.model = _model.profileModel;
@@ -84,7 +83,6 @@ namespace MCDSaveEdit.UI
         public void updateUI()
         {
             updateTitleUI();
-            statsTab.updateUI();
             customSkinsTab.updateUI();
             heroTab.updateUI();
             inventoryTab.updateUI();
@@ -144,16 +142,18 @@ namespace MCDSaveEdit.UI
         private void translateStaticStrings()
         {
             inventoryTabItem.Header = R.getString("Quickaction_inventory") ?? R.INVENTORY;
-            statsTabItem.Header = R.STATS_COUNTERS;
             customSkinsTabItem.Header = R.CUSTOM_SKINS_TAB;
             weaponSkinsTabItem.Header = R.WEAPON_SKINS_TAB;
             mobSkinsTabItem.Header = R.MOB_SKINS_TAB;
             modsTabItem.Header = R.MODS_TAB;
+            mapsTabItem.Header = R.MAPS_TAB;
             musicTabItem.Header = R.MUSIC_TAB;
             cameraTabItem.Header = R.CAMERA_TAB;
             enemiesTabItem.Header = R.STATS_TAB;
             heroTabItem.Header = R.HERO_TAB;
-            chestTabItem.Header = R.getString("StorageChest") ?? R.CHEST;
+            //Ours rather than the game's own "Storage Chest": twelve tabs only fit on one
+            //row if the longest four are shortened, and this is one of them.
+            chestTabItem.Header = R.CHEST_TAB;
             towerTabItem.Header = R.getString("TheTower") ?? R.THE_TOWER;
         }
 

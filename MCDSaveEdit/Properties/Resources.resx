@@ -1048,7 +1048,7 @@ The save file is not changed until you save it.</value>
     <comment>UI texture category</comment>
   </data>
   <data name="WEAPON_SKINS_TAB" xml:space="preserve">
-    <value>Weapon Import</value>
+    <value>Weapons</value>
     <comment>Tab header</comment>
   </data>
   <data name="WEAPON_SKINS_WEAPON" xml:space="preserve">
@@ -2016,7 +2016,7 @@ The save file is not changed until you save it.</value>
     <comment>Explains enemy size</comment>
   </data>
   <data name="MOB_SKINS_TAB" xml:space="preserve">
-    <value>Mob Import</value>
+    <value>Mobs</value>
     <comment>Tab header</comment>
   </data>
   <data name="MOB_SKINS_MOB" xml:space="preserve">
@@ -2055,8 +2055,12 @@ The save file is not changed until you save it.</value>
     <value>{0}% of this model states no colour of its own and will come out white. That is usually what the model intends - plenty of them are painted with flat colours and leave the white parts white.</value>
     <comment>A model that arrived without its artwork</comment>
   </data>
+  <data name="CHEST_TAB" xml:space="preserve">
+    <value>Storage</value>
+    <comment>Tab header. Shorter than the game's own "Storage Chest" so the tabs fit one row</comment>
+  </data>
   <data name="MODS_TAB" xml:space="preserve">
-    <value>Installed Mods</value>
+    <value>Mods</value>
     <comment>Tab header</comment>
   </data>
   <data name="MODS_IMPORT" xml:space="preserve">
@@ -2146,6 +2150,402 @@ The save file is not changed until you save it.</value>
   <data name="MODS_ADVANCED_WHY" xml:space="preserve">
     <value>The tools for building a mod rather than installing one: the blueprint loader, the payloads it loads, and the browser that gives an asset the path Unreal wants for it. Nothing here is needed to use a mod somebody else made.</value>
     <comment>What the advanced row holds</comment>
+  </data>
+  <data name="MAPS_FROM_MINECRAFT" xml:space="preserve">
+    <value>Bring back…</value>
+    <comment>Button that returns a Minecraft world to the game</comment>
+  </data>
+  <data name="MAPS_FROM_MINECRAFT_WHY" xml:space="preserve">
+    <value>Reads a world this tab made, writes its blocks back over the tiles they came from, and installs the result over the mission selected in the list. Doors and regions are kept as they were: they travel into Minecraft as structure blocks, and a packed tile often has no room to put one back.</value>
+    <comment>What Bring back does</comment>
+  </data>
+  <data name="MAPS_WORKING" xml:space="preserve">
+    <value>Converting {0}…</value>
+    <comment>While the converter runs</comment>
+  </data>
+  <data name="MAPS_WORLD_READY" xml:space="preserve">
+    <value>"{0}" is in your Minecraft world list. Open it with a 1.16.3 profile, build, then Bring back.</value>
+    <comment>After a world is written</comment>
+  </data>
+  <data name="MAPS_CONVERT_FAILED" xml:space="preserve">
+    <value>The converter did not finish. Nothing was changed.</value>
+    <comment>When the converter fails</comment>
+  </data>
+  <data name="MAPS_PICK_WORLD" xml:space="preserve">
+    <value>The Minecraft world to bring back</value>
+    <comment>Title of the world picker</comment>
+  </data>
+  <data name="MAPS_NOT_OURS" xml:space="preserve">
+    <value>That world was not made by this tab, so there is nothing saying which tiles it holds. Use Edit in Minecraft to make one.</value>
+    <comment>A world with no marker</comment>
+  </data>
+  <data name="MAPS_NO_TOOLS" xml:space="preserve">
+    <value>Minecraft converter not found - expected at {0}</value>
+    <comment>Shown when the converter folder is missing</comment>
+  </data>
+  <data name="MAPS_NO_MINECRAFT" xml:space="preserve">
+    <value>Minecraft not found - worlds will be written beside the map instead</value>
+    <comment>Shown when .minecraft\saves does not exist</comment>
+  </data>
+  <data name="MAPS_FIXED_TO_MINECRAFT" xml:space="preserve">
+    <value>Edit in Minecraft…</value>
+    <comment>Button that pins the level then opens it in Minecraft</comment>
+  </data>
+  <data name="MAPS_FIXED_TO_MINECRAFT_WHY" xml:space="preserve">
+    <value>The whole mission as one world you can walk start to end. The level is pinned first - one chosen room per stretch, no random count, no side-paths - and then its rooms are laid out in playing order, joined at their doors, the way the game assembles them. Edit in Minecraft gives you one set of tiles where their authors built them; this gives you the level. The original is kept as level.json.random.</value>
+    <comment>What Fixed to Minecraft does</comment>
+  </data>
+  <data name="MAPS_WORLD_READY_FIXED" xml:space="preserve">
+    <value>"{0}" is in your Minecraft world list - the whole level, start to end. Build, then Bring back.</value>
+    <comment>After a pinned world is written</comment>
+  </data>
+  <data name="SPAWNS_REWELDED" xml:space="preserve">
+    <value>The mission was rebuilt around your changes.</value>
+    <comment>After the weld is redone following a save</comment>
+  </data>
+  <data name="SPAWNS_TITLE" xml:space="preserve">
+    <value>Spawns</value>
+    <comment>Title of the spawn editor window</comment>
+  </data>
+  <data name="SPAWNS_ROOMS" xml:space="preserve">
+    <value>Rooms</value>
+    <comment>Heading above the room list</comment>
+  </data>
+  <data name="SPAWNS_PLACE" xml:space="preserve">
+    <value>Place spawn points</value>
+    <comment>Heading of the placement panel</comment>
+  </data>
+  <data name="SPAWNS_PLACE_HINT" xml:space="preserve">
+    <value>Click a room on the map to pick it, then click again inside it to say where. Each point is dropped onto the floor beneath it - a spawn buried in stone is one the game has nowhere to put a mob.</value>
+    <comment>How placement works</comment>
+  </data>
+  <data name="SPAWNS_RADIUS" xml:space="preserve">
+    <value>radius</value>
+    <comment>Label</comment>
+  </data>
+  <data name="SPAWNS_COUNT" xml:space="preserve">
+    <value>count</value>
+    <comment>Label</comment>
+  </data>
+  <data name="SPAWNS_PLACE_BUTTON" xml:space="preserve">
+    <value>Place</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_CLEAR" xml:space="preserve">
+    <value>Clear room</value>
+    <comment>Button that removes every spawn point from a room</comment>
+  </data>
+  <data name="SPAWNS_RULES" xml:space="preserve">
+    <value>What spawns</value>
+    <comment>Heading of the mob group panel</comment>
+  </data>
+  <data name="SPAWNS_RULES_HINT" xml:space="preserve">
+    <value>Spawn points decide where and how many. What actually appears comes from the groups that roam the level — arena groups only fire inside their own fight. Bosses are ordinary entries here; ★ marks them.</value>
+    <comment>How mob groups relate to spawn points</comment>
+  </data>
+  <data name="SPAWNS_ADD_MOB" xml:space="preserve">
+    <value>Add mob</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_SAVE" xml:space="preserve">
+    <value>Save</value>
+    <comment>Button that writes the changed files back</comment>
+  </data>
+  <data name="SPAWNS_RELOAD" xml:space="preserve">
+    <value>Reload</value>
+    <comment>Button that throws away changes and reads the folder again</comment>
+  </data>
+  <data name="SPAWNS_NO_ROOM" xml:space="preserve">
+    <value>No room chosen</value>
+    <comment>Shown before a room is picked</comment>
+  </data>
+  <data name="SPAWNS_NO_CHANGES" xml:space="preserve">
+    <value>nothing changed yet</value>
+    <comment>Shown while there is nothing to save</comment>
+  </data>
+  <data name="SPAWNS_CHANGES" xml:space="preserve">
+    <value>{0} file(s) changed</value>
+    <comment>How many files are waiting to be saved</comment>
+  </data>
+  <data name="SPAWNS_PLACED" xml:space="preserve">
+    <value>Placed {0} spawn points.</value>
+    <comment>After placing</comment>
+  </data>
+  <data name="SPAWNS_PLACED_SOME" xml:space="preserve">
+    <value>Placed {0} of {1} - the rest had no floor to stand on.</value>
+    <comment>After placing fewer than asked</comment>
+  </data>
+  <data name="SPAWNS_WALKABLE" xml:space="preserve">
+    <value>walkable</value>
+    <comment>Readout: the game will let a mob stand here</comment>
+  </data>
+  <data name="SPAWNS_UNWALKABLE" xml:space="preserve">
+    <value>not walkable</value>
+    <comment>Readout: the game will not let a mob stand here</comment>
+  </data>
+  <data name="SPAWNS_MOBS_IN" xml:space="preserve">
+    <value>The {0} mobs in this group — × removes one:</value>
+    <comment>Above the per-mob rows</comment>
+  </data>
+  <data name="SPAWNS_INSTALL" xml:space="preserve">
+    <value>Save and install</value>
+    <comment>Button that saves, rebuilds and puts the mission in the game</comment>
+  </data>
+  <data name="SPAWNS_INSTALL_WHY" xml:space="preserve">
+    <value>Saves your changes, rebuilds the mission, and installs it over the game's own. The game's files are never modified — Remove in the Maps tab puts the original back.</value>
+    <comment>Tooltip for the install button</comment>
+  </data>
+  <data name="SPAWNS_INSTALLED" xml:space="preserve">
+    <value>Installed over {0} as {1} ({2:N0} KB). Start the game and play it — Remove in the Maps tab puts the original back.</value>
+    <comment>After installing from the spawns window</comment>
+  </data>
+  <data name="SPAWNS_ON_POINT" xml:space="preserve">
+    <value>That spawn point at {0}, {1}, {2} — Remove point takes it out.</value>
+    <comment>Status when a click lands on an existing spawn point</comment>
+  </data>
+  <data name="SPAWNS_REMOVE_POINT" xml:space="preserve">
+    <value>Remove point</value>
+    <comment>Button that removes the one clicked spawn point</comment>
+  </data>
+  <data name="SPAWNS_REMOVED_ONE" xml:space="preserve">
+    <value>Removed it. {0} spawn points left in this room.</value>
+    <comment>After removing one point</comment>
+  </data>
+  <data name="SPAWNS_NOT_A_POINT" xml:space="preserve">
+    <value>Click a spawn point on the map first.</value>
+    <comment>When Remove point is pressed with nothing chosen</comment>
+  </data>
+  <data name="SPAWNS_GROUP_ROAMS" xml:space="preserve">
+    <value>roams the level, weight {0:0.#}</value>
+    <comment>Beside a mob group used by default-mobs</comment>
+  </data>
+  <data name="SPAWNS_GROUP_WAVES" xml:space="preserve">
+    <value>{0} arena wave(s) only</value>
+    <comment>Beside a mob group used only by arena triggers</comment>
+  </data>
+  <data name="SPAWNS_GROUP_UNUSED" xml:space="preserve">
+    <value>not used by this mission</value>
+    <comment>Beside a mob group nothing refers to</comment>
+  </data>
+  <data name="SPAWNS_DIFF_MAX" xml:space="preserve">
+    <value>difficulty {0:0.#} and below only</value>
+    <comment>Group or mob capped to a difficulty</comment>
+  </data>
+  <data name="SPAWNS_DIFF_MIN" xml:space="preserve">
+    <value>difficulty {0:0.#} and above only</value>
+    <comment>Group or mob gated behind a difficulty</comment>
+  </data>
+  <data name="SPAWNS_DIFF_RANGE" xml:space="preserve">
+    <value>difficulty {0:0.#} to {1:0.#} only</value>
+    <comment>Group or mob gated to a range</comment>
+  </data>
+  <data name="SPAWNS_AIMED" xml:space="preserve">
+    <value>Aimed at {0}, {1}, {2}  ·  Place drops {3} within {4} blocks. Double-click the map to skip the button.</value>
+    <comment>Status line after clicking the 3D map</comment>
+  </data>
+  <data name="SPAWNS_BUILDING" xml:space="preserve">
+    <value>Building the map…</value>
+    <comment>While the 3D view is being put together</comment>
+  </data>
+  <data name="SPAWNS_NO_SHAPE" xml:space="preserve">
+    <value>This room carries no height plane, so there is nothing to draw.</value>
+    <comment>When a tile has no floor plan</comment>
+  </data>
+  <data name="SPAWNS_CEILING" xml:space="preserve">
+    <value>roof off above {0}</value>
+    <comment>Beside the height slider, when it is cutting</comment>
+  </data>
+  <data name="SPAWNS_CEILING_ALL" xml:space="preserve">
+    <value>whole mission</value>
+    <comment>Beside the height slider, when it is not cutting</comment>
+  </data>
+  <data name="SPAWNS_FIT" xml:space="preserve">
+    <value>Fit</value>
+    <comment>Button: put the whole mission back in view</comment>
+  </data>
+  <data name="SPAWNS_OVERHEAD" xml:space="preserve">
+    <value>Top down</value>
+    <comment>Button: look straight down, the way the game does</comment>
+  </data>
+  <data name="SPAWNS_TURN_HINT" xml:space="preserve">
+    <value>Drag to turn · WASD or shift-drag to move · Q/E for down and up · wheel to zoom · R refits. Click the ground to aim, then Place. Double-click drops them straight away.</value>
+    <comment>Hint under the 3D map</comment>
+  </data>
+  <data name="SPAWNS_CLEARED" xml:space="preserve">
+    <value>Removed {0} spawn points from {1}.</value>
+    <comment>After clearing a room</comment>
+  </data>
+  <data name="SPAWNS_SAVED" xml:space="preserve">
+    <value>Saved {0} file(s) into {1}, keeping the originals beside them as .before. Not in the game yet — press Save and install for that.</value>
+    <comment>After saving</comment>
+  </data>
+  <data name="SPAWNS_DISCARD" xml:space="preserve">
+    <value>Reloading throws away every change you have not saved.
+
+Carry on?</value>
+    <comment>Asked before reloading</comment>
+  </data>
+  <data name="MAPS_SPAWNS" xml:space="preserve">
+    <value>Edit spawns…</value>
+    <comment>Button that opens the spawn editor</comment>
+  </data>
+  <data name="MAPS_SPAWNS_WHY" xml:space="preserve">
+    <value>Opens the mission in its own window: every room in playing order seen from above, the spawn points in each, and the mob groups that decide what appears. Saves straight back into the exported folder.</value>
+    <comment>What the spawn editor does</comment>
+  </data>
+  <data name="MAPS_NO_EXPORT" xml:space="preserve">
+    <value>Export this mission first — nothing to work on in {0}.</value>
+    <comment>Shown when the map folder is not there yet</comment>
+  </data>
+  <data name="MAPS_TAB" xml:space="preserve">
+    <value>Maps</value>
+    <comment>The Maps tab</comment>
+  </data>
+  <data name="MAPS_MISSIONS" xml:space="preserve">
+    <value>Game missions</value>
+    <comment>Heading above the mission list</comment>
+  </data>
+  <data name="MAPS_HINT" xml:space="preserve">
+    <value>A mission in this game is data, not an Unreal map: a level file naming a sequence of stretches, and tiles whose geometry is Minecraft blocks. Export one to a folder, change it, and import it back over any mission. The game's own files are never modified - Remove puts the original mission back.</value>
+    <comment>What the Maps tab is for</comment>
+  </data>
+  <data name="MAPS_GROUP_START" xml:space="preserve">
+    <value>First</value>
+    <comment>Heading for the export row</comment>
+  </data>
+  <data name="MAPS_GROUP_START_WHY" xml:space="preserve">
+    <value>pulls the mission into a folder you can change. Do this once.</value>
+    <comment>Beside the export button</comment>
+  </data>
+  <data name="MAPS_GROUP_TERRAIN" xml:space="preserve">
+    <value>Terrain</value>
+    <comment>Heading for the Minecraft round-trip row</comment>
+  </data>
+  <data name="MAPS_GROUP_SPAWNS" xml:space="preserve">
+    <value>Mobs, spawns</value>
+    <comment>Heading for the spawns row</comment>
+  </data>
+  <data name="MAPS_GROUP_SPAWNS_WHY" xml:space="preserve">
+    <value>never leaves the app — it saves and installs itself.</value>
+    <comment>Beside the spawns button</comment>
+  </data>
+  <data name="MAPS_GROUP_UNDO" xml:space="preserve">
+    <value>Undo</value>
+    <comment>Heading for the remove row</comment>
+  </data>
+  <data name="MAPS_GROUP_TERRAIN_WHY" xml:space="preserve">
+    <value>out to Minecraft, back again, then into the game.</value>
+    <comment>Beside the terrain buttons</comment>
+  </data>
+  <data name="MAPS_ALREADY_EXPORTED" xml:space="preserve">
+    <value>This mission is already exported to {0}. Exporting again rebuilds that folder from the game's own files, and any spawn or terrain changes in it are lost. Carry on?</value>
+    <comment>Warning before overwriting an export</comment>
+  </data>
+  <data name="MAPS_WELDING" xml:space="preserve">
+    <value>Welding {0} into one mission — this takes a moment on a big level…</value>
+    <comment>While the spawns editor welds before opening</comment>
+  </data>
+  <data name="MAPS_WELDED" xml:space="preserve">
+    <value>{0} is one mission now. Every run uses this layout — the game no longer shuffles its tiles.</value>
+    <comment>After welding for the spawns editor</comment>
+  </data>
+  <data name="MAPS_NO_WELD" xml:space="preserve">
+    <value>The Minecraft tools are not set up, so this opens as separate rooms rather than one mission.</value>
+    <comment>When welding is not possible</comment>
+  </data>
+  <data name="MAPS_CLEAR" xml:space="preserve">
+    <value>Clear</value>
+    <comment>Button that deletes the exported folder</comment>
+  </data>
+  <data name="MAPS_CLEAR_WHY" xml:space="preserve">
+    <value>Deletes this mission's exported folder, so the next export starts from the game's own files again. The game itself is not touched — use Remove for an installed mission.</value>
+    <comment>Tooltip for Clear</comment>
+  </data>
+  <data name="MAPS_CLEAR_CONFIRM" xml:space="preserve">
+    <value>Delete {0}?&#10;&#10;{1} file(s) go, including any spawn or terrain changes in them. Export map builds it again from the game's own files.</value>
+    <comment>Confirming a clear</comment>
+  </data>
+  <data name="MAPS_CLEAR_EDITED" xml:space="preserve">
+    <value>{0} file(s) in there have been edited — those changes are not saved anywhere else.</value>
+    <comment>Extra warning when the folder holds edits</comment>
+  </data>
+  <data name="MAPS_CLEARED" xml:space="preserve">
+    <value>Deleted {0}.</value>
+    <comment>After clearing</comment>
+  </data>
+  <data name="MAPS_NOTHING_TO_CLEAR" xml:space="preserve">
+    <value>Nothing is exported for {0}.</value>
+    <comment>Clear pressed with no folder</comment>
+  </data>
+  <data name="MAPS_EXPORTING" xml:space="preserve">
+    <value>Exporting {0} so there is something to edit…</value>
+    <comment>While Edit spawns exports on its own</comment>
+  </data>
+  <data name="MAPS_GROUP_UNDO_WHY" xml:space="preserve">
+    <value>Clear throws away the working folder; Remove puts the game's own mission back.</value>
+    <comment>Beside the undo buttons</comment>
+  </data>
+  <data name="MAPS_EXPORT" xml:space="preserve">
+    <value>Export map</value>
+    <comment>Button that writes a mission out to a folder</comment>
+  </data>
+  <data name="MAPS_EXPORT_WHY" xml:space="preserve">
+    <value>Writes everything the chosen mission is made of into a folder: the level file, the object groups holding its tiles, and the blocks file saying what each block id means. The resource pack's textures are not copied - a thousand files that nothing here needs.</value>
+    <comment>What Export does</comment>
+  </data>
+  <data name="MAPS_IMPORT" xml:space="preserve">
+    <value>Import map…</value>
+    <comment>Button that installs a folder as a mission</comment>
+  </data>
+  <data name="MAPS_IMPORT_WHY" xml:space="preserve">
+    <value>Installs a folder as a mod pak over the mission selected in the list. It does not have to be the mission the folder came from.</value>
+    <comment>What Import does</comment>
+  </data>
+  <data name="MAPS_REMOVE" xml:space="preserve">
+    <value>Remove</value>
+    <comment>Button that deletes a map mod</comment>
+  </data>
+  <data name="MAPS_NONE_CHOSEN" xml:space="preserve">
+    <value>No mission chosen</value>
+    <comment>Shown before a mission is picked</comment>
+  </data>
+  <data name="MAPS_EXPORT_PICK" xml:space="preserve">
+    <value>Where to put the exported map</value>
+    <comment>Title of the export folder picker</comment>
+  </data>
+  <data name="MAPS_IMPORT_PICK" xml:space="preserve">
+    <value>The map folder to install</value>
+    <comment>Title of the import folder picker</comment>
+  </data>
+  <data name="MAPS_EXPORTED" xml:space="preserve">
+    <value>Exported {0} files, {1:N0} KB, to {2}</value>
+    <comment>After a mission is exported</comment>
+  </data>
+  <data name="MAPS_IMPORTED" xml:space="preserve">
+    <value>{0} replaced - {1}, {2:N0} KB</value>
+    <comment>After a map is installed</comment>
+  </data>
+  <data name="MAPS_REMOVED" xml:space="preserve">
+    <value>Removed {0}</value>
+    <comment>After a map mod is deleted</comment>
+  </data>
+  <data name="MAPS_PUT_BACK" xml:space="preserve">
+    <value>{0} is back to the game's own</value>
+    <comment>After a mission is restored</comment>
+  </data>
+  <data name="MAPS_NOT_REPLACED" xml:space="preserve">
+    <value>{0} was not replaced</value>
+    <comment>Remove pressed on an untouched mission</comment>
+  </data>
+  <data name="MAPS_FOLDER_CHOSEN" xml:space="preserve">
+    <value>folder: {0}</value>
+    <comment>The folder last exported or imported</comment>
+  </data>
+  <data name="MAPS_DIFFERENT_MISSION" xml:space="preserve">
+    <value>That folder was exported from {0}, and it will be installed over {1} instead.
+
+That is allowed - a map can be installed over any mission - but if it was not what you meant, cancel and pick {0} in the list.</value>
+    <comment>Asked when importing over a different mission than the folder came from</comment>
   </data>
   <data name="MODS_GAME_ASSETS" xml:space="preserve">
     <value>Game assets</value>

@@ -85,6 +85,10 @@
                 <local:MeshWorkshopTab x:Name="mobSkinsTab" Catalogue="Mobs"/>
             </TabItem>
 
+            <TabItem x:Name="mapsTabItem" Header="*Maps*" Selector.Selected="OnTabSelected">
+                <local:MapsTab x:Name="mapsTab"/>
+            </TabItem>
+
             <TabItem x:Name="musicTabItem" Header="*Music*" Selector.Selected="OnTabSelected">
                 <local:MusicTab x:Name="musicTab"/>
             </TabItem>
@@ -95,10 +99,6 @@
 
             <TabItem x:Name="enemiesTabItem" Header="*Enemies*" Selector.Selected="OnTabSelected">
                 <local:EnemiesTab x:Name="enemiesTab"/>
-            </TabItem>
-
-            <TabItem x:Name="statsTabItem" Header="*Stats/Counters*" Selector.Selected="OnTabSelected">
-                <local:StatsTab x:Name="statsTab"/>
             </TabItem>
 
             <TabItem x:Name="modsTabItem" Header="*Installed Mods*" Selector.Selected="OnTabSelected">

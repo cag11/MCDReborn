@@ -1,0 +1,175 @@
+﻿<Window x:Class="MCDSaveEdit.UI.SpawnsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="clr-namespace:MCDSaveEdit.UI"
+        mc:Ignorable="d"
+        Title="*Spawns*"
+        Height="900" Width="1560" MinHeight="600" MinWidth="1000"
+        WindowState="Maximized"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource Brush.Background}"
+        Foreground="{DynamicResource Brush.Text}">
+
+    <DockPanel Margin="10">
+
+        <TextBlock x:Name="statusLabel" DockPanel.Dock="Bottom" Margin="2,8,2,0"
+                   FontSize="12" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                   Foreground="{DynamicResource Brush.TextMuted}"/>
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="2,10,2,0">
+            <Button x:Name="saveButton" Content="*Save*" Padding="14,6" Margin="0,0,8,0"
+                    Click="saveButton_Click"/>
+            <Button x:Name="revertButton" Content="*Reload*" Padding="12,6" Margin="0,0,8,0"
+                    Click="revertButton_Click"/>
+            <Button x:Name="installButton" Content="*Install*" Padding="14,6"
+                    Click="installButton_Click"/>
+            <TextBlock x:Name="changedLabel" VerticalAlignment="Center" Margin="14,0,0,0"
+                       FontSize="12" Foreground="{DynamicResource Brush.TextMuted}"/>
+        </StackPanel>
+
+        <!-- The rooms, in the order the mission plays them. Not a file listing: the whole point
+             is knowing where you are in the level. -->
+        <DockPanel x:Name="roomsPanel" DockPanel.Dock="Left" Width="300" Margin="0,0,10,0">
+            <Label x:Name="roomsLabel" DockPanel.Dock="Top" Content="*Rooms*"
+                   Style="{StaticResource SectionHeading}" Padding="0,0,0,6"/>
+            <ListBox x:Name="roomList" BorderThickness="0" Background="Transparent"
+                     SelectionChanged="roomList_SelectionChanged"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+        </DockPanel>
+
+        <!-- The placement controls, beside the map rather than on top of it. -->
+        <Border DockPanel.Dock="Right" Width="290" Margin="10,0,0,0" Padding="12"
+                Background="{DynamicResource Brush.Surface}"
+                BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4">
+            <StackPanel>
+                <Label x:Name="placeLabel" Content="*Place spawn points*"
+                       Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+
+                <TextBlock x:Name="placeHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,10"
+                           Foreground="{DynamicResource Brush.TextMuted}"/>
+
+                <TextBlock x:Name="roomLabel" FontWeight="SemiBold" TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis" Margin="0,0,0,8"/>
+
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/><RowDefinition/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="x" Grid.Row="0" Grid.Column="0" FontSize="11"
+                               Foreground="{DynamicResource Brush.TextMuted}"/>
+                    <TextBlock Text="y" Grid.Row="0" Grid.Column="1" FontSize="11"
+                               Foreground="{DynamicResource Brush.TextMuted}"/>
+                    <TextBlock Text="z" Grid.Row="0" Grid.Column="2" FontSize="11"
+                               Foreground="{DynamicResource Brush.TextMuted}"/>
+
+                    <TextBox x:Name="xBox" Grid.Row="1" Grid.Column="0" Margin="0,0,4,0" Height="26"
+                             VerticalContentAlignment="Center"/>
+                    <TextBox x:Name="yBox" Grid.Row="1" Grid.Column="1" Margin="0,0,4,0" Height="26"
+                             VerticalContentAlignment="Center"/>
+                    <TextBox x:Name="zBox" Grid.Row="1" Grid.Column="2" Height="26"
+                             VerticalContentAlignment="Center"/>
+                </Grid>
+
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/><ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/><RowDefinition/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock x:Name="radiusLabel" Text="*radius*" Grid.Row="0" Grid.Column="0"
+                               FontSize="11" Foreground="{DynamicResource Brush.TextMuted}"/>
+                    <TextBlock x:Name="countLabel" Text="*count*" Grid.Row="0" Grid.Column="1"
+                               FontSize="11" Foreground="{DynamicResource Brush.TextMuted}"/>
+
+                    <TextBox x:Name="radiusBox" Grid.Row="1" Grid.Column="0" Margin="0,0,4,0"
+                             Height="26" VerticalContentAlignment="Center"/>
+                    <TextBox x:Name="countBox" Grid.Row="1" Grid.Column="1" Height="26"
+                             VerticalContentAlignment="Center"/>
+                </Grid>
+
+                <ComboBox x:Name="tagBox" Margin="0,0,0,10" Height="26" VerticalContentAlignment="Center"/>
+
+                <!-- Wrapping, not a row. Four buttons do not fit this panel's width and the
+                     fourth simply vanished off the edge, which looks like a button that failed
+                     to draw rather than one there was no room for. -->
+                <WrapPanel x:Name="actionPanel" Margin="0,0,0,12">
+                    <Button x:Name="placeButton" Content="*Place*" Padding="14,5"
+                            Margin="0,0,6,6" Click="placeButton_Click"/>
+                    <Button x:Name="removeButton" Content="*Remove point*" Padding="10,5"
+                            Margin="0,0,6,6" Click="removeButton_Click"/>
+                    <Button x:Name="clearButton" Content="*Clear room*" Padding="10,5"
+                            Margin="0,0,0,6" Click="clearButton_Click"/>
+                </WrapPanel>
+
+                <Separator Margin="0,0,0,10"/>
+
+                <Label x:Name="rulesLabel" Content="*What spawns*"
+                       Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+                <TextBlock x:Name="rulesHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
+                           Foreground="{DynamicResource Brush.TextMuted}"/>
+
+                <ComboBox x:Name="groupBox" Margin="0,0,0,8" Height="26"
+                          VerticalContentAlignment="Center"
+                          ToolTip="{Binding SelectedItem.Content, RelativeSource={RelativeSource Self}}"
+                          SelectionChanged="groupBox_SelectionChanged"/>
+
+                <TextBlock x:Name="mobsLabel" FontSize="11" Margin="0,4,0,4"
+                           Foreground="{DynamicResource Brush.TextMuted}"/>
+
+                <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="mobStack"/>
+                </ScrollViewer>
+
+                <Button x:Name="addMobButton" Content="*Add mob*" Padding="10,4" Margin="0,8,0,0"
+                        HorizontalAlignment="Left" Click="addMobButton_Click"/>
+            </StackPanel>
+        </Border>
+
+        <!-- The mission itself. Drag to turn it, shift-drag or right-drag to slide it about,
+             wheel to come closer, click the ground to say where a spawn point goes. -->
+        <Border BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4"
+                Background="#FF101216" ClipToBounds="True">
+            <Grid>
+                <ui:MapView3D x:Name="mapView"/>
+
+                <TextBlock x:Name="busyLabel" HorizontalAlignment="Center"
+                           VerticalAlignment="Center" FontSize="14"
+                           Foreground="{DynamicResource Brush.TextMuted}"/>
+
+                <!-- Over the view rather than beside it: the map wants every pixel it can get. -->
+                <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10"
+                        Padding="8,6" CornerRadius="4" Background="#CC1A1D23">
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="frameButton" Content="*Fit*" Padding="9,3" Margin="0,0,5,0"
+                                Click="frameButton_Click"/>
+                        <Button x:Name="overheadButton" Content="*Top down*" Padding="9,3"
+                                Click="overheadButton_Click"/>
+
+                        <TextBlock x:Name="ceilingLabel" VerticalAlignment="Center"
+                                   Margin="14,0,6,0" FontSize="11"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <Slider x:Name="ceilingSlider" Width="150" VerticalAlignment="Center"
+                                Minimum="4" Maximum="255" Value="255"
+                                IsSnapToTickEnabled="True" TickFrequency="1"
+                                Thumb.DragCompleted="ceilingSlider_DragCompleted"
+                                ValueChanged="ceilingSlider_ValueChanged"/>
+                    </StackPanel>
+                </Border>
+
+                <Border HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="10"
+                        Padding="8,5" CornerRadius="4" Background="#CC1A1D23">
+                    <TextBlock x:Name="whereLabel" FontSize="11" FontFamily="Consolas"
+                               Foreground="{DynamicResource Brush.Text}"/>
+                </Border>
+            </Grid>
+        </Border>
+    </DockPanel>
+</Window>

@@ -1,0 +1,196 @@
+﻿using System.Collections.Generic;
+#nullable enable
+
+namespace MCDSaveEdit.Logic
+{
+    /// <summary>
+    /// Every mob the game's own missions spawn.
+    ///
+    /// Taken from every mob-groups entry in all 55 level files rather than from a wiki, so it is
+    /// what the game actually uses. Bosses are marked but are not otherwise special: the format
+    /// puts redstonemonstrosity in the same list as zombie, which is why swapping one for the
+    /// other is an ordinary edit.
+    ///
+    /// The spellings are inconsistent in the game's files - vindicator and Vindicator both appear
+    /// - and the one kept here is whichever that mob uses most often. Whether the game cares about
+    /// case is untested, so nothing is normalised.
+    /// </summary>
+    public static class GameMobs
+    {
+        public sealed class Mob
+        {
+            public Mob(string id, bool boss)
+            {
+                Id = id;
+                Boss = boss;
+            }
+
+            public string Id { get; }
+            public bool Boss { get; }
+
+            public override string ToString() => Id;
+        }
+
+        public static readonly IReadOnlyList<Mob> ALL = new List<Mob>
+        {
+            new Mob("skeleton", false),
+            new Mob("zombie", false),
+            new Mob("vindicator", false),
+            new Mob("creeper", false),
+            new Mob("Pillager", false),
+            new Mob("spider", false),
+            new Mob("enchanter", false),
+            new Mob("wraith", false),
+            new Mob("Mountaineer", false),
+            new Mob("chillager", false),
+            new Mob("blaze", false),
+            new Mob("frozenzombie", false),
+            new Mob("icycreeper", false),
+            new Mob("witherskeleton", false),
+            new Mob("piglinmelee", false),
+            new Mob("piglinranged", false),
+            new Mob("necromancer", false),
+            new Mob("witherskeletonranged", false),
+            new Mob("Windcaller", false),
+            new Mob("skeletonvanguard", false),
+            new Mob("royalguard", false),
+            new Mob("cavespider", false),
+            new Mob("babyzombie", false),
+            new Mob("piglinfungusthrower", false),
+            new Mob("mossyskeleton", false),
+            new Mob("Stray", false),
+            new Mob("geomancer", false),
+            new Mob("junglezombie", false),
+            new Mob("husk", false),
+            new Mob("Drowned", false),
+            new Mob("SlimeLarge", false),
+            new Mob("hoglin", false),
+            new Mob("SunkenSkeleton", false),
+            new Mob("witch", false),
+            new Mob("TridentDrowned", false),
+            new Mob("enderman", false),
+            new Mob("zombifiedpiglinranged", false),
+            new Mob("evoker", true),
+            new Mob("BabyDrowned", false),
+            new Mob("Whisperer", false),
+            new Mob("Endling", false),
+            new Mob("Endermite", false),
+            new Mob("Leaper", false),
+            new Mob("Snareling", false),
+            new Mob("Ravager", true),
+            new Mob("Guardian", true),
+            new Mob("WaveWhisperer", false),
+            new Mob("endersent", false),
+            new Mob("Blastling", false),
+            new Mob("TropicalSlimeLarge", false),
+            new Mob("animal", false),
+            new Mob("towerwraith", false),
+            new Mob("redstonegolem", true),
+            new Mob("drownednecromancer", false),
+            new Mob("zombifiedpiglin", false),
+            new Mob("zombifiedpiglinfungusthrower", false),
+            new Mob("endermitesmart", false),
+            new Mob("illusioner", false),
+            new Mob("chickenjockey", false),
+            new Mob("MountainAnimal", false),
+            new Mob("ghast", false),
+            new Mob("MagmaCubeSmall", false),
+            new Mob("vindicatorchef", false),
+            new Mob("OceanAnimal", false),
+            new Mob("MagmaCubeMedium", false),
+            new Mob("zombifiedpiglinmelee", false),
+            new Mob("chargedcreeper", false),
+            new Mob("jackolantern", false),
+            new Mob("MagmaCubeLarge", false),
+            new Mob("hoveringinferno", false),
+            new Mob("Silverfishsmart", false),
+            new Mob("towerguard", false),
+            new Mob("SkeletonHorseman", false),
+            new Mob("piglinmeleevariant1", false),
+            new Mob("piglinrangedvariant0", false),
+            new Mob("ocelot", false),
+            new Mob("ElderGuardian", true),
+            new Mob("TropicalSlimeMedium", false),
+            new Mob("namelessking", true),
+            new Mob("JungleAnimal", false),
+            new Mob("mooshroom", false),
+            new Mob("GlowSquid", false),
+            new Mob("Silverfish", false),
+            new Mob("Turtle", false),
+            new Mob("Dolphin", false),
+            new Mob("BabyTurtle", false),
+            new Mob("shulker", false),
+            new Mob("mobspawner", false),
+            new Mob("Goat", false),
+            new Mob("WoolyCow", false),
+            new Mob("llamamob", false),
+            new Mob("WinterAnimal", false),
+            new Mob("TempestGolem", true),
+            new Mob("cauldronboss", true),
+            new Mob("vindicatorvariant0", false),
+            new Mob("zombievariant0", false),
+            new Mob("skeletonvariant0", false),
+            new Mob("activesquallgolem", true),
+            new Mob("Squid", false),
+            new Mob("geomancerancient", false),
+            new Mob("endersent_voidstrike", false),
+            new Mob("playfulpanda", false),
+            new Mob("lazypanda", false),
+            new Mob("brownpanda", false),
+            new Mob("babypanda", false),
+            new Mob("SlimeMedium", false),
+            new Mob("endersent_thornblight", false),
+            new Mob("redstonemonstrosity", true),
+            new Mob("treetopleaper", false),
+            new Mob("treetopwhisperer", false),
+            new Mob("Rabbit", false),
+            new Mob("polarbear", false),
+            new Mob("endersent_deadeye", false),
+            new Mob("SlimeSmall", false),
+            new Mob("wickedwraith", false),
+            new Mob("mooshroommonstrosity", true),
+            new Mob("jungleabomination", false),
+            new Mob("TropicalSlimeSmall", false),
+            new Mob("zombieancient", false),
+            new Mob("vexancient", false),
+            new Mob("skeletonancient", false),
+            new Mob("necromancerancient", false),
+            new Mob("royalguardancient", false),
+            new Mob("witchancient", false),
+            new Mob("wraithancient", false),
+            new Mob("babyzombieancient", false),
+            new Mob("chickenjockeytowerancient", false),
+            new Mob("redstonegolemancient", true),
+            new Mob("mooshroomancient", false),
+            new Mob("spiderancient", false),
+            new Mob("skeletonvanguardancient", false),
+            new Mob("pillagerancient", false),
+            new Mob("enchanterancient", false),
+            new Mob("slimesmallancient", false),
+            new Mob("leaperancient", false),
+            new Mob("goatancient", false),
+            new Mob("hoglinancient", false),
+            new Mob("blazespawnerancient", false),
+            new Mob("guardianancient", true),
+            new Mob("drownedancient", false),
+            new Mob("endlingancient", false),
+            new Mob("snarelingancient", false),
+            new Mob("silverfishancient", false),
+            new Mob("piglinmeleevariant0", false),
+            new Mob("piglinmeleevariant2", false),
+            new Mob("piglinrangedvariant1", false),
+            new Mob("piglinrangedvariant2", false),
+            new Mob("BluffAnimal", false),
+            new Mob("perfectform", false),
+            new Mob("endersent_everfire", false),
+            new Mob("endersent_surgefiend", false),
+            new Mob("RampartCaptain", false),
+            new Mob("cave_spider", false),
+            new Mob("archillager", true),
+            new Mob("archvessel", true),
+            new Mob("endersent_writherot", false),
+            new Mob("ordinaryhorse", false),
+            new Mob("redstonecube", false),
+        };
+    }
+}
