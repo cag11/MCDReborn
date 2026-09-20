@@ -26,6 +26,25 @@
                         Click="exportZipButton_Click"/>
                 <Button x:Name="importButton" Content="*Import Mod*" Padding="10,5" Margin="0,0,6,0"
                         Click="importButton_Click"/>
+                <Button x:Name="openFolderButton" Content="*Open Mod Folder*" Padding="10,5"
+                        Click="openFolderButton_Click"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Advanced.
+
+             Everything on this row is for BUILDING a mod rather than installing one - the loader,
+             its payloads, the asset browser - and it was crowding the row that anybody who just
+             wants to use a mod actually needs. Hidden until asked for.
+
+             The toggle is on the left, opposite what it reveals, so it never moves when the row
+             fills up. -->
+        <Grid DockPanel.Dock="Top" Margin="2,0,2,6">
+            <ToggleButton x:Name="advancedToggle" Content="*Advanced*" HorizontalAlignment="Left"
+                          VerticalAlignment="Center" Click="advancedToggle_Click"/>
+
+            <StackPanel x:Name="advancedPanel" Orientation="Horizontal" HorizontalAlignment="Right"
+                        VerticalAlignment="Center" Visibility="Collapsed">
                 <Button x:Name="installLoaderButton" Content="*Install loader*" Padding="10,5"
                         Margin="0,0,14,0" Click="installLoaderButton_Click"/>
                 <ComboBox x:Name="payloadTrigger" Width="86" Margin="0,0,6,0"
@@ -34,10 +53,8 @@
                         Click="installPayloadButton_Click"/>
                 <Button x:Name="installPayloadFolderButton" Content="*Install payload folder*" Padding="10,5"
                         Margin="0,0,14,0" Click="installPayloadFolderButton_Click"/>
-                <Button x:Name="gameAssetsButton" Content="*Game assets*" Padding="10,5" Margin="0,0,6,0"
+                <Button x:Name="gameAssetsButton" Content="*Game assets*" Padding="10,5"
                         Click="gameAssetsButton_Click"/>
-                <Button x:Name="openFolderButton" Content="*Open Mod Folder*" Padding="10,5"
-                        Click="openFolderButton_Click"/>
             </StackPanel>
         </Grid>
 

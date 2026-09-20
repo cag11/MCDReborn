@@ -7,67 +7,60 @@
              mc:Ignorable="d"
              d:DesignHeight="450"
              d:DesignWidth="900">
-    <Grid Margin="10,6,10,10">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="2*"/>
-            <ColumnDefinition Width="10"/>
-            <ColumnDefinition Width="3*"/>
-        </Grid.ColumnDefinitions>
 
-        <!-- The game's music, longest first. Length is what tells a track from a sting: everything
-             here is called bgm_ and most of it is one bar of something. -->
-        <DockPanel Grid.Column="0">
-            <Label x:Name="tracksLabel" DockPanel.Dock="Top" Content="*Game music*" Padding="0,0,0,4"/>
+    <!-- One column, and every row that is not the list has a fixed height.
+         The two column version moved things about as you clicked: the chosen track's path was a
+         wrapping TextBlock, so a longer name made its box taller and pushed the buttons and the
+         status line down with it. Single line and trimmed, so nothing below ever shifts. -->
+    <DockPanel Margin="10,6,10,10">
 
-            <TextBlock x:Name="tracksHint" DockPanel.Dock="Top" Foreground="Gray" TextWrapping="Wrap"
-                       FontSize="11" Margin="2,0,2,6"/>
+        <Label x:Name="tracksLabel" DockPanel.Dock="Top" Content="*Game music*" Padding="0,0,0,4"/>
 
-            <Grid DockPanel.Dock="Top" Margin="2,0,2,6">
-                <TextBox x:Name="searchBox" Height="26" VerticalContentAlignment="Center"
-                         TextChanged="searchBox_TextChanged"/>
-                <TextBlock x:Name="searchHint" Text="Search…" Margin="9,0,0,0" Foreground="Gray"
-                           IsHitTestVisible="False" VerticalAlignment="Center"/>
-            </Grid>
+        <TextBlock x:Name="tracksHint" DockPanel.Dock="Top" Foreground="Gray" TextWrapping="Wrap"
+                   FontSize="11" Margin="2,0,2,8"/>
 
-            <ListBox x:Name="trackList" BorderThickness="0" Background="Transparent"
-                     SelectionChanged="trackList_SelectionChanged"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
-        </DockPanel>
+        <Grid DockPanel.Dock="Top" Margin="2,0,2,8">
+            <TextBox x:Name="searchBox" Height="26" VerticalContentAlignment="Center"
+                     TextChanged="searchBox_TextChanged"/>
+            <TextBlock x:Name="searchHint" Text="Search…" Margin="9,0,0,0" Foreground="Gray"
+                       IsHitTestVisible="False" VerticalAlignment="Center"/>
+        </Grid>
 
-        <DockPanel Grid.Column="2">
-            <Label x:Name="replaceLabel" DockPanel.Dock="Top" Content="*Replace with your own*"
-                   Padding="0,0,0,4"/>
+        <!-- Everything below the list is docked to the bottom, so the list takes whatever is left
+             and the controls never move. -->
+        <TextBlock x:Name="statusLabel" DockPanel.Dock="Bottom" TextWrapping="NoWrap"
+                   TextTrimming="CharacterEllipsis" Margin="2,8,2,0" FontSize="11" Height="18"/>
 
-            <TextBlock x:Name="hintLabel" DockPanel.Dock="Top" TextWrapping="Wrap" Foreground="Gray"
-                       FontSize="11" Margin="2,0,2,10"/>
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="2,8,2,0">
+            <Button x:Name="pickButton" Content="*Choose audio…*" Padding="10,5" Margin="0,0,6,0"
+                    Click="pickButton_Click"/>
+            <Button x:Name="installButton" Content="*Install*" Padding="10,5" Margin="0,0,6,0"
+                    Click="installButton_Click"/>
+            <Button x:Name="removeButton" Content="*Remove*" Padding="10,5"
+                    Click="removeButton_Click"/>
 
-            <Border x:Name="chosenStrip" DockPanel.Dock="Top" Margin="2,0,2,10" Padding="8,6"
-                    Background="#11FFFFFF" CornerRadius="3">
-                <StackPanel>
-                    <TextBlock x:Name="chosenTrackLabel" TextWrapping="Wrap" FontWeight="SemiBold"/>
-                    <TextBlock x:Name="chosenTrackDetail" TextWrapping="Wrap" Foreground="Gray"
-                               FontSize="11" Margin="0,2,0,0"/>
-                </StackPanel>
-            </Border>
+            <TextBlock x:Name="chosenFileLabel" VerticalAlignment="Center" Margin="12,0,0,0"
+                       FontSize="11" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
+        </StackPanel>
 
-            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="2,0,2,10">
-                <Button x:Name="pickButton" Content="*Choose MP3…*" Padding="10,5" Margin="0,0,6,0"
-                        Click="pickButton_Click"/>
-                <Button x:Name="installButton" Content="*Install*" Padding="10,5" Margin="0,0,6,0"
-                        Click="installButton_Click"/>
-                <Button x:Name="removeButton" Content="*Remove*" Padding="10,5"
-                        Click="removeButton_Click"/>
+        <Border DockPanel.Dock="Bottom" Margin="2,8,2,0" Padding="8,5"
+                Background="#11FFFFFF" CornerRadius="3" Height="44">
+            <StackPanel>
+                <TextBlock x:Name="chosenTrackLabel" FontWeight="SemiBold" TextWrapping="NoWrap"
+                           TextTrimming="CharacterEllipsis"/>
+                <TextBlock x:Name="chosenTrackDetail" Foreground="Gray" FontSize="11"
+                           TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Margin="0,2,0,0"/>
             </StackPanel>
+        </Border>
 
-            <TextBlock x:Name="chosenFileLabel" DockPanel.Dock="Top" TextWrapping="Wrap"
-                       Margin="2,0,2,10" FontSize="11"/>
+        <!-- What is already replaced. Kept short: it is a reminder, not a workspace. -->
+        <ScrollViewer DockPanel.Dock="Bottom" MaxHeight="80" VerticalScrollBarVisibility="Auto"
+                      Margin="2,8,2,0">
+            <StackPanel x:Name="installedStack"/>
+        </ScrollViewer>
 
-            <TextBlock x:Name="statusLabel" DockPanel.Dock="Bottom" TextWrapping="Wrap"
-                       Margin="2,8,2,0" FontSize="11"/>
-
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel x:Name="installedStack" Margin="2,0,2,0"/>
-            </ScrollViewer>
-        </DockPanel>
-    </Grid>
+        <ListBox x:Name="trackList" BorderThickness="0" Background="Transparent"
+                 SelectionChanged="trackList_SelectionChanged"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
+    </DockPanel>
 </UserControl>

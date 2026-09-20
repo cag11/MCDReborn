@@ -51,6 +51,8 @@ namespace MCDSaveEdit.UI
             gameAssetsButton.ToolTip = R.MODS_GAME_ASSETS_WHY;
             installLoaderButton.Content = R.MODS_INSTALL_LOADER;
             installLoaderButton.ToolTip = R.MODS_INSTALL_LOADER_WHY;
+            advancedToggle.ToolTip = R.MODS_ADVANCED_WHY;
+            showAdvanced();
 
             if (payloadTrigger.Items.Count == 0)
             {
@@ -420,6 +422,24 @@ namespace MCDSaveEdit.UI
                 //cooked at the wrong path, the widget missing - rather than a fault.
                 statusLabel.Text = problem.Message;
             }
+        }
+
+        /// <summary>
+        /// Shows or hides the mod-building row.
+        ///
+        /// Collapsed rather than hidden, so the row takes no height while it is away and nothing
+        /// below it moves when it comes back - the buttons it reveals all sit on its own line.
+        /// </summary>
+        private void advancedToggle_Click(object sender, RoutedEventArgs e) => showAdvanced();
+
+        private void showAdvanced()
+        {
+            var open = advancedToggle.IsChecked == true;
+
+            //The arrow is not in the resource: it is state rather than language, and a translator
+            //given "Advanced ▾" to translate would have to carry the arrow through every language.
+            advancedToggle.Content = R.MODS_ADVANCED + (open ? "  ▴" : "  ▾");
+            advancedPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
         }
 
         private void openFolderButton_Click(object sender, RoutedEventArgs e)

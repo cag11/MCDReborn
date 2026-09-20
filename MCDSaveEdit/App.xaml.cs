@@ -950,6 +950,147 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_SCRIPT[=<how many assets>] - what /Script/Dungeons actually exposes.
+            //
+            //The stub module makes a cast compile by being NAMED Dungeons; what it cannot do is say
+            //which names are worth declaring. A cooked package writes every native class and
+            //function it touches into its import table, so the game's own blueprints are a list of
+            //its C++ surface - the only one readable without a decompiler.
+            var probeScript = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_SCRIPT"));
+            if (probeScript != null)
+            {
+                var many = 4000;
+                var at = probeScript.IndexOf('=');
+                if (at > 0) { int.TryParse(probeScript.Substring(at + 1), out many); }
+
+                var index = Logic.CustomSkins.index;
+                if (index == null)
+                {
+                    Console.WriteLine("[script] the game's paks are not loaded");
+                    this.Shutdown();
+                    return;
+                }
+
+                //class name -> function name -> how many assets call it. The count is the useful
+                //part: a function one asset touches may be incidental, one that four hundred touch
+                //is the game's spine.
+                var byClass = new Dictionary<string, Dictionary<string, int>>(StringComparer.Ordinal);
+                var classes = new Dictionary<string, int>(StringComparer.Ordinal);
+                var structs = new Dictionary<string, int>(StringComparer.Ordinal);
+                var enums = new Dictionary<string, int>(StringComparer.Ordinal);
+
+                void tally(Dictionary<string, int> into, string key)
+                {
+                    into.TryGetValue(key, out var was);
+                    into[key] = was + 1;
+                }
+
+                var looked = 0;
+                var read = 0;
+                var withDungeons = 0;
+                var clock = System.Diagnostics.Stopwatch.StartNew();
+
+                foreach (var entry in index.AllEntries())
+                {
+                    if (looked >= many) { break; }
+                    looked++;
+
+                    byte[] uasset;
+                    try
+                    {
+                        var package = index.extractPackage("/" + entry.Key
+                            .Replace(System.IO.Path.DirectorySeparatorChar, '/').TrimStart('/'));
+                        if (package == null) { continue; }
+                        uasset = package.Value.UAsset.ToArray();
+                    }
+                    catch (Exception)
+                    {
+                        continue;
+                    }
+
+                    read++;
+
+                    var imports = Logic.CookedPackage.readImports(uasset);
+                    if (imports.Count == 0) { continue; }
+
+                    //An import's outer chain says which module a name belongs to: a function's
+                    //outer is its class, and that class's outer is the package. Following it is the
+                    //only way to tell Dungeons.GetHealth from Engine.GetHealth.
+                    Logic.CookedPackage.Import? outerOf(Logic.CookedPackage.Import one)
+                    {
+                        var to = one.Outer;
+                        if (to >= 0) { return null; }
+                        var i = -to - 1;
+                        return i < imports.Count ? imports[i] : null;
+                    }
+
+                    bool inDungeons(Logic.CookedPackage.Import? one)
+                        => one != null && one.ObjectName == "/Script/Dungeons";
+
+                    var any = false;
+                    foreach (var one in imports)
+                    {
+                        var outer = outerOf(one);
+
+                        if (one.ClassName == "Function")
+                        {
+                            //The owner, and the package the owner is in.
+                            if (outer == null || !inDungeons(outerOf(outer))) { continue; }
+
+                            if (!byClass.TryGetValue(outer.ObjectName, out var functions))
+                            {
+                                functions = new Dictionary<string, int>(StringComparer.Ordinal);
+                                byClass[outer.ObjectName] = functions;
+                            }
+                            tally(functions, one.ObjectName);
+                            any = true;
+                            continue;
+                        }
+
+                        if (!inDungeons(outer)) { continue; }
+
+                        if (one.ClassName == "Class") { tally(classes, one.ObjectName); any = true; }
+                        else if (one.ClassName == "ScriptStruct") { tally(structs, one.ObjectName); any = true; }
+                        else if (one.ClassName == "Enum") { tally(enums, one.ObjectName); any = true; }
+                    }
+
+                    if (any) { withDungeons++; }
+                }
+
+                Console.WriteLine($"[script] looked at {looked:N0} entries, read {read:N0}, "
+                    + $"{withDungeons:N0} refer to /Script/Dungeons ({clock.Elapsed.TotalSeconds:F0}s)");
+
+                void top(string what, Dictionary<string, int> of, int howMany)
+                {
+                    Console.WriteLine($"[script] --- {what} ({of.Count:N0}) ---");
+                    foreach (var one in of.OrderByDescending(x => x.Value).Take(howMany))
+                    {
+                        Console.WriteLine($"[script]   {one.Value,5}  {one.Key}");
+                    }
+                }
+
+                var all = _startupArguments.Any(a => a == "ALL");
+                top("classes", classes, all ? int.MaxValue : 60);
+                top("structs", structs, all ? int.MaxValue : 30);
+                top("enums", enums, all ? int.MaxValue : 30);
+
+                Console.WriteLine($"[script] --- functions, by class ({byClass.Count:N0} classes, "
+                    + $"{byClass.Values.Sum(x => x.Count):N0} distinct functions) ---");
+                foreach (var owner in byClass.OrderByDescending(x => x.Value.Values.Sum())
+                    .Take(all ? int.MaxValue : 40))
+                {
+                    Console.WriteLine($"[script]   {owner.Key}");
+                    foreach (var one in owner.Value.OrderByDescending(x => x.Value)
+                        .Take(all ? int.MaxValue : 40))
+                    {
+                        Console.WriteLine($"[script]       {one.Value,5}  {one.Key}");
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
             //PROBE_MUSIC_SET=<engine path>;<audio file> - replaces one track for real, and says
             //what it produced. The chain is long enough that a failure anywhere in it looks the
             //same from the tab, so each stage reports its own numbers.

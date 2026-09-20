@@ -39,9 +39,7 @@ namespace MCDSaveEdit.UI
         private void setStrings()
         {
             tracksLabel.Content = R.MUSIC_TRACKS;
-            tracksHint.Text = R.MUSIC_TRACKS_HINT;
-            replaceLabel.Content = R.MUSIC_REPLACE;
-            hintLabel.Text = R.MUSIC_HINT;
+            tracksHint.Text = R.MUSIC_TRACKS_HINT + "  " + R.MUSIC_HINT;
             pickButton.Content = R.MUSIC_CHOOSE;
             installButton.Content = R.MUSIC_INSTALL;
             removeButton.Content = R.MUSIC_REMOVE;

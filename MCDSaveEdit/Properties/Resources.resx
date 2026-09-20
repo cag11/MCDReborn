@@ -2139,6 +2139,14 @@ The save file is not changed until you save it.</value>
     <value>Installed {0} ({1} files). It will run {2}.</value>
     <comment>After a payload folder is installed</comment>
   </data>
+  <data name="MODS_ADVANCED" xml:space="preserve">
+    <value>Advanced</value>
+    <comment>The row that hides the mod-building tools until they are asked for</comment>
+  </data>
+  <data name="MODS_ADVANCED_WHY" xml:space="preserve">
+    <value>The tools for building a mod rather than installing one: the blueprint loader, the payloads it loads, and the browser that gives an asset the path Unreal wants for it. Nothing here is needed to use a mod somebody else made.</value>
+    <comment>What the advanced row holds</comment>
+  </data>
   <data name="MODS_GAME_ASSETS" xml:space="preserve">
     <value>Game assets</value>
     <comment>The button that opens the game asset browser</comment>

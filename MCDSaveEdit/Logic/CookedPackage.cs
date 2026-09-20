@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 #nullable enable
 
@@ -51,6 +52,84 @@ namespace MCDSaveEdit.Logic
             }
 
             return biggest;
+        }
+
+        /// <summary>
+        /// One thing an asset refers to that lives somewhere else.
+        ///
+        /// An import is how a cooked package names something it does not contain - a native class,
+        /// one of that class's functions, a struct, an enum. It is the only place the game's own
+        /// C++ surface is written down in a form that can be read without a decompiler, because
+        /// every blueprint that calls a native function has to record that function's name here.
+        /// </summary>
+        public sealed class Import
+        {
+            public Import(string className, string objectName, int outer)
+            {
+                ClassName = className;
+                ObjectName = objectName;
+                Outer = outer;
+            }
+
+            /// <summary>What kind of thing it is: Class, Function, Package, ScriptStruct, Enum.</summary>
+            public string ClassName { get; }
+
+            public string ObjectName { get; }
+
+            /// <summary>
+            /// An FPackageIndex: below zero is an import at -Outer-1, above is an export, zero is
+            /// nothing. A function's outer is the class that owns it, and that class's outer is the
+            /// package - which is the chain that says which module a name belongs to.
+            /// </summary>
+            public int Outer { get; }
+        }
+
+        /// <summary>
+        /// Every import in a package, in table order, so an index can be followed.
+        ///
+        /// Returns nothing rather than throwing for anything that does not parse: this is run
+        /// across tens of thousands of assets at a time and one unreadable header should not be
+        /// the end of the sweep.
+        /// </summary>
+        public static IReadOnlyList<Import> readImports(byte[] uasset)
+        {
+            var names = CookedProperties.readNamesOf(uasset);
+            if (names.Count == 0) { return Array.Empty<Import>(); }
+
+            int importCount, importOffset;
+            try
+            {
+                importCount = importTableCount(uasset, out importOffset);
+            }
+            catch (Exception)
+            {
+                return Array.Empty<Import>();
+            }
+
+            if (importCount <= 0 || importOffset <= 0) { return Array.Empty<Import>(); }
+
+            //ClassPackage, ClassName, OuterIndex, ObjectName - two FNames of eight bytes, an int32,
+            //and another FName.
+            const int ENTRY = 28;
+            if (importOffset + importCount * ENTRY > uasset.Length) { return Array.Empty<Import>(); }
+
+            string name(int at)
+            {
+                var index = BitConverter.ToInt32(uasset, at);
+                return index >= 0 && index < names.Count ? names[index] : "?";
+            }
+
+            var found = new List<Import>(importCount);
+            for (int i = 0; i < importCount; i++)
+            {
+                var entry = importOffset + i * ENTRY;
+                found.Add(new Import(
+                    name(entry + 8),
+                    name(entry + 20),
+                    BitConverter.ToInt32(uasset, entry + 16)));
+            }
+
+            return found;
         }
 
         /// <summary>
@@ -126,6 +205,40 @@ namespace MCDSaveEdit.Logic
             var exportCount = reader.ReadInt32();
             exportOffset = reader.ReadInt32();
             return exportCount;
+        }
+
+        /// <summary>
+        /// How many imports there are and where the table begins. The import fields sit directly
+        /// after the export ones in the summary, so this is exportTableCount read two steps on.
+        /// </summary>
+        private static int importTableCount(byte[] uasset, out int importOffset)
+        {
+            importOffset = 0;
+            if (uasset.Length < 64) { return 0; }
+
+            using var stream = new MemoryStream(uasset);
+            using var reader = new BinaryReader(stream);
+
+            if (reader.ReadUInt32() != 0x9E2A83C1) { return 0; }
+            var legacy = reader.ReadInt32();
+            if (legacy != -4) { reader.ReadInt32(); }
+            reader.ReadInt32(); // ue4 version
+            reader.ReadInt32(); // licensee version
+            var customVersions = reader.ReadInt32();
+            for (int i = 0; i < customVersions; i++) { reader.ReadBytes(20); }
+            reader.ReadInt32(); // total header size
+            skipString(reader);
+            reader.ReadUInt32(); // package flags
+            reader.ReadInt32(); // name count
+            reader.ReadInt32(); // name offset
+            reader.ReadInt32(); // gatherable text count
+            reader.ReadInt32(); // gatherable text offset
+            reader.ReadInt32(); // export count
+            reader.ReadInt32(); // export offset
+
+            var importCount = reader.ReadInt32();
+            importOffset = reader.ReadInt32();
+            return importCount;
         }
 
         private static void skipString(BinaryReader reader)

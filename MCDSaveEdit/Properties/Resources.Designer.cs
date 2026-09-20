@@ -4606,6 +4606,27 @@ namespace MCDSaveEdit.Properties {
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Advanced.
+        /// </summary>
+        public static string MODS_ADVANCED {
+            get {
+                return ResourceManager.GetString("MODS_ADVANCED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The tools for building a mod rather than insta.
+        /// </summary>
+        public static string MODS_ADVANCED_WHY {
+            get {
+                return ResourceManager.GetString("MODS_ADVANCED_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Game assets.
+        /// </summary>
+        /// <summary>
         ///   Looks up a localized string similar to Game assets.
         /// </summary>
         public static string MODS_GAME_ASSETS {
