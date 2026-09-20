@@ -2300,8 +2300,360 @@ The save file is not changed until you save it.</value>
     <comment>After installing from the spawns window</comment>
   </data>
   <data name="SPAWNS_ON_POINT" xml:space="preserve">
-    <value>That spawn point at {0}, {1}, {2} — Remove point takes it out.</value>
+    <value>That spawn point at {0}, {1}, {2} — drag it to move it, or Remove point takes it out.</value>
     <comment>Status when a click lands on an existing spawn point</comment>
+  </data>
+  <data name="SPAWNS_MAIN_START" xml:space="preserve">
+    <value>Make this the main way in</value>
+    <comment>Button that promotes an arrival area</comment>
+  </data>
+  <data name="SPAWNS_STARTS_ONE" xml:space="preserve">
+    <value>One, in yellow, and it is the main way in.</value>
+    <comment>Hint when there is exactly one arrival area</comment>
+  </data>
+  <data name="SPAWNS_START_ALREADY_MAIN" xml:space="preserve">
+    <value>That is already the main way in.</value>
+    <comment>Status when promoting the first one</comment>
+  </data>
+  <data name="SPAWNS_START_NOW_MAIN" xml:space="preserve">
+    <value>That is now where the mission starts you. The others are teleport arrivals.</value>
+    <comment>Status after promoting</comment>
+  </data>
+  <data name="SPAWNS_TAB_MOBS" xml:space="preserve">
+    <value>Mobs</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="SPAWNS_TAB_WAYS" xml:space="preserve">
+    <value>In and out</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="SPAWNS_TAB_QUEST" xml:space="preserve">
+    <value>Objectives</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="SPAWNS_GATES" xml:space="preserve">
+    <value>Gates</value>
+    <comment>Gate section heading</comment>
+  </data>
+  <data name="SPAWNS_GATES_WHY" xml:space="preserve">
+    <value>The PURPLE markers: walls that stay shut until an objective is finished. This is how every mission in the game paces itself. Put one across a corridor, then say which step opens it - a gate nothing opens stays shut forever.</value>
+    <comment>Gate explanation</comment>
+  </data>
+  <data name="SPAWNS_ADD_GATE" xml:space="preserve">
+    <value>Put a gate here</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_TURN_GATE" xml:space="preserve">
+    <value>Turn</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_WIDER_GATE" xml:space="preserve">
+    <value>Wider</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_NARROWER_GATE" xml:space="preserve">
+    <value>Narrower</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_REMOVE_GATE" xml:space="preserve">
+    <value>Remove</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_GATE_OPENS" xml:space="preserve">
+    <value>Opened by:</value>
+    <comment>Label above the objective picker</comment>
+  </data>
+  <data name="SPAWNS_GATE_LOCK" xml:space="preserve">
+    <value>This opens it</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_GATE_UNLOCK" xml:space="preserve">
+    <value>Nothing opens it</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_GATES_NONE" xml:space="preserve">
+    <value>None. Gates are optional - without them the whole map is open from the start.</value>
+    <comment>Hint with no gates</comment>
+  </data>
+  <data name="SPAWNS_GATES_ALL_HELD" xml:space="preserve">
+    <value>{0} gate(s), and every one of them has something that opens it.</value>
+    <comment>Hint when all gates are held</comment>
+  </data>
+  <data name="SPAWNS_GATES_LOOSE" xml:space="preserve">
+    <value>{0} gate(s), and {1} of them has nothing to open it - that one stays shut for the whole mission. Pick it and choose a step below.</value>
+    <comment>Hint when a gate is unheld</comment>
+  </data>
+  <data name="SPAWNS_GATE_AT" xml:space="preserve">
+    <value>Gate “{0}” at {1}, {2}, {3}.</value>
+    <comment>Status when a gate is picked</comment>
+  </data>
+  <data name="SPAWNS_GATE_ADDED" xml:space="preserve">
+    <value>Gate “{0}” added. Choose what opens it, or it stays shut.</value>
+    <comment>Status after adding</comment>
+  </data>
+  <data name="SPAWNS_GATE_TURNED" xml:space="preserve">
+    <value>“{0}” now lies {1}.</value>
+    <comment>Status after turning</comment>
+  </data>
+  <data name="SPAWNS_GATE_ACROSS_X" xml:space="preserve">
+    <value>across x</value>
+    <comment>Which way a gate lies</comment>
+  </data>
+  <data name="SPAWNS_GATE_ACROSS_Z" xml:space="preserve">
+    <value>across z</value>
+    <comment>Which way a gate lies</comment>
+  </data>
+  <data name="SPAWNS_GATE_WIDE" xml:space="preserve">
+    <value>“{0}” is now {1} cells wide.</value>
+    <comment>Status after resizing</comment>
+  </data>
+  <data name="SPAWNS_GATE_REMOVED" xml:space="preserve">
+    <value>Gate “{0}” removed, and any step that held it no longer names it.</value>
+    <comment>Status after removing</comment>
+  </data>
+  <data name="SPAWNS_GATE_LOCKED" xml:space="preserve">
+    <value>“{0}” now opens when you finish: {1}</value>
+    <comment>Status after attaching</comment>
+  </data>
+  <data name="SPAWNS_GATE_UNLOCKED" xml:space="preserve">
+    <value>Nothing opens “{0}” any more, so it stays shut.</value>
+    <comment>Status after detaching</comment>
+  </data>
+  <data name="SPAWNS_GATE_ALREADY_FREE" xml:space="preserve">
+    <value>Nothing was holding that one shut.</value>
+    <comment>Status when unlocking a free gate</comment>
+  </data>
+  <data name="SPAWNS_MOVED_GATE" xml:space="preserve">
+    <value>Moved gate from {0}, {1}, {2} to {3}, {4}, {5}.</value>
+    <comment>Status after dragging a gate</comment>
+  </data>
+  <data name="SPAWNS_QUEST" xml:space="preserve">
+    <value>What the mission asks</value>
+    <comment>Objective chain section heading</comment>
+  </data>
+  <data name="SPAWNS_QUEST_WHY" xml:space="preserve">
+    <value>The steps, in order. They are a SEQUENCE - a step nobody can finish blocks every step after it, including the exit gate, which is always last. A map built over another mission inherits that mission's steps, and they usually ask for things your map does not have.</value>
+    <comment>Objective chain explanation</comment>
+  </data>
+  <data name="SPAWNS_QUEST_ONLY_EXIT" xml:space="preserve">
+    <value>Keep only the way out</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_QUEST_REMOVE" xml:space="preserve">
+    <value>Remove step</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_QUEST_NONE" xml:space="preserve">
+    <value>No steps. Nothing has to be done before the exit gate can be clicked.</value>
+    <comment>Hint when there are no objectives</comment>
+  </data>
+  <data name="SPAWNS_QUEST_OK" xml:space="preserve">
+    <value>{0} step(s), and this room has a region for every one of them.</value>
+    <comment>Hint when all objectives can be satisfied</comment>
+  </data>
+  <data name="SPAWNS_QUEST_STUCK" xml:space="preserve">
+    <value>Step {0} needs a region called “{1}” and this room has not got one. That step can never finish, so nothing after it can either - including the exit gate. Remove it, or press Keep only the way out.</value>
+    <comment>Hint when an objective cannot be satisfied</comment>
+  </data>
+  <data name="SPAWNS_QUEST_REMOVED" xml:space="preserve">
+    <value>Step removed. {0} left.</value>
+    <comment>Status after removing an objective</comment>
+  </data>
+  <data name="SPAWNS_QUEST_ONLY_EXIT_LEFT" xml:space="preserve">
+    <value>Dropped {0} step(s). Clicking the gate is now the whole mission.</value>
+    <comment>Status after keeping only the exit</comment>
+  </data>
+  <data name="SPAWNS_QUEST_ALL_GONE" xml:space="preserve">
+    <value>Dropped {0} step(s). There was no exit objective to keep - add an exit gate and one gets written.</value>
+    <comment>Status when keeping only the exit left nothing</comment>
+  </data>
+  <data name="SPAWNS_QUEST_NOTHING_TO_DROP" xml:space="preserve">
+    <value>There is nothing but the way out already.</value>
+    <comment>Status when keep-only-exit would change nothing</comment>
+  </data>
+  <data name="SPAWNS_EXITS" xml:space="preserve">
+    <value>The way out</value>
+    <comment>Exit-gate section heading</comment>
+  </data>
+  <data name="SPAWNS_EXITS_WHY" xml:space="preserve">
+    <value>The RED marker: the glowing gate you click to finish the mission. It is not a teleport. It needs two things that must agree - a region named “exit” and an objective pointing at it - and either one alone does nothing at all. The button writes both.</value>
+    <comment>Exit-gate explanation</comment>
+  </data>
+  <data name="SPAWNS_ADD_EXIT" xml:space="preserve">
+    <value>Put the exit gate here</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_REMOVE_EXIT" xml:space="preserve">
+    <value>Remove gate</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_EXITS_NONE" xml:space="preserve">
+    <value>None. Without one the mission cannot be finished and there is no way back to camp - the game says nothing, there is simply no gate.</value>
+    <comment>Hint when there is no exit</comment>
+  </data>
+  <data name="SPAWNS_EXITS_SOME" xml:space="preserve">
+    <value>{0} gate(s), and an objective points at them.</value>
+    <comment>Hint when exits exist and are claimed</comment>
+  </data>
+  <data name="SPAWNS_EXITS_UNCLAIMED" xml:space="preserve">
+    <value>{0} gate(s), but NO objective points at any of them, so none will appear. Remove one and add it again to write the objective.</value>
+    <comment>Hint when exits exist without an objective</comment>
+  </data>
+  <data name="SPAWNS_EXITS_OBJECTIVE_ONLY" xml:space="preserve">
+    <value>An objective is looking for an exit gate, but there is no region for it to stand on. Add one.</value>
+    <comment>Hint when the objective exists without a region</comment>
+  </data>
+  <data name="SPAWNS_EXIT_AT" xml:space="preserve">
+    <value>Exit gate at {0}, {1}, {2}.</value>
+    <comment>Status when a gate is picked</comment>
+  </data>
+  <data name="SPAWNS_EXIT_ADDED" xml:space="preserve">
+    <value>Exit gate at {0}, {1}, {2}.</value>
+    <comment>Status after adding a gate</comment>
+  </data>
+  <data name="SPAWNS_EXIT_ADDED_WITH_OBJECTIVE" xml:space="preserve">
+    <value>Exit gate at {0}, {1}, {2}, and an objective to click it - this mission can now be finished.</value>
+    <comment>Status after adding the first gate</comment>
+  </data>
+  <data name="SPAWNS_EXIT_REMOVED" xml:space="preserve">
+    <value>Gate removed. {0} left.</value>
+    <comment>Status after removing a gate</comment>
+  </data>
+  <data name="SPAWNS_EXIT_LAST_GONE" xml:space="preserve">
+    <value>That was the last gate. The mission can no longer be finished - add one before installing.</value>
+    <comment>Status after removing the last gate</comment>
+  </data>
+  <data name="SPAWNS_MOVED_EXIT" xml:space="preserve">
+    <value>Moved the exit gate from {0}, {1}, {2} to {3}, {4}, {5}.</value>
+    <comment>Status after dragging the gate</comment>
+  </data>
+  <data name="SPAWNS_STARTS" xml:space="preserve">
+    <value>Where you come in</value>
+    <comment>Player-start section heading</comment>
+  </data>
+  <data name="SPAWNS_STARTS_WHY" xml:space="preserve">
+    <value>Where the mission materialises you - an area, not a door. Doors are how tiles join and what teleports attach to; you can have several and still arrive nowhere near any of them. YELLOW is the way the mission begins, green are teleport arrivals.</value>
+    <comment>Player-start section explanation</comment>
+  </data>
+  <data name="SPAWNS_ADD_START" xml:space="preserve">
+    <value>Put the start here</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_REMOVE_START" xml:space="preserve">
+    <value>Remove start</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_STARTS_NONE" xml:space="preserve">
+    <value>None. Aim at the map and press Put the start here - without one the mission has nowhere to put you.</value>
+    <comment>Hint when a room has no player start</comment>
+  </data>
+  <data name="SPAWNS_STARTS_SOME" xml:space="preserve">
+    <value>{0} places you can arrive. The YELLOW one is where the mission starts you; the green ones are where teleports drop you. Order decides it - nothing else about them differs.</value>
+    <comment>Hint when a room has player starts</comment>
+  </data>
+  <data name="SPAWNS_START_AT" xml:space="preserve">
+    <value>You arrive at {0}, {1}, {2}.</value>
+    <comment>Status when a start is picked</comment>
+  </data>
+  <data name="SPAWNS_START_ADDED" xml:space="preserve">
+    <value>You now come into this mission at {0}, {1}, {2}.</value>
+    <comment>Status after adding a player start</comment>
+  </data>
+  <data name="SPAWNS_START_ADDED_UNWALKABLE" xml:space="preserve">
+    <value>Start put at {0}, {1}, {2} - but the game calls that ground unwalkable, so it may have nowhere to stand you. Try somewhere the floor is lit in the map.</value>
+    <comment>Status after adding a player start on unwalkable ground</comment>
+  </data>
+  <data name="SPAWNS_START_REMOVED" xml:space="preserve">
+    <value>Removed. {0} place(s) left to arrive.</value>
+    <comment>Status after removing a player start</comment>
+  </data>
+  <data name="SPAWNS_START_LAST_GONE" xml:space="preserve">
+    <value>That was the last one. The mission now has nowhere to put you - add one before installing.</value>
+    <comment>Status after removing the only player start</comment>
+  </data>
+  <data name="SPAWNS_DOORS" xml:space="preserve">
+    <value>Doors</value>
+    <comment>Doors section heading in the spawns editor</comment>
+  </data>
+  <data name="SPAWNS_DOORS_WHY" xml:space="preserve">
+    <value>A door is how two tiles join and what a teleport attaches to. It is four numbers in the tile rather than a block, so it is invisible in Minecraft - this is the only place it can be seen. It is NOT where you come in: that is the green marker above.</value>
+    <comment>Doors section explanation</comment>
+  </data>
+  <data name="SPAWNS_ADD_DOOR" xml:space="preserve">
+    <value>Add door</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_REMOVE_DOOR" xml:space="preserve">
+    <value>Remove door</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_ENTRY_DOOR" xml:space="preserve">
+    <value>Mark as the joining door</value>
+    <comment>Button that names the chosen door as the entry</comment>
+  </data>
+  <data name="SPAWNS_DOORS_NONE" xml:space="preserve">
+    <value>No doors. A tile with none crashes the game on the loading screen - add one.</value>
+    <comment>Hint when a tile has no doors at all</comment>
+  </data>
+  <data name="SPAWNS_DOORS_ENTRY" xml:space="preserve">
+    <value>{0} door(s). Tiles join at “{1}”.</value>
+    <comment>Hint when a tile has doors and names one as the entry</comment>
+  </data>
+  <data name="SPAWNS_DOORS_NO_ENTRY" xml:space="preserve">
+    <value>{0} door(s), none marked as the joining one. That is fine for a single welded mission.</value>
+    <comment>Hint when a tile has doors but no entry-door</comment>
+  </data>
+  <data name="SPAWNS_DOOR_AT" xml:space="preserve">
+    <value>Door “{0}” at {1}, {2}, {3}  ·  lies {4}.</value>
+    <comment>Status when a door is picked in the list</comment>
+  </data>
+  <data name="SPAWNS_DOOR_ADDED" xml:space="preserve">
+    <value>Added door “{0}” at {1}, {2}, {3}, lying {4}.</value>
+    <comment>Status after a door is added</comment>
+  </data>
+  <data name="SPAWNS_DOOR_ADDED_INNER" xml:space="preserve">
+    <value>Added door “{0}” at {1}, {2}, {3}, lying {4} - but it is NOT in an outer wall. There is no outside next to it to walk in from, and a later weld would throw it away. Put it against an edge of the room.</value>
+    <comment>Status after adding a door away from any wall</comment>
+  </data>
+  <data name="SPAWNS_DOOR_REMOVED" xml:space="preserve">
+    <value>Door removed. {0} left.</value>
+    <comment>Status after a door is removed</comment>
+  </data>
+  <data name="SPAWNS_DOOR_ENTRY_GONE" xml:space="preserve">
+    <value>Removed “{0}”, which was the way in. {1} door(s) left - name one as the way in.</value>
+    <comment>Status after removing the entry door</comment>
+  </data>
+  <data name="SPAWNS_DOOR_LAST_GONE" xml:space="preserve">
+    <value>That was the last door. A tile with none crashes the game on the loading screen - add one before you install this.</value>
+    <comment>Status after removing the only door</comment>
+  </data>
+  <data name="SPAWNS_DOOR_NEEDS_NAME" xml:space="preserve">
+    <value>That door has no name, and the way in is named rather than pointed at. Type a name and add it again.</value>
+    <comment>Status when the entry button is pressed on an unnamed door</comment>
+  </data>
+  <data name="SPAWNS_DOOR_IS_ENTRY" xml:space="preserve">
+    <value>Tiles now join this mission at “{0}”.</value>
+    <comment>Status after naming the entry door</comment>
+  </data>
+  <data name="SPAWNS_MOVING" xml:space="preserve">
+    <value>Moving it to {0}, {1}, {2}  ·  let go to keep it there, Escape to put it back.</value>
+    <comment>Status while a spawn point is being dragged</comment>
+  </data>
+  <data name="SPAWNS_MOVED_DOOR" xml:space="preserve">
+    <value>Moved that door from {0}, {1}, {2} to {3}, {4}, {5}.</value>
+    <comment>Status after dragging a door</comment>
+  </data>
+  <data name="SPAWNS_MOVED_START" xml:space="preserve">
+    <value>You now come in at {3}, {4}, {5} instead of {0}, {1}, {2}.</value>
+    <comment>Status after dragging the arrival area</comment>
+  </data>
+  <data name="SPAWNS_MOVED" xml:space="preserve">
+    <value>Moved that spawn point from {0}, {1}, {2} to {3}, {4}, {5}.</value>
+    <comment>Status after a spawn point has been dragged somewhere else</comment>
+  </data>
+  <data name="SPAWNS_MOVE_OFF" xml:space="preserve">
+    <value>Left it where it was, at {0}, {1}, {2}.</value>
+    <comment>Status after Escape cancels a drag</comment>
   </data>
   <data name="SPAWNS_REMOVE_POINT" xml:space="preserve">
     <value>Remove point</value>
@@ -2477,6 +2829,18 @@ Carry on?</value>
     <value>out to Minecraft, back again, then into the game.</value>
     <comment>Beside the terrain buttons</comment>
   </data>
+  <data name="MAPS_EXPORT_OVER_BUILT" xml:space="preserve">
+    <value>STOP - this downloads the game's own {0} over the map in this folder.
+
+That folder holds a map somebody built ({1} KB of tiles), not a copy of the game's. If it came back from Minecraft, this is the only copy in the app and there is no undo.
+
+To open your own map in Minecraft again, use the world that is already in your Minecraft world list rather than this button - this one starts again from the game's version.
+
+{2}
+
+Throw the map away and start from the game's version?</value>
+    <comment>Confirmation before exporting over a hand-built map</comment>
+  </data>
   <data name="MAPS_ALREADY_EXPORTED" xml:space="preserve">
     <value>This mission is already exported to {0}. Exporting again rebuilds that folder from the game's own files, and any spawn or terrain changes in it are lost. Carry on?</value>
     <comment>Warning before overwriting an export</comment>
@@ -2544,6 +2908,30 @@ Carry on?</value>
   <data name="MAPS_EXPORT_WHY" xml:space="preserve">
     <value>Writes everything the chosen mission is made of into a folder: the level file, the object groups holding its tiles, and the blocks file saying what each block id means. The resource pack's textures are not copied - a thousand files that nothing here needs.</value>
     <comment>What Export does</comment>
+  </data>
+  <data name="MAPS_BASELINE_SIZE" xml:space="preserve">
+    <value>{0}×{0}</value>
+    <comment>Platform size in the picker</comment>
+  </data>
+  <data name="MAPS_BASELINE" xml:space="preserve">
+    <value>New empty map…</value>
+    <comment>Button that builds a blank mission</comment>
+  </data>
+  <data name="MAPS_BASELINE_WHY" xml:space="preserve">
+    <value>Builds an empty mission - a 30×30 platform, a place to arrive, and a gate to leave by with an objective pointing at it - and opens it in Minecraft. Nothing else: no villagers, no objective chain, nothing inherited from the mission it replaces. Build on it and Bring back. It installs over whichever mission is selected.</value>
+    <comment>Tooltip</comment>
+  </data>
+  <data name="MAPS_BASELINE_WORKING" xml:space="preserve">
+    <value>Building an empty map…</value>
+    <comment>Status while it runs</comment>
+  </data>
+  <data name="MAPS_BASELINE_READY" xml:space="preserve">
+    <value>An empty {0}×{0} platform is in your Minecraft world list, standing in for {1}. Build on it, then Bring back.</value>
+    <comment>Status when the baseline is ready</comment>
+  </data>
+  <data name="MAPS_BASELINE_REPLACE" xml:space="preserve">
+    <value>This throws away the exported map for {0} and starts from an empty platform. Anything you have not installed is lost. Carry on?</value>
+    <comment>Confirmation before replacing a workshop folder</comment>
   </data>
   <data name="MAPS_IMPORT" xml:space="preserve">
     <value>Import map…</value>

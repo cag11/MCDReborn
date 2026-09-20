@@ -31,6 +31,7 @@ namespace MCDSaveEdit.Logic
         private const string TO = "to_minecraft.py";
         private const string FROM = "from_minecraft.py";
         private const string FIX = "make_fixed.py";
+        private const string BASELINE = "make_baseline.py";
         private const string WELD = "make_single.py";
         private const string TO_LEVEL = "to_minecraft_level.py";
         private const string FROM_LEVEL = "from_minecraft_level.py";
@@ -192,6 +193,27 @@ namespace MCDSaveEdit.Logic
         {
             var tools = folder ?? throw new InvalidOperationException(missing());
             return await start(tools, FIX, new[] { mapFolder }, cancel).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// An empty mission with a platform to build on.
+        ///
+        /// Everything else here edits a mission the game already ships, which is the wrong
+        /// starting point for something of your own: you inherit its shape, its objectives and
+        /// its villagers, and you spend the first hour deleting them.
+        ///
+        /// What comes out is the smallest thing the game will both load AND let you finish - a
+        /// slab, a place to arrive, a gate to leave by with an objective pointing at it, and the
+        /// doors without which it stops on the loading screen. Nothing else.
+        /// </summary>
+        public static async Task<Run> baseline(string mapFolder, int side,
+            CancellationToken cancel = default)
+        {
+            var tools = folder ?? throw new InvalidOperationException(missing());
+
+            return await start(tools, BASELINE,
+                new[] { mapFolder, side.ToString(System.Globalization.CultureInfo.InvariantCulture) },
+                cancel).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -357,10 +379,59 @@ namespace MCDSaveEdit.Logic
             why = string.Empty;
 
             var name = Path.GetFileName(mapFolder.TrimEnd(Path.DirectorySeparatorChar));
-            if (!string.Equals(name, "lobby", StringComparison.OrdinalIgnoreCase)) { return true; }
+            if (string.Equals(name, "lobby", StringComparison.OrdinalIgnoreCase))
+            {
+                why = "the camp is a fixed hub, not a generated mission";
+                return false;
+            }
 
-            why = "the camp is a fixed hub, not a generated mission";
-            return false;
+            //A level that is already one stretch playing one tile has nothing to weld, and
+            //welding it anyway is actively harmful: make_single names the welded tile after the
+            //FOLDER, appends its own object group to the list and points the only stretch at it.
+            //Run over a folder that still holds a Merged group from some earlier mission, that
+            //makes the level play the old tile and quietly orphans the one somebody just built.
+            //
+            //That is not a theory. It is what happened to a map built from the empty baseline:
+            //the level came out playing creeperwoods_whole while the new work sat unreferenced
+            //in Baseline/objectgroup.
+            if (single(mapFolder))
+            {
+                why = "it is already one tile - there is nothing to join";
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>Whether a level is already a single stretch playing a single tile.</summary>
+        private static bool single(string mapFolder)
+        {
+            try
+            {
+                var path = Path.Combine(mapFolder, "level.json");
+                if (!File.Exists(path)) { path = Path.Combine(mapFolder, "level"); }
+                if (!File.Exists(path)) { return false; }
+
+                var level = System.Text.Json.Nodes.JsonNode.Parse(
+                    GameMaps.stripComments(File.ReadAllText(path)),
+                    documentOptions: new System.Text.Json.JsonDocumentOptions
+                    {
+                        AllowTrailingCommas = true,
+                        CommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                    }) as System.Text.Json.Nodes.JsonObject;
+
+                if (level?["stretches"] is not System.Text.Json.Nodes.JsonArray stretches) { return false; }
+                if (stretches.Count != 1) { return false; }
+
+                var tiles = stretches[0]?["tiles"] as System.Text.Json.Nodes.JsonArray;
+                return tiles != null && tiles.Count == 1;
+            }
+            catch (Exception)
+            {
+                //Unreadable is not "single". Refusing to weld on a parse error would be a worse
+                //guess than letting the converter say so itself.
+                return false;
+            }
         }
 
         /// <summary>

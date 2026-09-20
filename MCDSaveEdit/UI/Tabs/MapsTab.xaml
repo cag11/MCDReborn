@@ -56,8 +56,6 @@
             <TextBlock x:Name="spawnsGroupLabel" VerticalAlignment="Center" Width="110"
                        FontWeight="SemiBold" FontSize="11"
                        Foreground="{DynamicResource Brush.TextMuted}"/>
-            <Button x:Name="exportButton" Content="*Export map*" Padding="10,5" Margin="0,0,6,0"
-                    Click="exportButton_Click"/>
             <Button x:Name="spawnsButton" Content="*Edit spawns…*" Padding="10,5"
                     Click="spawnsButton_Click"/>
             <TextBlock x:Name="spawnsWhyLabel" VerticalAlignment="Center" Margin="12,0,0,0"
@@ -72,6 +70,8 @@
                     Margin="0,0,6,0" Click="fixedToMinecraftButton_Click"/>
             <Button x:Name="fromMinecraftButton" Content="*Bring back…*" Padding="10,5"
                     Margin="0,0,6,0" Click="fromMinecraftButton_Click"/>
+            <Button x:Name="baselineButton" Content="*New empty map…*" Padding="10,5" Margin="0,0,6,0"
+                    Click="baselineButton_Click"/>
             <Button x:Name="importButton" Content="*Import map…*" Padding="10,5"
                     Click="importButton_Click"/>
             <TextBlock x:Name="toolsLabel" VerticalAlignment="Center" Margin="12,0,0,0"

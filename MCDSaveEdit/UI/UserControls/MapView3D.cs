@@ -39,6 +39,15 @@ namespace MCDSaveEdit.UI
         private GeometryModel3D? _ground;
         private GeometryModel3D? _markers;
         private GeometryModel3D? _ways;
+
+        //A group rather than one model: the entry door is the same pink at a different strength,
+        //and two materials cannot share one mesh.
+        private Model3DGroup? _doorGroup;
+
+        private Model3DGroup? _startGroup;
+        private GeometryModel3D? _exits;
+        private GeometryModel3D? _gates;
+        private GeometryModel3D? _wires;
         private GeometryModel3D? _cursor;
 
         //Where the camera is looking and from how far. Yaw and pitch are degrees because every
@@ -58,6 +67,32 @@ namespace MCDSaveEdit.UI
         private bool _panning;
         private bool _moved;
 
+        //Where the pins are, so a press can tell "take hold of that one" from "turn the camera".
+        //The view is handed them by mark(), markDoors() and markStarts() anyway, so hit testing
+        //them here costs nothing and keeps the two answers from drifting apart.
+        private readonly List<(int x, int y, int z)> _marks = new List<(int x, int y, int z)>();
+        private readonly List<(int x, int y, int z)> _doorPins = new List<(int x, int y, int z)>();
+        private readonly List<(int x, int y, int z)> _startPins = new List<(int x, int y, int z)>();
+        private readonly List<(int x, int y, int z)> _exitPins = new List<(int x, int y, int z)>();
+        private readonly List<(int x, int y, int z)> _gatePins = new List<(int x, int y, int z)>();
+
+        /// <summary>The kinds of thing standing on the map that can be taken hold of.</summary>
+        public enum Pin { Spawn, Door, Start, Exit, Gate }
+
+        private bool _dragging;
+        private Pin _dragKind;
+        private (int x, int y, int z) _dragAt;
+
+        /// <summary>
+        /// How close a press has to land to take hold of a point, in blocks.
+        ///
+        /// Deliberately tighter than the eight blocks a click uses to SELECT one. Selecting the
+        /// wrong point is a glance at the status line; dragging the wrong one moves somebody's
+        /// work, and a camera that grabs a spawn point every time you orbit near one would be
+        /// worse than having no dragging at all.
+        /// </summary>
+        private const double GRAB = 3.0;
+
         /// <summary>Where a click landed, in the room's own block coordinates.</summary>
         public event Action<int, int, int>? Picked;
 
@@ -72,6 +107,23 @@ namespace MCDSaveEdit.UI
         /// a corridor should be able to just keep clicking.
         /// </summary>
         public event Action<int, int, int>? Confirmed;
+
+        /// <summary>
+        /// A pin has been taken hold of: which kind, and where that pin actually is.
+        ///
+        /// The position is the PIN's, not the floor cell the ray hit - those are up to GRAB
+        /// blocks apart, which is the whole point of GRAB.
+        /// </summary>
+        public event Action<Pin, int, int, int>? Grabbed;
+
+        /// <summary>A held pin has been dragged over a new block. Fires as it travels.</summary>
+        public event Action<int, int, int>? Dragged;
+
+        /// <summary>The button came up and the point is where it was left.</summary>
+        public event Action<int, int, int>? Dropped;
+
+        /// <summary>Escape while dragging: put it back where it started.</summary>
+        public event Action? DragCancelled;
 
         public MapView3D()
         {
@@ -181,6 +233,11 @@ namespace MCDSaveEdit.UI
             group.Children.Add(_ground);
 
             if (_ways != null) { group.Children.Add(_ways); }
+            if (_doorGroup != null) { group.Children.Add(_doorGroup); }
+            if (_startGroup != null) { group.Children.Add(_startGroup); }
+            if (_exits != null) { group.Children.Add(_exits); }
+            if (_gates != null) { group.Children.Add(_gates); }
+            if (_wires != null) { group.Children.Add(_wires); }
             if (_markers != null) { group.Children.Add(_markers); }
             if (_cursor != null) { group.Children.Add(_cursor); }
 
@@ -326,9 +383,12 @@ namespace MCDSaveEdit.UI
             var mesh = new MeshGeometry3D();
             var count = 0;
 
+            _marks.Clear();
+
             foreach (var one in spawns)
             {
                 pillar(mesh, one.x + 0.5, one.y, one.z + 0.5, 0.9, 4.0);
+                _marks.Add(one);
                 count++;
             }
 
@@ -395,6 +455,366 @@ namespace MCDSaveEdit.UI
         }
 
         /// <summary>
+        /// Lines between things that are wired together.
+        ///
+        /// A gate and the step that opens it are the same relationship a node graph draws with a
+        /// wire, and it has the same problem: the two ends are usually nowhere near each other,
+        /// and a list cannot show you that the gate at one end of the map is held by the villager
+        /// at the other. So it is drawn.
+        ///
+        /// Thin square beams rather than lines, because WPF's 3D has no line primitive - a line
+        /// has no thickness and so no triangles. A beam four hundred blocks long and a third of a
+        /// block across reads as a wire from any distance that matters.
+        /// </summary>
+        public void wire(IEnumerable<(int ax, int ay, int az, int bx, int by, int bz)> pairs)
+        {
+            var mesh = new MeshGeometry3D();
+            var count = 0;
+
+            foreach (var one in pairs)
+            {
+                beam(mesh,
+                    one.ax + 0.5, one.ay + 9.0, one.az + 0.5,
+                    one.bx + 0.5, one.by + 9.0, one.bz + 0.5,
+                    0.55);
+                count++;
+            }
+
+            if (count == 0)
+            {
+                _wires = null;
+                redraw();
+                return;
+            }
+
+            mesh.Freeze();
+
+            var material = new MaterialGroup();
+            material.Children.Add(new DiffuseMaterial(new SolidColorBrush(
+                Color.FromRgb(235, 235, 120))));
+            material.Children.Add(new EmissiveMaterial(new SolidColorBrush(
+                Color.FromRgb(140, 140, 60))));
+            material.Freeze();
+
+            _wires = new GeometryModel3D(mesh, material) { BackMaterial = material };
+            redraw();
+        }
+
+        /// <summary>
+        /// A square beam from one point to another.
+        ///
+        /// Built by finding any two directions across the line and walking a square along it, so
+        /// it works for a wire going straight up as readily as one along the ground - which the
+        /// obvious "cross with up" version does not.
+        /// </summary>
+        private static void beam(MeshGeometry3D mesh, double ax, double ay, double az,
+                                 double bx, double by, double bz, double thick)
+        {
+            var along = new Vector3D(bx - ax, by - ay, bz - az);
+            if (along.Length < 1e-6) { return; }
+            along.Normalize();
+
+            //Any vector not parallel to the beam will do to start the cross products off.
+            var other = Math.Abs(along.Y) > 0.9
+                ? new Vector3D(1, 0, 0)
+                : new Vector3D(0, 1, 0);
+
+            var side = Vector3D.CrossProduct(along, other);
+            side.Normalize();
+            var up = Vector3D.CrossProduct(along, side);
+
+            var at = mesh.Positions.Count;
+
+            foreach (var end in new[] { (ax, ay, az), (bx, by, bz) })
+            {
+                foreach (var corner in new[] { (1, 1), (1, -1), (-1, -1), (-1, 1) })
+                {
+                    var offset = side * (corner.Item1 * thick) + up * (corner.Item2 * thick);
+                    mesh.Positions.Add(new Point3D(
+                        end.Item1 + offset.X, end.Item2 + offset.Y, end.Item3 + offset.Z));
+                }
+            }
+
+            //Four sides, two triangles each. The ends are left open - nothing ever sees them.
+            for (var face = 0; face < 4; face++)
+            {
+                var next = (face + 1) % 4;
+
+                foreach (var index in new[] { face, face + 4, next + 4, face, next + 4, next })
+                {
+                    mesh.TriangleIndices.Add(at + index);
+                }
+            }
+        }
+
+        /// <summary>
+        /// The gates an objective holds shut.
+        ///
+        /// Purple, and drawn as a row of posts along the gate's own width rather than as one
+        /// marker at its corner - a gate is a wall five or nine cells long, and a single spike at
+        /// one end says nothing about which way it lies or what it blocks. Getting that wrong
+        /// leaves a gate lying along the corridor instead of across it, which looks fine on the
+        /// map and lets everybody walk straight past in game.
+        /// </summary>
+        public void markGates(IEnumerable<(int x, int y, int z, int sx, int sz)> gates)
+        {
+            var mesh = new MeshGeometry3D();
+            var count = 0;
+
+            _gatePins.Clear();
+
+            foreach (var one in gates)
+            {
+                //The anchor, which is what a drag moves and what the list reports.
+                _gatePins.Add((one.x, one.y, one.z));
+
+                var along = Math.Max(1, Math.Max(one.sx, one.sz));
+
+                for (var step = 0; step < along; step++)
+                {
+                    var x = one.x + (one.sx >= one.sz ? step : 0);
+                    var z = one.z + (one.sx >= one.sz ? 0 : step);
+
+                    //The first post is taller, so which end the gate is anchored at is visible -
+                    //that is the cell its position names and the one a drag moves.
+                    pillar(mesh, x + 0.5, one.y, z + 0.5,
+                        step == 0 ? 2.0 : 1.3, step == 0 ? 18.0 : 12.0);
+                }
+
+                count++;
+            }
+
+            if (count == 0)
+            {
+                _gates = null;
+                redraw();
+                return;
+            }
+
+            mesh.Freeze();
+
+            var material = new MaterialGroup();
+            material.Children.Add(new DiffuseMaterial(new SolidColorBrush(
+                Color.FromRgb(178, 120, 255))));
+            material.Children.Add(new EmissiveMaterial(new SolidColorBrush(
+                Color.FromRgb(88, 40, 150))));
+            material.Freeze();
+
+            _gates = new GeometryModel3D(mesh, material) { BackMaterial = material };
+            redraw();
+        }
+
+        /// <summary>
+        /// The way out - the glowing gate that finishes the mission.
+        ///
+        /// Red, and nothing else on the map is red. There are five kinds of marker standing on
+        /// one map by now and the only one that reliably tells them apart at a glance is hue, so
+        /// each gets its own rather than a shade of somebody else's.
+        /// </summary>
+        public void markExits(IEnumerable<(int x, int y, int z)> exits)
+        {
+            var mesh = new MeshGeometry3D();
+            var count = 0;
+
+            _exitPins.Clear();
+
+            foreach (var one in exits)
+            {
+                pillar(mesh, one.x + 0.5, one.y, one.z + 0.5, 2.8, 24.0);
+                _exitPins.Add((one.x, one.y, one.z));
+                count++;
+            }
+
+            if (count == 0)
+            {
+                _exits = null;
+                redraw();
+                return;
+            }
+
+            mesh.Freeze();
+
+            var material = new MaterialGroup();
+            material.Children.Add(new DiffuseMaterial(new SolidColorBrush(
+                Color.FromRgb(255, 72, 72))));
+            material.Children.Add(new EmissiveMaterial(new SolidColorBrush(
+                Color.FromRgb(150, 25, 25))));
+            material.Freeze();
+
+            _exits = new GeometryModel3D(mesh, material) { BackMaterial = material };
+            redraw();
+        }
+
+        /// <summary>
+        /// Where the mission puts you when it starts.
+        ///
+        /// Green, and the broadest marker of the lot, because it is an area rather than a point -
+        /// the game's own are three to six cells across and you materialise somewhere inside.
+        ///
+        /// It gets its own colour because it is not any of the other three. A door is how tiles
+        /// join, a teleport is a way to another dungeon, a spawn point is where mobs appear, and
+        /// none of them is where YOU arrive - which is the single thing a hand-built mission most
+        /// needs and the easiest to leave out, because nothing about the map looks wrong without it.
+        /// </summary>
+        public void markStarts(IEnumerable<(int x, int y, int z, bool main)> starts)
+        {
+            var mesh = new MeshGeometry3D();
+            var bright = new MeshGeometry3D();
+            var count = 0;
+            var mains = 0;
+
+            _startPins.Clear();
+
+            foreach (var one in starts)
+            {
+                //The main way in stands taller. A mission can have several arrival areas and only
+                //one of them is where the mission BEGINS - the rest are where teleports drop you -
+                //and nothing about the regions themselves tells them apart.
+                if (one.main)
+                {
+                    pillar(bright, one.x + 0.5, one.y, one.z + 0.5, 3.4, 26.0);
+                    mains++;
+                }
+                else
+                {
+                    pillar(mesh, one.x + 0.5, one.y, one.z + 0.5, 2.6, 15.0);
+                }
+
+                _startPins.Add((one.x, one.y, one.z));
+                count++;
+            }
+
+            if (count == 0)
+            {
+                _startGroup = null;
+                redraw();
+                return;
+            }
+
+            var group = new Model3DGroup();
+
+            if (count > mains)
+            {
+                mesh.Freeze();
+                group.Children.Add(new GeometryModel3D(mesh, arrival(false))
+                {
+                    BackMaterial = arrival(false),
+                });
+            }
+
+            if (mains > 0)
+            {
+                bright.Freeze();
+                group.Children.Add(new GeometryModel3D(bright, arrival(true))
+                {
+                    BackMaterial = arrival(true),
+                });
+            }
+
+            _startGroup = group;
+            redraw();
+        }
+
+        /// <summary>
+        /// The arrival markers: yellow for the way the mission begins, green for the rest.
+        ///
+        /// A different HUE rather than a brighter green, because a shade is only legible next to
+        /// the thing it is a shade of - and these two are usually at opposite ends of a mission a
+        /// thousand blocks long, never in the same view. Yellow has to be read on its own.
+        ///
+        /// It survives the company it keeps: the spawn points are orange but a twentieth the
+        /// size, the doors are pink, the teleports pale blue. Nothing else on the map is yellow.
+        /// </summary>
+        private static Material arrival(bool main)
+        {
+            var material = new MaterialGroup();
+            material.Children.Add(new DiffuseMaterial(new SolidColorBrush(
+                main ? Color.FromRgb(255, 226, 64) : Color.FromRgb(80, 195, 105))));
+            material.Children.Add(new EmissiveMaterial(new SolidColorBrush(
+                main ? Color.FromRgb(160, 130, 18) : Color.FromRgb(26, 92, 40))));
+            material.Freeze();
+            return material;
+        }
+
+        /// <summary>
+        /// The doors in the room's wall.
+        ///
+        /// Pink, and a different shape again: spawn points are short orange spikes, teleports are
+        /// tall blue ones, and a door is a broad flat slab standing in the wall. Three kinds of
+        /// thing in one view need to be told apart at a glance and from any angle, and colour
+        /// alone stops working the moment two of them are behind each other.
+        ///
+        /// The one the level starts you at is drawn taller and brighter. It is the single most
+        /// consequential thing on the map - a mission with no way in crashes on the loading
+        /// screen - so it should not take a click to find out which one it is.
+        /// </summary>
+        public void markDoors(IEnumerable<(int x, int y, int z, bool entry)> doors)
+        {
+            var mesh = new MeshGeometry3D();
+            var bright = new MeshGeometry3D();
+            var count = 0;
+            var entries = 0;
+
+            _doorPins.Clear();
+
+            foreach (var one in doors)
+            {
+                _doorPins.Add((one.x, one.y, one.z));
+                if (one.entry)
+                {
+                    pillar(bright, one.x + 0.5, one.y, one.z + 0.5, 2.2, 22.0);
+                    entries++;
+                }
+                else
+                {
+                    pillar(mesh, one.x + 0.5, one.y, one.z + 0.5, 1.8, 14.0);
+                }
+                count++;
+            }
+
+            if (count == 0)
+            {
+                _doorGroup = null;
+                redraw();
+                return;
+            }
+
+            var group = new Model3DGroup();
+
+            if (count > entries)
+            {
+                mesh.Freeze();
+                group.Children.Add(new GeometryModel3D(mesh, pink(false))
+                {
+                    BackMaterial = pink(false),
+                });
+            }
+
+            if (entries > 0)
+            {
+                bright.Freeze();
+                group.Children.Add(new GeometryModel3D(bright, pink(true))
+                {
+                    BackMaterial = pink(true),
+                });
+            }
+
+            _doorGroup = group;
+            redraw();
+        }
+
+        private static Material pink(bool entry)
+        {
+            var material = new MaterialGroup();
+            material.Children.Add(new DiffuseMaterial(new SolidColorBrush(
+                entry ? Color.FromRgb(255, 120, 220) : Color.FromRgb(225, 90, 185))));
+            material.Children.Add(new EmissiveMaterial(new SolidColorBrush(
+                entry ? Color.FromRgb(150, 40, 120) : Color.FromRgb(90, 25, 70))));
+            material.Freeze();
+            return material;
+        }
+
+        /// <summary>
         /// The spot a click chose, so it is obvious what is about to happen.
         ///
         /// <paramref name="onExisting"/> when the click landed on a spawn point that is already
@@ -425,6 +845,11 @@ namespace MCDSaveEdit.UI
             var made = new Model3DGroup();
             if (_ground != null) { made.Children.Add(_ground); }
             if (_ways != null) { made.Children.Add(_ways); }
+            if (_doorGroup != null) { made.Children.Add(_doorGroup); }
+            if (_startGroup != null) { made.Children.Add(_startGroup); }
+            if (_exits != null) { made.Children.Add(_exits); }
+            if (_gates != null) { made.Children.Add(_gates); }
+            if (_wires != null) { made.Children.Add(_wires); }
             if (_markers != null) { made.Children.Add(_markers); }
             if (_cursor != null) { made.Children.Add(_cursor); }
             _scene.Content = made;
@@ -461,7 +886,9 @@ namespace MCDSaveEdit.UI
             if (e.ChangedButton == MouseButton.Left
                 && Keyboard.Modifiers != ModifierKeys.Shift)
             {
-                _turning = true;
+                //A press that lands on a spawn point takes hold of it. Everything else turns the
+                //camera, which is what the whole surface did before and still does.
+                if (!grab(_dragFrom)) { _turning = true; }
             }
             else
             {
@@ -474,6 +901,8 @@ namespace MCDSaveEdit.UI
         private void onUp(object sender, MouseButtonEventArgs e)
         {
             ReleaseMouseCapture();
+
+            if (_dragging) { drop(); return; }
 
             var wasTurning = _turning;
             _turning = false;
@@ -500,6 +929,8 @@ namespace MCDSaveEdit.UI
         private void onMove(object sender, MouseEventArgs e)
         {
             var now = e.GetPosition(this);
+
+            if (_dragging) { dragTo(now); return; }
 
             if (!_turning && !_panning)
             {
@@ -553,6 +984,18 @@ namespace MCDSaveEdit.UI
 
         private void onKey(object sender, KeyEventArgs e)
         {
+            //Escape lets go of a point mid-drag. Dragging is the one gesture here that changes
+            //the map while it is still happening, so it is the one that needs a way out that is
+            //not "undo it afterwards and hope".
+            if (e.Key == Key.Escape && _dragging)
+            {
+                _dragging = false;
+                ReleaseMouseCapture();
+                DragCancelled?.Invoke();
+                e.Handled = true;
+                return;
+            }
+
             //F was framing before there was anything to hold down; it stays, but not as a letter
             //next to the movement keys - R is the reframe now and F is left alone for anyone with
             //the habit.
@@ -626,6 +1069,128 @@ namespace MCDSaveEdit.UI
         /// two spoke different tuples. Only the whole path catches that.
         /// </summary>
         internal (int x, int y, int z)? probeLook(Point at) => look(at);
+
+        /// <summary>
+        /// Takes hold of the spawn point under a press, if there is one.
+        /// </summary>
+        /// <returns>Whether a drag started, which is the same as "do not turn the camera".</returns>
+        private bool grab(Point at)
+        {
+            _dragFrom = at;
+            _moved = false;
+
+            var on = look(at);
+            if (on == null) { return false; }
+
+            var held = holding(on.Value);
+            if (held == null) { return false; }
+
+            _dragging = true;
+            _dragKind = held.Value.kind;
+            _dragAt = held.Value.at;
+
+            //Selected on the way down rather than on the way up, because a drag has no way up
+            //until it is over and the pin being moved has to be chosen before it can move.
+            Grabbed?.Invoke(held.Value.kind, held.Value.at.x, held.Value.at.y, held.Value.at.z);
+            return true;
+        }
+
+        private void dragTo(Point at)
+        {
+            //Measured from where the press landed, not from the last frame, so a slow drag still
+            //counts as one. That is why _dragFrom stays put for the whole drag.
+            if (Math.Abs(at.X - _dragFrom.X) > 2 || Math.Abs(at.Y - _dragFrom.Y) > 2)
+            {
+                _moved = true;
+            }
+
+            var to = look(at);
+            if (to == null || to.Value == _dragAt) { return; }
+
+            _dragAt = to.Value;
+            Dragged?.Invoke(to.Value.x, to.Value.y, to.Value.z);
+        }
+
+        private void drop()
+        {
+            _dragging = false;
+
+            //A press that never travelled was somebody selecting a point, and Picked already said
+            //so on the way down. Reporting a drop as well would write an edit for a click that
+            //moved nothing.
+            if (_moved) { Dropped?.Invoke(_dragAt.x, _dragAt.y, _dragAt.z); }
+        }
+
+        /// <summary>Which kind of pin is being dragged, for whoever has to move it.</summary>
+        public Pin heldKind => _dragKind;
+
+        /// <summary>
+        /// The same press, drag and release the mouse makes, for a probe to run.
+        ///
+        /// These call the handlers' own methods rather than repeating what they do. A probe that
+        /// reimplements the gesture passes while the gesture is broken - which has happened here
+        /// before, when a probe read a tuple by name off a call that returned it by position.
+        /// </summary>
+        internal bool probeGrab(Point at) => grab(at);
+
+        internal void probeDragTo(Point at) => dragTo(at);
+
+        internal void probeDrop() => drop();
+
+        internal bool probeDragging => _dragging;
+
+        /// <summary>The spawn points as the view has them, for a probe to aim at.</summary>
+        internal IReadOnlyList<(int x, int y, int z)> probeMarks => _marks;
+
+        /// <summary>The doors and arrival areas as the view has them.</summary>
+        internal IReadOnlyList<(int x, int y, int z)> probeDoorPins => _doorPins;
+
+        internal IReadOnlyList<(int x, int y, int z)> probeStartPins => _startPins;
+
+        internal IReadOnlyList<(int x, int y, int z)> probeExitPins => _exitPins;
+
+        internal IReadOnlyList<(int x, int y, int z)> probeGatePins => _gatePins;
+
+        /// <summary>
+        /// Which pin a spot is close enough to have meant, if any.
+        ///
+        /// All three kinds are searched and the nearest wins rather than the first kind that
+        /// matches, because a door and an arrival area often stand within a few blocks of each
+        /// other - that is what a mission entrance looks like - and taking hold of whichever was
+        /// checked first would move the wrong one about half the time.
+        /// </summary>
+        private (Pin kind, (int x, int y, int z) at)? holding((int x, int y, int z) at)
+        {
+            (Pin kind, (int x, int y, int z) at)? best = null;
+            var bestGap = GRAB * GRAB;
+
+            void search(List<(int x, int y, int z)> pins, Pin kind)
+            {
+                foreach (var one in pins)
+                {
+                    //The same lopsided measure the click uses: height counts for a quarter,
+                    //because two pins stacked vertically are rare and a few blocks out across the
+                    //floor is the normal cost of aiming at a hillside.
+                    var dx = (double)(one.x - at.x);
+                    var dy = (double)(one.y - at.y);
+                    var dz = (double)(one.z - at.z);
+
+                    var gap = dx * dx + dz * dz + dy * dy * 0.25;
+                    if (gap > bestGap) { continue; }
+
+                    bestGap = gap;
+                    best = (kind, one);
+                }
+            }
+
+            search(_marks, Pin.Spawn);
+            search(_doorPins, Pin.Door);
+            search(_startPins, Pin.Start);
+            search(_exitPins, Pin.Exit);
+            search(_gatePins, Pin.Gate);
+
+            return best;
+        }
 
         private (int x, int y, int z)? look(Point at)
         {

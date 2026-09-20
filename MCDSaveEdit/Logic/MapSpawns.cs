@@ -547,6 +547,27 @@ namespace MCDSaveEdit.Logic
             return best < 0 ? null : (best, bx, by, bz);
         }
 
+        /// <summary>
+        /// Puts one spawn point somewhere else, by where it sits in the region list.
+        ///
+        /// Only the position moves. Radius, tags and whichever mob group the point belongs to are
+        /// the reason somebody placed it there in the first place, and dragging it across the room
+        /// is not a statement about any of them.
+        /// </summary>
+        public static bool moveTo(Room room, int at, int x, int y, int z)
+        {
+            var regions = room.Regions;
+            if (at < 0 || at >= regions.Count) { return false; }
+            if (regions[at] is not JsonObject region) { return false; }
+            if (region["type"]?.GetValue<string>() != "spawn") { return false; }
+
+            //A fresh array rather than three assignments into the old one. A JsonNode already
+            //sitting in a document has a parent, and moving its children about is how you get an
+            //exception halfway through and a half-moved point.
+            region["pos"] = new JsonArray(x, y, z);
+            return true;
+        }
+
         /// <summary>Takes one spawn point out, by where it sits in the region list.</summary>
         public static bool removeAt(Room room, int at)
         {
@@ -555,6 +576,1248 @@ namespace MCDSaveEdit.Logic
             if (regions[at]?["type"]?.GetValue<string>() != "spawn") { return false; }
 
             regions.RemoveAt(at);
+            return true;
+        }
+
+        //--- teleports between two doors -------------------------------------------------------------
+
+        /// <summary>
+        /// The glowing doors the game offers, most used first.
+        ///
+        /// Counted out of Creeper Woods' own 115 teleports. They differ only in how they look -
+        /// a cave mouth, a temple arch, a plain frame - so the list is a matter of taste rather
+        /// than of anything working or not.
+        /// </summary>
+        public static readonly (string path, string name)[] TRAVEL_DOORS =
+        {
+            ("Decor/Prefabs/DoorTravel/BambooBluff/BP_TravelDoor_Cave", "Cave mouth"),
+            ("Decor/Prefabs/DoorTravel/DesertTemple/BP_DT_SidepathDoor", "Temple arch"),
+            ("Decor/Prefabs/DoorTravel/GenericDoor/BP_GenericTravelDoor", "Plain frame"),
+            ("Decor/Prefabs/DoorTravel/CreeperWoods/BP_TravelDoor5x5", "Woods gate, wide"),
+            ("Decor/Prefabs/DoorTravel/Lobby/BP_Door_Lobby3x3", "Camp door"),
+        };
+
+        /// <summary>
+        /// Two doors joined so that walking into one puts you at the other.
+        ///
+        /// A teleport names a DOOR, and the pair is made of two of them pointing at each other -
+        /// which is why doors had to come first. The end you walk into carries the prefab, the
+        /// glowing thing you can see; the end you arrive at can be bare, and in the game's own
+        /// data usually is. That asymmetry is the whole trick: one visible door, one silent
+        /// landing pad, and a two-way link is just both ends carrying a prefab.
+        ///
+        /// Both ends live in the same tile here, which sounds wrong and is not: a welded mission
+        /// is one tile, and the game's own Sakura Pagoda holds both ends of different pairs in
+        /// one tile too.
+        /// </summary>
+        public sealed class Link
+        {
+            public Link(string from, string to, bool bothWays, string look, int[] at, int[] onward)
+            {
+                From = from;
+                To = to;
+                BothWays = bothWays;
+                Look = look;
+                At = at;
+                Onward = onward;
+            }
+
+            /// <summary>The door you walk into.</summary>
+            public string From { get; }
+
+            /// <summary>The door you come out of.</summary>
+            public string To { get; }
+
+            public bool BothWays { get; }
+
+            /// <summary>The prefab drawn at the entrance.</summary>
+            public string Look { get; }
+
+            /// <summary>Where each end stands, or -1s when its door is gone.</summary>
+            public int[] At { get; }
+            public int[] Onward { get; }
+
+            public bool Broken => At[0] < 0 || Onward[0] < 0;
+
+            public override string ToString()
+            {
+                var arrow = BothWays ? "\u2194" : "\u2192";
+                var look = TRAVEL_DOORS.FirstOrDefault(one => one.path == Look).name ?? "door";
+                var note = Broken ? "   \u00b7  a door is missing" : $"   \u00b7  {look}";
+
+                return $"{From}  {arrow}  {To}{note}";
+            }
+        }
+
+        /// <summary>The tile's own row in the level, made if it is not there.</summary>
+        private static JsonObject rowFor(Map map, Room room)
+        {
+            if (map.Level["tiles"] is not JsonArray tiles)
+            {
+                tiles = new JsonArray();
+                map.Level["tiles"] = tiles;
+            }
+
+            foreach (var one in tiles)
+            {
+                if (one is JsonObject tile
+                    && string.Equals(tile["id"]?.GetValue<string>(), room.Id,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    return tile;
+                }
+            }
+
+            var made = new JsonObject { ["id"] = room.Id, ["rotations"] = 0 };
+            tiles.Add(made);
+            return made;
+        }
+
+        /// <summary>Every teleport pair in a room, read off the doors they name.</summary>
+        public static List<Link> linksOf(Map map, Room room)
+        {
+            var made = new List<Link>();
+
+            var doors = new Dictionary<string, int[]>(StringComparer.OrdinalIgnoreCase);
+            foreach (var one in room.Tile["doors"] as JsonArray ?? new JsonArray())
+            {
+                if (one is not JsonObject door) { continue; }
+                var name = door["name"]?.GetValue<string>();
+                if (!string.IsNullOrEmpty(name)) { doors[name!] = ints(door["pos"], 3); }
+            }
+
+            int[] spot(string name)
+                => doors.TryGetValue(name, out var at) ? at : new[] { -1, -1, -1 };
+
+            var ports = rowFor(map, room)["teleports"] as JsonArray ?? new JsonArray();
+
+            //Which door each one sends to, so the two halves of a pair can find each other.
+            var sends = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var one in ports)
+            {
+                if (one is not JsonObject port) { continue; }
+                var door = port["door"]?.GetValue<string>();
+                var onward = port["exit"]?.GetValue<string>();
+                if (door == null || onward == null) { continue; }
+                sends[door] = lastPart(onward);
+            }
+
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var one in ports)
+            {
+                if (one is not JsonObject port) { continue; }
+
+                var door = port["door"]?.GetValue<string>();
+                if (door == null || seen.Contains(door)) { continue; }
+
+                var onward = port["exit"]?.GetValue<string>();
+                if (onward == null) { continue; }
+
+                var other = lastPart(onward);
+
+                //Both ways when the far end sends back here. Marked seen so the pair is listed
+                //once rather than once from each end.
+                var back = sends.TryGetValue(other, out var going)
+                    && string.Equals(going, door, StringComparison.OrdinalIgnoreCase);
+
+                seen.Add(door);
+                if (back) { seen.Add(other); }
+
+                made.Add(new Link(door, other, back,
+                    port["object"]?.GetValue<string>() ?? string.Empty,
+                    spot(door), spot(other)));
+            }
+
+            return made;
+        }
+
+        /// <summary>Joins two doors, one way or both.</summary>
+        public static bool linkDoors(Map map, Room room, string from, string to, bool bothWays,
+                                     string look)
+        {
+            if (from.Length == 0 || to.Length == 0
+                || string.Equals(from, to, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var row = rowFor(map, room);
+
+            if (row["teleports"] is not JsonArray ports)
+            {
+                ports = new JsonArray();
+                row["teleports"] = ports;
+            }
+
+            //Whatever those two doors had is replaced rather than added to. A door with two
+            //teleports on it is a door the game has to choose between.
+            unlinkDoor(map, room, from);
+            unlinkDoor(map, room, to);
+
+            ports = row["teleports"] as JsonArray ?? ports;
+
+            ports.Add(new JsonObject
+            {
+                ["door"] = from,
+                ["exit"] = "*.*." + to,
+                ["object"] = look,
+            });
+
+            //The far end. It gets a prefab only when you can walk back through it - otherwise it
+            //is a landing pad, and a glowing door you cannot use is worse than no door.
+            ports.Add(bothWays
+                ? new JsonObject
+                {
+                    ["door"] = to,
+                    ["exit"] = "*.*." + from,
+                    ["object"] = look,
+                }
+                : new JsonObject { ["door"] = to });
+
+            return true;
+        }
+
+        /// <summary>Takes any teleport off a door.</summary>
+        public static bool unlinkDoor(Map map, Room room, string door)
+        {
+            var row = rowFor(map, room);
+            if (row["teleports"] is not JsonArray ports) { return false; }
+
+            var gone = false;
+
+            for (var at = ports.Count - 1; at >= 0; at--)
+            {
+                if (ports[at] is not JsonObject port) { continue; }
+
+                var named = string.Equals(port["door"]?.GetValue<string>(), door,
+                    StringComparison.OrdinalIgnoreCase);
+
+                //Also the far ends pointing back at it, or the level keeps a teleport aimed at a
+                //door that no longer goes anywhere.
+                var aimed = string.Equals(
+                    lastPart(port["exit"]?.GetValue<string>() ?? string.Empty), door,
+                    StringComparison.OrdinalIgnoreCase);
+
+                if (!named && !aimed) { continue; }
+
+                ports.RemoveAt(at);
+                gone = true;
+            }
+
+            if (ports.Count == 0) { row.Remove("teleports"); }
+
+            return gone;
+        }
+
+        //--- gates that an objective opens -----------------------------------------------------------
+
+        /// <summary>
+        /// A barrier that stays shut until some objective is finished.
+        ///
+        /// This is how every mission in the game paces itself, and it is one field: an objective
+        /// names regions in its "locked-doors" list, and those regions become walls until it is
+        /// done. Creeper Woods holds you in the starting area that way; Blossoming Isles opens a
+        /// gate when two beacons are lit.
+        ///
+        /// A gate is a trigger region shaped like a wall rather than a point - five, seven or
+        /// nine cells along one axis and one along the other, standing across the way through.
+        /// Which axis is a question only the person who built the corridor can answer, so it is
+        /// asked rather than guessed.
+        /// </summary>
+        public sealed class Gate
+        {
+            public Gate(int at, string name, int[] pos, int[] size, string openedBy)
+            {
+                At = at;
+                Name = name;
+                Pos = pos;
+                Size = size;
+                OpenedBy = openedBy;
+            }
+
+            public int At { get; }
+            public string Name { get; }
+            public int[] Pos { get; }
+            public int[] Size { get; }
+
+            /// <summary>The objective that opens it, or empty when nothing does.</summary>
+            public string OpenedBy { get; }
+
+            public bool Across => Size[0] >= Size[2];
+
+            public override string ToString()
+            {
+                var wide = Math.Max(Size[0], Size[2]);
+                var lie = Across ? "across x" : "across z";
+                var note = OpenedBy.Length > 0
+                    ? $"   \u2190  opens: {OpenedBy}"
+                    : "   \u00b7  nothing opens it - it stays shut";
+
+                return $"{Name}   \u2014   {Pos[0]}, {Pos[1]}, {Pos[2]}   \u00b7  {wide} wide, {lie}{note}";
+            }
+        }
+
+        /// <summary>The gate regions an objective can name, and what names each one.</summary>
+        public static List<Gate> gatesOf(Map map, Room room)
+        {
+            //Which gate each objective holds shut, by region name.
+            var held = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var step in objectivesOf(map))
+            {
+                foreach (var name in lockedBy(map, step.At))
+                {
+                    if (!held.ContainsKey(name)) { held[name] = step.Title; }
+                }
+            }
+
+            var made = new List<Gate>();
+            var regions = room.Regions;
+
+            for (var at = 0; at < regions.Count; at++)
+            {
+                if (regions[at] is not JsonObject region) { continue; }
+                if (region["type"]?.GetValue<string>() != "trigger") { continue; }
+
+                var name = region["name"]?.GetValue<string>() ?? string.Empty;
+
+                //The way out is a gate too, but it has its own panel and its own colour, and
+                //listing it twice would invite somebody to lock the exit behind itself.
+                if (name.Length == 0 || isStart(region) || isExit(region)) { continue; }
+
+                //A gate is a wall: longer than one cell along exactly one of the two floor axes.
+                var size = ints(region["size"], 3);
+                if (size[1] != 1) { continue; }
+                if ((size[0] > 1) == (size[2] > 1)) { continue; }
+
+                made.Add(new Gate(at, name, ints(region["pos"], 3), size,
+                    held.TryGetValue(name, out var by) ? by : string.Empty));
+            }
+
+            return made;
+        }
+
+        /// <summary>The body of one objective - whichever kind it is.</summary>
+        private static JsonObject? bodyOf(Map map, int at)
+        {
+            if (map.Level["objectives"] is not JsonArray all) { return null; }
+            if (at < 0 || at >= all.Count) { return null; }
+            if (all[at] is not JsonObject objective) { return null; }
+
+            return objective["click"] as JsonObject
+                ?? objective["gauntlet"] as JsonObject
+                ?? objective["killgroup"] as JsonObject;
+        }
+
+        /// <summary>The region names one objective holds shut.</summary>
+        public static List<string> lockedBy(Map map, int at)
+        {
+            var found = new List<string>();
+            var body = bodyOf(map, at);
+            if (body == null) { return found; }
+
+            foreach (var one in body["locked-doors"] as JsonArray ?? new JsonArray())
+            {
+                var said = one?.GetValue<string>();
+                if (said != null) { found.Add(lastPart(said)); }
+            }
+
+            //A kill-group keeps its gate somewhere else entirely - under "gate", with the prefab
+            //beside it. Same idea, different shape, and a gate held by one of those has to read
+            //as held rather than as forgotten.
+            if (body["gate"] is JsonObject gate)
+            {
+                foreach (var one in gate["regions"] as JsonArray ?? new JsonArray())
+                {
+                    var said = one?.GetValue<string>();
+                    if (said != null) { found.Add(lastPart(said)); }
+                }
+            }
+
+            return found;
+        }
+
+        /// <summary>Puts a gate across the way.</summary>
+        public static Gate addGate(Map map, Room room, string name, int x, int y, int z, bool across)
+        {
+            var size = across ? new JsonArray(5, 1, 1) : new JsonArray(1, 1, 5);
+
+            room.Regions.Add(new JsonObject
+            {
+                ["locked"] = false,
+                ["name"] = name,
+                ["pos"] = new JsonArray(x, y, z),
+                ["size"] = size,
+                ["tags"] = "gate",
+                ["type"] = "trigger",
+            });
+
+            return new Gate(room.Regions.Count - 1, name, new[] { x, y, z },
+                across ? new[] { 5, 1, 1 } : new[] { 1, 1, 5 }, string.Empty);
+        }
+
+        /// <summary>A name no gate in this room is using yet.</summary>
+        public static string freeGateName(Map map, Room room)
+        {
+            var taken = new HashSet<string>(gatesOf(map, room).Select(one => one.Name),
+                StringComparer.OrdinalIgnoreCase);
+
+            for (var n = 1; ; n++)
+            {
+                var tried = "gate" + n.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                if (!taken.Contains(tried)) { return tried; }
+            }
+        }
+
+        private static bool isGateRegion(JsonObject region)
+            => region["type"]?.GetValue<string>() == "trigger"
+            && !isStart(region) && !isExit(region)
+            && (region["name"]?.GetValue<string>() ?? string.Empty).Length > 0;
+
+        public static bool moveGate(Room room, int at, int x, int y, int z)
+        {
+            var regions = room.Regions;
+            if (at < 0 || at >= regions.Count) { return false; }
+            if (regions[at] is not JsonObject region || !isGateRegion(region)) { return false; }
+
+            region["pos"] = new JsonArray(x, y, z);
+            return true;
+        }
+
+        /// <summary>Turns a gate to stand across the other axis.</summary>
+        public static bool turnGate(Room room, int at)
+        {
+            var regions = room.Regions;
+            if (at < 0 || at >= regions.Count) { return false; }
+            if (regions[at] is not JsonObject region || !isGateRegion(region)) { return false; }
+
+            var size = ints(region["size"], 3);
+            var wide = Math.Max(size[0], size[2]);
+
+            region["size"] = size[0] >= size[2]
+                ? new JsonArray(1, 1, wide)
+                : new JsonArray(wide, 1, 1);
+
+            return true;
+        }
+
+        /// <summary>Makes it wider or narrower, in the odd widths the game uses.</summary>
+        public static bool widenGate(Room room, int at, int by)
+        {
+            var regions = room.Regions;
+            if (at < 0 || at >= regions.Count) { return false; }
+            if (regions[at] is not JsonObject region || !isGateRegion(region)) { return false; }
+
+            var size = ints(region["size"], 3);
+            var wide = Math.Max(size[0], size[2]) + by * 2;
+
+            //Odd, and between one and fifteen. Every gate the game ships is 1, 5, 6, 7 or 9 cells
+            //across; an even one is not wrong but it cannot be centred on a corridor.
+            wide = Math.Max(1, Math.Min(15, wide));
+
+            region["size"] = size[0] >= size[2]
+                ? new JsonArray(wide, 1, 1)
+                : new JsonArray(1, 1, wide);
+
+            return true;
+        }
+
+        public static bool removeGateAt(Map map, Room room, int at)
+        {
+            var regions = room.Regions;
+            if (at < 0 || at >= regions.Count) { return false; }
+            if (regions[at] is not JsonObject region || !isGateRegion(region)) { return false; }
+
+            var name = region["name"]?.GetValue<string>() ?? string.Empty;
+            regions.RemoveAt(at);
+
+            //Every objective that held it shut is now pointing at nothing. Left alone that is an
+            //objective naming a region which does not exist, which is the failure the chain
+            //checker already warns about - so the references go with it.
+            foreach (var step in objectivesOf(map)) { unlock(map, step.At, name); }
+
+            return true;
+        }
+
+        /// <summary>Whether any objective names a region - used to check a tidy-up worked.</summary>
+        public static bool anyObjectiveNames(Map map, string region)
+        {
+            foreach (var step in objectivesOf(map))
+            {
+                foreach (var name in lockedBy(map, step.At))
+                {
+                    if (string.Equals(name, region, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Makes an objective hold a gate shut until it is finished.</summary>
+        public static bool lockTo(Map map, int objective, string gate)
+        {
+            var body = bodyOf(map, objective);
+            if (body == null || gate.Length == 0) { return false; }
+
+            if (body["locked-doors"] is not JsonArray doors)
+            {
+                doors = new JsonArray();
+                body["locked-doors"] = doors;
+            }
+
+            var reference = "*.*." + gate;
+
+            foreach (var one in doors)
+            {
+                if (string.Equals(one?.GetValue<string>(), reference,
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+
+            doors.Add(reference);
+            return true;
+        }
+
+        /// <summary>Stops an objective holding a gate shut.</summary>
+        public static bool unlock(Map map, int objective, string gate)
+        {
+            var body = bodyOf(map, objective);
+            if (body?["locked-doors"] is not JsonArray doors) { return false; }
+
+            var gone = false;
+
+            for (var at = doors.Count - 1; at >= 0; at--)
+            {
+                if (!string.Equals(lastPart(doors[at]?.GetValue<string>() ?? string.Empty), gate,
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                doors.RemoveAt(at);
+                gone = true;
+            }
+
+            //An empty list left behind is noise in a file people read.
+            if (doors.Count == 0) { body.Remove("locked-doors"); }
+
+            return gone;
+        }
+
+        //--- what the mission asks of you ------------------------------------------------------------
+
+        /// <summary>
+        /// One step of the mission's objective chain.
+        ///
+        /// They are a SEQUENCE, not a set. Creeper Woods asks for one villager, then for you to
+        /// reach the caravan, then for five more villagers, then for you to reach the end, and
+        /// only then does the exit gate become clickable. A step nobody can finish stops every
+        /// step after it - and the symptom is a gate that is drawn, and lit, and does nothing.
+        ///
+        /// That matters most for a hand-built mission, which inherits whichever chain belonged to
+        /// the mission it was installed over. Somebody who replaced Creeper Woods with a city has
+        /// no villagers to free and no caravan to find, so the gate at the end of their city can
+        /// never be reached.
+        /// </summary>
+        public sealed class Objective
+        {
+            public Objective(int at, string description, string kind, int count,
+                             string[] needs, bool isExit)
+            {
+                At = at;
+                Description = description;
+                Kind = kind;
+                Count = count;
+                Needs = needs;
+                IsExit = isExit;
+            }
+
+            public int At { get; }
+            public string Description { get; }
+
+            /// <summary>"click" something, or "reach" somewhere.</summary>
+            public string Kind { get; }
+
+            public int Count { get; }
+
+            /// <summary>The region names it needs, without the stretch and tile parts.</summary>
+            public string[] Needs { get; }
+
+            /// <summary>Whether this is the one that clicks the exit gate.</summary>
+            public bool IsExit { get; }
+
+            /// <summary>The description with the game's key noise taken off.</summary>
+            public string Title => tidy(Description);
+
+            public override string ToString()
+            {
+                var what = Count > 1 ? $"{Kind} \u00d7{Count}" : Kind;
+                var where = Needs.Length > 0 ? "  \u2192  " + string.Join(", ", Needs) : string.Empty;
+                var note = IsExit ? "   \u2190  the way out" : string.Empty;
+
+                return $"{At + 1}. {tidy(Description)}   \u00b7  {what}{where}{note}";
+            }
+
+            /// <summary>The game's own string keys, made readable.</summary>
+            internal static string tidy(string key)
+            {
+                var said = key.StartsWith("description_", StringComparison.OrdinalIgnoreCase)
+                    ? key.Substring("description_".Length)
+                    : key;
+
+                return said.Replace('_', ' ');
+            }
+        }
+
+        /// <summary>The region name out of a "stretch.tile.region" reference.</summary>
+        private static string lastPart(string reference)
+        {
+            var at = reference.LastIndexOf('.');
+            return at < 0 ? reference : reference.Substring(at + 1);
+        }
+
+        /// <summary>The mission's objective chain, in the order it is asked of you.</summary>
+        public static List<Objective> objectivesOf(Map map)
+        {
+            var made = new List<Objective>();
+            var all = map.Level["objectives"] as JsonArray ?? new JsonArray();
+
+            for (var at = 0; at < all.Count; at++)
+            {
+                if (all[at] is not JsonObject objective) { continue; }
+
+                var click = objective["click"] as JsonObject;
+                var gauntlet = objective["gauntlet"] as JsonObject;
+                var body = click ?? gauntlet;
+
+                var needs = new List<string>();
+
+                if (body?["locations"] is JsonArray places)
+                {
+                    foreach (var one in places)
+                    {
+                        var said = one?.GetValue<string>();
+                        if (said != null) { needs.Add(lastPart(said)); }
+                    }
+                }
+
+                var region = body?["end-region"]?.GetValue<string>();
+                if (region != null) { needs.Add(lastPart(region)); }
+
+                made.Add(new Objective(at,
+                    objective["description"]?.GetValue<string>() ?? "(no description)",
+                    click != null ? "click" : gauntlet != null ? "reach" : "?",
+                    body?["count"]?.GetValue<int>() ?? 1,
+                    needs.ToArray(),
+                    click != null && string.Equals(click["object"]?.GetValue<string>(), EXIT_DOOR,
+                        StringComparison.OrdinalIgnoreCase)));
+            }
+
+            return made;
+        }
+
+        /// <summary>Takes one step out of the chain.</summary>
+        public static bool removeObjectiveAt(Map map, int at)
+        {
+            if (map.Level["objectives"] is not JsonArray all) { return false; }
+            if (at < 0 || at >= all.Count) { return false; }
+
+            all.RemoveAt(at);
+            return true;
+        }
+
+        /// <summary>
+        /// Strips the chain down to the exit gate alone.
+        ///
+        /// What a hand-built mission usually wants: walk in, do whatever the map is for, click
+        /// the gate, leave. Everything the old mission asked for refers to things that are no
+        /// longer in the map, and each one blocks the steps behind it.
+        /// </summary>
+        public static int keepOnlyExit(Map map)
+        {
+            if (map.Level["objectives"] is not JsonArray all) { return 0; }
+
+            var gone = 0;
+
+            for (var at = all.Count - 1; at >= 0; at--)
+            {
+                if (all[at] is JsonObject objective
+                    && objective["click"] is JsonObject click
+                    && string.Equals(click["object"]?.GetValue<string>(), EXIT_DOOR,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                all.RemoveAt(at);
+                gone++;
+            }
+
+            return gone;
+        }
+
+        //--- the way out ---------------------------------------------------------------------------
+
+        /// <summary>What the region marking the exit gate is called, and what it is tagged.</summary>
+        public const string EXIT = "exit";
+        public const string GATE = "gate";
+
+        /// <summary>The glowing gate the game draws and you click to leave.</summary>
+        public const string EXIT_DOOR = "Decor/Prefabs/DoorExit/BP_DoorExit_CW";
+
+        /// <summary>
+        /// One way out of the mission.
+        ///
+        /// Two things have to agree for this to work, which is why leaving it to somebody to hand
+        /// craft went wrong:
+        ///
+        ///   * a REGION named "exit", tagged "gate" - a single cell saying where the gate stands
+        ///   * an OBJECTIVE whose click.object is the gate prefab and whose click.locations names
+        ///     that region as "stretch.tile.region"
+        ///
+        /// Either alone does nothing. The region on its own is an unmarked cell; the objective on
+        /// its own points at a region that is not there, and the mission simply has no way out -
+        /// which is exactly what it looks like in game, with no error anywhere.
+        ///
+        /// It is NOT a teleport. Teleports are the glowing doors BETWEEN places - side areas,
+        /// crypts, the camp's own rooms - and they name a door. This names a region and finishes
+        /// the mission.
+        /// </summary>
+        public sealed class Exit
+        {
+            public Exit(int at, int[] pos, bool claimed)
+            {
+                At = at;
+                Pos = pos;
+                Claimed = claimed;
+            }
+
+            public int At { get; }
+            public int[] Pos { get; }
+
+            /// <summary>Whether an objective actually points at it.</summary>
+            public bool Claimed { get; }
+
+            public override string ToString()
+                => $"{Pos[0]}, {Pos[1]}, {Pos[2]}"
+                + (Claimed ? "   \u2190  the way out" : "   \u00b7  NO objective points at it");
+        }
+
+        private static bool isExit(JsonObject region)
+            => region["type"]?.GetValue<string>() == "trigger"
+            && string.Equals(region["name"]?.GetValue<string>(), EXIT,
+                   StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>Whether the level has an objective that clicks an exit gate.</summary>
+        public static bool hasExitObjective(Map map)
+        {
+            foreach (var one in map.Level["objectives"] as JsonArray ?? new JsonArray())
+            {
+                if (one is not JsonObject objective) { continue; }
+                if (objective["click"] is not JsonObject click) { continue; }
+
+                if (string.Equals(click["object"]?.GetValue<string>(), EXIT_DOOR,
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Every exit gate in a room.</summary>
+        public static List<Exit> exitsOf(Map map, Room room)
+        {
+            var made = new List<Exit>();
+            var claimed = hasExitObjective(map);
+            var regions = room.Regions;
+
+            for (var at = 0; at < regions.Count; at++)
+            {
+                if (regions[at] is not JsonObject region || !isExit(region)) { continue; }
+
+                made.Add(new Exit(at, ints(region["pos"], 3), claimed));
+            }
+
+            return made;
+        }
+
+        /// <summary>
+        /// Puts a way out somewhere, and makes sure something points at it.
+        ///
+        /// The objective is added too, because a gate nobody has claimed is the failure this is
+        /// here to prevent. The reference is written loose - "*.*.exit" - so it matches whichever
+        /// stretch and tile the region ends up in, which is what welding leaves behind anyway.
+        /// </summary>
+        public static Exit addExit(Map map, Room room, int x, int y, int z)
+        {
+            room.Regions.Add(new JsonObject
+            {
+                ["locked"] = false,
+                ["name"] = EXIT,
+                ["pos"] = new JsonArray(x, y, z),
+                ["size"] = new JsonArray(1, 1, 1),
+                ["tags"] = GATE,
+                ["type"] = "trigger",
+            });
+
+            if (!hasExitObjective(map))
+            {
+                if (map.Level["objectives"] is not JsonArray objectives)
+                {
+                    objectives = new JsonArray();
+                    map.Level["objectives"] = objectives;
+                }
+
+                objectives.Add(new JsonObject
+                {
+                    ["name"] = "name_the_escape",
+                    ["description"] = "description_exit_through_the_gate",
+                    ["displayMode"] = "MainObjective",
+                    ["click"] = new JsonObject
+                    {
+                        ["object"] = EXIT_DOOR,
+                        ["count"] = 1,
+                        ["locations"] = new JsonArray("*.*." + EXIT),
+                    },
+                });
+            }
+
+            return new Exit(room.Regions.Count - 1, new[] { x, y, z }, true);
+        }
+
+        /// <summary>Puts the exit gate somewhere else.</summary>
+        public static bool moveExit(Room room, int at, int x, int y, int z)
+        {
+            var regions = room.Regions;
+            if (at < 0 || at >= regions.Count) { return false; }
+            if (regions[at] is not JsonObject region || !isExit(region)) { return false; }
+
+            region["pos"] = new JsonArray(x, y, z);
+            return true;
+        }
+
+        /// <summary>Takes one exit gate out. The objective is left alone - it may claim another.</summary>
+        public static bool removeExitAt(Room room, int at)
+        {
+            var regions = room.Regions;
+            if (at < 0 || at >= regions.Count) { return false; }
+            if (regions[at] is not JsonObject region || !isExit(region)) { return false; }
+
+            regions.RemoveAt(at);
+            return true;
+        }
+
+        //--- where you come in -------------------------------------------------------------------
+
+        /// <summary>The tag and name the game marks the player's arrival area with.</summary>
+        public const string PLAYERSTART = "playerstart";
+
+        /// <summary>
+        /// One place the mission puts you when it starts.
+        ///
+        /// Not a door, which is what it looks like from the outside and is worth saying plainly:
+        /// a door is how two tiles join and what a teleport attaches to, and it is perfectly
+        /// possible to have several and still materialise nowhere near any of them. Arriving is a
+        /// trigger region called "playerstart" - an AREA you appear in, three to six cells across.
+        /// </summary>
+        public sealed class Start
+        {
+            public Start(int at, int[] pos, int[] size, bool isMain)
+            {
+                At = at;
+                Pos = pos;
+                Size = size;
+                IsMain = isMain;
+            }
+
+            /// <summary>
+            /// Whether this is the one the mission starts you at.
+            ///
+            /// A mission can have several arrival areas and they are identical - same name, same
+            /// tags, same type - so nothing in the region itself says which is which. What says
+            /// it is ORDER: welding appends each room's regions in playing order, so the start
+            /// room's land at the front, and the first one in the array is the way in. The rest
+            /// are where teleports drop you.
+            ///
+            /// Checked against Creeper Woods: of its two, the one at index 1 of 220 comes from
+            /// cw_start_a001 - the tile the first stretch plays - and the one at index 148 comes
+            /// from cw_obj_alt, which is reached by teleport.
+            /// </summary>
+            public bool IsMain { get; }
+
+            /// <summary>Where it sits in the room's region list, which is how it is removed.</summary>
+            public int At { get; }
+
+            public int[] Pos { get; }
+            public int[] Size { get; }
+
+            public override string ToString()
+            {
+                var note = IsMain ? "   \u2190  the main way in" : "   \u00b7  teleport arrival";
+                return $"{Pos[0]}, {Pos[1]}, {Pos[2]}   \u00b7  {Size[0]}\u00d7{Size[2]} area{note}";
+            }
+        }
+
+        /// <summary>Whether a region is the player's arrival area.</summary>
+        private static bool isStart(JsonObject region)
+        {
+            if (region["type"]?.GetValue<string>() != "trigger") { return false; }
+
+            //Matched on either, because the game's own data sets both and a region carrying only
+            //one of them is still plainly meant to be the same thing.
+            return string.Equals(region["tags"]?.GetValue<string>(), PLAYERSTART,
+                       StringComparison.OrdinalIgnoreCase)
+                || string.Equals(region["name"]?.GetValue<string>(), PLAYERSTART,
+                       StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>Every place this room can put you when the mission starts.</summary>
+        public static List<Start> startsOf(Room room)
+        {
+            var made = new List<Start>();
+            var regions = room.Regions;
+
+            for (var at = 0; at < regions.Count; at++)
+            {
+                if (regions[at] is not JsonObject region || !isStart(region)) { continue; }
+
+                //The first one found is the main way in, because that is what order means here.
+                made.Add(new Start(at, ints(region["pos"], 3), ints(region["size"], 3),
+                    made.Count == 0));
+            }
+
+            return made;
+        }
+
+        /// <summary>
+        /// Puts the player's arrival area somewhere.
+        ///
+        /// Three by three, which is at the small end of what the game ships - they run from 3x3
+        /// to 5x6 - and small is the safer default: an arrival area that overlaps a wall is worse
+        /// than one that is snug.
+        /// </summary>
+        public static Start addStart(Room room, int x, int y, int z)
+        {
+            var region = new JsonObject
+            {
+                ["locked"] = false,
+                ["name"] = PLAYERSTART,
+                ["pos"] = new JsonArray(x, y, z),
+                ["size"] = new JsonArray(3, 1, 3),
+                ["tags"] = PLAYERSTART,
+                ["type"] = "trigger",
+            };
+
+            room.Regions.Add(region);
+
+            //Appended, so it is the main way in only when it is the first. A second one added to
+            //a mission that already has one is a teleport arrival until somebody promotes it.
+            var main = startsOf(room).Count == 1;
+
+            return new Start(room.Regions.Count - 1, new[] { x, y, z }, new[] { 3, 1, 3 }, main);
+        }
+
+        /// <summary>
+        /// Makes one arrival area the main way in, by moving it in front of the others.
+        ///
+        /// Order is the only thing that distinguishes them, so promoting one is literally moving
+        /// it up the array - there is no flag to set. The node is copied rather than moved
+        /// because a JsonNode already in a document has a parent, and re-inserting the same
+        /// instance throws halfway through.
+        /// </summary>
+        public static bool promoteStart(Room room, int at)
+        {
+            var regions = room.Regions;
+            if (at < 0 || at >= regions.Count) { return false; }
+            if (regions[at] is not JsonObject region || !isStart(region)) { return false; }
+
+            var first = -1;
+            for (var i = 0; i < regions.Count; i++)
+            {
+                if (regions[i] is JsonObject found && isStart(found)) { first = i; break; }
+            }
+
+            //Already at the front, so there is nothing to do and saying so is better than
+            //rewriting the file to produce an identical one.
+            if (first < 0 || first == at) { return false; }
+
+            if (JsonNode.Parse(region.ToJsonString()) is not JsonObject copy) { return false; }
+
+            //Taken out first. `at` is always after `first`, so removing it cannot shift `first`.
+            regions.RemoveAt(at);
+            regions.Insert(first, copy);
+            return true;
+        }
+
+        /// <summary>Puts the arrival area somewhere else, by where it sits in the region list.</summary>
+        public static bool moveStart(Room room, int at, int x, int y, int z)
+        {
+            var regions = room.Regions;
+            if (at < 0 || at >= regions.Count) { return false; }
+            if (regions[at] is not JsonObject region || !isStart(region)) { return false; }
+
+            region["pos"] = new JsonArray(x, y, z);
+            return true;
+        }
+
+        /// <summary>Takes one arrival area out, by where it sits in the region list.</summary>
+        public static bool removeStartAt(Room room, int at)
+        {
+            var regions = room.Regions;
+            if (at < 0 || at >= regions.Count) { return false; }
+            if (regions[at] is not JsonObject region || !isStart(region)) { return false; }
+
+            regions.RemoveAt(at);
+            return true;
+        }
+
+        //--- the doors themselves ----------------------------------------------------------------
+
+        /// <summary>
+        /// One door in a tile's wall.
+        ///
+        /// A door is the same four fields a region is - name, position, size and tags - just kept
+        /// in a different array. What makes it a door is what names it: the tile's entry-door
+        /// field, or a teleport, both of which refer to a door BY NAME rather than by position.
+        /// </summary>
+        public sealed class Door
+        {
+            public Door(int at, string name, int[] pos, int[] size, string tags, bool isEntry,
+                        bool onWall)
+            {
+                At = at;
+                Name = name;
+                Pos = pos;
+                Size = size;
+                Tags = tags;
+                IsEntry = isEntry;
+                OnWall = onWall;
+            }
+
+            /// <summary>Where it sits in the tile's door list, which is how it is removed.</summary>
+            public int At { get; }
+
+            public string Name { get; }
+            public int[] Pos { get; }
+            public int[] Size { get; }
+            public string Tags { get; }
+
+            /// <summary>Whether the level names this one as the way in.</summary>
+            public bool IsEntry { get; }
+
+            /// <summary>
+            /// Whether it sits in the tile's outer wall.
+            ///
+            /// The same test welding uses to decide which doors to carry across, so a door that
+            /// is not on a wall is one a later weld would throw away - and one nobody can walk in
+            /// through, because there is no outside next to it.
+            /// </summary>
+            public bool OnWall { get; }
+
+            /// <summary>Which way it faces, worked out from which axis it is wide along.</summary>
+            public string Facing => Size[0] >= Size[2] ? "along x" : "along z";
+
+            public override string ToString()
+            {
+                var called = Name.Length > 0 ? Name : "(unnamed)";
+                var where = $"{Pos[0]}, {Pos[1]}, {Pos[2]}";
+                var note = IsEntry ? "   \u2190  the way in"
+                    : Tags.Length > 0 ? $"   \u00b7  {Tags}" : string.Empty;
+
+                //The facing is on the row because it is the thing that is easy to get wrong and
+                //impossible to see otherwise: a door lying along the wrong axis is buried in the
+                //wall it was meant to be a hole in.
+                var wall = OnWall ? string.Empty : "   \u00b7  NOT in a wall";
+
+                return $"{called}   \u2014   {where}   \u00b7  {Facing}{wall}{note}";
+            }
+        }
+
+        /// <summary>The name of the door the level starts you at, if it names one.</summary>
+        public static string entryDoorOf(Map map, Room room)
+        {
+            foreach (var declared in map.Level["tiles"] as JsonArray ?? new JsonArray())
+            {
+                if (declared is not JsonObject tile) { continue; }
+                if (!string.Equals(tile["id"]?.GetValue<string>(), room.Id,
+                    StringComparison.OrdinalIgnoreCase)) { continue; }
+
+                return tile["entry-door"]?.GetValue<string>() ?? string.Empty;
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>Every door in a room's own wall.</summary>
+        public static List<Door> doorsOf(Map map, Room room)
+        {
+            var made = new List<Door>();
+            var entry = entryDoorOf(map, room);
+
+            var doors = room.Tile["doors"] as JsonArray ?? new JsonArray();
+
+            for (var at = 0; at < doors.Count; at++)
+            {
+                if (doors[at] is not JsonObject door) { continue; }
+
+                var name = door["name"]?.GetValue<string>() ?? string.Empty;
+
+                var pos = ints(door["pos"], 3);
+
+                made.Add(new Door(at, name, pos,
+                    ints(door["size"], 3),
+                    door["tags"]?.GetValue<string>() ?? string.Empty,
+                    name.Length > 0 && string.Equals(name, entry, StringComparison.OrdinalIgnoreCase),
+                    onWall(room, pos)));
+            }
+
+            return made;
+        }
+
+        /// <summary>
+        /// Which way a door in this spot has to lie.
+        ///
+        /// A door is three cells along one axis and one along the other, and which axis follows
+        /// from the wall: in an x wall it spans z, and the other way about. Checked against every
+        /// door the game ships - 622 of the 622 that sit in an outer wall agree with this.
+        /// </summary>
+        private static JsonArray facing(Room room, int x, int z)
+        {
+            var nearestX = Math.Min(x, Math.Max(0, room.Size[0] - 1 - x));
+            var nearestZ = Math.Min(z, Math.Max(0, room.Size[2] - 1 - z));
+
+            return nearestX <= nearestZ ? new JsonArray(1, 1, 3) : new JsonArray(3, 1, 1);
+        }
+
+        /// <summary>
+        /// Whether a spot is in the tile's outer wall - the same test welding applies.
+        /// </summary>
+        private static bool onWall(Room room, int[] pos)
+            => pos[0] == 0 || pos[0] >= room.Size[0] - 1
+            || pos[2] == 0 || pos[2] >= room.Size[2] - 1;
+
+        /// <summary>
+        /// Puts a door in the wall.
+        ///
+        /// The size is not asked for. Every door in the game is three cells wide along one axis
+        /// and one along the other, and which axis is decided by the wall it is in - so it is
+        /// taken from whichever edge of the tile the spot is nearest rather than left to somebody
+        /// to get right. A door lying along the wrong axis is a door buried in a wall.
+        /// </summary>
+        public static Door addDoor(Map map, Room room, string name, int x, int y, int z)
+        {
+            if (room.Tile["doors"] is not JsonArray doors)
+            {
+                doors = new JsonArray();
+                room.Tile["doors"] = doors;
+            }
+
+            var made = new JsonObject
+            {
+                ["name"] = name,
+                ["pos"] = new JsonArray(x, y, z),
+                ["size"] = facing(room, x, z),
+                ["tags"] = string.Empty,
+            };
+
+            doors.Add(made);
+
+            return doorsOf(map, room)[doors.Count - 1];
+        }
+
+        /// <summary>
+        /// Puts a door somewhere else.
+        ///
+        /// The size is recomputed rather than carried along, because a door's facing belongs to
+        /// the wall it is in, not to the door. Dragging one from a north wall to an east wall
+        /// without turning it leaves it lying across the opening instead of filling it.
+        /// </summary>
+        public static bool moveDoor(Room room, int at, int x, int y, int z)
+        {
+            if (room.Tile["doors"] is not JsonArray doors) { return false; }
+            if (at < 0 || at >= doors.Count) { return false; }
+            if (doors[at] is not JsonObject door) { return false; }
+
+            door["pos"] = new JsonArray(x, y, z);
+            door["size"] = facing(room, x, z);
+            return true;
+        }
+
+        /// <summary>Takes a door out, by where it sits in the tile's door list.</summary>
+        public static bool removeDoorAt(Room room, int at)
+        {
+            if (room.Tile["doors"] is not JsonArray doors) { return false; }
+            if (at < 0 || at >= doors.Count) { return false; }
+
+            doors.RemoveAt(at);
+            return true;
+        }
+
+        /// <summary>The door nearest a spot, if one is close enough to have been meant.</summary>
+        public static Door? nearestDoor(Map map, Room room, int x, int y, int z, double within)
+        {
+            Door? best = null;
+            var bestGap = within * within;
+
+            foreach (var door in doorsOf(map, room))
+            {
+                var dx = (double)(door.Pos[0] - x);
+                var dy = (double)(door.Pos[1] - y);
+                var dz = (double)(door.Pos[2] - z);
+
+                var gap = dx * dx + dz * dz + dy * dy * 0.25;
+                if (gap > bestGap) { continue; }
+
+                bestGap = gap;
+                best = door;
+            }
+
+            return best;
+        }
+
+        /// <summary>
+        /// Says which door the level starts you at.
+        ///
+        /// Written onto the level's own tile table rather than onto the door, because that is
+        /// where the game looks - a door called "enter" is a convention, and a convention is not
+        /// something to rely on for a tile nobody at Mojang ever saw. Welding drops the field, so
+        /// a welded mission has nothing saying where to come in until this puts it back.
+        /// </summary>
+        public static bool setEntryDoor(Map map, Room room, string name)
+        {
+            if (map.Level["tiles"] is not JsonArray tiles)
+            {
+                tiles = new JsonArray();
+                map.Level["tiles"] = tiles;
+            }
+
+            foreach (var declared in tiles)
+            {
+                if (declared is not JsonObject tile) { continue; }
+                if (!string.Equals(tile["id"]?.GetValue<string>(), room.Id,
+                    StringComparison.OrdinalIgnoreCase)) { continue; }
+
+                tile["entry-door"] = name;
+                return true;
+            }
+
+            //A tile named by a stretch but missing from the table is a tile the game looks up and
+            //does not find, so the row is made rather than the setting being dropped.
+            tiles.Add(new JsonObject
+            {
+                ["id"] = room.Id,
+                ["rotations"] = 0,
+                ["entry-door"] = name,
+            });
+
             return true;
         }
 

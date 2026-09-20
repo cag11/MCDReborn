@@ -66,6 +66,10 @@ namespace MCDSaveEdit.UI
             mapView.Picked += mapView_Picked;
             mapView.Hovered += mapView_Hovered;
             mapView.Confirmed += mapView_Confirmed;
+            mapView.Grabbed += mapView_Grabbed;
+            mapView.Dragged += mapView_Dragged;
+            mapView.Dropped += mapView_Dropped;
+            mapView.DragCancelled += mapView_DragCancelled;
             ceilingSlider_ValueChanged(this, new RoutedPropertyChangedEventArgs<double>(0, 255));
 
             fillRooms();
@@ -217,6 +221,194 @@ namespace MCDSaveEdit.UI
         /// <summary>How many spawn points the chosen room holds right now.</summary>
         internal int spawnsNow => _room?.Spawns ?? -1;
 
+        //--- dragging a point, for a probe -------------------------------------------------------
+
+        /// <summary>The 3D view itself, so a probe can press and drag it the way a hand does.</summary>
+        internal MapView3D probeView => mapView;
+
+        /// <summary>Where every spawn point in the chosen room is now, straight out of the JSON.</summary>
+        internal List<(int x, int y, int z)> probePoints
+        {
+            get
+            {
+                var found = new List<(int x, int y, int z)>();
+                if (_room == null) { return found; }
+
+                foreach (var region in _room.Regions)
+                {
+                    if (region?["type"]?.GetValue<string>() != "spawn") { continue; }
+                    if (region["pos"] is not JsonArray at || at.Count < 3) { continue; }
+                    found.Add((at[0]!.GetValue<int>(), at[1]!.GetValue<int>(), at[2]!.GetValue<int>()));
+                }
+
+                return found;
+            }
+        }
+
+        /// <summary>Whether the room's file has been written down as changed.</summary>
+        internal bool probeChanged => _room != null && _map.Changed.Contains(_room.File);
+
+        /// <summary>What the status line says, which is the only thing a person is told.</summary>
+        internal string probeStatus => statusLabel.Text;
+
+        /// <summary>
+        /// How far the side panel can scroll, and whether the mob list is inside the part that
+        /// scrolls into view.
+        ///
+        /// A ScrollViewer that is present but cannot scroll is the vacuous version of this check:
+        /// it would pass on a panel whose content still overflowed a fixed-height child. What
+        /// matters is that the content is taller than the window AND that the bottom of the mob
+        /// list can be brought into view.
+        /// </summary>
+        internal (double scrollable, double content, double viewport, bool mobsReachable) panelScrollNow
+        {
+            get
+            {
+                //The tab the mob list lives on, since that is the one it has to fit inside.
+                panelTabs.SelectedItem = mobsTab;
+                panelTabs.UpdateLayout();
+                mobsTabScroll.UpdateLayout();
+
+                var bottom = mobStack.TranslatePoint(
+                    new Point(0, mobStack.ActualHeight), mobsTabScroll).Y
+                    + mobsTabScroll.VerticalOffset;
+
+                return (mobsTabScroll.ScrollableHeight, mobsTabScroll.ExtentHeight,
+                    mobsTabScroll.ViewportHeight,
+                    mobStack.ActualHeight > 0 && bottom <= mobsTabScroll.ExtentHeight + 1);
+            }
+        }
+
+        /// <summary>The gates as the list shows them.</summary>
+        internal string[] gateRows => gatesList.Items.OfType<MapSpawns.Gate>()
+            .Select(one => one.ToString()).ToArray();
+
+        internal string gateHint => gatesHint.Text;
+
+        internal bool namedByAnyObjective(string region)
+            => MapSpawns.anyObjectiveNames(_map, region);
+
+        internal void probeAddGate(int x, int y, int z)
+        {
+            xBox.Text = x.ToString();
+            yBox.Text = y.ToString();
+            zBox.Text = z.ToString();
+            addGateButton_Click(this, new RoutedEventArgs());
+        }
+
+        internal void probePickGate(int row)
+        {
+            gatesList.SelectedIndex = row;
+            gatesList_SelectionChanged(this, new SelectionChangedEventArgs(
+                System.Windows.Controls.Primitives.Selector.SelectionChangedEvent,
+                new object[0], new object[0]));
+        }
+
+        internal void probeTurnGate() => turnGateButton_Click(this, new RoutedEventArgs());
+
+        internal void probeWidenGate() => widerGateButton_Click(this, new RoutedEventArgs());
+
+        internal void probeLockGate(int objectiveRow)
+        {
+            opensBox.SelectedIndex = objectiveRow;
+            lockGateButton_Click(this, new RoutedEventArgs());
+        }
+
+        internal void probeUnlockGate() => unlockGateButton_Click(this, new RoutedEventArgs());
+
+        internal void probeRemoveGate() => removeGateRegionButton_Click(this, new RoutedEventArgs());
+
+        /// <summary>The objective chain as the list shows it.</summary>
+        internal string[] questRows => questList.Items.OfType<MapSpawns.Objective>()
+            .Select(one => one.ToString()).ToArray();
+
+        internal string questHintNow => questHint.Text;
+
+        internal void probeOnlyExit() => onlyExitButton_Click(this, new RoutedEventArgs());
+
+        /// <summary>The exit gates as the list shows them.</summary>
+        internal string[] exitRows => exitsList.Items.OfType<MapSpawns.Exit>()
+            .Select(one => one.ToString()).ToArray();
+
+        internal string exitHint => exitsHint.Text;
+
+        internal bool exitObjectiveNow => MapSpawns.hasExitObjective(_map);
+
+        internal void probeAddExit(int x, int y, int z)
+        {
+            xBox.Text = x.ToString();
+            yBox.Text = y.ToString();
+            zBox.Text = z.ToString();
+            addExitButton_Click(this, new RoutedEventArgs());
+        }
+
+        /// <summary>The arrival areas as the list shows them.</summary>
+        internal string[] startRows => startsList.Items.OfType<MapSpawns.Start>()
+            .Select(one => one.ToString()).ToArray();
+
+        internal string startHint => startsHint.Text;
+
+        /// <summary>How wide the chosen room is, so a probe can scale what it asks for.</summary>
+        internal int roomAcross => _room == null ? 0 : Math.Min(_room.Size[0], _room.Size[2]);
+
+        internal void probeAddStart(int x, int y, int z)
+        {
+            xBox.Text = x.ToString();
+            yBox.Text = y.ToString();
+            zBox.Text = z.ToString();
+            addStartButton_Click(this, new RoutedEventArgs());
+        }
+
+        internal void probePickStart(int row)
+        {
+            startsList.SelectedIndex = row;
+            startsList_SelectionChanged(this, new SelectionChangedEventArgs(
+                System.Windows.Controls.Primitives.Selector.SelectionChangedEvent,
+                new object[0], new object[0]));
+        }
+
+        internal void probeRemoveStart() => removeStartButton_Click(this, new RoutedEventArgs());
+
+        internal void probeMakeMain() => mainStartButton_Click(this, new RoutedEventArgs());
+
+        /// <summary>The doors as the list shows them, which is what a person reads.</summary>
+        internal string[] doorRows => doorsList.Items.OfType<MapSpawns.Door>()
+            .Select(one => one.ToString()).ToArray();
+
+        /// <summary>What the doors hint says - the warning about having none lives there.</summary>
+        internal string doorHint => doorsHint.Text;
+
+        /// <summary>The door named as the way in, straight out of the level.</summary>
+        internal string entryDoorNow => _room == null
+            ? string.Empty
+            : MapSpawns.entryDoorOf(_map, _room);
+
+        /// <summary>Presses Add door, having aimed and named it the way a person would.</summary>
+        internal void probeAddDoor(string name, int x, int y, int z)
+        {
+            doorNameBox.Text = name;
+            xBox.Text = x.ToString();
+            yBox.Text = y.ToString();
+            zBox.Text = z.ToString();
+            addDoorButton_Click(this, new RoutedEventArgs());
+        }
+
+        /// <summary>Picks the door at that row, as clicking the list does.</summary>
+        internal void probePickDoor(int row)
+        {
+            doorsList.SelectedIndex = row;
+            doorsList_SelectionChanged(this, new SelectionChangedEventArgs(
+                System.Windows.Controls.Primitives.Selector.SelectionChangedEvent,
+                new object[0], new object[0]));
+        }
+
+        internal void probeMakeEntry() => entryDoorButton_Click(this, new RoutedEventArgs());
+
+        internal void probeRemoveDoor() => removeDoorButton_Click(this, new RoutedEventArgs());
+
+        /// <summary>Escape, as the view would deliver it mid-drag.</summary>
+        internal void probeCancelDrag() => mapView_DragCancelled();
+
         /// <summary>How many mob groups the mission has, for a probe.</summary>
         internal int groupCount => groupBox.Items.Count;
 
@@ -272,6 +464,37 @@ namespace MCDSaveEdit.UI
             placeButton.Content = R.SPAWNS_PLACE_BUTTON;
             clearButton.Content = R.SPAWNS_CLEAR;
             removeButton.Content = R.SPAWNS_REMOVE_POINT;
+            mobsTab.Header = R.SPAWNS_TAB_MOBS;
+            waysTab.Header = R.SPAWNS_TAB_WAYS;
+            questTab.Header = R.SPAWNS_TAB_QUEST;
+            gatesLabel.Content = R.SPAWNS_GATES;
+            gatesHint.Text = R.SPAWNS_GATES_WHY;
+            addGateButton.Content = R.SPAWNS_ADD_GATE;
+            turnGateButton.Content = R.SPAWNS_TURN_GATE;
+            widerGateButton.Content = R.SPAWNS_WIDER_GATE;
+            narrowerGateButton.Content = R.SPAWNS_NARROWER_GATE;
+            removeGateRegionButton.Content = R.SPAWNS_REMOVE_GATE;
+            opensLabel.Text = R.SPAWNS_GATE_OPENS;
+            lockGateButton.Content = R.SPAWNS_GATE_LOCK;
+            unlockGateButton.Content = R.SPAWNS_GATE_UNLOCK;
+            questLabel.Content = R.SPAWNS_QUEST;
+            questHint.Text = R.SPAWNS_QUEST_WHY;
+            onlyExitButton.Content = R.SPAWNS_QUEST_ONLY_EXIT;
+            removeQuestButton.Content = R.SPAWNS_QUEST_REMOVE;
+            exitsLabel.Content = R.SPAWNS_EXITS;
+            exitsHint.Text = R.SPAWNS_EXITS_WHY;
+            addExitButton.Content = R.SPAWNS_ADD_EXIT;
+            removeExitButton.Content = R.SPAWNS_REMOVE_EXIT;
+            startsLabel.Content = R.SPAWNS_STARTS;
+            startsHint.Text = R.SPAWNS_STARTS_WHY;
+            addStartButton.Content = R.SPAWNS_ADD_START;
+            removeStartButton.Content = R.SPAWNS_REMOVE_START;
+            mainStartButton.Content = R.SPAWNS_MAIN_START;
+            doorsLabel.Content = R.SPAWNS_DOORS;
+            doorsHint.Text = R.SPAWNS_DOORS_WHY;
+            addDoorButton.Content = R.SPAWNS_ADD_DOOR;
+            removeDoorButton.Content = R.SPAWNS_REMOVE_DOOR;
+            entryDoorButton.Content = R.SPAWNS_ENTRY_DOOR;
             waysLabel.Content = R.SPAWNS_WAYS;
             rulesLabel.Content = R.SPAWNS_RULES;
             rulesHint.Text = R.SPAWNS_RULES_HINT;
@@ -409,6 +632,24 @@ namespace MCDSaveEdit.UI
 
         private void markSpawns()
         {
+            markPoints();
+            markWays();
+            fillDoors();
+            fillStarts();
+            fillExits();
+            fillQuest();
+            fillGates();
+        }
+
+        /// <summary>
+        /// Just the spawn points, without going back over the teleports.
+        ///
+        /// Split out for dragging, which redraws on every block the pointer crosses. The ways in
+        /// and out are read out of the level rather than the room and do not move while a spawn
+        /// point is being dragged, so doing that lookup sixty times a second would buy nothing.
+        /// </summary>
+        private void markPoints()
+        {
             if (_room == null) { return; }
 
             var found = new List<(int x, int y, int z)>();
@@ -422,7 +663,700 @@ namespace MCDSaveEdit.UI
             }
 
             mapView.mark(found, Color.FromRgb(255, 120, 60));
-            markWays();
+        }
+
+        //--- gates an objective opens ---------------------------------------------------------------
+
+        private int _gate = -1;
+
+        private void fillGates()
+        {
+            if (_room == null) { gatesList.ItemsSource = null; return; }
+
+            var gates = MapSpawns.gatesOf(_map, _room);
+
+            _filling = true;
+            var wasAt = _gate;
+            gatesList.ItemsSource = gates;
+            gatesList.SelectedIndex = gates.FindIndex(one => one.At == wasAt);
+
+            //The objectives a gate can be handed to. A gauntlet can hold one shut as readily as
+            //a click can, so they are all offered.
+            opensBox.Items.Clear();
+            foreach (var step in MapSpawns.objectivesOf(_map))
+            {
+                opensBox.Items.Add(new ComboBoxItem { Content = step.ToString(), Tag = step.At });
+            }
+            if (opensBox.Items.Count > 0) { opensBox.SelectedIndex = 0; }
+            _filling = false;
+
+            mapView.markGates(gates.Select(one =>
+                (one.Pos[0], one.Pos[1], one.Pos[2], one.Size[0], one.Size[2])));
+
+            var loose = gates.Count(one => one.OpenedBy.Length == 0);
+
+            gatesHint.Text = gates.Count == 0
+                ? R.SPAWNS_GATES_NONE
+                : loose == 0
+                    ? string.Format(R.SPAWNS_GATES_ALL_HELD, gates.Count)
+                    : string.Format(R.SPAWNS_GATES_LOOSE, gates.Count, loose);
+        }
+
+        private void gatesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+            if (gatesList.SelectedItem is not MapSpawns.Gate gate) { _gate = -1; return; }
+
+            _gate = gate.At;
+            mapView.aim(gate.Pos[0], gate.Pos[1], gate.Pos[2], true);
+            drawWires();
+            statusLabel.Text = string.Format(R.SPAWNS_GATE_AT, gate.Name,
+                gate.Pos[0], gate.Pos[1], gate.Pos[2]);
+            updateUI();
+        }
+
+        private MapSpawns.Gate? chosenGate()
+            => _room == null || _gate < 0
+                ? null
+                : MapSpawns.gatesOf(_map, _room).FirstOrDefault(one => one.At == _gate);
+
+        private void addGateButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null) { return; }
+
+            var made = MapSpawns.addGate(_map, _room, MapSpawns.freeGateName(_map, _room),
+                number(xBox, _room.Size[0] / 2),
+                number(yBox, _room.Size[1] / 2),
+                number(zBox, _room.Size[2] / 2),
+                true);
+
+            _map.Changed.Add(_room.File);
+            _gate = made.At;
+
+            statusLabel.Text = string.Format(R.SPAWNS_GATE_ADDED, made.Name);
+
+            fillGates();
+            drawWires();
+            updateUI();
+        }
+
+        /// <summary>Turn, wider and narrower all reshape the chosen gate in place.</summary>
+        private void reshape(Func<bool> change, Func<MapSpawns.Gate, string> said)
+        {
+            if (_room == null || _gate < 0) { return; }
+            if (!change()) { return; }
+
+            _map.Changed.Add(_room.File);
+
+            var now = chosenGate();
+            if (now != null) { statusLabel.Text = said(now); }
+
+            fillGates();
+            drawWires();
+            updateUI();
+        }
+
+        private void turnGateButton_Click(object sender, RoutedEventArgs e)
+            => reshape(() => MapSpawns.turnGate(_room!, _gate),
+                gate => string.Format(R.SPAWNS_GATE_TURNED, gate.Name,
+                    gate.Across ? R.SPAWNS_GATE_ACROSS_X : R.SPAWNS_GATE_ACROSS_Z));
+
+        private void widerGateButton_Click(object sender, RoutedEventArgs e)
+            => reshape(() => MapSpawns.widenGate(_room!, _gate, 1),
+                gate => string.Format(R.SPAWNS_GATE_WIDE, gate.Name,
+                    Math.Max(gate.Size[0], gate.Size[2])));
+
+        private void narrowerGateButton_Click(object sender, RoutedEventArgs e)
+            => reshape(() => MapSpawns.widenGate(_room!, _gate, -1),
+                gate => string.Format(R.SPAWNS_GATE_WIDE, gate.Name,
+                    Math.Max(gate.Size[0], gate.Size[2])));
+
+        private void removeGateRegionButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null || _gate < 0) { return; }
+
+            var going = chosenGate();
+            if (going == null || !MapSpawns.removeGateAt(_map, _room, _gate)) { return; }
+
+            _map.Changed.Add(_room.File);
+
+            //Removing a gate also tidies the objectives that held it, so the level changed too.
+            if (going.OpenedBy.Length > 0) { _map.Changed.Add("level.json"); }
+
+            _gate = -1;
+            statusLabel.Text = string.Format(R.SPAWNS_GATE_REMOVED, going.Name);
+
+            fillGates();
+            fillQuest();
+            updateUI();
+        }
+
+        private void lockGateButton_Click(object sender, RoutedEventArgs e)
+        {
+            var gate = chosenGate();
+            if (gate == null) { return; }
+            if ((opensBox.SelectedItem as ComboBoxItem)?.Tag is not int step) { return; }
+
+            //One objective at a time. A gate held by two is a gate that opens when the first of
+            //them finishes, which is never what somebody meant by picking the second.
+            foreach (var one in MapSpawns.objectivesOf(_map)) { MapSpawns.unlock(_map, one.At, gate.Name); }
+
+            if (!MapSpawns.lockTo(_map, step, gate.Name)) { return; }
+
+            _map.Changed.Add("level.json");
+
+            statusLabel.Text = string.Format(R.SPAWNS_GATE_LOCKED, gate.Name,
+                MapSpawns.objectivesOf(_map).FirstOrDefault(one => one.At == step)?.Description ?? "?");
+
+            fillGates();
+            drawWires();
+            updateUI();
+        }
+
+        private void unlockGateButton_Click(object sender, RoutedEventArgs e)
+        {
+            var gate = chosenGate();
+            if (gate == null) { return; }
+
+            var freed = false;
+            foreach (var one in MapSpawns.objectivesOf(_map))
+            {
+                freed |= MapSpawns.unlock(_map, one.At, gate.Name);
+            }
+
+            if (!freed) { statusLabel.Text = R.SPAWNS_GATE_ALREADY_FREE; return; }
+
+            _map.Changed.Add("level.json");
+            statusLabel.Text = string.Format(R.SPAWNS_GATE_UNLOCKED, gate.Name);
+
+            fillGates();
+            drawWires();
+            updateUI();
+        }
+
+        //--- what the mission asks of you -----------------------------------------------------------
+
+        private int _quest = -1;
+
+        /// <summary>
+        /// The objective chain, and whether each step can still be finished.
+        ///
+        /// A step whose regions are not in the map can never complete, and every step behind it
+        /// is then unreachable - including the exit gate, which is the last one in every mission
+        /// the game ships. That is a gate that draws, lights up and does nothing, with no error
+        /// anywhere, so it is worth saying out loud here.
+        /// </summary>
+        private void fillQuest()
+        {
+            if (_room == null) { questList.ItemsSource = null; return; }
+
+            var steps = MapSpawns.objectivesOf(_map);
+
+            //What regions this room actually has to offer, by name.
+            var have = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var region in _room.Regions)
+            {
+                var name = region?["name"]?.GetValue<string>();
+                if (!string.IsNullOrEmpty(name)) { have.Add(name!); }
+            }
+
+            _filling = true;
+            var wasAt = _quest;
+            questList.ItemsSource = steps;
+            questList.SelectedIndex = steps.FindIndex(one => one.At == wasAt);
+            _filling = false;
+
+            var stuck = steps.FirstOrDefault(one => one.Needs.Any(need => !have.Contains(need)));
+
+            questHint.Text = steps.Count == 0
+                ? R.SPAWNS_QUEST_NONE
+                : stuck != null
+                    ? string.Format(R.SPAWNS_QUEST_STUCK, stuck.At + 1,
+                        string.Join(", ", stuck.Needs.Where(need => !have.Contains(need))))
+                    : string.Format(R.SPAWNS_QUEST_OK, steps.Count);
+        }
+
+        private void questList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+            _quest = questList.SelectedItem is MapSpawns.Objective step ? step.At : -1;
+
+            drawWires();
+            updateUI();
+        }
+
+        /// <summary>
+        /// Draws what the chosen step is connected to.
+        ///
+        /// A step and the gate it opens are usually at opposite ends of the map, and a list can
+        /// say "opens: gate2" without anybody being able to find gate2. The wire is the part that
+        /// makes it a graph rather than two lists that mention each other.
+        ///
+        /// Both ends are wired from whichever is selected, so picking a gate shows its step and
+        /// picking a step shows its gates.
+        /// </summary>
+        private void drawWires()
+        {
+            if (_room == null) { mapView.wire(Array.Empty<(int, int, int, int, int, int)>()); return; }
+
+            var gates = MapSpawns.gatesOf(_map, _room);
+            var wires = new List<(int, int, int, int, int, int)>();
+
+            //Which region each named thing sits at, so a step's own targets can be found too.
+            var where = new Dictionary<string, int[]>(StringComparer.OrdinalIgnoreCase);
+            foreach (var region in _room.Regions)
+            {
+                var name = region?["name"]?.GetValue<string>();
+                if (string.IsNullOrEmpty(name) || where.ContainsKey(name!)) { continue; }
+                if (region!["pos"] is not JsonArray at || at.Count < 3) { continue; }
+
+                where[name!] = new[]
+                {
+                    at[0]!.GetValue<int>(), at[1]!.GetValue<int>(), at[2]!.GetValue<int>(),
+                };
+            }
+
+            void join(int[] from, int[] to)
+                => wires.Add((from[0], from[1], from[2], to[0], to[1], to[2]));
+
+            //From the chosen step to every gate it holds, and on to what it asks you to do.
+            if (_quest >= 0)
+            {
+                var step = MapSpawns.objectivesOf(_map).FirstOrDefault(one => one.At == _quest);
+
+                if (step != null)
+                {
+                    foreach (var held in MapSpawns.lockedBy(_map, _quest))
+                    {
+                        var gate = gates.FirstOrDefault(one =>
+                            string.Equals(one.Name, held, StringComparison.OrdinalIgnoreCase));
+
+                        if (gate == null) { continue; }
+
+                        foreach (var need in step.Needs)
+                        {
+                            if (where.TryGetValue(need, out var spot)) { join(spot, gate.Pos); }
+                        }
+
+                        //A step with no region of its own in this room still gets a marker on the
+                        //gate, rather than the gate looking unconnected.
+                        if (step.Needs.All(need => !where.ContainsKey(need)))
+                        {
+                            join(gate.Pos, gate.Pos);
+                        }
+                    }
+                }
+            }
+
+            //From the chosen gate back to whatever opens it.
+            var chosen = chosenGate();
+            if (chosen != null && chosen.OpenedBy.Length > 0)
+            {
+                var step = MapSpawns.objectivesOf(_map)
+                    .FirstOrDefault(one => one.Title == chosen.OpenedBy);
+
+                foreach (var need in step?.Needs ?? Array.Empty<string>())
+                {
+                    if (where.TryGetValue(need, out var spot)) { join(spot, chosen.Pos); }
+                }
+            }
+
+            mapView.wire(wires);
+        }
+
+        private void removeQuestButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_quest < 0) { return; }
+            if (!MapSpawns.removeObjectiveAt(_map, _quest)) { return; }
+
+            _map.Changed.Add("level.json");
+            _quest = -1;
+
+            statusLabel.Text = string.Format(R.SPAWNS_QUEST_REMOVED,
+                MapSpawns.objectivesOf(_map).Count);
+
+            fillQuest();
+            updateUI();
+        }
+
+        private void onlyExitButton_Click(object sender, RoutedEventArgs e)
+        {
+            var gone = MapSpawns.keepOnlyExit(_map);
+
+            if (gone == 0)
+            {
+                statusLabel.Text = R.SPAWNS_QUEST_NOTHING_TO_DROP;
+                return;
+            }
+
+            _map.Changed.Add("level.json");
+            _quest = -1;
+
+            statusLabel.Text = MapSpawns.objectivesOf(_map).Count == 0
+                ? string.Format(R.SPAWNS_QUEST_ALL_GONE, gone)
+                : string.Format(R.SPAWNS_QUEST_ONLY_EXIT_LEFT, gone);
+
+            fillQuest();
+            updateUI();
+        }
+
+        //--- the way out ----------------------------------------------------------------------------
+
+        private int _exit = -1;
+
+        private void fillExits()
+        {
+            if (_room == null)
+            {
+                exitsList.ItemsSource = null;
+                mapView.markExits(Array.Empty<(int, int, int)>());
+                return;
+            }
+
+            var exits = MapSpawns.exitsOf(_map, _room);
+
+            _filling = true;
+            var wasAt = _exit;
+            exitsList.ItemsSource = exits;
+            exitsList.SelectedIndex = exits.FindIndex(one => one.At == wasAt);
+            _filling = false;
+
+            mapView.markExits(exits.Select(one => (one.Pos[0], one.Pos[1], one.Pos[2])));
+
+            //Both halves are reported, because either alone silently does nothing.
+            var claimed = MapSpawns.hasExitObjective(_map);
+
+            exitsHint.Text = exits.Count == 0
+                ? (claimed ? R.SPAWNS_EXITS_OBJECTIVE_ONLY : R.SPAWNS_EXITS_NONE)
+                : claimed
+                    ? string.Format(R.SPAWNS_EXITS_SOME, exits.Count)
+                    : string.Format(R.SPAWNS_EXITS_UNCLAIMED, exits.Count);
+        }
+
+        private void exitsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+            if (exitsList.SelectedItem is not MapSpawns.Exit found) { _exit = -1; return; }
+
+            _exit = found.At;
+            mapView.aim(found.Pos[0], found.Pos[1], found.Pos[2], true);
+            statusLabel.Text = string.Format(R.SPAWNS_EXIT_AT,
+                found.Pos[0], found.Pos[1], found.Pos[2]);
+            updateUI();
+        }
+
+        private void addExitButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null) { return; }
+
+            var had = MapSpawns.hasExitObjective(_map);
+
+            var made = MapSpawns.addExit(_map, _room,
+                number(xBox, _room.Size[0] / 2),
+                number(yBox, _room.Size[1] / 2),
+                number(zBox, _room.Size[2] / 2));
+
+            _map.Changed.Add(_room.File);
+            _exit = made.At;
+
+            //The objective lives in the level, not the object group, so that file changed too -
+            //and forgetting to say so is a gate that saves without anything pointing at it.
+            if (!had) { _map.Changed.Add("level.json"); }
+
+            statusLabel.Text = string.Format(
+                had ? R.SPAWNS_EXIT_ADDED : R.SPAWNS_EXIT_ADDED_WITH_OBJECTIVE,
+                made.Pos[0], made.Pos[1], made.Pos[2]);
+
+            fillExits();
+            updateUI();
+        }
+
+        private void removeExitButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null || _exit < 0) { return; }
+            if (!MapSpawns.removeExitAt(_room, _exit)) { return; }
+
+            _map.Changed.Add(_room.File);
+            _exit = -1;
+
+            var left = MapSpawns.exitsOf(_map, _room).Count;
+            statusLabel.Text = left == 0
+                ? R.SPAWNS_EXIT_LAST_GONE
+                : string.Format(R.SPAWNS_EXIT_REMOVED, left);
+
+            fillExits();
+            updateUI();
+        }
+
+        //--- where you come in ---------------------------------------------------------------------
+
+        /// <summary>Which arrival area is picked, by its place in the region list.</summary>
+        private int _start = -1;
+
+        /// <summary>
+        /// Draws the arrival areas in green and lists them.
+        ///
+        /// This is the thing a hand-built mission is most likely to be missing, and the hardest
+        /// to notice: nothing about a map looks wrong without one. The game's own missions always
+        /// have at least one, and a welded Creeper Woods carries two.
+        /// </summary>
+        private void fillStarts()
+        {
+            if (_room == null)
+            {
+                startsList.ItemsSource = null;
+                mapView.markStarts(Array.Empty<(int, int, int, bool)>());
+                return;
+            }
+
+            var starts = MapSpawns.startsOf(_room);
+
+            _filling = true;
+            var wasAt = _start;
+            startsList.ItemsSource = starts;
+            startsList.SelectedIndex = starts.FindIndex(one => one.At == wasAt);
+            _filling = false;
+
+            mapView.markStarts(starts.Select(one =>
+                (one.Pos[0], one.Pos[1], one.Pos[2], one.IsMain)));
+
+            startsHint.Text = starts.Count == 0
+                ? R.SPAWNS_STARTS_NONE
+                : starts.Count == 1
+                    ? R.SPAWNS_STARTS_ONE
+                    : string.Format(R.SPAWNS_STARTS_SOME, starts.Count);
+        }
+
+        private void startsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            if (startsList.SelectedItem is not MapSpawns.Start start) { _start = -1; return; }
+
+            _start = start.At;
+            mapView.aim(start.Pos[0], start.Pos[1], start.Pos[2], true);
+
+            statusLabel.Text = string.Format(R.SPAWNS_START_AT,
+                start.Pos[0], start.Pos[1], start.Pos[2]);
+
+            updateUI();
+        }
+
+        private void addStartButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null) { return; }
+
+            var made = MapSpawns.addStart(_room,
+                number(xBox, _room.Size[0] / 2),
+                number(yBox, _room.Size[1] / 2),
+                number(zBox, _room.Size[2] / 2));
+
+            _map.Changed.Add(_room.File);
+            _start = made.At;
+
+            //Whether the game can actually stand you there. An arrival area on ground it calls
+            //unwalkable is a mission that loads and then does not know what to do with you.
+            var ok = mapView.walkableAt(made.Pos[0], made.Pos[2]);
+
+            statusLabel.Text = string.Format(ok ? R.SPAWNS_START_ADDED : R.SPAWNS_START_ADDED_UNWALKABLE,
+                made.Pos[0], made.Pos[1], made.Pos[2]);
+
+            fillStarts();
+            updateUI();
+        }
+
+        private void mainStartButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null || _start < 0) { return; }
+
+            if (!MapSpawns.promoteStart(_room, _start))
+            {
+                statusLabel.Text = R.SPAWNS_START_ALREADY_MAIN;
+                return;
+            }
+
+            _map.Changed.Add(_room.File);
+
+            //Promoting moves the region up the array, so every index after it has shifted and
+            //the one that was picked is no longer where it was.
+            _start = MapSpawns.startsOf(_room).FirstOrDefault(one => one.IsMain)?.At ?? -1;
+
+            statusLabel.Text = R.SPAWNS_START_NOW_MAIN;
+
+            fillStarts();
+            updateUI();
+        }
+
+        private void removeStartButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null || _start < 0) { return; }
+
+            if (!MapSpawns.removeStartAt(_room, _start)) { return; }
+
+            _map.Changed.Add(_room.File);
+            _start = -1;
+
+            var left = MapSpawns.startsOf(_room).Count;
+
+            statusLabel.Text = left == 0
+                ? R.SPAWNS_START_LAST_GONE
+                : string.Format(R.SPAWNS_START_REMOVED, left);
+
+            fillStarts();
+            updateUI();
+        }
+
+        //--- doors -------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Which door is picked in the list, or -1. Held by its place in the tile's door array,
+        /// which is what removing one needs.
+        /// </summary>
+        private int _door = -1;
+
+        /// <summary>
+        /// Draws the doors in pink and lists them.
+        ///
+        /// This is the half of a custom mission that is invisible in Minecraft. A door is not a
+        /// block - it is four numbers in the tile's JSON - so somebody who builds a beautiful
+        /// level and brings it home has no way to see that it has no way in, until the game
+        /// refuses to load it.
+        /// </summary>
+        private void fillDoors()
+        {
+            if (_room == null)
+            {
+                doorsList.ItemsSource = null;
+                mapView.markDoors(Array.Empty<(int, int, int, bool)>());
+                return;
+            }
+
+            var doors = MapSpawns.doorsOf(_map, _room);
+
+            _filling = true;
+            var wasAt = _door;
+            doorsList.ItemsSource = doors;
+            doorsList.SelectedIndex = doors.FindIndex(one => one.At == wasAt);
+            _filling = false;
+
+            mapView.markDoors(doors.Select(one =>
+                (one.Pos[0], one.Pos[1], one.Pos[2], one.IsEntry)));
+
+            //Said here rather than discovered on a loading screen. A tile with no door is one the
+            //generator cannot place, and a tile with doors but none named as the way in leaves
+            //the game to pick - which works until it does not.
+            var entry = doors.FirstOrDefault(one => one.IsEntry);
+
+            doorsHint.Text = doors.Count == 0
+                ? R.SPAWNS_DOORS_NONE
+                : entry != null
+                    ? string.Format(R.SPAWNS_DOORS_ENTRY, doors.Count, entry.Name)
+                    : string.Format(R.SPAWNS_DOORS_NO_ENTRY, doors.Count);
+        }
+
+        private void doorsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            if (doorsList.SelectedItem is not MapSpawns.Door door) { _door = -1; return; }
+
+            _door = door.At;
+            doorNameBox.Text = door.Name;
+
+            mapView.aim(door.Pos[0], door.Pos[1], door.Pos[2], true);
+            statusLabel.Text = string.Format(R.SPAWNS_DOOR_AT,
+                door.Name.Length > 0 ? door.Name : "(unnamed)",
+                door.Pos[0], door.Pos[1], door.Pos[2], door.Facing);
+
+            updateUI();
+        }
+
+        /// <summary>
+        /// Puts a door where the map is aimed.
+        ///
+        /// The name matters more than anything else about it, because everything that refers to a
+        /// door refers to it by name - the entry-door field and every teleport. So an unnamed
+        /// door is scenery, and the box is filled in with a sensible one rather than left empty:
+        /// the first door a mission gets should be the way in.
+        /// </summary>
+        private void addDoorButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null) { return; }
+
+            var name = doorNameBox.Text.Trim();
+            if (name.Length == 0) { name = MapSpawns.doorsOf(_map, _room).Count == 0 ? "enter" : "exit"; }
+
+            var made = MapSpawns.addDoor(_map, _room, name,
+                number(xBox, _room.Size[0] / 2),
+                number(yBox, _room.Size[1] / 2),
+                number(zBox, _room.Size[2] / 2));
+
+            _map.Changed.Add(_room.File);
+            _door = made.At;
+
+            //The first door in a mission is the way in unless somebody says otherwise. A mission
+            //whose only door is not named as the entry is the camp crash waiting to happen.
+            if (MapSpawns.entryDoorOf(_map, _room).Length == 0)
+            {
+                MapSpawns.setEntryDoor(_map, _room, name);
+                _map.Changed.Add("level.json");
+            }
+
+            //A door away from every edge is the mistake worth catching here: it looks placed,
+            //it lists, and it does nothing - there is no outside beside it to arrive from.
+            statusLabel.Text = string.Format(
+                made.OnWall ? R.SPAWNS_DOOR_ADDED : R.SPAWNS_DOOR_ADDED_INNER,
+                name, made.Pos[0], made.Pos[1], made.Pos[2], made.Facing);
+
+            fillDoors();
+            updateUI();
+        }
+
+        private void removeDoorButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null || _door < 0) { return; }
+
+            var doors = MapSpawns.doorsOf(_map, _room);
+            var going = doors.FirstOrDefault(one => one.At == _door);
+
+            if (going == null || !MapSpawns.removeDoorAt(_room, _door)) { return; }
+
+            _map.Changed.Add(_room.File);
+            _door = -1;
+
+            //Taking out the last door is how the camp was crashed, so it is said plainly rather
+            //than left to be found on a loading screen.
+            var left = doors.Count - 1;
+            statusLabel.Text = left == 0
+                ? R.SPAWNS_DOOR_LAST_GONE
+                : going.IsEntry
+                    ? string.Format(R.SPAWNS_DOOR_ENTRY_GONE, going.Name, left)
+                    : string.Format(R.SPAWNS_DOOR_REMOVED, left);
+
+            fillDoors();
+            updateUI();
+        }
+
+        private void entryDoorButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null || _door < 0) { return; }
+
+            var door = MapSpawns.doorsOf(_map, _room).FirstOrDefault(one => one.At == _door);
+            if (door == null) { return; }
+
+            if (door.Name.Length == 0)
+            {
+                statusLabel.Text = R.SPAWNS_DOOR_NEEDS_NAME;
+                return;
+            }
+
+            MapSpawns.setEntryDoor(_map, _room, door.Name);
+            _map.Changed.Add("level.json");
+
+            statusLabel.Text = string.Format(R.SPAWNS_DOOR_IS_ENTRY, door.Name);
+
+            fillDoors();
+            updateUI();
         }
 
         /// <summary>
@@ -532,6 +1466,242 @@ namespace MCDSaveEdit.UI
             placeButton_Click(this, new RoutedEventArgs());
         }
 
+        /// <summary>
+        /// Where the point being dragged sat before anybody took hold of it.
+        ///
+        /// Kept so Escape can put it back. The drag has already written the new position into the
+        /// room by then - it has to, or the marker could not follow the pointer - so undoing it
+        /// means remembering the old one rather than declining to write the new one.
+        /// </summary>
+        private (int x, int y, int z)? _held;
+
+        /// <summary>Where one spawn point is now, by where it sits in the region list.</summary>
+        private (int x, int y, int z)? positionOf(int at)
+        {
+            if (_room == null || at < 0 || at >= _room.Regions.Count) { return null; }
+            if (_room.Regions[at]?["pos"] is not JsonArray pos || pos.Count < 3) { return null; }
+
+            return (pos[0]!.GetValue<int>(), pos[1]!.GetValue<int>(), pos[2]!.GetValue<int>());
+        }
+
+        /// <summary>
+        /// A pin has been taken hold of: pick the matching row, whichever kind it is.
+        ///
+        /// All three kinds drag the same way, and they have to - a person who has just learned
+        /// that spawn points drag will try it on the green one within about four seconds, and an
+        /// entrance that cannot be nudged is the one you most want to nudge.
+        /// </summary>
+        private void mapView_Grabbed(MapView3D.Pin kind, int x, int y, int z)
+        {
+            switch (kind)
+            {
+                case MapView3D.Pin.Door:
+                    _door = MapSpawns.doorsOf(_map, _room!)
+                        .FirstOrDefault(one => one.Pos[0] == x && one.Pos[1] == y && one.Pos[2] == z)
+                        ?.At ?? -1;
+                    selectRow(doorsList, one => one is MapSpawns.Door door && door.At == _door);
+                    break;
+
+                case MapView3D.Pin.Start:
+                    _start = MapSpawns.startsOf(_room!)
+                        .FirstOrDefault(one => one.Pos[0] == x && one.Pos[1] == y && one.Pos[2] == z)
+                        ?.At ?? -1;
+                    selectRow(startsList, one => one is MapSpawns.Start start && start.At == _start);
+                    break;
+
+                case MapView3D.Pin.Exit:
+                    _exit = MapSpawns.exitsOf(_map, _room!)
+                        .FirstOrDefault(one => one.Pos[0] == x && one.Pos[1] == y && one.Pos[2] == z)
+                        ?.At ?? -1;
+                    selectRow(exitsList, one => one is MapSpawns.Exit found && found.At == _exit);
+                    break;
+
+                case MapView3D.Pin.Gate:
+                    _gate = MapSpawns.gatesOf(_map, _room!)
+                        .FirstOrDefault(one => one.Pos[0] == x && one.Pos[1] == y && one.Pos[2] == z)
+                        ?.At ?? -1;
+                    selectRow(gatesList, one => one is MapSpawns.Gate gate && gate.At == _gate);
+                    break;
+
+                default:
+                    mapView_Picked(x, y, z);
+                    break;
+            }
+
+            if (kind != MapView3D.Pin.Spawn)
+            {
+                mapView.aim(x, y, z, true);
+                updateUI();
+            }
+        }
+
+        /// <summary>Picks a row without the list's own handler treating it as a fresh choice.</summary>
+        private void selectRow(System.Windows.Controls.ListBox list, Func<object, bool> which)
+        {
+            _filling = true;
+            list.SelectedIndex = list.Items.Cast<object>().ToList().FindIndex(one => which(one));
+            _filling = false;
+        }
+
+        /// <summary>Where the pin being dragged sits now, whichever kind it is.</summary>
+        private (int x, int y, int z)? heldPosition()
+        {
+            if (_room == null) { return null; }
+
+            switch (mapView.heldKind)
+            {
+                case MapView3D.Pin.Door:
+                    var door = MapSpawns.doorsOf(_map, _room).FirstOrDefault(one => one.At == _door);
+                    return door == null ? null : (door.Pos[0], door.Pos[1], door.Pos[2]);
+
+                case MapView3D.Pin.Start:
+                    var start = MapSpawns.startsOf(_room).FirstOrDefault(one => one.At == _start);
+                    return start == null ? null : (start.Pos[0], start.Pos[1], start.Pos[2]);
+
+                case MapView3D.Pin.Exit:
+                    var found = MapSpawns.exitsOf(_map, _room).FirstOrDefault(one => one.At == _exit);
+                    return found == null ? null : (found.Pos[0], found.Pos[1], found.Pos[2]);
+
+                case MapView3D.Pin.Gate:
+                    var gate = chosenGate();
+                    return gate == null ? null : (gate.Pos[0], gate.Pos[1], gate.Pos[2]);
+
+                default:
+                    return positionOf(_selected);
+            }
+        }
+
+        /// <summary>Puts the pin being dragged somewhere, whichever kind it is.</summary>
+        private bool moveHeld(int x, int y, int z)
+        {
+            if (_room == null) { return false; }
+
+            return mapView.heldKind switch
+            {
+                MapView3D.Pin.Door => _door >= 0 && MapSpawns.moveDoor(_room, _door, x, y, z),
+                MapView3D.Pin.Start => _start >= 0 && MapSpawns.moveStart(_room, _start, x, y, z),
+                MapView3D.Pin.Exit => _exit >= 0 && MapSpawns.moveExit(_room, _exit, x, y, z),
+                MapView3D.Pin.Gate => _gate >= 0 && MapSpawns.moveGate(_room, _gate, x, y, z),
+                _ => _selected >= 0 && MapSpawns.moveTo(_room, _selected, x, y, z),
+            };
+        }
+
+        private void mapView_Dragged(int x, int y, int z)
+        {
+            if (_room == null) { return; }
+
+            _held ??= heldPosition();
+            if (_held == null) { return; }
+
+            if (!moveHeld(x, y, z)) { return; }
+
+            //Only the markers, and no list rebuild. Both of those happen once on the drop - a
+            //list that renumbers itself under the pointer is unreadable, and rebuilding it per
+            //block crossed is work nobody sees.
+            switch (mapView.heldKind)
+            {
+                case MapView3D.Pin.Door: redrawDoorPins(); break;
+                case MapView3D.Pin.Start: redrawStartPins(); break;
+                case MapView3D.Pin.Exit: redrawExitPins(); break;
+                case MapView3D.Pin.Gate: redrawGatePins(); break;
+                default: markPoints(); break;
+            }
+
+            mapView.aim(x, y, z, true);
+
+            xBox.Text = x.ToString();
+            yBox.Text = y.ToString();
+            zBox.Text = z.ToString();
+
+            statusLabel.Text = string.Format(R.SPAWNS_MOVING, x, y, z);
+        }
+
+        /// <summary>The pink pins alone, without rebuilding the list under the pointer.</summary>
+        private void redrawDoorPins()
+        {
+            if (_room == null) { return; }
+            mapView.markDoors(MapSpawns.doorsOf(_map, _room)
+                .Select(one => (one.Pos[0], one.Pos[1], one.Pos[2], one.IsEntry)));
+        }
+
+        /// <summary>The purple pins alone.</summary>
+        private void redrawGatePins()
+        {
+            if (_room == null) { return; }
+            mapView.markGates(MapSpawns.gatesOf(_map, _room)
+                .Select(one => (one.Pos[0], one.Pos[1], one.Pos[2], one.Size[0], one.Size[2])));
+        }
+
+        /// <summary>The red pins alone.</summary>
+        private void redrawExitPins()
+        {
+            if (_room == null) { return; }
+            mapView.markExits(MapSpawns.exitsOf(_map, _room)
+                .Select(one => (one.Pos[0], one.Pos[1], one.Pos[2])));
+        }
+
+        /// <summary>The green pins alone.</summary>
+        private void redrawStartPins()
+        {
+            if (_room == null) { return; }
+            mapView.markStarts(MapSpawns.startsOf(_room)
+                .Select(one => (one.Pos[0], one.Pos[1], one.Pos[2], one.IsMain)));
+        }
+
+        private void mapView_Dropped(int x, int y, int z)
+        {
+            var from = _held;
+            _held = null;
+
+            if (_room == null || from == null) { return; }
+
+            //Nothing actually changed if it came back to where it started, and saying a file
+            //changed when it did not means a rewrite and a .before backup for no reason.
+            if (from.Value == (x, y, z)) { return; }
+
+            _map.Changed.Add(_room.File);
+
+            //Named for what it is. "Moved that spawn point" about the thing that decides where
+            //you come into the mission is the sort of wrong that makes somebody undo a good edit.
+            var said = mapView.heldKind switch
+            {
+                MapView3D.Pin.Door => R.SPAWNS_MOVED_DOOR,
+                MapView3D.Pin.Start => R.SPAWNS_MOVED_START,
+                MapView3D.Pin.Exit => R.SPAWNS_MOVED_EXIT,
+                MapView3D.Pin.Gate => R.SPAWNS_MOVED_GATE,
+                _ => R.SPAWNS_MOVED,
+            };
+
+            statusLabel.Text = string.Format(said,
+                from.Value.x, from.Value.y, from.Value.z, x, y, z);
+
+            //A door dragged into a different wall has been turned to suit it, and a door dragged
+            //off every wall is no longer a door anybody can arrive through - both of which the
+            //rows say, so they are rebuilt here rather than left stale.
+            markSpawns();
+            fillRooms();
+            updateUI();
+        }
+
+        private void mapView_DragCancelled()
+        {
+            var from = _held;
+            _held = null;
+
+            if (_room == null || from == null) { return; }
+            if (!moveHeld(from.Value.x, from.Value.y, from.Value.z)) { return; }
+
+            markSpawns();
+            mapView.aim(from.Value.x, from.Value.y, from.Value.z, true);
+
+            xBox.Text = from.Value.x.ToString();
+            yBox.Text = from.Value.y.ToString();
+            zBox.Text = from.Value.z.ToString();
+
+            statusLabel.Text = string.Format(R.SPAWNS_MOVE_OFF,
+                from.Value.x, from.Value.y, from.Value.z);
+        }
+
         private void mapView_Hovered(int x, int y, int z)
         {
             //Whether the game would let a mob stand here, because a spawn point on ground it
@@ -546,6 +1716,15 @@ namespace MCDSaveEdit.UI
 
             dynamic? picked = roomList.SelectedItem;
             _room = picked?.Room as MapSpawns.Room;
+
+            //Doors are held by their place in one room's door array, so an index kept across a
+            //room change points at a different door entirely. Same for arrival areas.
+            _door = -1;
+            _start = -1;
+            _exit = -1;
+            _quest = -1;
+            _gate = -1;
+            _selected = -1;
 
             if (_room != null)
             {
@@ -982,6 +2161,31 @@ namespace MCDSaveEdit.UI
             placeButton.IsEnabled = has;
             clearButton.IsEnabled = has && _room!.Spawns > 0;
             saveButton.IsEnabled = _map.Changed.Count > 0;
+
+            //A door can be added wherever the map is aimed; the other two need one picked out of
+            //the list, because they act on that one rather than on wherever you are looking.
+            var gate = has && _gate >= 0;
+            addGateButton.IsEnabled = has;
+            turnGateButton.IsEnabled = gate;
+            widerGateButton.IsEnabled = gate;
+            narrowerGateButton.IsEnabled = gate;
+            removeGateRegionButton.IsEnabled = gate;
+            lockGateButton.IsEnabled = gate && opensBox.Items.Count > 0;
+            unlockGateButton.IsEnabled = gate;
+
+            onlyExitButton.IsEnabled = has;
+            removeQuestButton.IsEnabled = has && _quest >= 0;
+
+            addExitButton.IsEnabled = has;
+            removeExitButton.IsEnabled = has && _exit >= 0;
+
+            addStartButton.IsEnabled = has;
+            removeStartButton.IsEnabled = has && _start >= 0;
+            mainStartButton.IsEnabled = has && _start >= 0;
+
+            addDoorButton.IsEnabled = has;
+            removeDoorButton.IsEnabled = has && _door >= 0;
+            entryDoorButton.IsEnabled = has && _door >= 0;
 
             roomLabel.Text = _room == null
                 ? R.SPAWNS_NO_ROOM

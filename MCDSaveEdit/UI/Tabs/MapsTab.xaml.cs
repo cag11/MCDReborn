@@ -43,10 +43,10 @@ namespace MCDSaveEdit.UI
         {
             missionsLabel.Content = R.MAPS_MISSIONS;
             missionsHint.Text = R.MAPS_HINT;
-            exportButton.Content = R.MAPS_EXPORT;
-            exportButton.ToolTip = R.MAPS_EXPORT_WHY;
             clearButton.Content = R.MAPS_CLEAR;
             clearButton.ToolTip = R.MAPS_CLEAR_WHY;
+            baselineButton.Content = R.MAPS_BASELINE;
+            baselineButton.ToolTip = R.MAPS_BASELINE_WHY;
             importButton.Content = R.MAPS_IMPORT;
             importButton.ToolTip = R.MAPS_IMPORT_WHY;
             removeButton.Content = R.MAPS_REMOVE;
@@ -137,10 +137,13 @@ namespace MCDSaveEdit.UI
             var ready = CustomSkins.ready && !_busy;
             var tools = MapTools.available;
 
-            exportButton.IsEnabled = ready && _chosen != null;
             clearButton.IsEnabled = ready && _chosen != null
                 && Directory.Exists(workshopFor(_chosen));
             importButton.IsEnabled = ready && _chosen != null;
+
+            //Needs a mission chosen, because an empty map is not a thing on its own - it is
+            //something that gets installed OVER a mission, same as any other custom map.
+            baselineButton.IsEnabled = ready && _chosen != null && !_busy && MapTools.available;
             removeButton.IsEnabled = ready && _chosen != null && MapMod.installedFor(_chosen) != null;
 
             fixedToMinecraftButton.IsEnabled = ready && tools && _chosen != null;
@@ -174,56 +177,96 @@ namespace MCDSaveEdit.UI
             updateUI();
         }
 
-        private void exportButton_Click(object sender, RoutedEventArgs e)
+
+        /// <summary>
+        /// Builds an empty mission with a platform, and opens it in Minecraft.
+        ///
+        /// The alternative - export a real mission and delete everything - is how this was done
+        /// before, and it is a bad start: you inherit Creeper Woods' objective chain, its
+        /// villagers and its shape, and the first thing that happens is an exit gate that will
+        /// not respond because some step in front of it asks for villagers nobody placed.
+        /// </summary>
+        private async void baselineButton_Click(object sender, RoutedEventArgs e)
         {
             if (_chosen == null) { return; }
 
-            //No folder picker. Every other button here already works on a folder the app keeps
-            //for the mission - Edit in Minecraft exports without asking, Edit spawns and Save and
-            //install never ask - so making this one button demand an address made it look like a
-            //different kind of operation, and answering it with somewhere unexpected sent the
-            //rest of the tab looking in the wrong place.
-            var folder = MapWorkshop.folderFor(_chosen.Name);
+            var mission = _chosen;
+            var folder = workshopFor(mission);
 
-            //Exporting again rebuilds the folder from the game's paks, which is the right thing
-            //to want and the wrong thing to do by accident on top of an afternoon's editing.
-            if (MapWorkshop.exported(_chosen.Name))
+            //Asked before anything is deleted. This throws away whatever is in the workshop for
+            //that mission, which may be somebody's half-finished map.
+            if (MapWorkshop.exported(mission.Name))
             {
-                var answer = MessageBox.Show(
-                    string.Format(R.MAPS_ALREADY_EXPORTED, folder),
-                    R.MAPS_EXPORT, MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+                var sure = MessageBox.Show(
+                    string.Format(R.MAPS_BASELINE_REPLACE, mission.Label),
+                    R.MAPS_BASELINE, MessageBoxButton.OKCancel, MessageBoxImage.Warning);
 
-                if (answer != MessageBoxResult.OK) { return; }
+                if (sure != MessageBoxResult.OK) { return; }
             }
+
+            _busy = true;
+            statusLabel.Text = R.MAPS_BASELINE_WORKING;
+            updateUI();
 
             try
             {
-                //Emptied first, always. Writing an export on top of an old one leaves behind
-                //whatever the new mission has no file for - an object group that used to exist,
-                //a working file from a half-finished weld - and the leftovers are packed and
-                //installed along with everything else.
-                if (Directory.Exists(folder)) { erase(folder); }
-
-                var made = MapMod.export(_chosen, folder);
-                _folder = made.Folder;
-
-                MapWorkshop.remember(_chosen.Name, made.Folder);
-
-                statusLabel.Text = string.Format(R.MAPS_EXPORTED,
-                    made.Files, made.Bytes / 1024, made.Folder);
-
-                foreach (var note in made.Notes.Take(2))
+                //make_baseline.py clears the folder itself now, so a failure here is not fatal -
+                //but it is still worth saying, because a folder that will not empty is usually
+                //the game or Explorer holding a file open and that will bite later too.
+                if (Directory.Exists(folder))
                 {
-                    statusLabel.Text += "   ·   " + note;
+                    try { erase(folder); }
+                    catch (Exception problem)
+                    {
+                        Console.WriteLine($"[baseline] could not clear {folder}: {problem.Message}");
+                    }
                 }
+
+                Directory.CreateDirectory(folder);
+
+                var made = await MapTools.baseline(folder, BASELINE_SIDE);
+                if (!made.Ok)
+                {
+                    statusLabel.Text = made.Last.Length > 0 ? made.Last : R.MAPS_CONVERT_FAILED;
+                    return;
+                }
+
+                MapWorkshop.remember(mission.Name, folder);
+                _folder = folder;
+
+                //Straight into Minecraft, because a platform is not something to look at - the
+                //entire point of it is that something gets built on top.
+                var world = await MapTools.toMinecraftLevel(folder, mission);
+
+                statusLabel.Text = world.Ok
+                    ? string.Format(R.MAPS_BASELINE_READY, BASELINE_SIDE, mission.Label)
+                    : world.Last.Length > 0 ? world.Last : R.MAPS_CONVERT_FAILED;
+
+                fillInstalled();
+                fillList();
             }
             catch (Exception problem)
             {
                 statusLabel.Text = problem.Message;
             }
-
-            updateUI();
+            finally
+            {
+                _busy = false;
+                updateUI();
+            }
         }
+
+        /// <summary>
+        /// How big the starting platform is, in blocks along each side.
+        ///
+        /// Fixed rather than asked, because it stopped mattering: bringing a world home measures
+        /// what was actually built and stretches the tile to fit, in every direction. The
+        /// platform is a place to stand while you work out where things go, not a budget.
+        ///
+        /// Thirty is enough to lay out a start and an exit and see both at once, and it loads
+        /// instantly. Build past its edge and the tile grows to meet you.
+        /// </summary>
+        private const int BASELINE_SIDE = 30;
 
         private void importButton_Click(object sender, RoutedEventArgs e)
         {
@@ -297,6 +340,21 @@ namespace MCDSaveEdit.UI
 
             var mission = _chosen;
             var folder = workshopFor(mission);
+
+            //This route exports, and exporting downloads the game's own mission over whatever is
+            //in the folder. That is right when the folder holds a stale copy and ruinous when it
+            //holds a map somebody brought back from Minecraft - which is how a finished map got
+            //replaced by stock Creeper Woods by somebody pressing this to look at their world
+            //again. Export map was removed for exactly this; the same door was still open here.
+            if (MapWorkshop.exported(mission.Name) && MapWorkshop.looksBuilt(folder))
+            {
+                var answer = MessageBox.Show(
+                    string.Format(R.MAPS_EXPORT_OVER_BUILT,
+                        mission.Label, MapWorkshop.weightOf(folder) / 1024, folder),
+                    R.MAPS_FIXED_TO_MINECRAFT, MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+
+                if (answer != MessageBoxResult.OK) { return; }
+            }
 
             _busy = true;
             statusLabel.Text = string.Format(R.MAPS_WORKING, mission.Name);
@@ -581,7 +639,19 @@ namespace MCDSaveEdit.UI
             //It costs the mission its shuffle: the generator stops choosing tiles and every run
             //is the same level. That is the trade, and it is the one worth making for a map
             //somebody built on purpose.
-            if (!System.IO.File.Exists(System.IO.Path.Combine(folder, "level.json.multitile")))
+            //Skipped outright for a map somebody built. It is already one stretch playing one
+            //tile - there is no shuffle to pin and nothing to join - so pinning and welding it
+            //can only do harm, and has: run over a folder holding another mission's leftovers it
+            //rewrote the level to play the leftover instead.
+            //
+            //The old gate was "has this been welded before", read off a level.json.multitile
+            //sitting beside it. That is a proxy for the question rather than the question, and it
+            //gives the wrong answer whenever the file is missing for some other reason - which is
+            //every map that came home from Minecraft without ever having been welded.
+            var alreadyOne = MapWorkshop.looksBuilt(folder);
+
+            if (!alreadyOne
+                && !System.IO.File.Exists(System.IO.Path.Combine(folder, "level.json.multitile")))
             {
                 if (!MapTools.available)
                 {
