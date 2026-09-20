@@ -39,6 +39,7 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 
 #### Custom Maps Feature
 * Exports the game missions as Minecraft worlds or allows you to build on them to create your own custom maps..Use the maps tab to do the export and imports.
+* You build in any version of Minecraft you play. The world goes out as 1.16.2 and Minecraft upgrades it on open; coming back, [Chunker](https://github.com/HiveGamesOSS/Chunker) converts it down again, so recent Litematica and recent mods work. Dungeons only knows 1.16-era blocks, so modern ones are swapped for the nearest match: deepslate becomes stone, cherry planks become birch. Needs Chunker and Java 17+ — see CustomMaps.md for the one-file setup. Dungeons only knows 1.16-era blocks, so modern ones are swapped for the nearest match: deepslate becomes stone, cherry planks become birch. Needs [Chunker](https://github.com/HiveGamesOSS/Chunker) and Java 17+ — see CustomMaps.md for the one-file setup.
 * After creating the world, you can edit spawns and mobs with Edit Spawns button. This will open the 3D map and you can place spawn points by clicking the ground.
 * You can select a previous spawn point and change spawns. Every mob group in the mission are available, bosses included. 
 * Custom maps are installed as a mod pak beside the game's own files. Removing the mod puts the original mission back.

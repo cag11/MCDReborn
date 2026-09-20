@@ -558,6 +558,154 @@ namespace MCDSaveEdit.Logic
             return true;
         }
 
+        /// <summary>One way in or out of a room, and where it goes.</summary>
+        public sealed class Teleport
+        {
+            public Teleport(string door, string? exit, string dungeons, int[] at, JsonObject node)
+            {
+                Door = door;
+                Exit = exit;
+                Dungeons = dungeons;
+                At = at;
+                Node = node;
+            }
+
+            /// <summary>The door it is attached to, by name.</summary>
+            public string Door { get; }
+
+            /// <summary>
+            /// Where it comes out, as dungeon.tile.door, or nothing.
+            /// </summary>
+            public string? Exit { get; }
+
+            /// <summary>Which sub-areas it leads into, comma separated, or empty.</summary>
+            public string Dungeons { get; }
+
+            /// <summary>Where the door sits in the room.</summary>
+            public int[] At { get; }
+
+            /// <summary>The entry itself, so an edit reaches the file.</summary>
+            public JsonObject Node { get; }
+
+            /// <summary>
+            /// Whether this is a way OUT rather than a place you arrive.
+            ///
+            /// A teleport naming an exit takes you somewhere. One without is the other end - the
+            /// door you step out of on the way back.
+            /// </summary>
+            public bool Leaves => !string.IsNullOrEmpty(Exit);
+
+            public override string ToString() => Leaves
+                ? $"{Door}  →  {Exit}"
+                : $"{Door}  (arrival)";
+        }
+
+        /// <summary>
+        /// The ways in and out of a room.
+        ///
+        /// A teleport is not a block and not a region. It lives in the LEVEL file, on the tile's
+        /// declaration, and names a DOOR of that tile - so it can only be drawn by finding the
+        /// door it points at and borrowing its position. That is also why none of this survives
+        /// welding: the doors between rooms are dropped when the rooms become one room, and a
+        /// teleport naming one is left pointing at nothing.
+        /// </summary>
+        public static List<Teleport> teleportsOf(Map map, Room room)
+        {
+            var made = new List<Teleport>();
+
+            //Where the doors are, by name.
+            var doors = new Dictionary<string, int[]>(StringComparer.OrdinalIgnoreCase);
+            foreach (var one in room.Tile["doors"] as JsonArray ?? new JsonArray())
+            {
+                if (one is not JsonObject door) { continue; }
+                var name = door["name"]?.GetValue<string>();
+                if (string.IsNullOrEmpty(name)) { continue; }
+                doors[name!] = ints(door["pos"], 3);
+            }
+
+            foreach (var declared in map.Level["tiles"] as JsonArray ?? new JsonArray())
+            {
+                if (declared is not JsonObject tile) { continue; }
+                if (!string.Equals(tile["id"]?.GetValue<string>(), room.Id,
+                    StringComparison.OrdinalIgnoreCase)) { continue; }
+
+                foreach (var one in tile["teleports"] as JsonArray ?? new JsonArray())
+                {
+                    if (one is not JsonObject port) { continue; }
+
+                    var door = port["door"]?.GetValue<string>() ?? string.Empty;
+                    if (!doors.TryGetValue(door, out var at))
+                    {
+                        //A teleport whose door is gone. Worth keeping in the list - it is exactly
+                        //the thing somebody needs to see - but it has nowhere to stand.
+                        at = new[] { -1, -1, -1 };
+                    }
+
+                    var into = string.Join(", ", (port["dungeons"] as JsonArray ?? new JsonArray())
+                        .Select(two => two?.GetValue<string>())
+                        .Where(two => !string.IsNullOrEmpty(two)));
+
+                    made.Add(new Teleport(door, port["exit"]?.GetValue<string>(), into, at, port));
+                }
+            }
+
+            return made;
+        }
+
+        /// <summary>
+        /// Adds a mob group, and makes it one the mission actually uses.
+        ///
+        /// Both halves matter. A group nobody refers to spawns nothing, which is the trap the
+        /// list already warns about - so a new one goes into default-mobs at the same time, and
+        /// starts roaming the level straight away.
+        ///
+        /// This is what the camp needs. It ships with no mob groups and nothing set to roam,
+        /// because nothing is supposed to spawn there; putting spawn points in it does nothing at
+        /// all until something exists for them to draw from.
+        /// </summary>
+        public static JsonObject addGroup(Map map, string mob = "zombie")
+        {
+            if (map.Level["mob-groups"] is not JsonArray groups)
+            {
+                groups = new JsonArray();
+                map.Level["mob-groups"] = groups;
+            }
+
+            var taken = new HashSet<string>(groups
+                .OfType<JsonObject>()
+                .Select(one => one["id"]?.GetValue<string>() ?? string.Empty),
+                StringComparer.OrdinalIgnoreCase);
+
+            var id = "custom";
+            for (var at = 1; taken.Contains(id); at++) { id = $"custom-{at}"; }
+
+            var made = new JsonObject
+            {
+                ["id"] = id,
+                ["types"] = new JsonArray(new JsonObject { ["type"] = mob }),
+            };
+
+            groups.Add(made);
+
+            //And referenced, so it is not born unused.
+            if (map.Level["default-mobs"] is not JsonObject roaming)
+            {
+                roaming = new JsonObject { ["density"] = 1 };
+                map.Level["default-mobs"] = roaming;
+            }
+
+            if (roaming["only"] is not JsonArray only)
+            {
+                only = new JsonArray();
+                roaming["only"] = only;
+            }
+
+            only.Add(new JsonObject { ["id"] = id, ["weight"] = 1 });
+
+            map.Changed.Add("level.json");
+            return made;
+        }
+
         /// <summary>Where a mob group is actually used, and how much.</summary>
         public readonly struct Use
         {

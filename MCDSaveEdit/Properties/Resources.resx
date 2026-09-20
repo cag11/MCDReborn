@@ -2339,6 +2339,46 @@ The save file is not changed until you save it.</value>
     <value>difficulty {0:0.#} to {1:0.#} only</value>
     <comment>Group or mob gated to a range</comment>
   </data>
+  <data name="SPAWNS_WAYS" xml:space="preserve">
+    <value>Ways in and out</value>
+    <comment>Heading for the teleport list</comment>
+  </data>
+  <data name="SPAWNS_WAYS_HINT" xml:space="preserve">
+    <value>{0} teleport(s) on this room, drawn in blue. A tall one takes you somewhere; a short one is where you arrive.</value>
+    <comment>Above the teleport list</comment>
+  </data>
+  <data name="SPAWNS_NO_WAYS" xml:space="preserve">
+    <value>This room has none. Welding removes them, because a teleport names a door and the doors between rooms go when the rooms become one.</value>
+    <comment>When a room has no teleports</comment>
+  </data>
+  <data name="SPAWNS_WAY_OUT" xml:space="preserve">
+    <value>→  {0}  leads to {1}</value>
+    <comment>A teleport that takes you somewhere</comment>
+  </data>
+  <data name="SPAWNS_WAY_IN" xml:space="preserve">
+    <value>←  {0}  is where you arrive</value>
+    <comment>A teleport you come out of</comment>
+  </data>
+  <data name="SPAWNS_WAY_LOST" xml:space="preserve">
+    <value>⚠  {0}  names a door this room no longer has</value>
+    <comment>A teleport whose door is missing</comment>
+  </data>
+  <data name="SPAWNS_ADD_GROUP" xml:space="preserve">
+    <value>New group</value>
+    <comment>Button that creates a mob group</comment>
+  </data>
+  <data name="SPAWNS_ADD_GROUP_WHY" xml:space="preserve">
+    <value>Creates a mob group and sets it to roam the level, so spawn points have something to draw from. The camp ships with none.</value>
+    <comment>Tooltip</comment>
+  </data>
+  <data name="SPAWNS_GROUP_MADE" xml:space="preserve">
+    <value>Made “{0}” and set it roaming. Add the mobs you want to it.</value>
+    <comment>After creating a group</comment>
+  </data>
+  <data name="SPAWNS_NO_GROUPS" xml:space="preserve">
+    <value>This mission has no mob groups — nothing is meant to spawn here. New group makes one and sets it roaming.</value>
+    <comment>When a mission has no groups at all</comment>
+  </data>
   <data name="SPAWNS_AIMED" xml:space="preserve">
     <value>Aimed at {0}, {1}, {2}  ·  Place drops {3} within {4} blocks. Double-click the map to skip the button.</value>
     <comment>Status line after clicking the 3D map</comment>
@@ -2484,6 +2524,18 @@ Carry on?</value>
   <data name="MAPS_GROUP_UNDO_WHY" xml:space="preserve">
     <value>Clear throws away the working folder; Remove puts the game's own mission back.</value>
     <comment>Beside the undo buttons</comment>
+  </data>
+  <data name="MAPS_MODERNISING" xml:space="preserve">
+    <value>Handing {0} over in the Minecraft you play…</value>
+    <comment>While a world is converted up to the modern version</comment>
+  </data>
+  <data name="MAPS_LEGACYISING" xml:space="preserve">
+    <value>Reading {0} back from the Minecraft you built in…</value>
+    <comment>While a world is converted down before reading</comment>
+  </data>
+  <data name="MAPS_NOT_WELDABLE" xml:space="preserve">
+    <value>Installed without welding — {0}.</value>
+    <comment>When a level cannot be welded safely</comment>
   </data>
   <data name="MAPS_EXPORT" xml:space="preserve">
     <value>Export map</value>

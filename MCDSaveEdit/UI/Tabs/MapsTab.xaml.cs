@@ -320,6 +320,16 @@ namespace MCDSaveEdit.UI
                 {
                     var run = await MapTools.toMinecraftLevel(folder, mission);
 
+                    //Handed over as it was written, and Minecraft upgrades it on open.
+                    //
+                    //There used to be a conversion here, to spare somebody the "this world was
+                    //made in an older version" prompt. It was not worth it. Minecraft's own
+                    //upgrade is the better one - it relights the world, recomputes heightmaps and
+                    //fixes up everything a converter has to guess at - and the upgrade being
+                    //irreversible costs nothing, because coming home converts back down anyway.
+                    //
+                    //The conversion on the way IN is the one that has to exist. This one only
+                    //replaced a job Minecraft already does well with a job we do adequately.
                     statusLabel.Text = run.Ok && run.World != null
                         ? string.Format(R.MAPS_WORLD_READY_FIXED, Path.GetFileName(run.World))
                         : (run.Last.Length > 0 ? run.Last : R.MAPS_CONVERT_FAILED);
@@ -412,6 +422,22 @@ namespace MCDSaveEdit.UI
 
             try
             {
+                //Down to something the reader understands, first. A world a modern client has
+                //touched is laid out in a way nothing downstream has ever seen, and Minecraft's
+                //own upgrader only ever goes the other way.
+                if (MapTools.canConvert)
+                {
+                    statusLabel.Text = string.Format(R.MAPS_LEGACYISING, mission.Label);
+                    var drop = await MapTools.convert(world, MapTools.LEGACY);
+                    if (!drop.Ok)
+                    {
+                        statusLabel.Text = drop.Last.Length > 0 ? drop.Last : R.MAPS_CONVERT_FAILED;
+                        _busy = false;
+                        updateUI();
+                        return;
+                    }
+                }
+
                 var run = await MapTools.fromMinecraftLevel(world);
                 if (!run.Ok)
                 {
@@ -420,6 +446,25 @@ namespace MCDSaveEdit.UI
                 else
                 {
                     var folder = workshopFor(mission);
+
+                    //Not every level survives welding - the camp's tiles declare its teleports,
+                    //and a merged tile declares nothing. See MapTools.weldable.
+                    if (!MapTools.weldable(folder, out var whyNot))
+                    {
+                        statusLabel.Text = string.Format(R.MAPS_NOT_WELDABLE, whyNot);
+
+                        var straight = await Task.Run(() => MapMod.install(folder, mission));
+                        _folder = folder;
+
+                        statusLabel.Text += "   " + string.Format(R.MAPS_IMPORTED,
+                            mission.Label, Path.GetFileName(straight.Path), straight.Size / 1024);
+
+                        fillInstalled();
+                        fillList();
+                        _busy = false;
+                        updateUI();
+                        return;
+                    }
 
                     //Welded before it is installed. A pinned level still leaves the generator a
                     //chain of rooms to connect, and it can fail to find an arrangement - which
@@ -553,7 +598,12 @@ namespace MCDSaveEdit.UI
                     try
                     {
                         var fix = await MapTools.makeFixed(folder);
-                        var weld = fix.Ok ? await MapTools.weld(folder) : fix;
+                        //Pinning is safe for anything; welding is not. A level whose tiles carry
+                        //teleports is shown as it is rather than merged into something that has
+                        //none of them.
+                        var weld = fix.Ok && MapTools.weldable(folder, out _)
+                            ? await MapTools.weld(folder)
+                            : fix;
 
                         if (!weld.Ok)
                         {

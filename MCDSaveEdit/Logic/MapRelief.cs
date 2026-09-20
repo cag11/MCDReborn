@@ -238,9 +238,12 @@ namespace MCDSaveEdit.Logic
             var count = sx * sy * sz;
 
             //Two shapes exist. Narrow ids are one byte each followed by the metadata nibbles;
-            //wide ids are two bytes each, little endian, followed by the same. Anything else is
-            //not a tile we understand, and guessing would paint the room in noise.
-            var wide = bytes.Length >= count * 2;
+            //wide ids are two bytes each, BIG endian, followed by the same. Both details are easy
+            //to get wrong and both were: little endian turns dirt (3) into 768, and the test has to
+            //be strictly greater than volume*2 - a narrow tile carries volume*1.5 bytes and would
+            //never trip it, while an exactly-doubled one would. Tile.py is the reference:
+            //`x[0] << 8 | x[1]`, and `> tile.volume * 2`.
+            var wide = bytes.Length > count * 2;
             if (!wide && bytes.Length < count)
             {
                 Notes.Add($"{room.Id}: blocks are {bytes.Length:N0} bytes for {count:N0} cells");
@@ -273,7 +276,7 @@ namespace MCDSaveEdit.Logic
                     {
                         var cell = x + sx * (z + sz * y);
                         var id = wide
-                            ? (ushort)(bytes[cell * 2] | (bytes[cell * 2 + 1] << 8))
+                            ? (ushort)((bytes[cell * 2] << 8) | bytes[cell * 2 + 1])
                             : bytes[cell];
 
                         if (id == 0) { continue; }

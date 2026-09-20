@@ -320,10 +320,16 @@ namespace MCDSaveEdit.Logic
                 ?? throw new InvalidOperationException($"{assetPath} is not a texture.");
 
             var platform = texture.PlatformDatas[0];
-            if (platform.PixelFormat != EPixelFormat.PF_B8G8R8A8)
+
+            //Two formats, and the difference is only how the replacement is packed. Uncompressed
+            //artwork is swapped byte for byte; the big pictures - loading screens - are DXT1, and
+            //get squeezed into the same number of bytes first. Everything after this point is the
+            //same either way, including the checks, because a BC1 mip is exactly as long as the
+            //one it replaces.
+            var compressed = platform.PixelFormat == EPixelFormat.PF_DXT1;
+
+            if (platform.PixelFormat != EPixelFormat.PF_B8G8R8A8 && !compressed)
             {
-                //Everything seen so far is uncompressed, which is what lets the pixels be
-                //swapped byte for byte. A compressed one would need re-encoding first.
                 throw new InvalidOperationException(
                     $"{System.IO.Path.GetFileName(assetPath)} is stored as {platform.PixelFormat}, which this cannot rewrite yet.");
             }
@@ -331,6 +337,12 @@ namespace MCDSaveEdit.Logic
             var original = platform.Mips[0].BulkData.Data
                 ?? throw new InvalidOperationException("That texture has no pixel data.");
             var replacement = makePixels(platform.SizeX, platform.SizeY);
+
+            if (compressed)
+            {
+                replacement = BlockCompression.toDxt1(replacement, platform.SizeX, platform.SizeY);
+            }
+
             if (replacement.Length != original.Length)
             {
                 throw new InvalidOperationException(

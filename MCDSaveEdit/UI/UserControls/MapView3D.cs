@@ -38,6 +38,7 @@ namespace MCDSaveEdit.UI
         private MapRelief.Relief? _relief;
         private GeometryModel3D? _ground;
         private GeometryModel3D? _markers;
+        private GeometryModel3D? _ways;
         private GeometryModel3D? _cursor;
 
         //Where the camera is looking and from how far. Yaw and pitch are degrees because every
@@ -179,6 +180,7 @@ namespace MCDSaveEdit.UI
             _ground = new GeometryModel3D(mesh, material) { BackMaterial = material };
             group.Children.Add(_ground);
 
+            if (_ways != null) { group.Children.Add(_ways); }
             if (_markers != null) { group.Children.Add(_markers); }
             if (_cursor != null) { group.Children.Add(_cursor); }
 
@@ -352,6 +354,47 @@ namespace MCDSaveEdit.UI
         }
 
         /// <summary>
+        /// The ways in and out of the room.
+        ///
+        /// Drawn taller and thinner than a spawn point, and in their own colour, because they are
+        /// a different kind of thing entirely - a spawn point is where mobs appear, a teleport is
+        /// a door to another place. The ones that take you somewhere are drawn taller again than
+        /// the ones you arrive at, since a room usually has both and they are easy to confuse.
+        /// </summary>
+        public void markWays(IEnumerable<(int x, int y, int z, bool leaves)> ways)
+        {
+            var mesh = new MeshGeometry3D();
+            var count = 0;
+
+            foreach (var one in ways)
+            {
+                if (one.x < 0) { continue; }
+                pillar(mesh, one.x + 0.5, one.y, one.z + 0.5,
+                    one.leaves ? 1.6 : 1.2, one.leaves ? 26.0 : 18.0);
+                count++;
+            }
+
+            if (count == 0)
+            {
+                _ways = null;
+                redraw();
+                return;
+            }
+
+            mesh.Freeze();
+
+            var material = new MaterialGroup();
+            material.Children.Add(new DiffuseMaterial(new SolidColorBrush(
+                Color.FromRgb(120, 230, 255))));
+            material.Children.Add(new EmissiveMaterial(new SolidColorBrush(
+                Color.FromRgb(40, 130, 170))));
+            material.Freeze();
+
+            _ways = new GeometryModel3D(mesh, material) { BackMaterial = material };
+            redraw();
+        }
+
+        /// <summary>
         /// The spot a click chose, so it is obvious what is about to happen.
         ///
         /// <paramref name="onExisting"/> when the click landed on a spawn point that is already
@@ -381,6 +424,7 @@ namespace MCDSaveEdit.UI
 
             var made = new Model3DGroup();
             if (_ground != null) { made.Children.Add(_ground); }
+            if (_ways != null) { made.Children.Add(_ways); }
             if (_markers != null) { made.Children.Add(_markers); }
             if (_cursor != null) { made.Children.Add(_cursor); }
             _scene.Content = made;

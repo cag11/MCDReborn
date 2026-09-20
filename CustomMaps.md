@@ -10,25 +10,49 @@ Nothing you do here modifies the game's own files. A map installs as a mod pak b
 | | |
 |---|---|
 | **MCD Reborn** | the Maps tab |
-| **MCD-MapTools** | `C:\Users\<you>\MCD-MapTools` — carries its own Python, nothing to install |
-| **Minecraft Java** | with a **1.16.2** profile (see [Versions](#versions)) |
+| **Minecraft Java** | any current version |
+| **Chunker** | one jar, see [Setting up Chunker](#setting-up-chunker) |
+| **Java 17 or newer** | what runs Chunker - [Adoptium](https://adoptium.net) if you have not got it |
 
 If the tools folder is missing the two Minecraft buttons grey out and the tab says where it should
 be.
 
-## Versions
+### Setting up Chunker
 
-The converter writes worlds as **Minecraft 1.16.2**, and that is what you should open them with.
+[Chunker](https://github.com/HiveGamesOSS/Chunker) converts Minecraft worlds between versions.
 
-Opening one in a newer Minecraft upgrades it irreversibly — 1.17 changed world height from 0–255 to
-−64–319 — and how such a world converts back has never been tested.
+1. Open the [latest release](https://github.com/HiveGamesOSS/Chunker/releases/latest). **Always
+   take the newest one**
+2. Under **Assets**, download **`chunker-cli-<version>.jar`** — the plain jar, about 30 MB.
+   *Not* the installers: the `.exe`, `.zip`, `.deb`, `.dmg` and `.AppImage` files are the desktop
+   app and will not work here.
+3. Create a `chunker` folder inside MCD-MapTools, and **rename the jar to `chunker-cli.jar`** —
+   drop the version number, so the app does not have to guess it:
+
+```
+C:\Users\<you>\MCD-MapTools\chunker\chunker-cli.jar
+```
+
+So `chunker-cli-1.20.0.jar` becomes `chunker-cli.jar`, and so does `chunker-cli-1.25.0.jar` when
+that comes along. **Updating later is the same three steps** — download the newest, rename it, drop
+it over the old one. The app needs no change and no new release; it asks the jar what it can do
+rather than assuming.
+
+### Which Minecraft to build in
+
+Whichever you like. A world is handed over exactly as it was written — a 1.16.2 one — and
+**Minecraft upgrades it on open**.
+
+You will see "this world was made in an older version" once. Say yes. The upgrade is irreversible
+and that costs nothing, because coming home converts back down anyway.
 
 ## Building Map 
 
 1. **Maps tab** → pick a mission.
 2. **Edit in Minecraft…** — click this to export the mission. Then it will appear in your Minecraft world list as one
    connected run of rooms you can walk start to end.
-3. Open it with a **1.16.2** profile, and build.
+3. Open it in Minecraft and build. It arrives as a **26.3** world, so current Litematica and
+   current mods work.
 4. **Bring back…** — pick that world. Your blocks are written back into the tiles they came from
    and installed over the mission you have selected.
 5. Play it. **Remove** puts the original mission back.
@@ -65,7 +89,9 @@ working folder so the next export starts from the game's own files again.
    out. **Clear room** removes every one in the mission.
 6. **What spawns** decides *which* mobs turn up. Choose a group marked **roams the level** and
    edit its list. **Add mob** appends one; the dropdowns replace the mob on that row; **×**
-   removes it.
+   removes it. **New group** makes one from nothing and sets it roaming — the camp ships with no
+   mob groups at all, because nothing is meant to spawn there, so spawn points in it draw from
+   nothing until you make one.
 7. **Save and install** — saves, rebuilds the mission, and installs it over the game's own.
 8. Play it. **Remove** in the Maps tab puts the original mission back. **Clear** throws away the
    working folder, so the next export starts from the game's own files again.
