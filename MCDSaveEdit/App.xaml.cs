@@ -1323,9 +1323,14 @@ namespace MCDSaveEdit
                         var scroll = window.panelScrollNow;
                         Console.WriteLine($"[window] side panel: content {scroll.content:F0}px, "
                             + $"viewport {scroll.viewport:F0}px, scrollable {scroll.scrollable:F0}px");
+                        //Not scrolling is only good news when everything fits. Since the sections
+                        //were split across tabs it should, and a tab that has to scroll as well
+                        //is a sign the split wants redoing rather than a fault.
                         Console.WriteLine(scroll.scrollable > 0
-                            ? "[window] the panel scrolls, so what is below the fold can be reached"
-                            : "[window] the panel does not scroll - either it all fits, or it is clipped");
+                            ? "[window] the tab scrolls, so what is below the fold can be reached"
+                            : scroll.content <= scroll.viewport + 1
+                                ? "[window] the tab needs no scrolling - it all fits"
+                                : "[window] WRONG - content overflows and the tab will not scroll");
                         Console.WriteLine(scroll.mobsReachable
                             ? "[window] the mob list is inside the scrollable content"
                             : "[window] WRONG - the mob list cannot be scrolled to");
@@ -1729,6 +1734,144 @@ namespace MCDSaveEdit
                 }
             }
 
+            //PROBE_WELDABLE2=<mission> - whether a level that is already one tile gets welded.
+            //
+            //Welding a single-tile level is not a no-op, it is destructive: make_single names the
+            //welded tile after the FOLDER and points the only stretch at it, so a folder holding
+            //a Merged group from an earlier mission ends up as the level that plays while the new
+            //work sits unreferenced. That shipped, and presented as a crash with nothing in it.
+            var probeWeld2 = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_WELDABLE2="));
+            if (probeWeld2 != null)
+            {
+                var wanted = probeWeld2.Substring("PROBE_WELDABLE2=".Length).Trim('"');
+                var folder = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MCDReborn", "maps", wanted);
+
+                var ok = Logic.MapTools.weldable(folder, out var why);
+                Console.WriteLine($"[weld] {wanted}: weldable={ok}"
+                    + (why.Length > 0 ? $"  ({why})" : string.Empty));
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_GATES=<mission> - gates, and wiring one to an objective.
+            //
+            //A gate is two things that have to agree in two different files: a region shaped like
+            //a wall, and an objective naming it in locked-doors. A gate nothing names is a wall
+            //that never opens, which in game is indistinguishable from a mission that is broken.
+            var probeGates = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_GATES="));
+            if (probeGates != null)
+            {
+                var wanted = probeGates.Substring("PROBE_GATES=".Length).Trim('"');
+                var folder = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MCDReborn", "maps", wanted);
+
+                try
+                {
+                    var window = new UI.SpawnsWindow(Logic.MapSpawns.load(folder));
+                    window.WindowState = WindowState.Normal;
+                    window.Width = 1280; window.Height = 900; window.Left = -20000;
+                    window.Show();
+
+                    var waited = 0;
+                    var timer = new System.Windows.Threading.DispatcherTimer
+                    {
+                        Interval = TimeSpan.FromMilliseconds(250),
+                    };
+
+                    timer.Tick += (_, _) =>
+                    {
+                        waited += 250;
+                        if (!window.mapReady && waited < 15000) { return; }
+                        timer.Stop();
+
+                        var had = window.gateRows.Length;
+                        Console.WriteLine($"[gates] {had} to start with");
+                        foreach (var one in window.gateRows.Take(5)) { Console.WriteLine($"[gates]   {one}"); }
+                        Console.WriteLine($"[gates] hint: {window.gateHint}");
+
+                        window.probeAddGate(20, 20, 20);
+
+                        var now = window.gateRows;
+                        Console.WriteLine(now.Length == had + 1
+                            ? $"[gates] added one, now {now.Length}"
+                            : "[gates] WRONG - the gate was not added");
+
+                        var mine = now.FirstOrDefault(one => one.StartsWith("gate"));
+                        Console.WriteLine($"[gates]   {mine}");
+
+                        //A fresh gate must read as held by nothing - that is the warning that
+                        //stops somebody shipping a wall which never opens.
+                        Console.WriteLine(mine != null && mine.Contains("nothing opens it")
+                            ? "[gates] and nothing opens it yet, which is said plainly"
+                            : "[gates] WRONG - a new gate does not warn that nothing opens it");
+
+                        var at = Array.FindIndex(now, one => one.StartsWith("gate"));
+                        window.probePickGate(at);
+
+                        //Turning has to change which axis it lies along, or a gate ends up lying
+                        //along the corridor it was meant to block.
+                        var before = window.gateRows[at];
+                        window.probeTurnGate();
+                        var after = window.gateRows[Array.FindIndex(window.gateRows, one => one.StartsWith("gate"))];
+                        Console.WriteLine(before.Contains("across x") != after.Contains("across x")
+                            ? "[gates] Turn flips which way it lies"
+                            : "[gates] WRONG - Turn did not change the axis");
+
+                        window.probeWidenGate();
+                        Console.WriteLine(window.gateRows.Any(one => one.StartsWith("gate") && one.Contains("7 wide"))
+                            ? "[gates] Wider took it from 5 to 7"
+                            : "[gates] WRONG - Wider did not widen it");
+
+                        //Wire it to the first objective and read it back off the LEVEL.
+                        window.probePickGate(Array.FindIndex(window.gateRows, one => one.StartsWith("gate")));
+                        window.probeLockGate(0);
+
+                        var wired = window.gateRows.FirstOrDefault(one => one.StartsWith("gate"));
+                        Console.WriteLine(wired != null && wired.Contains("opens:")
+                            ? $"[gates] wired  ->  {wired}"
+                            : "[gates] WRONG - the gate was not wired to an objective");
+                        Console.WriteLine($"[gates] status: {window.probeStatus}");
+
+                        window.probeUnlockGate();
+                        Console.WriteLine(window.gateRows.Any(one => one.StartsWith("gate") && one.Contains("nothing opens it"))
+                            ? "[gates] and unwiring puts the warning back"
+                            : "[gates] WRONG - unwiring left it looking held");
+
+                        //Removing has to tidy the objective too, or the level names a region that
+                        //is no longer there.
+                        window.probePickGate(Array.FindIndex(window.gateRows, one => one.StartsWith("gate")));
+                        window.probeLockGate(0);
+                        window.probePickGate(Array.FindIndex(window.gateRows, one => one.StartsWith("gate")));
+                        window.probeRemoveGate();
+
+                        Console.WriteLine(window.gateRows.Length == had
+                            ? "[gates] removed again, back to where it started"
+                            : "[gates] WRONG - the gate did not come out");
+                        //Asked about THAT region by name. The chain hint is no good here: this
+                        //mission's own objectives already name villager regions that are not in
+                        //the open room, so it says "never finish" whatever the gates do.
+                        Console.WriteLine(!window.namedByAnyObjective("gate1")
+                            ? "[gates] and no objective is left naming the gate that went"
+                            : "[gates] WRONG - an objective still points at the removed gate");
+
+                        this.Shutdown();
+                    };
+
+                    timer.Start();
+                    return;
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[gates] refused: {problem.Message}");
+                    this.Shutdown();
+                    return;
+                }
+            }
+
             //PROBE_EXIT=<mission> - the way out: whether the mission has one, and building one.
             //
             //An exit needs a region AND an objective that names it, and either alone does nothing
@@ -1790,9 +1933,14 @@ namespace MCDSaveEdit
                         var steps = window.questRows.Length;
                         window.probeOnlyExit();
 
+                        //A chain that is already nothing but the exit has nothing to trim, which
+                        //is the right answer rather than a failure - it is what a map built from
+                        //the empty baseline looks like.
                         Console.WriteLine(window.questRows.Length < steps
                             ? $"[exit] trimmed the chain from {steps} to {window.questRows.Length}"
-                            : "[exit] WRONG - the chain was not trimmed");
+                            : steps <= 1
+                                ? "[exit] nothing to trim, the chain was already just the way out"
+                                : "[exit] WRONG - the chain was not trimmed");
 
                         Console.WriteLine(window.questRows.All(one => one.Contains("the way out"))
                             ? "[exit] and what is left is the way out"

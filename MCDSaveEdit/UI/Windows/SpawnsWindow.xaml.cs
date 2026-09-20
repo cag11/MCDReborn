@@ -264,16 +264,59 @@ namespace MCDSaveEdit.UI
         {
             get
             {
-                panelScroll.UpdateLayout();
+                //The tab the mob list lives on, since that is the one it has to fit inside.
+                panelTabs.SelectedItem = mobsTab;
+                panelTabs.UpdateLayout();
+                mobsTabScroll.UpdateLayout();
 
-                var bottom = mobStack.TranslatePoint(new Point(0, mobStack.ActualHeight), panelScroll).Y
-                    + panelScroll.VerticalOffset;
+                var bottom = mobStack.TranslatePoint(
+                    new Point(0, mobStack.ActualHeight), mobsTabScroll).Y
+                    + mobsTabScroll.VerticalOffset;
 
-                return (panelScroll.ScrollableHeight, panelScroll.ExtentHeight,
-                    panelScroll.ViewportHeight,
-                    mobStack.ActualHeight > 0 && bottom <= panelScroll.ExtentHeight + 1);
+                return (mobsTabScroll.ScrollableHeight, mobsTabScroll.ExtentHeight,
+                    mobsTabScroll.ViewportHeight,
+                    mobStack.ActualHeight > 0 && bottom <= mobsTabScroll.ExtentHeight + 1);
             }
         }
+
+        /// <summary>The gates as the list shows them.</summary>
+        internal string[] gateRows => gatesList.Items.OfType<MapSpawns.Gate>()
+            .Select(one => one.ToString()).ToArray();
+
+        internal string gateHint => gatesHint.Text;
+
+        internal bool namedByAnyObjective(string region)
+            => MapSpawns.anyObjectiveNames(_map, region);
+
+        internal void probeAddGate(int x, int y, int z)
+        {
+            xBox.Text = x.ToString();
+            yBox.Text = y.ToString();
+            zBox.Text = z.ToString();
+            addGateButton_Click(this, new RoutedEventArgs());
+        }
+
+        internal void probePickGate(int row)
+        {
+            gatesList.SelectedIndex = row;
+            gatesList_SelectionChanged(this, new SelectionChangedEventArgs(
+                System.Windows.Controls.Primitives.Selector.SelectionChangedEvent,
+                new object[0], new object[0]));
+        }
+
+        internal void probeTurnGate() => turnGateButton_Click(this, new RoutedEventArgs());
+
+        internal void probeWidenGate() => widerGateButton_Click(this, new RoutedEventArgs());
+
+        internal void probeLockGate(int objectiveRow)
+        {
+            opensBox.SelectedIndex = objectiveRow;
+            lockGateButton_Click(this, new RoutedEventArgs());
+        }
+
+        internal void probeUnlockGate() => unlockGateButton_Click(this, new RoutedEventArgs());
+
+        internal void probeRemoveGate() => removeGateRegionButton_Click(this, new RoutedEventArgs());
 
         /// <summary>The objective chain as the list shows it.</summary>
         internal string[] questRows => questList.Items.OfType<MapSpawns.Objective>()
@@ -421,6 +464,19 @@ namespace MCDSaveEdit.UI
             placeButton.Content = R.SPAWNS_PLACE_BUTTON;
             clearButton.Content = R.SPAWNS_CLEAR;
             removeButton.Content = R.SPAWNS_REMOVE_POINT;
+            mobsTab.Header = R.SPAWNS_TAB_MOBS;
+            waysTab.Header = R.SPAWNS_TAB_WAYS;
+            questTab.Header = R.SPAWNS_TAB_QUEST;
+            gatesLabel.Content = R.SPAWNS_GATES;
+            gatesHint.Text = R.SPAWNS_GATES_WHY;
+            addGateButton.Content = R.SPAWNS_ADD_GATE;
+            turnGateButton.Content = R.SPAWNS_TURN_GATE;
+            widerGateButton.Content = R.SPAWNS_WIDER_GATE;
+            narrowerGateButton.Content = R.SPAWNS_NARROWER_GATE;
+            removeGateRegionButton.Content = R.SPAWNS_REMOVE_GATE;
+            opensLabel.Text = R.SPAWNS_GATE_OPENS;
+            lockGateButton.Content = R.SPAWNS_GATE_LOCK;
+            unlockGateButton.Content = R.SPAWNS_GATE_UNLOCK;
             questLabel.Content = R.SPAWNS_QUEST;
             questHint.Text = R.SPAWNS_QUEST_WHY;
             onlyExitButton.Content = R.SPAWNS_QUEST_ONLY_EXIT;
@@ -582,6 +638,7 @@ namespace MCDSaveEdit.UI
             fillStarts();
             fillExits();
             fillQuest();
+            fillGates();
         }
 
         /// <summary>
@@ -606,6 +663,175 @@ namespace MCDSaveEdit.UI
             }
 
             mapView.mark(found, Color.FromRgb(255, 120, 60));
+        }
+
+        //--- gates an objective opens ---------------------------------------------------------------
+
+        private int _gate = -1;
+
+        private void fillGates()
+        {
+            if (_room == null) { gatesList.ItemsSource = null; return; }
+
+            var gates = MapSpawns.gatesOf(_map, _room);
+
+            _filling = true;
+            var wasAt = _gate;
+            gatesList.ItemsSource = gates;
+            gatesList.SelectedIndex = gates.FindIndex(one => one.At == wasAt);
+
+            //The objectives a gate can be handed to. A gauntlet can hold one shut as readily as
+            //a click can, so they are all offered.
+            opensBox.Items.Clear();
+            foreach (var step in MapSpawns.objectivesOf(_map))
+            {
+                opensBox.Items.Add(new ComboBoxItem { Content = step.ToString(), Tag = step.At });
+            }
+            if (opensBox.Items.Count > 0) { opensBox.SelectedIndex = 0; }
+            _filling = false;
+
+            mapView.markGates(gates.Select(one =>
+                (one.Pos[0], one.Pos[1], one.Pos[2], one.Size[0], one.Size[2])));
+
+            var loose = gates.Count(one => one.OpenedBy.Length == 0);
+
+            gatesHint.Text = gates.Count == 0
+                ? R.SPAWNS_GATES_NONE
+                : loose == 0
+                    ? string.Format(R.SPAWNS_GATES_ALL_HELD, gates.Count)
+                    : string.Format(R.SPAWNS_GATES_LOOSE, gates.Count, loose);
+        }
+
+        private void gatesList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+            if (gatesList.SelectedItem is not MapSpawns.Gate gate) { _gate = -1; return; }
+
+            _gate = gate.At;
+            mapView.aim(gate.Pos[0], gate.Pos[1], gate.Pos[2], true);
+            drawWires();
+            statusLabel.Text = string.Format(R.SPAWNS_GATE_AT, gate.Name,
+                gate.Pos[0], gate.Pos[1], gate.Pos[2]);
+            updateUI();
+        }
+
+        private MapSpawns.Gate? chosenGate()
+            => _room == null || _gate < 0
+                ? null
+                : MapSpawns.gatesOf(_map, _room).FirstOrDefault(one => one.At == _gate);
+
+        private void addGateButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null) { return; }
+
+            var made = MapSpawns.addGate(_map, _room, MapSpawns.freeGateName(_map, _room),
+                number(xBox, _room.Size[0] / 2),
+                number(yBox, _room.Size[1] / 2),
+                number(zBox, _room.Size[2] / 2),
+                true);
+
+            _map.Changed.Add(_room.File);
+            _gate = made.At;
+
+            statusLabel.Text = string.Format(R.SPAWNS_GATE_ADDED, made.Name);
+
+            fillGates();
+            drawWires();
+            updateUI();
+        }
+
+        /// <summary>Turn, wider and narrower all reshape the chosen gate in place.</summary>
+        private void reshape(Func<bool> change, Func<MapSpawns.Gate, string> said)
+        {
+            if (_room == null || _gate < 0) { return; }
+            if (!change()) { return; }
+
+            _map.Changed.Add(_room.File);
+
+            var now = chosenGate();
+            if (now != null) { statusLabel.Text = said(now); }
+
+            fillGates();
+            drawWires();
+            updateUI();
+        }
+
+        private void turnGateButton_Click(object sender, RoutedEventArgs e)
+            => reshape(() => MapSpawns.turnGate(_room!, _gate),
+                gate => string.Format(R.SPAWNS_GATE_TURNED, gate.Name,
+                    gate.Across ? R.SPAWNS_GATE_ACROSS_X : R.SPAWNS_GATE_ACROSS_Z));
+
+        private void widerGateButton_Click(object sender, RoutedEventArgs e)
+            => reshape(() => MapSpawns.widenGate(_room!, _gate, 1),
+                gate => string.Format(R.SPAWNS_GATE_WIDE, gate.Name,
+                    Math.Max(gate.Size[0], gate.Size[2])));
+
+        private void narrowerGateButton_Click(object sender, RoutedEventArgs e)
+            => reshape(() => MapSpawns.widenGate(_room!, _gate, -1),
+                gate => string.Format(R.SPAWNS_GATE_WIDE, gate.Name,
+                    Math.Max(gate.Size[0], gate.Size[2])));
+
+        private void removeGateRegionButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null || _gate < 0) { return; }
+
+            var going = chosenGate();
+            if (going == null || !MapSpawns.removeGateAt(_map, _room, _gate)) { return; }
+
+            _map.Changed.Add(_room.File);
+
+            //Removing a gate also tidies the objectives that held it, so the level changed too.
+            if (going.OpenedBy.Length > 0) { _map.Changed.Add("level.json"); }
+
+            _gate = -1;
+            statusLabel.Text = string.Format(R.SPAWNS_GATE_REMOVED, going.Name);
+
+            fillGates();
+            fillQuest();
+            updateUI();
+        }
+
+        private void lockGateButton_Click(object sender, RoutedEventArgs e)
+        {
+            var gate = chosenGate();
+            if (gate == null) { return; }
+            if ((opensBox.SelectedItem as ComboBoxItem)?.Tag is not int step) { return; }
+
+            //One objective at a time. A gate held by two is a gate that opens when the first of
+            //them finishes, which is never what somebody meant by picking the second.
+            foreach (var one in MapSpawns.objectivesOf(_map)) { MapSpawns.unlock(_map, one.At, gate.Name); }
+
+            if (!MapSpawns.lockTo(_map, step, gate.Name)) { return; }
+
+            _map.Changed.Add("level.json");
+
+            statusLabel.Text = string.Format(R.SPAWNS_GATE_LOCKED, gate.Name,
+                MapSpawns.objectivesOf(_map).FirstOrDefault(one => one.At == step)?.Description ?? "?");
+
+            fillGates();
+            drawWires();
+            updateUI();
+        }
+
+        private void unlockGateButton_Click(object sender, RoutedEventArgs e)
+        {
+            var gate = chosenGate();
+            if (gate == null) { return; }
+
+            var freed = false;
+            foreach (var one in MapSpawns.objectivesOf(_map))
+            {
+                freed |= MapSpawns.unlock(_map, one.At, gate.Name);
+            }
+
+            if (!freed) { statusLabel.Text = R.SPAWNS_GATE_ALREADY_FREE; return; }
+
+            _map.Changed.Add("level.json");
+            statusLabel.Text = string.Format(R.SPAWNS_GATE_UNLOCKED, gate.Name);
+
+            fillGates();
+            drawWires();
+            updateUI();
         }
 
         //--- what the mission asks of you -----------------------------------------------------------
@@ -654,7 +880,88 @@ namespace MCDSaveEdit.UI
         {
             if (_filling) { return; }
             _quest = questList.SelectedItem is MapSpawns.Objective step ? step.At : -1;
+
+            drawWires();
             updateUI();
+        }
+
+        /// <summary>
+        /// Draws what the chosen step is connected to.
+        ///
+        /// A step and the gate it opens are usually at opposite ends of the map, and a list can
+        /// say "opens: gate2" without anybody being able to find gate2. The wire is the part that
+        /// makes it a graph rather than two lists that mention each other.
+        ///
+        /// Both ends are wired from whichever is selected, so picking a gate shows its step and
+        /// picking a step shows its gates.
+        /// </summary>
+        private void drawWires()
+        {
+            if (_room == null) { mapView.wire(Array.Empty<(int, int, int, int, int, int)>()); return; }
+
+            var gates = MapSpawns.gatesOf(_map, _room);
+            var wires = new List<(int, int, int, int, int, int)>();
+
+            //Which region each named thing sits at, so a step's own targets can be found too.
+            var where = new Dictionary<string, int[]>(StringComparer.OrdinalIgnoreCase);
+            foreach (var region in _room.Regions)
+            {
+                var name = region?["name"]?.GetValue<string>();
+                if (string.IsNullOrEmpty(name) || where.ContainsKey(name!)) { continue; }
+                if (region!["pos"] is not JsonArray at || at.Count < 3) { continue; }
+
+                where[name!] = new[]
+                {
+                    at[0]!.GetValue<int>(), at[1]!.GetValue<int>(), at[2]!.GetValue<int>(),
+                };
+            }
+
+            void join(int[] from, int[] to)
+                => wires.Add((from[0], from[1], from[2], to[0], to[1], to[2]));
+
+            //From the chosen step to every gate it holds, and on to what it asks you to do.
+            if (_quest >= 0)
+            {
+                var step = MapSpawns.objectivesOf(_map).FirstOrDefault(one => one.At == _quest);
+
+                if (step != null)
+                {
+                    foreach (var held in MapSpawns.lockedBy(_map, _quest))
+                    {
+                        var gate = gates.FirstOrDefault(one =>
+                            string.Equals(one.Name, held, StringComparison.OrdinalIgnoreCase));
+
+                        if (gate == null) { continue; }
+
+                        foreach (var need in step.Needs)
+                        {
+                            if (where.TryGetValue(need, out var spot)) { join(spot, gate.Pos); }
+                        }
+
+                        //A step with no region of its own in this room still gets a marker on the
+                        //gate, rather than the gate looking unconnected.
+                        if (step.Needs.All(need => !where.ContainsKey(need)))
+                        {
+                            join(gate.Pos, gate.Pos);
+                        }
+                    }
+                }
+            }
+
+            //From the chosen gate back to whatever opens it.
+            var chosen = chosenGate();
+            if (chosen != null && chosen.OpenedBy.Length > 0)
+            {
+                var step = MapSpawns.objectivesOf(_map)
+                    .FirstOrDefault(one => one.Title == chosen.OpenedBy);
+
+                foreach (var need in step?.Needs ?? Array.Empty<string>())
+                {
+                    if (where.TryGetValue(need, out var spot)) { join(spot, chosen.Pos); }
+                }
+            }
+
+            mapView.wire(wires);
         }
 
         private void removeQuestButton_Click(object sender, RoutedEventArgs e)
@@ -1209,6 +1516,13 @@ namespace MCDSaveEdit.UI
                     selectRow(exitsList, one => one is MapSpawns.Exit found && found.At == _exit);
                     break;
 
+                case MapView3D.Pin.Gate:
+                    _gate = MapSpawns.gatesOf(_map, _room!)
+                        .FirstOrDefault(one => one.Pos[0] == x && one.Pos[1] == y && one.Pos[2] == z)
+                        ?.At ?? -1;
+                    selectRow(gatesList, one => one is MapSpawns.Gate gate && gate.At == _gate);
+                    break;
+
                 default:
                     mapView_Picked(x, y, z);
                     break;
@@ -1248,6 +1562,10 @@ namespace MCDSaveEdit.UI
                     var found = MapSpawns.exitsOf(_map, _room).FirstOrDefault(one => one.At == _exit);
                     return found == null ? null : (found.Pos[0], found.Pos[1], found.Pos[2]);
 
+                case MapView3D.Pin.Gate:
+                    var gate = chosenGate();
+                    return gate == null ? null : (gate.Pos[0], gate.Pos[1], gate.Pos[2]);
+
                 default:
                     return positionOf(_selected);
             }
@@ -1263,6 +1581,7 @@ namespace MCDSaveEdit.UI
                 MapView3D.Pin.Door => _door >= 0 && MapSpawns.moveDoor(_room, _door, x, y, z),
                 MapView3D.Pin.Start => _start >= 0 && MapSpawns.moveStart(_room, _start, x, y, z),
                 MapView3D.Pin.Exit => _exit >= 0 && MapSpawns.moveExit(_room, _exit, x, y, z),
+                MapView3D.Pin.Gate => _gate >= 0 && MapSpawns.moveGate(_room, _gate, x, y, z),
                 _ => _selected >= 0 && MapSpawns.moveTo(_room, _selected, x, y, z),
             };
         }
@@ -1284,6 +1603,7 @@ namespace MCDSaveEdit.UI
                 case MapView3D.Pin.Door: redrawDoorPins(); break;
                 case MapView3D.Pin.Start: redrawStartPins(); break;
                 case MapView3D.Pin.Exit: redrawExitPins(); break;
+                case MapView3D.Pin.Gate: redrawGatePins(); break;
                 default: markPoints(); break;
             }
 
@@ -1302,6 +1622,14 @@ namespace MCDSaveEdit.UI
             if (_room == null) { return; }
             mapView.markDoors(MapSpawns.doorsOf(_map, _room)
                 .Select(one => (one.Pos[0], one.Pos[1], one.Pos[2], one.IsEntry)));
+        }
+
+        /// <summary>The purple pins alone.</summary>
+        private void redrawGatePins()
+        {
+            if (_room == null) { return; }
+            mapView.markGates(MapSpawns.gatesOf(_map, _room)
+                .Select(one => (one.Pos[0], one.Pos[1], one.Pos[2], one.Size[0], one.Size[2])));
         }
 
         /// <summary>The red pins alone.</summary>
@@ -1340,6 +1668,7 @@ namespace MCDSaveEdit.UI
                 MapView3D.Pin.Door => R.SPAWNS_MOVED_DOOR,
                 MapView3D.Pin.Start => R.SPAWNS_MOVED_START,
                 MapView3D.Pin.Exit => R.SPAWNS_MOVED_EXIT,
+                MapView3D.Pin.Gate => R.SPAWNS_MOVED_GATE,
                 _ => R.SPAWNS_MOVED,
             };
 
@@ -1394,6 +1723,7 @@ namespace MCDSaveEdit.UI
             _start = -1;
             _exit = -1;
             _quest = -1;
+            _gate = -1;
             _selected = -1;
 
             if (_room != null)
@@ -1834,6 +2164,15 @@ namespace MCDSaveEdit.UI
 
             //A door can be added wherever the map is aimed; the other two need one picked out of
             //the list, because they act on that one rather than on wherever you are looking.
+            var gate = has && _gate >= 0;
+            addGateButton.IsEnabled = has;
+            turnGateButton.IsEnabled = gate;
+            widerGateButton.IsEnabled = gate;
+            narrowerGateButton.IsEnabled = gate;
+            removeGateRegionButton.IsEnabled = gate;
+            lockGateButton.IsEnabled = gate && opensBox.Items.Count > 0;
+            unlockGateButton.IsEnabled = gate;
+
             onlyExitButton.IsEnabled = has;
             removeQuestButton.IsEnabled = has && _quest >= 0;
 

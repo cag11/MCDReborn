@@ -30,6 +30,67 @@ namespace MCDSaveEdit.Logic
 
         private static string where => Path.Combine(root, "where.json");
 
+        /// <summary>
+        /// Whether the folder holds a map somebody built, rather than a copy of the game's.
+        ///
+        /// Re-exporting rebuilds the folder from the game's own paks, which is right when the
+        /// folder is a stale copy of a mission and catastrophic when it is an afternoon in
+        /// Minecraft. The two look identical from outside, so the difference has to be read out
+        /// of the level: a mission straight from the game has many stretches drawing on many
+        /// object groups, while anything welded or hand-built is one stretch playing one tile.
+        ///
+        /// Wrong in the safe direction. A stock mission that has been welded counts as built,
+        /// and the worst that costs is a confirmation somebody did not strictly need.
+        /// </summary>
+        public static bool looksBuilt(string folder)
+        {
+            try
+            {
+                var path = Path.Combine(folder, "level.json");
+                if (!File.Exists(path)) { path = Path.Combine(folder, "level"); }
+                if (!File.Exists(path)) { return false; }
+
+                var level = System.Text.Json.Nodes.JsonNode.Parse(
+                    GameMaps.stripComments(File.ReadAllText(path)),
+                    documentOptions: new System.Text.Json.JsonDocumentOptions
+                    {
+                        AllowTrailingCommas = true,
+                        CommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                    }) as System.Text.Json.Nodes.JsonObject;
+
+                if (level?["stretches"] is not System.Text.Json.Nodes.JsonArray stretches) { return false; }
+
+                return stretches.Count == 1;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>Roughly how much is in a built map, for a warning that means something.</summary>
+        public static long weightOf(string folder)
+        {
+            try
+            {
+                var groups = Path.Combine(folder, "objectgroups");
+                if (!Directory.Exists(groups)) { return 0; }
+
+                long total = 0;
+                foreach (var file in Directory.GetFiles(groups, "objectgroup.json",
+                    SearchOption.AllDirectories))
+                {
+                    total += new FileInfo(file).Length;
+                }
+
+                return total;
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
+        }
+
         //Read once. It is a handful of lines and the disk should not be touched on every repaint.
         private static Dictionary<string, string>? _known;
 

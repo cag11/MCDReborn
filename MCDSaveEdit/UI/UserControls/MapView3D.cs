@@ -46,6 +46,8 @@ namespace MCDSaveEdit.UI
 
         private Model3DGroup? _startGroup;
         private GeometryModel3D? _exits;
+        private GeometryModel3D? _gates;
+        private GeometryModel3D? _wires;
         private GeometryModel3D? _cursor;
 
         //Where the camera is looking and from how far. Yaw and pitch are degrees because every
@@ -72,9 +74,10 @@ namespace MCDSaveEdit.UI
         private readonly List<(int x, int y, int z)> _doorPins = new List<(int x, int y, int z)>();
         private readonly List<(int x, int y, int z)> _startPins = new List<(int x, int y, int z)>();
         private readonly List<(int x, int y, int z)> _exitPins = new List<(int x, int y, int z)>();
+        private readonly List<(int x, int y, int z)> _gatePins = new List<(int x, int y, int z)>();
 
         /// <summary>The kinds of thing standing on the map that can be taken hold of.</summary>
-        public enum Pin { Spawn, Door, Start, Exit }
+        public enum Pin { Spawn, Door, Start, Exit, Gate }
 
         private bool _dragging;
         private Pin _dragKind;
@@ -233,6 +236,8 @@ namespace MCDSaveEdit.UI
             if (_doorGroup != null) { group.Children.Add(_doorGroup); }
             if (_startGroup != null) { group.Children.Add(_startGroup); }
             if (_exits != null) { group.Children.Add(_exits); }
+            if (_gates != null) { group.Children.Add(_gates); }
+            if (_wires != null) { group.Children.Add(_wires); }
             if (_markers != null) { group.Children.Add(_markers); }
             if (_cursor != null) { group.Children.Add(_cursor); }
 
@@ -446,6 +451,156 @@ namespace MCDSaveEdit.UI
             material.Freeze();
 
             _ways = new GeometryModel3D(mesh, material) { BackMaterial = material };
+            redraw();
+        }
+
+        /// <summary>
+        /// Lines between things that are wired together.
+        ///
+        /// A gate and the step that opens it are the same relationship a node graph draws with a
+        /// wire, and it has the same problem: the two ends are usually nowhere near each other,
+        /// and a list cannot show you that the gate at one end of the map is held by the villager
+        /// at the other. So it is drawn.
+        ///
+        /// Thin square beams rather than lines, because WPF's 3D has no line primitive - a line
+        /// has no thickness and so no triangles. A beam four hundred blocks long and a third of a
+        /// block across reads as a wire from any distance that matters.
+        /// </summary>
+        public void wire(IEnumerable<(int ax, int ay, int az, int bx, int by, int bz)> pairs)
+        {
+            var mesh = new MeshGeometry3D();
+            var count = 0;
+
+            foreach (var one in pairs)
+            {
+                beam(mesh,
+                    one.ax + 0.5, one.ay + 9.0, one.az + 0.5,
+                    one.bx + 0.5, one.by + 9.0, one.bz + 0.5,
+                    0.55);
+                count++;
+            }
+
+            if (count == 0)
+            {
+                _wires = null;
+                redraw();
+                return;
+            }
+
+            mesh.Freeze();
+
+            var material = new MaterialGroup();
+            material.Children.Add(new DiffuseMaterial(new SolidColorBrush(
+                Color.FromRgb(235, 235, 120))));
+            material.Children.Add(new EmissiveMaterial(new SolidColorBrush(
+                Color.FromRgb(140, 140, 60))));
+            material.Freeze();
+
+            _wires = new GeometryModel3D(mesh, material) { BackMaterial = material };
+            redraw();
+        }
+
+        /// <summary>
+        /// A square beam from one point to another.
+        ///
+        /// Built by finding any two directions across the line and walking a square along it, so
+        /// it works for a wire going straight up as readily as one along the ground - which the
+        /// obvious "cross with up" version does not.
+        /// </summary>
+        private static void beam(MeshGeometry3D mesh, double ax, double ay, double az,
+                                 double bx, double by, double bz, double thick)
+        {
+            var along = new Vector3D(bx - ax, by - ay, bz - az);
+            if (along.Length < 1e-6) { return; }
+            along.Normalize();
+
+            //Any vector not parallel to the beam will do to start the cross products off.
+            var other = Math.Abs(along.Y) > 0.9
+                ? new Vector3D(1, 0, 0)
+                : new Vector3D(0, 1, 0);
+
+            var side = Vector3D.CrossProduct(along, other);
+            side.Normalize();
+            var up = Vector3D.CrossProduct(along, side);
+
+            var at = mesh.Positions.Count;
+
+            foreach (var end in new[] { (ax, ay, az), (bx, by, bz) })
+            {
+                foreach (var corner in new[] { (1, 1), (1, -1), (-1, -1), (-1, 1) })
+                {
+                    var offset = side * (corner.Item1 * thick) + up * (corner.Item2 * thick);
+                    mesh.Positions.Add(new Point3D(
+                        end.Item1 + offset.X, end.Item2 + offset.Y, end.Item3 + offset.Z));
+                }
+            }
+
+            //Four sides, two triangles each. The ends are left open - nothing ever sees them.
+            for (var face = 0; face < 4; face++)
+            {
+                var next = (face + 1) % 4;
+
+                foreach (var index in new[] { face, face + 4, next + 4, face, next + 4, next })
+                {
+                    mesh.TriangleIndices.Add(at + index);
+                }
+            }
+        }
+
+        /// <summary>
+        /// The gates an objective holds shut.
+        ///
+        /// Purple, and drawn as a row of posts along the gate's own width rather than as one
+        /// marker at its corner - a gate is a wall five or nine cells long, and a single spike at
+        /// one end says nothing about which way it lies or what it blocks. Getting that wrong
+        /// leaves a gate lying along the corridor instead of across it, which looks fine on the
+        /// map and lets everybody walk straight past in game.
+        /// </summary>
+        public void markGates(IEnumerable<(int x, int y, int z, int sx, int sz)> gates)
+        {
+            var mesh = new MeshGeometry3D();
+            var count = 0;
+
+            _gatePins.Clear();
+
+            foreach (var one in gates)
+            {
+                //The anchor, which is what a drag moves and what the list reports.
+                _gatePins.Add((one.x, one.y, one.z));
+
+                var along = Math.Max(1, Math.Max(one.sx, one.sz));
+
+                for (var step = 0; step < along; step++)
+                {
+                    var x = one.x + (one.sx >= one.sz ? step : 0);
+                    var z = one.z + (one.sx >= one.sz ? 0 : step);
+
+                    //The first post is taller, so which end the gate is anchored at is visible -
+                    //that is the cell its position names and the one a drag moves.
+                    pillar(mesh, x + 0.5, one.y, z + 0.5,
+                        step == 0 ? 2.0 : 1.3, step == 0 ? 18.0 : 12.0);
+                }
+
+                count++;
+            }
+
+            if (count == 0)
+            {
+                _gates = null;
+                redraw();
+                return;
+            }
+
+            mesh.Freeze();
+
+            var material = new MaterialGroup();
+            material.Children.Add(new DiffuseMaterial(new SolidColorBrush(
+                Color.FromRgb(178, 120, 255))));
+            material.Children.Add(new EmissiveMaterial(new SolidColorBrush(
+                Color.FromRgb(88, 40, 150))));
+            material.Freeze();
+
+            _gates = new GeometryModel3D(mesh, material) { BackMaterial = material };
             redraw();
         }
 
@@ -693,6 +848,8 @@ namespace MCDSaveEdit.UI
             if (_doorGroup != null) { made.Children.Add(_doorGroup); }
             if (_startGroup != null) { made.Children.Add(_startGroup); }
             if (_exits != null) { made.Children.Add(_exits); }
+            if (_gates != null) { made.Children.Add(_gates); }
+            if (_wires != null) { made.Children.Add(_wires); }
             if (_markers != null) { made.Children.Add(_markers); }
             if (_cursor != null) { made.Children.Add(_cursor); }
             _scene.Content = made;
@@ -992,6 +1149,8 @@ namespace MCDSaveEdit.UI
 
         internal IReadOnlyList<(int x, int y, int z)> probeExitPins => _exitPins;
 
+        internal IReadOnlyList<(int x, int y, int z)> probeGatePins => _gatePins;
+
         /// <summary>
         /// Which pin a spot is close enough to have meant, if any.
         ///
@@ -1028,6 +1187,7 @@ namespace MCDSaveEdit.UI
             search(_doorPins, Pin.Door);
             search(_startPins, Pin.Start);
             search(_exitPins, Pin.Exit);
+            search(_gatePins, Pin.Gate);
 
             return best;
         }

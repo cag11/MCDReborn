@@ -2319,6 +2319,114 @@ The save file is not changed until you save it.</value>
     <value>That is now where the mission starts you. The others are teleport arrivals.</value>
     <comment>Status after promoting</comment>
   </data>
+  <data name="SPAWNS_TAB_MOBS" xml:space="preserve">
+    <value>Mobs</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="SPAWNS_TAB_WAYS" xml:space="preserve">
+    <value>In and out</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="SPAWNS_TAB_QUEST" xml:space="preserve">
+    <value>Objectives</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="SPAWNS_GATES" xml:space="preserve">
+    <value>Gates</value>
+    <comment>Gate section heading</comment>
+  </data>
+  <data name="SPAWNS_GATES_WHY" xml:space="preserve">
+    <value>The PURPLE markers: walls that stay shut until an objective is finished. This is how every mission in the game paces itself. Put one across a corridor, then say which step opens it - a gate nothing opens stays shut forever.</value>
+    <comment>Gate explanation</comment>
+  </data>
+  <data name="SPAWNS_ADD_GATE" xml:space="preserve">
+    <value>Put a gate here</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_TURN_GATE" xml:space="preserve">
+    <value>Turn</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_WIDER_GATE" xml:space="preserve">
+    <value>Wider</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_NARROWER_GATE" xml:space="preserve">
+    <value>Narrower</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_REMOVE_GATE" xml:space="preserve">
+    <value>Remove</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_GATE_OPENS" xml:space="preserve">
+    <value>Opened by:</value>
+    <comment>Label above the objective picker</comment>
+  </data>
+  <data name="SPAWNS_GATE_LOCK" xml:space="preserve">
+    <value>This opens it</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_GATE_UNLOCK" xml:space="preserve">
+    <value>Nothing opens it</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_GATES_NONE" xml:space="preserve">
+    <value>None. Gates are optional - without them the whole map is open from the start.</value>
+    <comment>Hint with no gates</comment>
+  </data>
+  <data name="SPAWNS_GATES_ALL_HELD" xml:space="preserve">
+    <value>{0} gate(s), and every one of them has something that opens it.</value>
+    <comment>Hint when all gates are held</comment>
+  </data>
+  <data name="SPAWNS_GATES_LOOSE" xml:space="preserve">
+    <value>{0} gate(s), and {1} of them has nothing to open it - that one stays shut for the whole mission. Pick it and choose a step below.</value>
+    <comment>Hint when a gate is unheld</comment>
+  </data>
+  <data name="SPAWNS_GATE_AT" xml:space="preserve">
+    <value>Gate “{0}” at {1}, {2}, {3}.</value>
+    <comment>Status when a gate is picked</comment>
+  </data>
+  <data name="SPAWNS_GATE_ADDED" xml:space="preserve">
+    <value>Gate “{0}” added. Choose what opens it, or it stays shut.</value>
+    <comment>Status after adding</comment>
+  </data>
+  <data name="SPAWNS_GATE_TURNED" xml:space="preserve">
+    <value>“{0}” now lies {1}.</value>
+    <comment>Status after turning</comment>
+  </data>
+  <data name="SPAWNS_GATE_ACROSS_X" xml:space="preserve">
+    <value>across x</value>
+    <comment>Which way a gate lies</comment>
+  </data>
+  <data name="SPAWNS_GATE_ACROSS_Z" xml:space="preserve">
+    <value>across z</value>
+    <comment>Which way a gate lies</comment>
+  </data>
+  <data name="SPAWNS_GATE_WIDE" xml:space="preserve">
+    <value>“{0}” is now {1} cells wide.</value>
+    <comment>Status after resizing</comment>
+  </data>
+  <data name="SPAWNS_GATE_REMOVED" xml:space="preserve">
+    <value>Gate “{0}” removed, and any step that held it no longer names it.</value>
+    <comment>Status after removing</comment>
+  </data>
+  <data name="SPAWNS_GATE_LOCKED" xml:space="preserve">
+    <value>“{0}” now opens when you finish: {1}</value>
+    <comment>Status after attaching</comment>
+  </data>
+  <data name="SPAWNS_GATE_UNLOCKED" xml:space="preserve">
+    <value>Nothing opens “{0}” any more, so it stays shut.</value>
+    <comment>Status after detaching</comment>
+  </data>
+  <data name="SPAWNS_GATE_ALREADY_FREE" xml:space="preserve">
+    <value>Nothing was holding that one shut.</value>
+    <comment>Status when unlocking a free gate</comment>
+  </data>
+  <data name="SPAWNS_MOVED_GATE" xml:space="preserve">
+    <value>Moved gate from {0}, {1}, {2} to {3}, {4}, {5}.</value>
+    <comment>Status after dragging a gate</comment>
+  </data>
   <data name="SPAWNS_QUEST" xml:space="preserve">
     <value>What the mission asks</value>
     <comment>Objective chain section heading</comment>
@@ -2721,6 +2829,18 @@ Carry on?</value>
     <value>out to Minecraft, back again, then into the game.</value>
     <comment>Beside the terrain buttons</comment>
   </data>
+  <data name="MAPS_EXPORT_OVER_BUILT" xml:space="preserve">
+    <value>STOP - this downloads the game's own {0} over the map in this folder.
+
+That folder holds a map somebody built ({1} KB of tiles), not a copy of the game's. If it came back from Minecraft, this is the only copy in the app and there is no undo.
+
+To open your own map in Minecraft again, use the world that is already in your Minecraft world list rather than this button - this one starts again from the game's version.
+
+{2}
+
+Throw the map away and start from the game's version?</value>
+    <comment>Confirmation before exporting over a hand-built map</comment>
+  </data>
   <data name="MAPS_ALREADY_EXPORTED" xml:space="preserve">
     <value>This mission is already exported to {0}. Exporting again rebuilds that folder from the game's own files, and any spawn or terrain changes in it are lost. Carry on?</value>
     <comment>Warning before overwriting an export</comment>
@@ -2788,6 +2908,30 @@ Carry on?</value>
   <data name="MAPS_EXPORT_WHY" xml:space="preserve">
     <value>Writes everything the chosen mission is made of into a folder: the level file, the object groups holding its tiles, and the blocks file saying what each block id means. The resource pack's textures are not copied - a thousand files that nothing here needs.</value>
     <comment>What Export does</comment>
+  </data>
+  <data name="MAPS_BASELINE_SIZE" xml:space="preserve">
+    <value>{0}×{0}</value>
+    <comment>Platform size in the picker</comment>
+  </data>
+  <data name="MAPS_BASELINE" xml:space="preserve">
+    <value>New empty map…</value>
+    <comment>Button that builds a blank mission</comment>
+  </data>
+  <data name="MAPS_BASELINE_WHY" xml:space="preserve">
+    <value>Builds an empty mission - a 30×30 platform, a place to arrive, and a gate to leave by with an objective pointing at it - and opens it in Minecraft. Nothing else: no villagers, no objective chain, nothing inherited from the mission it replaces. Build on it and Bring back. It installs over whichever mission is selected.</value>
+    <comment>Tooltip</comment>
+  </data>
+  <data name="MAPS_BASELINE_WORKING" xml:space="preserve">
+    <value>Building an empty map…</value>
+    <comment>Status while it runs</comment>
+  </data>
+  <data name="MAPS_BASELINE_READY" xml:space="preserve">
+    <value>An empty {0}×{0} platform is in your Minecraft world list, standing in for {1}. Build on it, then Bring back.</value>
+    <comment>Status when the baseline is ready</comment>
+  </data>
+  <data name="MAPS_BASELINE_REPLACE" xml:space="preserve">
+    <value>This throws away the exported map for {0} and starts from an empty platform. Anything you have not installed is lost. Carry on?</value>
+    <comment>Confirmation before replacing a workshop folder</comment>
   </data>
   <data name="MAPS_IMPORT" xml:space="preserve">
     <value>Import map…</value>

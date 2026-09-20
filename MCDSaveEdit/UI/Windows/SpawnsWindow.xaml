@@ -47,182 +47,234 @@
             <!-- Scrolls, because this panel now holds six sections and the window is whatever
                  height the screen allows. What fell off the bottom was the mob list, which is
                  the thing most people open this window for. -->
-            <ScrollViewer x:Name="panelScroll" VerticalScrollBarVisibility="Auto"
-                          HorizontalScrollBarVisibility="Disabled"
-                          Padding="0,0,6,0">
-            <StackPanel>
-                <Label x:Name="placeLabel" Content="*Place spawn points*"
-                       Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+            <TabControl x:Name="panelTabs" Background="Transparent"
+                        BorderThickness="0" Padding="0">
 
-                <TextBlock x:Name="placeHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,10"
-                           Foreground="{DynamicResource Brush.TextMuted}"/>
+                <TabItem x:Name="mobsTab">
+                    <ScrollViewer x:Name="mobsTabScroll" VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Padding="0,8,6,0">
+                        <StackPanel>
+                        <Label x:Name="placeLabel" Content="*Place spawn points*"
+                               Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
 
-                <TextBlock x:Name="roomLabel" FontWeight="SemiBold" TextWrapping="NoWrap"
-                           TextTrimming="CharacterEllipsis" Margin="0,0,0,8"/>
+                        <TextBlock x:Name="placeHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,10"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
 
-                <Grid Margin="0,0,0,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition/><RowDefinition/>
-                    </Grid.RowDefinitions>
+                        <TextBlock x:Name="roomLabel" FontWeight="SemiBold" TextWrapping="NoWrap"
+                                   TextTrimming="CharacterEllipsis" Margin="0,0,0,8"/>
 
-                    <TextBlock Text="x" Grid.Row="0" Grid.Column="0" FontSize="11"
-                               Foreground="{DynamicResource Brush.TextMuted}"/>
-                    <TextBlock Text="y" Grid.Row="0" Grid.Column="1" FontSize="11"
-                               Foreground="{DynamicResource Brush.TextMuted}"/>
-                    <TextBlock Text="z" Grid.Row="0" Grid.Column="2" FontSize="11"
-                               Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition/><RowDefinition/>
+                            </Grid.RowDefinitions>
 
-                    <TextBox x:Name="xBox" Grid.Row="1" Grid.Column="0" Margin="0,0,4,0" Height="26"
-                             VerticalContentAlignment="Center"/>
-                    <TextBox x:Name="yBox" Grid.Row="1" Grid.Column="1" Margin="0,0,4,0" Height="26"
-                             VerticalContentAlignment="Center"/>
-                    <TextBox x:Name="zBox" Grid.Row="1" Grid.Column="2" Height="26"
-                             VerticalContentAlignment="Center"/>
-                </Grid>
+                            <TextBlock Text="x" Grid.Row="0" Grid.Column="0" FontSize="11"
+                                       Foreground="{DynamicResource Brush.TextMuted}"/>
+                            <TextBlock Text="y" Grid.Row="0" Grid.Column="1" FontSize="11"
+                                       Foreground="{DynamicResource Brush.TextMuted}"/>
+                            <TextBlock Text="z" Grid.Row="0" Grid.Column="2" FontSize="11"
+                                       Foreground="{DynamicResource Brush.TextMuted}"/>
 
-                <Grid Margin="0,0,0,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition/><ColumnDefinition/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition/><RowDefinition/>
-                    </Grid.RowDefinitions>
+                            <TextBox x:Name="xBox" Grid.Row="1" Grid.Column="0" Margin="0,0,4,0" Height="26"
+                                     VerticalContentAlignment="Center"/>
+                            <TextBox x:Name="yBox" Grid.Row="1" Grid.Column="1" Margin="0,0,4,0" Height="26"
+                                     VerticalContentAlignment="Center"/>
+                            <TextBox x:Name="zBox" Grid.Row="1" Grid.Column="2" Height="26"
+                                     VerticalContentAlignment="Center"/>
+                        </Grid>
 
-                    <TextBlock x:Name="radiusLabel" Text="*radius*" Grid.Row="0" Grid.Column="0"
-                               FontSize="11" Foreground="{DynamicResource Brush.TextMuted}"/>
-                    <TextBlock x:Name="countLabel" Text="*count*" Grid.Row="0" Grid.Column="1"
-                               FontSize="11" Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/><ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition/><RowDefinition/>
+                            </Grid.RowDefinitions>
 
-                    <TextBox x:Name="radiusBox" Grid.Row="1" Grid.Column="0" Margin="0,0,4,0"
-                             Height="26" VerticalContentAlignment="Center"/>
-                    <TextBox x:Name="countBox" Grid.Row="1" Grid.Column="1" Height="26"
-                             VerticalContentAlignment="Center"/>
-                </Grid>
+                            <TextBlock x:Name="radiusLabel" Text="*radius*" Grid.Row="0" Grid.Column="0"
+                                       FontSize="11" Foreground="{DynamicResource Brush.TextMuted}"/>
+                            <TextBlock x:Name="countLabel" Text="*count*" Grid.Row="0" Grid.Column="1"
+                                       FontSize="11" Foreground="{DynamicResource Brush.TextMuted}"/>
 
-                <ComboBox x:Name="tagBox" Margin="0,0,0,10" Height="26" VerticalContentAlignment="Center"/>
+                            <TextBox x:Name="radiusBox" Grid.Row="1" Grid.Column="0" Margin="0,0,4,0"
+                                     Height="26" VerticalContentAlignment="Center"/>
+                            <TextBox x:Name="countBox" Grid.Row="1" Grid.Column="1" Height="26"
+                                     VerticalContentAlignment="Center"/>
+                        </Grid>
 
-                <!-- Wrapping, not a row. Four buttons do not fit this panel's width and the
-                     fourth simply vanished off the edge, which looks like a button that failed
-                     to draw rather than one there was no room for. -->
-                <WrapPanel x:Name="actionPanel" Margin="0,0,0,12">
-                    <Button x:Name="placeButton" Content="*Place*" Padding="14,5"
-                            Margin="0,0,6,6" Click="placeButton_Click"/>
-                    <Button x:Name="removeButton" Content="*Remove point*" Padding="10,5"
-                            Margin="0,0,6,6" Click="removeButton_Click"/>
-                    <Button x:Name="clearButton" Content="*Clear room*" Padding="10,5"
-                            Margin="0,0,0,6" Click="clearButton_Click"/>
-                </WrapPanel>
+                        <ComboBox x:Name="tagBox" Margin="0,0,0,10" Height="26" VerticalContentAlignment="Center"/>
 
-                <Separator Margin="0,0,0,10"/>
+                        <!-- Wrapping, not a row. Four buttons do not fit this panel's width and the
+                             fourth simply vanished off the edge, which looks like a button that failed
+                             to draw rather than one there was no room for. -->
+                        <WrapPanel x:Name="actionPanel" Margin="0,0,0,12">
+                            <Button x:Name="placeButton" Content="*Place*" Padding="14,5"
+                                    Margin="0,0,6,6" Click="placeButton_Click"/>
+                            <Button x:Name="removeButton" Content="*Remove point*" Padding="10,5"
+                                    Margin="0,0,6,6" Click="removeButton_Click"/>
+                            <Button x:Name="clearButton" Content="*Clear room*" Padding="10,5"
+                                    Margin="0,0,0,6" Click="clearButton_Click"/>
+                        </WrapPanel>
 
-                <Label x:Name="startsLabel" Content="*Where you come in*"
-                       Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
-                <TextBlock x:Name="startsHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
-                           Foreground="{DynamicResource Brush.TextMuted}"/>
-                <ListBox x:Name="startsList" MaxHeight="80" Margin="0,0,0,6"
-                         SelectionChanged="startsList_SelectionChanged"/>
-                <WrapPanel Margin="0,0,0,12">
-                    <Button x:Name="addStartButton" Content="*Put the start here*" Padding="10,4"
-                            Margin="0,0,6,6" Click="addStartButton_Click"/>
-                    <Button x:Name="mainStartButton" Content="*Make this the main way in*" Padding="10,4"
-                            Margin="0,0,6,6" Click="mainStartButton_Click"/>
-                    <Button x:Name="removeStartButton" Content="*Remove start*" Padding="10,4"
-                            Margin="0,0,0,6" Click="removeStartButton_Click"/>
-                </WrapPanel>
+                            <Separator Margin="0,4,0,10"/>
 
-                <Separator Margin="0,0,0,10"/>
+                        <Label x:Name="rulesLabel" Content="*What spawns*"
+                               Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+                        <TextBlock x:Name="rulesHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
 
-                <Label x:Name="questLabel" Content="*What the mission asks*"
-                       Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
-                <TextBlock x:Name="questHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
-                           Foreground="{DynamicResource Brush.TextMuted}"/>
-                <ListBox x:Name="questList" MaxHeight="120" Margin="0,0,0,6"
-                         SelectionChanged="questList_SelectionChanged"/>
-                <WrapPanel Margin="0,0,0,12">
-                    <Button x:Name="onlyExitButton" Content="*Keep only the way out*" Padding="10,4"
-                            Margin="0,0,6,6" Click="onlyExitButton_Click"/>
-                    <Button x:Name="removeQuestButton" Content="*Remove step*" Padding="10,4"
-                            Margin="0,0,0,6" Click="removeQuestButton_Click"/>
-                </WrapPanel>
+                        <ComboBox x:Name="groupBox" Margin="0,0,0,8" Height="26"
+                                  VerticalContentAlignment="Center"
+                                  ToolTip="{Binding SelectedItem.Content, RelativeSource={RelativeSource Self}}"
+                                  SelectionChanged="groupBox_SelectionChanged"/>
 
-                <Separator Margin="0,0,0,10"/>
+                        <TextBlock x:Name="mobsLabel" FontSize="11" Margin="0,4,0,4"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
 
-                <Label x:Name="exitsLabel" Content="*The way out*"
-                       Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
-                <TextBlock x:Name="exitsHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
-                           Foreground="{DynamicResource Brush.TextMuted}"/>
-                <ListBox x:Name="exitsList" MaxHeight="80" Margin="0,0,0,6"
-                         SelectionChanged="exitsList_SelectionChanged"/>
-                <WrapPanel Margin="0,0,0,12">
-                    <Button x:Name="addExitButton" Content="*Put the exit gate here*" Padding="10,4"
-                            Margin="0,0,6,6" Click="addExitButton_Click"/>
-                    <Button x:Name="removeExitButton" Content="*Remove gate*" Padding="10,4"
-                            Margin="0,0,0,6" Click="removeExitButton_Click"/>
-                </WrapPanel>
+                        <StackPanel x:Name="mobStack"/>
 
-                <Separator Margin="0,0,0,10"/>
+                        <WrapPanel Margin="0,8,0,0">
+                            <Button x:Name="addMobButton" Content="*Add mob*" Padding="10,4"
+                                    Margin="0,0,6,0" Click="addMobButton_Click"/>
+                            <Button x:Name="addGroupButton" Content="*New group*" Padding="10,4"
+                                    Click="addGroupButton_Click"/>
+                        </WrapPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
 
-                <Label x:Name="doorsLabel" Content="*Doors*"
-                       Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
-                <TextBlock x:Name="doorsHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
-                           Foreground="{DynamicResource Brush.TextMuted}"/>
-                <ListBox x:Name="doorsList" MaxHeight="120" Margin="0,0,0,6"
-                         SelectionChanged="doorsList_SelectionChanged"/>
-                <TextBox x:Name="doorNameBox" Height="26" Margin="0,0,0,6"
-                         VerticalContentAlignment="Center"/>
-                <WrapPanel Margin="0,0,0,12">
-                    <Button x:Name="addDoorButton" Content="*Add door*" Padding="10,4"
-                            Margin="0,0,6,6" Click="addDoorButton_Click"/>
-                    <Button x:Name="removeDoorButton" Content="*Remove door*" Padding="10,4"
-                            Margin="0,0,6,6" Click="removeDoorButton_Click"/>
-                    <Button x:Name="entryDoorButton" Content="*Make the way in*" Padding="10,4"
-                            Margin="0,0,0,6" Click="entryDoorButton_Click"/>
-                </WrapPanel>
+                <TabItem x:Name="waysTab">
+                    <ScrollViewer x:Name="waysTabScroll" VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Padding="0,8,6,0">
+                        <StackPanel>
 
-                <Separator Margin="0,0,0,10"/>
+                        <Label x:Name="startsLabel" Content="*Where you come in*"
+                               Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+                        <TextBlock x:Name="startsHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ListBox x:Name="startsList" MaxHeight="80" Margin="0,0,0,6"
+                                 SelectionChanged="startsList_SelectionChanged"/>
+                        <WrapPanel Margin="0,0,0,12">
+                            <Button x:Name="addStartButton" Content="*Put the start here*" Padding="10,4"
+                                    Margin="0,0,6,6" Click="addStartButton_Click"/>
+                            <Button x:Name="mainStartButton" Content="*Make this the main way in*" Padding="10,4"
+                                    Margin="0,0,6,6" Click="mainStartButton_Click"/>
+                            <Button x:Name="removeStartButton" Content="*Remove start*" Padding="10,4"
+                                    Margin="0,0,0,6" Click="removeStartButton_Click"/>
+                        </WrapPanel>
 
-                <Label x:Name="waysLabel" Content="*Ways in and out*"
-                       Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
-                <TextBlock x:Name="waysHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
-                           Foreground="{DynamicResource Brush.TextMuted}"/>
-                <ItemsControl x:Name="waysList" Margin="0,0,0,12">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding}" FontSize="11" Margin="0,0,0,3"
-                                       TextWrapping="Wrap"
-                                       Foreground="{DynamicResource Brush.Text}"/>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                            <Separator Margin="0,4,0,10"/>
 
-                <Separator Margin="0,0,0,10"/>
+                        <Label x:Name="exitsLabel" Content="*The way out*"
+                               Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+                        <TextBlock x:Name="exitsHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ListBox x:Name="exitsList" MaxHeight="80" Margin="0,0,0,6"
+                                 SelectionChanged="exitsList_SelectionChanged"/>
+                        <WrapPanel Margin="0,0,0,12">
+                            <Button x:Name="addExitButton" Content="*Put the exit gate here*" Padding="10,4"
+                                    Margin="0,0,6,6" Click="addExitButton_Click"/>
+                            <Button x:Name="removeExitButton" Content="*Remove gate*" Padding="10,4"
+                                    Margin="0,0,0,6" Click="removeExitButton_Click"/>
+                        </WrapPanel>
 
-                <Label x:Name="rulesLabel" Content="*What spawns*"
-                       Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
-                <TextBlock x:Name="rulesHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
-                           Foreground="{DynamicResource Brush.TextMuted}"/>
+                            <Separator Margin="0,4,0,10"/>
 
-                <ComboBox x:Name="groupBox" Margin="0,0,0,8" Height="26"
-                          VerticalContentAlignment="Center"
-                          ToolTip="{Binding SelectedItem.Content, RelativeSource={RelativeSource Self}}"
-                          SelectionChanged="groupBox_SelectionChanged"/>
+                        <Label x:Name="doorsLabel" Content="*Doors*"
+                               Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+                        <TextBlock x:Name="doorsHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ListBox x:Name="doorsList" MaxHeight="120" Margin="0,0,0,6"
+                                 SelectionChanged="doorsList_SelectionChanged"/>
+                        <TextBox x:Name="doorNameBox" Height="26" Margin="0,0,0,6"
+                                 VerticalContentAlignment="Center"/>
+                        <WrapPanel Margin="0,0,0,12">
+                            <Button x:Name="addDoorButton" Content="*Add door*" Padding="10,4"
+                                    Margin="0,0,6,6" Click="addDoorButton_Click"/>
+                            <Button x:Name="removeDoorButton" Content="*Remove door*" Padding="10,4"
+                                    Margin="0,0,6,6" Click="removeDoorButton_Click"/>
+                            <Button x:Name="entryDoorButton" Content="*Make the way in*" Padding="10,4"
+                                    Margin="0,0,0,6" Click="entryDoorButton_Click"/>
+                        </WrapPanel>
 
-                <TextBlock x:Name="mobsLabel" FontSize="11" Margin="0,4,0,4"
-                           Foreground="{DynamicResource Brush.TextMuted}"/>
+                            <Separator Margin="0,4,0,10"/>
 
-                <StackPanel x:Name="mobStack"/>
+                        <Label x:Name="waysLabel" Content="*Ways in and out*"
+                               Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+                        <TextBlock x:Name="waysHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ItemsControl x:Name="waysList" Margin="0,0,0,12">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" FontSize="11" Margin="0,0,0,3"
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource Brush.Text}"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
 
-                <WrapPanel Margin="0,8,0,0">
-                    <Button x:Name="addMobButton" Content="*Add mob*" Padding="10,4"
-                            Margin="0,0,6,0" Click="addMobButton_Click"/>
-                    <Button x:Name="addGroupButton" Content="*New group*" Padding="10,4"
-                            Click="addGroupButton_Click"/>
-                </WrapPanel>
-            </StackPanel>
-            </ScrollViewer>
+                <TabItem x:Name="questTab">
+                    <ScrollViewer x:Name="questTabScroll" VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Padding="0,8,6,0">
+                        <StackPanel>
+
+                        <Label x:Name="questLabel" Content="*What the mission asks*"
+                               Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+                        <TextBlock x:Name="questHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ListBox x:Name="questList" MaxHeight="120" Margin="0,0,0,6"
+                                 SelectionChanged="questList_SelectionChanged"/>
+                        <WrapPanel Margin="0,0,0,12">
+                            <Button x:Name="onlyExitButton" Content="*Keep only the way out*" Padding="10,4"
+                                    Margin="0,0,6,6" Click="onlyExitButton_Click"/>
+                            <Button x:Name="removeQuestButton" Content="*Remove step*" Padding="10,4"
+                                    Margin="0,0,0,6" Click="removeQuestButton_Click"/>
+                        </WrapPanel>
+
+                            <Separator Margin="0,4,0,10"/>
+
+                        <Label x:Name="gatesLabel" Content="*Gates*"
+                               Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+                        <TextBlock x:Name="gatesHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ListBox x:Name="gatesList" MaxHeight="110" Margin="0,0,0,6"
+                                 SelectionChanged="gatesList_SelectionChanged"/>
+                        <WrapPanel Margin="0,0,0,6">
+                            <Button x:Name="addGateButton" Content="*Put a gate here*" Padding="10,4"
+                                    Margin="0,0,6,6" Click="addGateButton_Click"/>
+                            <Button x:Name="turnGateButton" Content="*Turn*" Padding="10,4"
+                                    Margin="0,0,6,6" Click="turnGateButton_Click"/>
+                            <Button x:Name="widerGateButton" Content="*Wider*" Padding="10,4"
+                                    Margin="0,0,6,6" Click="widerGateButton_Click"/>
+                            <Button x:Name="narrowerGateButton" Content="*Narrower*" Padding="10,4"
+                                    Margin="0,0,6,6" Click="narrowerGateButton_Click"/>
+                            <Button x:Name="removeGateRegionButton" Content="*Remove*" Padding="10,4"
+                                    Margin="0,0,0,6" Click="removeGateRegionButton_Click"/>
+                        </WrapPanel>
+                        <TextBlock x:Name="opensLabel" FontSize="11" Margin="0,2,0,4"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ComboBox x:Name="opensBox" Margin="0,0,0,6" Height="26"
+                                  VerticalContentAlignment="Center"/>
+                        <WrapPanel Margin="0,0,0,12">
+                            <Button x:Name="lockGateButton" Content="*This opens it*" Padding="10,4"
+                                    Margin="0,0,6,0" Click="lockGateButton_Click"/>
+                            <Button x:Name="unlockGateButton" Content="*Nothing opens it*" Padding="10,4"
+                                    Click="unlockGateButton_Click"/>
+                        </WrapPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+            </TabControl>
         </Border>
 
         <!-- The mission itself. Drag to turn it, shift-drag or right-drag to slide it about,

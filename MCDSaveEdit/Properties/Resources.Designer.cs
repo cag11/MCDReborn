@@ -4978,6 +4978,249 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Mobs.
+        /// </summary>
+        public static string SPAWNS_TAB_MOBS {
+            get {
+                return ResourceManager.GetString("SPAWNS_TAB_MOBS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to In and out.
+        /// </summary>
+        public static string SPAWNS_TAB_WAYS {
+            get {
+                return ResourceManager.GetString("SPAWNS_TAB_WAYS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Objectives.
+        /// </summary>
+        public static string SPAWNS_TAB_QUEST {
+            get {
+                return ResourceManager.GetString("SPAWNS_TAB_QUEST", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Gates.
+        /// </summary>
+        public static string SPAWNS_GATES {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATES", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The PURPLE markers: walls that stay shut until an objective is finished. This is how every mission in the game paces itself. Put one across a corridor, then say which step opens it - a gate nothing opens stays shut forever..
+        /// </summary>
+        public static string SPAWNS_GATES_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATES_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Put a gate here.
+        /// </summary>
+        public static string SPAWNS_ADD_GATE {
+            get {
+                return ResourceManager.GetString("SPAWNS_ADD_GATE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Turn.
+        /// </summary>
+        public static string SPAWNS_TURN_GATE {
+            get {
+                return ResourceManager.GetString("SPAWNS_TURN_GATE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Wider.
+        /// </summary>
+        public static string SPAWNS_WIDER_GATE {
+            get {
+                return ResourceManager.GetString("SPAWNS_WIDER_GATE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Narrower.
+        /// </summary>
+        public static string SPAWNS_NARROWER_GATE {
+            get {
+                return ResourceManager.GetString("SPAWNS_NARROWER_GATE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove.
+        /// </summary>
+        public static string SPAWNS_REMOVE_GATE {
+            get {
+                return ResourceManager.GetString("SPAWNS_REMOVE_GATE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Opened by:.
+        /// </summary>
+        public static string SPAWNS_GATE_OPENS {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_OPENS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This opens it.
+        /// </summary>
+        public static string SPAWNS_GATE_LOCK {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_LOCK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing opens it.
+        /// </summary>
+        public static string SPAWNS_GATE_UNLOCK {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_UNLOCK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to None. Gates are optional - without them the whole map is open from the start..
+        /// </summary>
+        public static string SPAWNS_GATES_NONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATES_NONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} gate(s), and every one of them has something that opens it..
+        /// </summary>
+        public static string SPAWNS_GATES_ALL_HELD {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATES_ALL_HELD", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} gate(s), and {1} of them has nothing to open it - that one stays shut for the whole mission. Pick it and choose a step below..
+        /// </summary>
+        public static string SPAWNS_GATES_LOOSE {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATES_LOOSE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Gate “{0}” at {1}, {2}, {3}..
+        /// </summary>
+        public static string SPAWNS_GATE_AT {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_AT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Gate “{0}” added. Choose what opens it, or it stays shut..
+        /// </summary>
+        public static string SPAWNS_GATE_ADDED {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_ADDED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to “{0}” now lies {1}..
+        /// </summary>
+        public static string SPAWNS_GATE_TURNED {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_TURNED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to across x.
+        /// </summary>
+        public static string SPAWNS_GATE_ACROSS_X {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_ACROSS_X", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to across z.
+        /// </summary>
+        public static string SPAWNS_GATE_ACROSS_Z {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_ACROSS_Z", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to “{0}” is now {1} cells wide..
+        /// </summary>
+        public static string SPAWNS_GATE_WIDE {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_WIDE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Gate “{0}” removed, and any step that held it no longer names it..
+        /// </summary>
+        public static string SPAWNS_GATE_REMOVED {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_REMOVED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to “{0}” now opens when you finish: {1}.
+        /// </summary>
+        public static string SPAWNS_GATE_LOCKED {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_LOCKED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing opens “{0}” any more, so it stays shut..
+        /// </summary>
+        public static string SPAWNS_GATE_UNLOCKED {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_UNLOCKED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing was holding that one shut..
+        /// </summary>
+        public static string SPAWNS_GATE_ALREADY_FREE {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_ALREADY_FREE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Moved gate from {0}, {1}, {2} to {3}, {4}, {5}..
+        /// </summary>
+        public static string SPAWNS_MOVED_GATE {
+            get {
+                return ResourceManager.GetString("SPAWNS_MOVED_GATE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to What the mission asks.
         /// </summary>
         public static string SPAWNS_QUEST {
@@ -5911,6 +6154,15 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to STOP - this throws away the map in this folder and downloads the game's own {0} over it..
+        /// </summary>
+        public static string MAPS_EXPORT_OVER_BUILT {
+            get {
+                return ResourceManager.GetString("MAPS_EXPORT_OVER_BUILT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to This mission is already exported to {0}. Exporting again rebuilds that folder from the game's own files, and any spawn or terrain changes in it are lost. Carry on?.
         /// </summary>
         public static string MAPS_ALREADY_EXPORTED {
@@ -6060,6 +6312,60 @@ namespace MCDSaveEdit.Properties {
         public static string MAPS_EXPORT_WHY {
             get {
                 return ResourceManager.GetString("MAPS_EXPORT_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0}×{0}.
+        /// </summary>
+        public static string MAPS_BASELINE_SIZE {
+            get {
+                return ResourceManager.GetString("MAPS_BASELINE_SIZE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to New empty map….
+        /// </summary>
+        public static string MAPS_BASELINE {
+            get {
+                return ResourceManager.GetString("MAPS_BASELINE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Builds an empty mission - a 30×30 platform, a place to arrive, and a gate to leave by with an objective pointing at it - and opens it in Minecraft. Nothing else: no villagers, no objective chain, nothing inherited from the mission it replaces. Build on it and Bring back. It installs over whichever mission is selected..
+        /// </summary>
+        public static string MAPS_BASELINE_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_BASELINE_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Building an empty map….
+        /// </summary>
+        public static string MAPS_BASELINE_WORKING {
+            get {
+                return ResourceManager.GetString("MAPS_BASELINE_WORKING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to An empty {0}×{0} platform is in your Minecraft world list, standing in for {1}. Build on it, then Bring back..
+        /// </summary>
+        public static string MAPS_BASELINE_READY {
+            get {
+                return ResourceManager.GetString("MAPS_BASELINE_READY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This throws away the exported map for {0} and starts from an empty platform. Anything you have not installed is lost. Carry on?.
+        /// </summary>
+        public static string MAPS_BASELINE_REPLACE {
+            get {
+                return ResourceManager.GetString("MAPS_BASELINE_REPLACE", resourceCulture);
             }
         }
         

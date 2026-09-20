@@ -48,14 +48,21 @@ and that costs nothing, because coming home converts back down anyway.
 
 ## Building Map 
 
-1. **Maps tab** → pick a mission.
-2. **Edit in Minecraft…** — click this to export the mission. Then it will appear in your Minecraft world list as one
-   connected run of rooms you can walk start to end.
-3. Open it in Minecraft and build. It arrives as a **26.3** world, so current Litematica and
-   current mods work.
+1. **Maps tab** → pick the mission your map will replace.
+2. Either **Edit in Minecraft…** to start from that mission - it pulls it out of the game and lays
+   its rooms out in playing order, one connected run you can walk start to end - or **New empty
+   map…** to start from nothing but a platform.
+3. Open it in Minecraft and build. It is handed over as a 1.16.2 world and Minecraft upgrades it
+   the first time you open it, so current Litematica and current mods work. Say yes to the
+   "made in an older version" prompt; the upgrade costs nothing, because coming home converts
+   back down anyway.
 4. **Bring back…** — pick that world. Your blocks are written back into the tiles they came from
-   and installed over the mission you have selected.
+   and installed over the mission you selected. Build past the edge of the platform and the tile
+   grows to cover it; nothing is cropped.
 5. Play it. **Remove** puts the original mission back.
+
+There is no export step, and nothing to press between building and playing. **Bring back…**
+installs as well as reads, so after it the map is already in the game.
 
 ### The buttons
 
@@ -67,33 +74,42 @@ in a random number of rooms, with random side-paths — so the room you edited m
 in a given run. Pinning gives each stretch exactly one room, no random count, no branches. The
 original level is kept beside it as `level.json.random`.
 
-**Export map** writes the mission out as plain files and installs nothing. It does not ask where to
-put them; the app keeps a folder per mission and every other button looks in the same place. The
-folder is emptied before it is written, so an old export can never leave a file behind in a new one.
-**Import map…** takes such a folder back, including one somebody else made. **Clear** deletes the
-working folder so the next export starts from the game's own files again.
+**New empty map…** starts from nothing instead: a 30x30 platform with a place to arrive and a gate
+to leave by, and none of the objectives the mission it replaces came with. The platform is a place
+to stand while you work out where things go, not a budget - build past its edge and the tile grows
+to meet you when you bring the world home.
+
+**Import map…** takes a map folder back into the game, including one somebody else made. **Clear**
+deletes the working folder, so the next **Edit in Minecraft…** or **Edit spawns…** starts from the
+game's own files again.
+
+There is no Export button. Both of the buttons that need a folder make one for themselves when
+there is nothing there, and pressing an export on top of a map that came back from Minecraft threw
+it away - which is a bad trade for a button that saved nobody a click. To get back to the game's
+version of a mission: **Remove** puts the original back in the game, and **Clear** throws away the
+working folder.
 
 ## Placing mobs
 
 1. **Maps tab** → pick a mission.
-2. **Export map** — pulls the mission out of the game's paks into a folder you can change. The
-   folder is emptied first, so nothing from a previous export is left in it. Skip this and
-   **Edit spawns…** will do it for you, but only when there is nothing there yet — it never
-   throws away a folder you have already edited.
-3. **Edit spawns…** — opens the mission in 3D, in its own block colours. It pins and welds first,
-   so what you are editing is what gets installed.
-4. Click the ground to aim, then **Place**. Or double-click to drop them straight away. `radius`
+2. **Edit spawns…** — opens the mission in 3D, in its own block colours. It pulls the mission out
+   of the game's paks for you when there is nothing there yet, and never throws away a folder you
+   have already edited. It pins and welds first, so what you are editing is what gets installed.
+
+   Coming back from Minecraft, go straight here: **Bring back…** has already put your map in the
+   folder and installed it.
+3. Click the ground to aim, then **Place**. Or double-click to drop them straight away. `radius`
    and `count` say how far they scatter and how many. Each one lands on the floor beneath the
    spot you chose.
-5. Click an existing point to pick it out — it turns gold — and **Remove point** takes that one
+4. Click an existing point to pick it out — it turns gold — and **Remove point** takes that one
    out. **Clear room** removes every one in the mission.
-6. **What spawns** decides *which* mobs turn up. Choose a group marked **roams the level** and
+5. **What spawns** decides *which* mobs turn up. Choose a group marked **roams the level** and
    edit its list. **Add mob** appends one; the dropdowns replace the mob on that row; **×**
    removes it. **New group** makes one from nothing and sets it roaming — the camp ships with no
    mob groups at all, because nothing is meant to spawn there, so spawn points in it draw from
    nothing until you make one.
-7. **Save and install** — saves, rebuilds the mission, and installs it over the game's own.
-8. Play it. **Remove** in the Maps tab puts the original mission back. **Clear** throws away the
+6. **Save and install** — saves, rebuilds the mission, and installs it over the game's own.
+7. Play it. **Remove** in the Maps tab puts the original mission back. **Clear** throws away the
    working folder, so the next export starts from the game's own files again.
 
 Moving about: drag to turn, **WASD** or shift-drag to move, **Q**/**E** down and up, wheel to
