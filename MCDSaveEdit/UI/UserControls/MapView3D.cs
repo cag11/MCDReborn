@@ -58,6 +58,24 @@ namespace MCDSaveEdit.UI
         private bool _panning;
         private bool _moved;
 
+        //Where the spawn points are, so a press can tell "take hold of that one" from "turn the
+        //camera". The view is handed them by mark() anyway, so hit testing them here costs
+        //nothing and keeps the two answers from drifting apart.
+        private readonly List<(int x, int y, int z)> _marks = new List<(int x, int y, int z)>();
+
+        private bool _dragging;
+        private (int x, int y, int z) _dragAt;
+
+        /// <summary>
+        /// How close a press has to land to take hold of a point, in blocks.
+        ///
+        /// Deliberately tighter than the eight blocks a click uses to SELECT one. Selecting the
+        /// wrong point is a glance at the status line; dragging the wrong one moves somebody's
+        /// work, and a camera that grabs a spawn point every time you orbit near one would be
+        /// worse than having no dragging at all.
+        /// </summary>
+        private const double GRAB = 3.0;
+
         /// <summary>Where a click landed, in the room's own block coordinates.</summary>
         public event Action<int, int, int>? Picked;
 
@@ -72,6 +90,15 @@ namespace MCDSaveEdit.UI
         /// a corridor should be able to just keep clicking.
         /// </summary>
         public event Action<int, int, int>? Confirmed;
+
+        /// <summary>A held point has been dragged over a new block. Fires as it travels.</summary>
+        public event Action<int, int, int>? Dragged;
+
+        /// <summary>The button came up and the point is where it was left.</summary>
+        public event Action<int, int, int>? Dropped;
+
+        /// <summary>Escape while dragging: put it back where it started.</summary>
+        public event Action? DragCancelled;
 
         public MapView3D()
         {
@@ -326,9 +353,12 @@ namespace MCDSaveEdit.UI
             var mesh = new MeshGeometry3D();
             var count = 0;
 
+            _marks.Clear();
+
             foreach (var one in spawns)
             {
                 pillar(mesh, one.x + 0.5, one.y, one.z + 0.5, 0.9, 4.0);
+                _marks.Add(one);
                 count++;
             }
 
@@ -461,7 +491,9 @@ namespace MCDSaveEdit.UI
             if (e.ChangedButton == MouseButton.Left
                 && Keyboard.Modifiers != ModifierKeys.Shift)
             {
-                _turning = true;
+                //A press that lands on a spawn point takes hold of it. Everything else turns the
+                //camera, which is what the whole surface did before and still does.
+                if (!grab(_dragFrom)) { _turning = true; }
             }
             else
             {
@@ -474,6 +506,8 @@ namespace MCDSaveEdit.UI
         private void onUp(object sender, MouseButtonEventArgs e)
         {
             ReleaseMouseCapture();
+
+            if (_dragging) { drop(); return; }
 
             var wasTurning = _turning;
             _turning = false;
@@ -500,6 +534,8 @@ namespace MCDSaveEdit.UI
         private void onMove(object sender, MouseEventArgs e)
         {
             var now = e.GetPosition(this);
+
+            if (_dragging) { dragTo(now); return; }
 
             if (!_turning && !_panning)
             {
@@ -553,6 +589,18 @@ namespace MCDSaveEdit.UI
 
         private void onKey(object sender, KeyEventArgs e)
         {
+            //Escape lets go of a point mid-drag. Dragging is the one gesture here that changes
+            //the map while it is still happening, so it is the one that needs a way out that is
+            //not "undo it afterwards and hope".
+            if (e.Key == Key.Escape && _dragging)
+            {
+                _dragging = false;
+                ReleaseMouseCapture();
+                DragCancelled?.Invoke();
+                e.Handled = true;
+                return;
+            }
+
             //F was framing before there was anything to hold down; it stays, but not as a letter
             //next to the movement keys - R is the reframe now and F is left alone for anyone with
             //the habit.
@@ -626,6 +674,89 @@ namespace MCDSaveEdit.UI
         /// two spoke different tuples. Only the whole path catches that.
         /// </summary>
         internal (int x, int y, int z)? probeLook(Point at) => look(at);
+
+        /// <summary>
+        /// Takes hold of the spawn point under a press, if there is one.
+        /// </summary>
+        /// <returns>Whether a drag started, which is the same as "do not turn the camera".</returns>
+        private bool grab(Point at)
+        {
+            _dragFrom = at;
+            _moved = false;
+
+            var on = look(at);
+            if (on == null || !holding(on.Value)) { return false; }
+
+            _dragging = true;
+            _dragAt = on.Value;
+
+            //Selected on the way down rather than on the way up, because a drag has no way up
+            //until it is over and the point being moved has to be chosen before it can move.
+            Picked?.Invoke(on.Value.x, on.Value.y, on.Value.z);
+            return true;
+        }
+
+        private void dragTo(Point at)
+        {
+            //Measured from where the press landed, not from the last frame, so a slow drag still
+            //counts as one. That is why _dragFrom stays put for the whole drag.
+            if (Math.Abs(at.X - _dragFrom.X) > 2 || Math.Abs(at.Y - _dragFrom.Y) > 2)
+            {
+                _moved = true;
+            }
+
+            var to = look(at);
+            if (to == null || to.Value == _dragAt) { return; }
+
+            _dragAt = to.Value;
+            Dragged?.Invoke(to.Value.x, to.Value.y, to.Value.z);
+        }
+
+        private void drop()
+        {
+            _dragging = false;
+
+            //A press that never travelled was somebody selecting a point, and Picked already said
+            //so on the way down. Reporting a drop as well would write an edit for a click that
+            //moved nothing.
+            if (_moved) { Dropped?.Invoke(_dragAt.x, _dragAt.y, _dragAt.z); }
+        }
+
+        /// <summary>
+        /// The same press, drag and release the mouse makes, for a probe to run.
+        ///
+        /// These call the handlers' own methods rather than repeating what they do. A probe that
+        /// reimplements the gesture passes while the gesture is broken - which has happened here
+        /// before, when a probe read a tuple by name off a call that returned it by position.
+        /// </summary>
+        internal bool probeGrab(Point at) => grab(at);
+
+        internal void probeDragTo(Point at) => dragTo(at);
+
+        internal void probeDrop() => drop();
+
+        internal bool probeDragging => _dragging;
+
+        /// <summary>The spawn points as the view has them, for a probe to aim at.</summary>
+        internal IReadOnlyList<(int x, int y, int z)> probeMarks => _marks;
+
+        /// <summary>Whether a spot is close enough to a spawn point to have meant that one.</summary>
+        private bool holding((int x, int y, int z) at)
+        {
+            foreach (var one in _marks)
+            {
+                //The same lopsided measure the click uses: height counts for a quarter, because
+                //two points stacked vertically are rare and a few blocks out across the floor is
+                //the normal cost of aiming at a hillside.
+                var dx = (double)(one.x - at.x);
+                var dy = (double)(one.y - at.y);
+                var dz = (double)(one.z - at.z);
+
+                if (dx * dx + dz * dz + dy * dy * 0.25 <= GRAB * GRAB) { return true; }
+            }
+
+            return false;
+        }
 
         private (int x, int y, int z)? look(Point at)
         {

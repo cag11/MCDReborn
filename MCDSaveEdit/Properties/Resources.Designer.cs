@@ -4969,11 +4969,38 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to That spawn point at {0}, {1}, {2} — Remove point takes it out..
+        ///   Looks up a localized string similar to That spawn point at {0}, {1}, {2} — drag it to move it, or Remove point takes it out..
         /// </summary>
         public static string SPAWNS_ON_POINT {
             get {
                 return ResourceManager.GetString("SPAWNS_ON_POINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Moving it to {0}, {1}, {2}  ·  let go to keep it there, Escape to put it back..
+        /// </summary>
+        public static string SPAWNS_MOVING {
+            get {
+                return ResourceManager.GetString("SPAWNS_MOVING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Moved that spawn point from {0}, {1}, {2} to {3}, {4}, {5}..
+        /// </summary>
+        public static string SPAWNS_MOVED {
+            get {
+                return ResourceManager.GetString("SPAWNS_MOVED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Left it where it was, at {0}, {1}, {2}..
+        /// </summary>
+        public static string SPAWNS_MOVE_OFF {
+            get {
+                return ResourceManager.GetString("SPAWNS_MOVE_OFF", resourceCulture);
             }
         }
         

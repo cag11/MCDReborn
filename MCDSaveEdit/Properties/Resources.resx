@@ -2300,8 +2300,20 @@ The save file is not changed until you save it.</value>
     <comment>After installing from the spawns window</comment>
   </data>
   <data name="SPAWNS_ON_POINT" xml:space="preserve">
-    <value>That spawn point at {0}, {1}, {2} — Remove point takes it out.</value>
+    <value>That spawn point at {0}, {1}, {2} — drag it to move it, or Remove point takes it out.</value>
     <comment>Status when a click lands on an existing spawn point</comment>
+  </data>
+  <data name="SPAWNS_MOVING" xml:space="preserve">
+    <value>Moving it to {0}, {1}, {2}  ·  let go to keep it there, Escape to put it back.</value>
+    <comment>Status while a spawn point is being dragged</comment>
+  </data>
+  <data name="SPAWNS_MOVED" xml:space="preserve">
+    <value>Moved that spawn point from {0}, {1}, {2} to {3}, {4}, {5}.</value>
+    <comment>Status after a spawn point has been dragged somewhere else</comment>
+  </data>
+  <data name="SPAWNS_MOVE_OFF" xml:space="preserve">
+    <value>Left it where it was, at {0}, {1}, {2}.</value>
+    <comment>Status after Escape cancels a drag</comment>
   </data>
   <data name="SPAWNS_REMOVE_POINT" xml:space="preserve">
     <value>Remove point</value>

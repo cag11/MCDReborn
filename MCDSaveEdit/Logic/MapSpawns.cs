@@ -547,6 +547,27 @@ namespace MCDSaveEdit.Logic
             return best < 0 ? null : (best, bx, by, bz);
         }
 
+        /// <summary>
+        /// Puts one spawn point somewhere else, by where it sits in the region list.
+        ///
+        /// Only the position moves. Radius, tags and whichever mob group the point belongs to are
+        /// the reason somebody placed it there in the first place, and dragging it across the room
+        /// is not a statement about any of them.
+        /// </summary>
+        public static bool moveTo(Room room, int at, int x, int y, int z)
+        {
+            var regions = room.Regions;
+            if (at < 0 || at >= regions.Count) { return false; }
+            if (regions[at] is not JsonObject region) { return false; }
+            if (region["type"]?.GetValue<string>() != "spawn") { return false; }
+
+            //A fresh array rather than three assignments into the old one. A JsonNode already
+            //sitting in a document has a parent, and moving its children about is how you get an
+            //exception halfway through and a half-moved point.
+            region["pos"] = new JsonArray(x, y, z);
+            return true;
+        }
+
         /// <summary>Takes one spawn point out, by where it sits in the region list.</summary>
         public static bool removeAt(Room room, int at)
         {

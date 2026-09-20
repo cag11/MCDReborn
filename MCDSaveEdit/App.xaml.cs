@@ -1565,6 +1565,195 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_DRAG=<mission> - takes hold of a spawn point in the 3D view and drags it,
+            //through the same press, move and release the mouse goes through.
+            //
+            //Everything here can be right in isolation and still not move a point: the press has
+            //to decide "that pin" rather than "turn the camera", the ray has to answer in block
+            //coordinates, the region has to be rewritten, the markers have to be rebuilt, and the
+            //file has to be written down as changed. Only the whole gesture covers that.
+            var probeDrag = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_DRAG="));
+            if (probeDrag != null)
+            {
+                var wanted = probeDrag.Substring("PROBE_DRAG=".Length).Trim('"');
+                var folder = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MCDReborn", "maps", wanted);
+
+                try
+                {
+                    var map = Logic.MapSpawns.load(folder);
+                    var window = new UI.SpawnsWindow(map);
+
+                    window.WindowState = WindowState.Normal;
+                    window.Width = 1280;
+                    window.Height = 800;
+                    window.Left = -20000;
+                    window.Show();
+
+                    var waited = 0;
+                    var timer = new System.Windows.Threading.DispatcherTimer
+                    {
+                        Interval = TimeSpan.FromMilliseconds(250),
+                    };
+
+                    timer.Tick += (_, _) =>
+                    {
+                        waited += 250;
+                        if (!window.mapReady && waited < 15000) { return; }
+                        timer.Stop();
+
+                        if (!window.mapReady)
+                        {
+                            Console.WriteLine("[drag] NOTHING BUILT - nothing to drag");
+                            this.Shutdown();
+                            return;
+                        }
+
+                        var view = window.probeView;
+                        var before = window.probePoints;
+                        Console.WriteLine($"[drag] {before.Count} spawn points in the room");
+
+                        if (before.Count == 0)
+                        {
+                            Console.WriteLine("[drag] no spawn points here - pick another mission");
+                            this.Shutdown();
+                            return;
+                        }
+
+                        //Where a pin actually is ON SCREEN, found by asking the same ray the mouse
+                        //asks. Working it out any other way would test a second answer rather than
+                        //the one the gesture uses.
+                        Point? onPin = null;
+                        (int x, int y, int z) pin = default;
+                        Point? onBare = null;
+                        (int x, int y, int z) bare = default;
+
+                        var marks = view.probeMarks;
+
+                        for (var sy = 20.0; sy < view.ActualHeight - 20; sy += 7)
+                        {
+                            for (var sx = 20.0; sx < view.ActualWidth - 20; sx += 7)
+                            {
+                                var at = new Point(sx, sy);
+                                var hit = view.probeLook(at);
+                                if (hit == null) { continue; }
+
+                                var here = hit.Value;
+
+                                var near = marks.Any(one =>
+                                {
+                                    double dx = one.x - here.x, dy = one.y - here.y,
+                                           dz = one.z - here.z;
+                                    return dx * dx + dz * dz + dy * dy * 0.25 <= 9.0;
+                                });
+
+                                if (near && onPin == null)
+                                {
+                                    onPin = at;
+
+                                    //The pin itself, not the floor cell the ray landed on. They
+                                    //are up to GRAB blocks apart, which is the whole point of
+                                    //GRAB - and comparing against the wrong one of the two says
+                                    //"it never moved" about a point that moved correctly.
+                                    pin = marks.OrderBy(one =>
+                                    {
+                                        double dx = one.x - here.x, dy = one.y - here.y,
+                                               dz = one.z - here.z;
+                                        return dx * dx + dz * dz + dy * dy * 0.25;
+                                    }).First();
+                                }
+
+                                //Somewhere no pin is, and far enough off that dropping there is
+                                //unambiguous.
+                                if (!near && onBare == null && marks.All(one =>
+                                    Math.Abs(one.x - here.x) + Math.Abs(one.z - here.z) > 12))
+                                {
+                                    onBare = at;
+                                    bare = here;
+                                }
+                            }
+
+                            if (onPin != null && onBare != null) { break; }
+                        }
+
+                        if (onPin == null || onBare == null)
+                        {
+                            Console.WriteLine("[drag] could not find both a pin and bare ground on screen");
+                            this.Shutdown();
+                            return;
+                        }
+
+                        Console.WriteLine($"[drag] pin at {pin.x},{pin.y},{pin.z} "
+                            + $"-> dragging to {bare.x},{bare.y},{bare.z}");
+
+                        //1. A press on BARE GROUND still turns the camera. Checked first,
+                        //   because after the drag below there is a point sitting on that spot
+                        //   and taking hold of it would be the correct answer.
+                        var turned = view.probeGrab(onBare.Value);
+                        Console.WriteLine(!turned
+                            ? "[drag] a press on bare ground still turns the camera"
+                            : "[drag] WRONG - bare ground took hold of something");
+                        view.probeDrop();
+
+                        //2. A press ON a pin has to take hold rather than turn the camera.
+                        var took = view.probeGrab(onPin.Value);
+                        Console.WriteLine(took
+                            ? "[drag] press on a pin took hold of it"
+                            : "[drag] WRONG - press on a pin did not take hold");
+
+                        view.probeDragTo(onBare.Value);
+                        view.probeDrop();
+
+                        var after = window.probePoints;
+                        var wasThere = before.Count(one => one == pin);
+                        var landed = after.Count(one => one == bare);
+                        var stillThere = after.Count(one => one == pin);
+
+                        Console.WriteLine($"[drag] points before {before.Count}, after {after.Count}");
+                        Console.WriteLine(after.Count == before.Count
+                            ? "[drag] the count did not change, so nothing was added or lost"
+                            : "[drag] WRONG - dragging changed how many points there are");
+
+                        Console.WriteLine(landed > before.Count(one => one == bare)
+                            ? $"[drag] a point is now at {bare.x},{bare.y},{bare.z}"
+                            : "[drag] WRONG - no point landed where it was dragged");
+
+                        Console.WriteLine(stillThere < wasThere
+                            ? $"[drag] and it left {pin.x},{pin.y},{pin.z}"
+                            : "[drag] WRONG - the point is still where it started");
+
+                        Console.WriteLine(window.probeChanged
+                            ? "[drag] the room's file is marked changed, so Save will write it"
+                            : "[drag] WRONG - nothing was marked changed, the move would not save");
+
+                        Console.WriteLine($"[drag] status: {window.probeStatus}");
+
+                        //3. Escape has to put it back.
+                        view.probeGrab(onBare.Value);
+                        view.probeDragTo(onPin.Value);
+                        window.probeCancelDrag();
+
+                        var cancelled = window.probePoints;
+                        Console.WriteLine(cancelled.Count(one => one == bare) == landed
+                            ? "[drag] Escape put it back where that drag started"
+                            : "[drag] WRONG - Escape did not restore the point");
+                        Console.WriteLine($"[drag] status: {window.probeStatus}");
+
+                        this.Shutdown();
+                    };
+
+                    timer.Start();
+                    return;
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[drag] refused: {problem.Message}");
+                    this.Shutdown();
+                    return;
+                }
+            }
+
             //PROBE_SPAWNS=<mission> - loads a mission's spawn data the way the editor window
             //does, and reports what it found. The window itself cannot be checked from here, but
             //everything behind it can.

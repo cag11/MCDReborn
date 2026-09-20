@@ -66,6 +66,9 @@ namespace MCDSaveEdit.UI
             mapView.Picked += mapView_Picked;
             mapView.Hovered += mapView_Hovered;
             mapView.Confirmed += mapView_Confirmed;
+            mapView.Dragged += mapView_Dragged;
+            mapView.Dropped += mapView_Dropped;
+            mapView.DragCancelled += mapView_DragCancelled;
             ceilingSlider_ValueChanged(this, new RoutedPropertyChangedEventArgs<double>(0, 255));
 
             fillRooms();
@@ -216,6 +219,39 @@ namespace MCDSaveEdit.UI
 
         /// <summary>How many spawn points the chosen room holds right now.</summary>
         internal int spawnsNow => _room?.Spawns ?? -1;
+
+        //--- dragging a point, for a probe -------------------------------------------------------
+
+        /// <summary>The 3D view itself, so a probe can press and drag it the way a hand does.</summary>
+        internal MapView3D probeView => mapView;
+
+        /// <summary>Where every spawn point in the chosen room is now, straight out of the JSON.</summary>
+        internal List<(int x, int y, int z)> probePoints
+        {
+            get
+            {
+                var found = new List<(int x, int y, int z)>();
+                if (_room == null) { return found; }
+
+                foreach (var region in _room.Regions)
+                {
+                    if (region?["type"]?.GetValue<string>() != "spawn") { continue; }
+                    if (region["pos"] is not JsonArray at || at.Count < 3) { continue; }
+                    found.Add((at[0]!.GetValue<int>(), at[1]!.GetValue<int>(), at[2]!.GetValue<int>()));
+                }
+
+                return found;
+            }
+        }
+
+        /// <summary>Whether the room's file has been written down as changed.</summary>
+        internal bool probeChanged => _room != null && _map.Changed.Contains(_room.File);
+
+        /// <summary>What the status line says, which is the only thing a person is told.</summary>
+        internal string probeStatus => statusLabel.Text;
+
+        /// <summary>Escape, as the view would deliver it mid-drag.</summary>
+        internal void probeCancelDrag() => mapView_DragCancelled();
 
         /// <summary>How many mob groups the mission has, for a probe.</summary>
         internal int groupCount => groupBox.Items.Count;
@@ -409,6 +445,19 @@ namespace MCDSaveEdit.UI
 
         private void markSpawns()
         {
+            markPoints();
+            markWays();
+        }
+
+        /// <summary>
+        /// Just the spawn points, without going back over the teleports.
+        ///
+        /// Split out for dragging, which redraws on every block the pointer crosses. The ways in
+        /// and out are read out of the level rather than the room and do not move while a spawn
+        /// point is being dragged, so doing that lookup sixty times a second would buy nothing.
+        /// </summary>
+        private void markPoints()
+        {
             if (_room == null) { return; }
 
             var found = new List<(int x, int y, int z)>();
@@ -422,7 +471,6 @@ namespace MCDSaveEdit.UI
             }
 
             mapView.mark(found, Color.FromRgb(255, 120, 60));
-            markWays();
         }
 
         /// <summary>
@@ -530,6 +578,89 @@ namespace MCDSaveEdit.UI
         {
             mapView_Picked(x, y, z);
             placeButton_Click(this, new RoutedEventArgs());
+        }
+
+        /// <summary>
+        /// Where the point being dragged sat before anybody took hold of it.
+        ///
+        /// Kept so Escape can put it back. The drag has already written the new position into the
+        /// room by then - it has to, or the marker could not follow the pointer - so undoing it
+        /// means remembering the old one rather than declining to write the new one.
+        /// </summary>
+        private (int x, int y, int z)? _held;
+
+        /// <summary>Where one spawn point is now, by where it sits in the region list.</summary>
+        private (int x, int y, int z)? positionOf(int at)
+        {
+            if (_room == null || at < 0 || at >= _room.Regions.Count) { return null; }
+            if (_room.Regions[at]?["pos"] is not JsonArray pos || pos.Count < 3) { return null; }
+
+            return (pos[0]!.GetValue<int>(), pos[1]!.GetValue<int>(), pos[2]!.GetValue<int>());
+        }
+
+        private void mapView_Dragged(int x, int y, int z)
+        {
+            if (_room == null || _selected < 0) { return; }
+
+            _held ??= positionOf(_selected);
+            if (_held == null) { return; }
+
+            if (!MapSpawns.moveTo(_room, _selected, x, y, z)) { return; }
+
+            //Only the points, and no room list rebuild. Both of those happen once on the drop -
+            //a list that renumbers itself under the pointer is unreadable, and rebuilding it per
+            //block crossed is work nobody sees.
+            markPoints();
+            mapView.aim(x, y, z, true);
+
+            xBox.Text = x.ToString();
+            yBox.Text = y.ToString();
+            zBox.Text = z.ToString();
+
+            statusLabel.Text = string.Format(R.SPAWNS_MOVING, x, y, z);
+        }
+
+        private void mapView_Dropped(int x, int y, int z)
+        {
+            var from = _held;
+            _held = null;
+
+            if (_room == null || _selected < 0 || from == null) { return; }
+
+            //Nothing actually changed if it came back to where it started, and saying a file
+            //changed when it did not means a rewrite and a .before backup for no reason.
+            if (from.Value == (x, y, z)) { return; }
+
+            _map.Changed.Add(_room.File);
+
+            statusLabel.Text = string.Format(R.SPAWNS_MOVED,
+                from.Value.x, from.Value.y, from.Value.z, x, y, z);
+
+            markSpawns();
+            fillRooms();
+            updateUI();
+        }
+
+        private void mapView_DragCancelled()
+        {
+            var from = _held;
+            _held = null;
+
+            if (_room == null || _selected < 0 || from == null) { return; }
+            if (!MapSpawns.moveTo(_room, _selected, from.Value.x, from.Value.y, from.Value.z))
+            {
+                return;
+            }
+
+            markPoints();
+            mapView.aim(from.Value.x, from.Value.y, from.Value.z, true);
+
+            xBox.Text = from.Value.x.ToString();
+            yBox.Text = from.Value.y.ToString();
+            zBox.Text = from.Value.z.ToString();
+
+            statusLabel.Text = string.Format(R.SPAWNS_MOVE_OFF,
+                from.Value.x, from.Value.y, from.Value.z);
         }
 
         private void mapView_Hovered(int x, int y, int z)
