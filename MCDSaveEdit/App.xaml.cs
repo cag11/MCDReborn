@@ -1734,6 +1734,60 @@ namespace MCDSaveEdit
                 }
             }
 
+            //PROBE_CLAIM=<folder>;<mission> - the level id a map is installed under.
+            //
+            //A level's id is a lookup into the game's table of levels, not its own name, and a
+            //map whose id is not in that table asks for a level that does not exist. This is the
+            //check that a map built for one mission and installed over another claims the one it
+            //is actually loaded as.
+            var probeClaim = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_CLAIM="));
+            if (probeClaim != null)
+            {
+                var bits = probeClaim.Substring("PROBE_CLAIM=".Length).Trim('"').Split(';');
+                var folder = bits[0];
+                var wanted = bits.Length > 1 ? bits[1] : "creeperwoods";
+
+                try
+                {
+                    var mission = Logic.GameMaps.all()
+                        .FirstOrDefault(one => string.Equals(one.Name, wanted,
+                            StringComparison.OrdinalIgnoreCase));
+
+                    if (mission == null)
+                    {
+                        Console.WriteLine($"[claim] no mission called {wanted}");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    var before = System.Text.Json.Nodes.JsonNode.Parse(
+                        Logic.GameMaps.stripComments(
+                            System.IO.File.ReadAllText(System.IO.Path.Combine(folder, "level.json"))),
+                        documentOptions: new System.Text.Json.JsonDocumentOptions
+                        {
+                            AllowTrailingCommas = true,
+                            CommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                        }) as System.Text.Json.Nodes.JsonObject;
+
+                    Console.WriteLine($"[claim] the folder's level says id = "
+                        + $"\"{before?["id"]?.GetValue<string>()}\"");
+
+                    var made = Logic.MapMod.install(folder, mission);
+                    Console.WriteLine($"[claim] installed {made.Size / 1024} KB as {mission.Name}");
+
+                    Console.WriteLine($"[claim] read it back with PROBE_PAK={made.Path}");
+
+                    this.Shutdown();
+                    return;
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[claim] refused: {problem.Message}");
+                    this.Shutdown();
+                    return;
+                }
+            }
+
             //PROBE_WELDABLE2=<mission> - whether a level that is already one tile gets welded.
             //
             //Welding a single-tile level is not a no-op, it is destructive: make_single names the

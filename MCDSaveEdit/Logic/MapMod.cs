@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 #nullable enable
 
 namespace MCDSaveEdit.Logic
@@ -131,6 +133,75 @@ namespace MCDSaveEdit.Logic
         /// of choosing: a map built from Creeper Woods' tiles can be installed over Lower Temple,
         /// and Creeper Woods stays as it was.
         /// </summary>
+        /// <summary>
+        /// Makes a level claim to be the mission it is being installed over.
+        ///
+        /// A level's id is not its own name. It is a lookup into the game's own table of levels -
+        /// for the theme, the lighting, the ambience and the text - and the table is fixed at
+        /// fifty-odd names that shipped with the game. A level whose id is something else asks
+        /// for a level that does not exist.
+        ///
+        /// Blossoming Isles, which works, never gets this wrong: its three levels live in files
+        /// called SakuraGarden, SakuraPagoda and SakuraUndercroft, and every one of them declares
+        /// id "lowertemple" and borrows Cacti Canyon's ambience and text. None of its own names
+        /// appear anywhere in the game's table, and none of them are used.
+        ///
+        /// Done HERE rather than when the map is made, because this is the only moment the answer
+        /// is certain. A folder can be built from one mission, edited, and installed over
+        /// another; it can arrive through Import map from somebody else entirely. What the level
+        /// has to claim is whatever it is about to be loaded as, and that is known once and only
+        /// once - now.
+        /// </summary>
+        private static byte[] claim(byte[] raw, GameMaps.Mission over)
+        {
+            try
+            {
+                var text = GameMaps.stripComments(
+                    new UTF8Encoding(false).GetString(raw).TrimStart('\uFEFF'));
+
+                if (JsonNode.Parse(text, documentOptions: new JsonDocumentOptions
+                {
+                    AllowTrailingCommas = true,
+                    CommentHandling = JsonCommentHandling.Skip,
+                }) is not JsonObject level)
+                {
+                    return raw;
+                }
+
+                var was = level["id"]?.GetValue<string>();
+                if (string.Equals(was, over.Name, StringComparison.Ordinal)) { return raw; }
+
+                level["id"] = over.Name;
+
+                //These two are separate lookups into the same table. They come along when they
+                //were following the id - which is what a map that never thought about them looks
+                //like - and are left alone when they name something else, because borrowing one
+                //level's ambience for another is deliberate and Blossoming Isles does exactly
+                //that: id "lowertemple", ambience and text from Cacti Canyon.
+                foreach (var also in new[] { "ambience-level-id", "loctable-id" })
+                {
+                    var had = level[also]?.GetValue<string>();
+
+                    if (had == null || string.Equals(had, was, StringComparison.Ordinal))
+                    {
+                        level[also] = over.Name;
+                    }
+                }
+
+                Console.WriteLine($"[map] level id \"{was}\" -> \"{over.Name}\" for install");
+
+                return new UTF8Encoding(false).GetBytes(
+                    level.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            }
+            catch (Exception problem)
+            {
+                //A level this cannot read is one the game may still be able to. Installing it
+                //unchanged is the same behaviour as before this existed.
+                Console.WriteLine($"[map] could not set the level id: {problem.Message}");
+                return raw;
+            }
+        }
+
         public static CustomSkins.InstalledMod install(string folder, GameMaps.Mission over)
         {
             var level = Path.Combine(folder, LEVEL_FILE);
@@ -151,7 +222,7 @@ namespace MCDSaveEdit.Logic
                 //what makes the game read our file instead of its own.
                 new PakWriter.Entry(
                     "Dungeons/Content/data/lovika/levels/" + over.Name + ".json",
-                    File.ReadAllBytes(level)),
+                    claim(File.ReadAllBytes(level), over)),
             };
 
             var groups = Path.Combine(folder, GROUPS_FOLDER);
