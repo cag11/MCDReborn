@@ -10,7 +10,7 @@ Nothing you do here modifies the game's own files. A map installs as a mod pak b
 | | |
 |---|---|
 | **MCD Reborn** | the Maps tab |
-| **Minecraft Java** | any current version |
+| **Minecraft Java** | any version |
 | **Chunker** | one jar, see [Setting up Chunker](#setting-up-chunker) |
 | **Java 17 or newer** | what runs Chunker - [Adoptium](https://adoptium.net) if you have not got it |
 
@@ -156,126 +156,6 @@ In Creeper Woods that is `cw-mix`.
 Spawn points go to `objectgroups\<Name>\objectgroup.json`; mob groups go to `level.json`, and to
 `level.json.multitile` beside it when that exists, so the next weld does not throw them away. The
 first time a file is touched the original is kept as `<name>.before`.
-
-
-## Which blocks work
-
-The converter maps Java blocks onto Dungeons blocks through a table of **1,040 mappings covering
-344 distinct Java blocks**. A block in the table converts. A block that is not in the table
-**becomes air**, and the converter prints a warning naming it.
-
-The table lives at `MCD-MapTools\tools\BlockMap.py` and you can add to it.
-
-### Rule of thumb
-
-**Build with Minecraft 1.16 blocks and you will be fine. Everything added in 1.17 or later is
-missing.**
-
-That is not a coincidence — Dungeons is built on a 1.16-era block set, so those blocks have no
-Dungeons equivalent to map onto.
-
-### Families that work completely
-
-- **All 16 colours** of wool, carpet, concrete, terracotta
-- **Stone family** — stone, granite, diorite, andesite and their polished forms, cobblestone,
-  mossy cobblestone, stone bricks (plain, mossy, cracked, chiseled)
-- **Blackstone family** — blackstone, polished, bricks, cracked, chiseled, gilded, basalt,
-  polished basalt, ancient debris, netherite, lodestone, crying obsidian
-- **Wood** — oak, spruce, birch, jungle, acacia, dark oak, crimson, warped: planks, logs, wood,
-  leaves, saplings, fences, fence gates, doors, stairs, slabs
-- **Nether and End** — netherrack, nether bricks, soul sand, crimson and warped nylium, warped
-  wart block, quartz in every form
-- **Shapes** — 30 slabs, 18 walls, 13 stairs, trapdoors, buttons, pressure plates
-- **Ores** — coal, iron, gold, diamond, emerald, lapis, redstone, quartz, nether gold
-
-### Individual blocks that work
-
-```
-air, allium, ancient_debris, andesite, azure_bluet, basalt, blackstone, blue_orchid,
-bookshelf, brewing_stand, bricks, cactus, carrots, carved_pumpkin, cauldron, chest,
-chiseled_polished_blackstone, chiseled_quartz_block, chiseled_stone_bricks, clay,
-coal_block, coarse_dirt, cobblestone, cobweb, cocoa, comparator,
-cracked_polished_blackstone_bricks, cracked_stone_bricks, crafting_table, crimson_nylium,
-crimson_stem, crying_obsidian, dandelion, diamond_block, diorite, dirt, dirt_path,
-dispenser, dried_kelp_block, dropper, emerald_block, enchanting_table, end_portal_frame,
-farmland, fern, fire, furnace, gilded_blackstone, glowstone, gold_block, granite, grass,
-grass_block, gravel, hay_block, honeycomb_block, ice, infested_chiseled_stone_bricks,
-iron_bars, iron_block, jack_o_lantern, ladder, lapis_block, large_fern, lava, lilac,
-lily_of_the_valley, lily_pad, lodestone, melon, melon_stem, mossy_cobblestone,
-mossy_stone_bricks, mycelium, nether_bricks, netherite_block, netherrack, note_block,
-observer, obsidian, orange_tulip, oxeye_daisy, packed_ice, peony, pink_tulip, podzol,
-polished_andesite, polished_basalt, polished_blackstone, polished_blackstone_bricks,
-polished_diorite, polished_granite, poppy, pumpkin_stem, quartz_block, quartz_bricks,
-quartz_pillar, red_sand, red_tulip, redstone_block, redstone_lamp, redstone_torch,
-redstone_wire, repeater, rose_bush, sand, sea_lantern, skeleton_skull, smooth_quartz,
-snow, snow_block, soul_sand, spawner, stone, stone_bricks, stonecutter, sugar_cane,
-tall_grass, tnt, torch, vine, warped_nylium, warped_wart_block, water, wheat, white_tulip
-```
-
-Plus glass, glass panes, iron bars, rails, anvils, sponge, sticky piston, mushrooms and mushroom
-blocks, dead coral blocks, sandstone and red sandstone in all their cut and smooth forms.
-
-### Blocks that do NOT work
-
-Anything from **1.17 onwards**: deepslate and all its variants, copper, amethyst, calcite, tuff,
-dripstone, moss, azalea, sculk, froglight, mud, candles, mangrove, cherry, bamboo blocks.
-
-Also missing despite being old enough: **lantern, beacon, end stone, purpur, prismarine, magma
-block**. The table is partial rather than a clean version cutoff, so if a block matters to you,
-check `BlockMap.py` before building a hundred of them.
-
-### Blocks with a special meaning
-
-These four are not scenery. The converter reads them and turns them into level structure:
-
-| Block | Becomes |
-|---|---|
-| `barrier` | a **boundary** — an invisible wall players cannot pass |
-| `player_head` | a **player spawn** |
-| `structure_block` named `door:entrance` | a **door** |
-| `structure_block` named `region:arena1` | a **region** |
-
-For a region's type and tags, set the structure block's *data* to JSON:
-`{ "type": "trigger", "tags": "death" }`. Name and size come from the structure block's own
-fields, editable in SAVE mode; the data field is editable in DATA mode.
-
-`air` and `cave_air` are skipped entirely, which is what makes conversion fast.
-
-## What survives the trip
-
-Measured on Creeper Woods: **11,534,265 non-air blocks, 1,879 with no Java equivalent - 0.02%.**
-
-| | |
-|---|---|
-| **Block ids** | everything in the block map survives |
-| **Block metadata** | 100% on every non-air block |
-| **Doors** | kept |
-| **Regions and boundaries** | kept **from the original**, not read back |
-
-Of 93 distinct block ids in the mission, exactly **one** has no mapping: an undocumented `id 223`,
-1,877 blocks of it. Anything unmapped becomes air, and the converter names it as it goes.
-
-Adding a block to the map is one line in `MCD-MapTools	ools\BlockMap.py`:
-
-```python
-{ 'dungeons': [223, 0], 'java': [ 'minecraft:some_block_you_never_use' ] }
-```
-
-Pick a Java block you would not otherwise place and it becomes a stand-in: it goes out to
-Minecraft as that block and comes back as the Dungeons one.
-
-Regions travel into Minecraft as structure blocks, and a structure block needs a free air cell
-inside the region's footprint to sit in - which a packed dungeon often has not got. Measured on one
-mission, doors came back 5 of 5 but regions only 3 of 8. So geometry comes from Minecraft and the
-gameplay markup stays as it was. This means **moving a trigger region by moving its structure block
-will not take effect**; to change regions, edit the object group's JSON.
-
-**Mob spawns and bosses are not blocks.** They are regions with `"type": "spawn"` plus entries in
-the level's `mob-groups`, so placing a Minecraft spawner will not create a Dungeons spawn.
-
-Two cosmetic quirks: going *back* to Minecraft, fences, walls and stairs are not re-connected, so
-they can look wrong while you build. The block and its metadata are both intact - it only affects
-how Minecraft draws them.
 
 ## Seams, and why the level is welded
 
