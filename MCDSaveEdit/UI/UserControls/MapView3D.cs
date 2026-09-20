@@ -39,6 +39,10 @@ namespace MCDSaveEdit.UI
         private GeometryModel3D? _ground;
         private GeometryModel3D? _markers;
         private GeometryModel3D? _ways;
+
+        //A group rather than one model: the entry door is the same pink at a different strength,
+        //and two materials cannot share one mesh.
+        private Model3DGroup? _doorGroup;
         private GeometryModel3D? _cursor;
 
         //Where the camera is looking and from how far. Yaw and pitch are degrees because every
@@ -208,6 +212,7 @@ namespace MCDSaveEdit.UI
             group.Children.Add(_ground);
 
             if (_ways != null) { group.Children.Add(_ways); }
+            if (_doorGroup != null) { group.Children.Add(_doorGroup); }
             if (_markers != null) { group.Children.Add(_markers); }
             if (_cursor != null) { group.Children.Add(_cursor); }
 
@@ -425,6 +430,81 @@ namespace MCDSaveEdit.UI
         }
 
         /// <summary>
+        /// The doors in the room's wall.
+        ///
+        /// Pink, and a different shape again: spawn points are short orange spikes, teleports are
+        /// tall blue ones, and a door is a broad flat slab standing in the wall. Three kinds of
+        /// thing in one view need to be told apart at a glance and from any angle, and colour
+        /// alone stops working the moment two of them are behind each other.
+        ///
+        /// The one the level starts you at is drawn taller and brighter. It is the single most
+        /// consequential thing on the map - a mission with no way in crashes on the loading
+        /// screen - so it should not take a click to find out which one it is.
+        /// </summary>
+        public void markDoors(IEnumerable<(int x, int y, int z, bool entry)> doors)
+        {
+            var mesh = new MeshGeometry3D();
+            var bright = new MeshGeometry3D();
+            var count = 0;
+            var entries = 0;
+
+            foreach (var one in doors)
+            {
+                if (one.entry)
+                {
+                    pillar(bright, one.x + 0.5, one.y, one.z + 0.5, 2.2, 22.0);
+                    entries++;
+                }
+                else
+                {
+                    pillar(mesh, one.x + 0.5, one.y, one.z + 0.5, 1.8, 14.0);
+                }
+                count++;
+            }
+
+            if (count == 0)
+            {
+                _doorGroup = null;
+                redraw();
+                return;
+            }
+
+            var group = new Model3DGroup();
+
+            if (count > entries)
+            {
+                mesh.Freeze();
+                group.Children.Add(new GeometryModel3D(mesh, pink(false))
+                {
+                    BackMaterial = pink(false),
+                });
+            }
+
+            if (entries > 0)
+            {
+                bright.Freeze();
+                group.Children.Add(new GeometryModel3D(bright, pink(true))
+                {
+                    BackMaterial = pink(true),
+                });
+            }
+
+            _doorGroup = group;
+            redraw();
+        }
+
+        private static Material pink(bool entry)
+        {
+            var material = new MaterialGroup();
+            material.Children.Add(new DiffuseMaterial(new SolidColorBrush(
+                entry ? Color.FromRgb(255, 120, 220) : Color.FromRgb(225, 90, 185))));
+            material.Children.Add(new EmissiveMaterial(new SolidColorBrush(
+                entry ? Color.FromRgb(150, 40, 120) : Color.FromRgb(90, 25, 70))));
+            material.Freeze();
+            return material;
+        }
+
+        /// <summary>
         /// The spot a click chose, so it is obvious what is about to happen.
         ///
         /// <paramref name="onExisting"/> when the click landed on a spawn point that is already
@@ -455,6 +535,7 @@ namespace MCDSaveEdit.UI
             var made = new Model3DGroup();
             if (_ground != null) { made.Children.Add(_ground); }
             if (_ways != null) { made.Children.Add(_ways); }
+            if (_doorGroup != null) { made.Children.Add(_doorGroup); }
             if (_markers != null) { made.Children.Add(_markers); }
             if (_cursor != null) { made.Children.Add(_cursor); }
             _scene.Content = made;

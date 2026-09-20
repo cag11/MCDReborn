@@ -250,6 +250,41 @@ namespace MCDSaveEdit.UI
         /// <summary>What the status line says, which is the only thing a person is told.</summary>
         internal string probeStatus => statusLabel.Text;
 
+        /// <summary>The doors as the list shows them, which is what a person reads.</summary>
+        internal string[] doorRows => doorsList.Items.OfType<MapSpawns.Door>()
+            .Select(one => one.ToString()).ToArray();
+
+        /// <summary>What the doors hint says - the warning about having none lives there.</summary>
+        internal string doorHint => doorsHint.Text;
+
+        /// <summary>The door named as the way in, straight out of the level.</summary>
+        internal string entryDoorNow => _room == null
+            ? string.Empty
+            : MapSpawns.entryDoorOf(_map, _room);
+
+        /// <summary>Presses Add door, having aimed and named it the way a person would.</summary>
+        internal void probeAddDoor(string name, int x, int y, int z)
+        {
+            doorNameBox.Text = name;
+            xBox.Text = x.ToString();
+            yBox.Text = y.ToString();
+            zBox.Text = z.ToString();
+            addDoorButton_Click(this, new RoutedEventArgs());
+        }
+
+        /// <summary>Picks the door at that row, as clicking the list does.</summary>
+        internal void probePickDoor(int row)
+        {
+            doorsList.SelectedIndex = row;
+            doorsList_SelectionChanged(this, new SelectionChangedEventArgs(
+                System.Windows.Controls.Primitives.Selector.SelectionChangedEvent,
+                new object[0], new object[0]));
+        }
+
+        internal void probeMakeEntry() => entryDoorButton_Click(this, new RoutedEventArgs());
+
+        internal void probeRemoveDoor() => removeDoorButton_Click(this, new RoutedEventArgs());
+
         /// <summary>Escape, as the view would deliver it mid-drag.</summary>
         internal void probeCancelDrag() => mapView_DragCancelled();
 
@@ -308,6 +343,11 @@ namespace MCDSaveEdit.UI
             placeButton.Content = R.SPAWNS_PLACE_BUTTON;
             clearButton.Content = R.SPAWNS_CLEAR;
             removeButton.Content = R.SPAWNS_REMOVE_POINT;
+            doorsLabel.Content = R.SPAWNS_DOORS;
+            doorsHint.Text = R.SPAWNS_DOORS_WHY;
+            addDoorButton.Content = R.SPAWNS_ADD_DOOR;
+            removeDoorButton.Content = R.SPAWNS_REMOVE_DOOR;
+            entryDoorButton.Content = R.SPAWNS_ENTRY_DOOR;
             waysLabel.Content = R.SPAWNS_WAYS;
             rulesLabel.Content = R.SPAWNS_RULES;
             rulesHint.Text = R.SPAWNS_RULES_HINT;
@@ -447,6 +487,7 @@ namespace MCDSaveEdit.UI
         {
             markPoints();
             markWays();
+            fillDoors();
         }
 
         /// <summary>
@@ -471,6 +512,159 @@ namespace MCDSaveEdit.UI
             }
 
             mapView.mark(found, Color.FromRgb(255, 120, 60));
+        }
+
+        //--- doors -------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Which door is picked in the list, or -1. Held by its place in the tile's door array,
+        /// which is what removing one needs.
+        /// </summary>
+        private int _door = -1;
+
+        /// <summary>
+        /// Draws the doors in pink and lists them.
+        ///
+        /// This is the half of a custom mission that is invisible in Minecraft. A door is not a
+        /// block - it is four numbers in the tile's JSON - so somebody who builds a beautiful
+        /// level and brings it home has no way to see that it has no way in, until the game
+        /// refuses to load it.
+        /// </summary>
+        private void fillDoors()
+        {
+            if (_room == null)
+            {
+                doorsList.ItemsSource = null;
+                mapView.markDoors(Array.Empty<(int, int, int, bool)>());
+                return;
+            }
+
+            var doors = MapSpawns.doorsOf(_map, _room);
+
+            _filling = true;
+            var wasAt = _door;
+            doorsList.ItemsSource = doors;
+            doorsList.SelectedIndex = doors.FindIndex(one => one.At == wasAt);
+            _filling = false;
+
+            mapView.markDoors(doors.Select(one =>
+                (one.Pos[0], one.Pos[1], one.Pos[2], one.IsEntry)));
+
+            //Said here rather than discovered on a loading screen. A tile with no door is one the
+            //generator cannot place, and a tile with doors but none named as the way in leaves
+            //the game to pick - which works until it does not.
+            var entry = doors.FirstOrDefault(one => one.IsEntry);
+
+            doorsHint.Text = doors.Count == 0
+                ? R.SPAWNS_DOORS_NONE
+                : entry != null
+                    ? string.Format(R.SPAWNS_DOORS_ENTRY, doors.Count, entry.Name)
+                    : string.Format(R.SPAWNS_DOORS_NO_ENTRY, doors.Count);
+        }
+
+        private void doorsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            if (doorsList.SelectedItem is not MapSpawns.Door door) { _door = -1; return; }
+
+            _door = door.At;
+            doorNameBox.Text = door.Name;
+
+            mapView.aim(door.Pos[0], door.Pos[1], door.Pos[2], true);
+            statusLabel.Text = string.Format(R.SPAWNS_DOOR_AT,
+                door.Name.Length > 0 ? door.Name : "(unnamed)",
+                door.Pos[0], door.Pos[1], door.Pos[2], door.Facing);
+
+            updateUI();
+        }
+
+        /// <summary>
+        /// Puts a door where the map is aimed.
+        ///
+        /// The name matters more than anything else about it, because everything that refers to a
+        /// door refers to it by name - the entry-door field and every teleport. So an unnamed
+        /// door is scenery, and the box is filled in with a sensible one rather than left empty:
+        /// the first door a mission gets should be the way in.
+        /// </summary>
+        private void addDoorButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null) { return; }
+
+            var name = doorNameBox.Text.Trim();
+            if (name.Length == 0) { name = MapSpawns.doorsOf(_map, _room).Count == 0 ? "enter" : "exit"; }
+
+            var made = MapSpawns.addDoor(_map, _room, name,
+                number(xBox, _room.Size[0] / 2),
+                number(yBox, _room.Size[1] / 2),
+                number(zBox, _room.Size[2] / 2));
+
+            _map.Changed.Add(_room.File);
+            _door = made.At;
+
+            //The first door in a mission is the way in unless somebody says otherwise. A mission
+            //whose only door is not named as the entry is the camp crash waiting to happen.
+            if (MapSpawns.entryDoorOf(_map, _room).Length == 0)
+            {
+                MapSpawns.setEntryDoor(_map, _room, name);
+                _map.Changed.Add("level.json");
+            }
+
+            //A door away from every edge is the mistake worth catching here: it looks placed,
+            //it lists, and it does nothing - there is no outside beside it to arrive from.
+            statusLabel.Text = string.Format(
+                made.OnWall ? R.SPAWNS_DOOR_ADDED : R.SPAWNS_DOOR_ADDED_INNER,
+                name, made.Pos[0], made.Pos[1], made.Pos[2], made.Facing);
+
+            fillDoors();
+            updateUI();
+        }
+
+        private void removeDoorButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null || _door < 0) { return; }
+
+            var doors = MapSpawns.doorsOf(_map, _room);
+            var going = doors.FirstOrDefault(one => one.At == _door);
+
+            if (going == null || !MapSpawns.removeDoorAt(_room, _door)) { return; }
+
+            _map.Changed.Add(_room.File);
+            _door = -1;
+
+            //Taking out the last door is how the camp was crashed, so it is said plainly rather
+            //than left to be found on a loading screen.
+            var left = doors.Count - 1;
+            statusLabel.Text = left == 0
+                ? R.SPAWNS_DOOR_LAST_GONE
+                : going.IsEntry
+                    ? string.Format(R.SPAWNS_DOOR_ENTRY_GONE, going.Name, left)
+                    : string.Format(R.SPAWNS_DOOR_REMOVED, left);
+
+            fillDoors();
+            updateUI();
+        }
+
+        private void entryDoorButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null || _door < 0) { return; }
+
+            var door = MapSpawns.doorsOf(_map, _room).FirstOrDefault(one => one.At == _door);
+            if (door == null) { return; }
+
+            if (door.Name.Length == 0)
+            {
+                statusLabel.Text = R.SPAWNS_DOOR_NEEDS_NAME;
+                return;
+            }
+
+            MapSpawns.setEntryDoor(_map, _room, door.Name);
+            _map.Changed.Add("level.json");
+
+            statusLabel.Text = string.Format(R.SPAWNS_DOOR_IS_ENTRY, door.Name);
+
+            fillDoors();
+            updateUI();
         }
 
         /// <summary>
@@ -677,6 +871,11 @@ namespace MCDSaveEdit.UI
 
             dynamic? picked = roomList.SelectedItem;
             _room = picked?.Room as MapSpawns.Room;
+
+            //Doors are held by their place in one room's door array, so an index kept across a
+            //room change points at a different door entirely.
+            _door = -1;
+            _selected = -1;
 
             if (_room != null)
             {
@@ -1113,6 +1312,12 @@ namespace MCDSaveEdit.UI
             placeButton.IsEnabled = has;
             clearButton.IsEnabled = has && _room!.Spawns > 0;
             saveButton.IsEnabled = _map.Changed.Count > 0;
+
+            //A door can be added wherever the map is aimed; the other two need one picked out of
+            //the list, because they act on that one rather than on wherever you are looking.
+            addDoorButton.IsEnabled = has;
+            removeDoorButton.IsEnabled = has && _door >= 0;
+            entryDoorButton.IsEnabled = has && _door >= 0;
 
             roomLabel.Text = _room == null
                 ? R.SPAWNS_NO_ROOM

@@ -4978,6 +4978,150 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Doors.
+        /// </summary>
+        public static string SPAWNS_DOORS {
+            get {
+                return ResourceManager.GetString("SPAWNS_DOORS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A door is where the game puts you, and what a teleport points at. It is four numbers in the tile rather than a block, so it is invisible in Minecraft - this is the only place it can be seen. Aim at the map, name it, and Add door. The one named as the way in is drawn brighter..
+        /// </summary>
+        public static string SPAWNS_DOORS_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_DOORS_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Add door.
+        /// </summary>
+        public static string SPAWNS_ADD_DOOR {
+            get {
+                return ResourceManager.GetString("SPAWNS_ADD_DOOR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove door.
+        /// </summary>
+        public static string SPAWNS_REMOVE_DOOR {
+            get {
+                return ResourceManager.GetString("SPAWNS_REMOVE_DOOR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Make the way in.
+        /// </summary>
+        public static string SPAWNS_ENTRY_DOOR {
+            get {
+                return ResourceManager.GetString("SPAWNS_ENTRY_DOOR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No doors. The game has nowhere to put you and will stop on the loading screen - add one..
+        /// </summary>
+        public static string SPAWNS_DOORS_NONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_DOORS_NONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} door(s). You come in at “{1}”..
+        /// </summary>
+        public static string SPAWNS_DOORS_ENTRY {
+            get {
+                return ResourceManager.GetString("SPAWNS_DOORS_ENTRY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} door(s), but none is named as the way in - the game will pick one. Choose one and press Make the way in..
+        /// </summary>
+        public static string SPAWNS_DOORS_NO_ENTRY {
+            get {
+                return ResourceManager.GetString("SPAWNS_DOORS_NO_ENTRY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Door “{0}” at {1}, {2}, {3}  ·  lies {4}..
+        /// </summary>
+        public static string SPAWNS_DOOR_AT {
+            get {
+                return ResourceManager.GetString("SPAWNS_DOOR_AT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Added door “{0}” at {1}, {2}, {3}, lying {4}..
+        /// </summary>
+        public static string SPAWNS_DOOR_ADDED {
+            get {
+                return ResourceManager.GetString("SPAWNS_DOOR_ADDED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Added door “{0}” at {1}, {2}, {3}, lying {4} - but it is NOT in an outer wall..
+        /// </summary>
+        public static string SPAWNS_DOOR_ADDED_INNER {
+            get {
+                return ResourceManager.GetString("SPAWNS_DOOR_ADDED_INNER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Door removed. {0} left..
+        /// </summary>
+        public static string SPAWNS_DOOR_REMOVED {
+            get {
+                return ResourceManager.GetString("SPAWNS_DOOR_REMOVED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Removed “{0}”, which was the way in. {1} door(s) left - name one as the way in..
+        /// </summary>
+        public static string SPAWNS_DOOR_ENTRY_GONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_DOOR_ENTRY_GONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to That was the last door. A tile with none crashes the game on the loading screen - add one before you install this..
+        /// </summary>
+        public static string SPAWNS_DOOR_LAST_GONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_DOOR_LAST_GONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to That door has no name, and the way in is named rather than pointed at. Type a name and add it again..
+        /// </summary>
+        public static string SPAWNS_DOOR_NEEDS_NAME {
+            get {
+                return ResourceManager.GetString("SPAWNS_DOOR_NEEDS_NAME", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to You now come into this mission at “{0}”..
+        /// </summary>
+        public static string SPAWNS_DOOR_IS_ENTRY {
+            get {
+                return ResourceManager.GetString("SPAWNS_DOOR_IS_ENTRY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Moving it to {0}, {1}, {2}  ·  let go to keep it there, Escape to put it back..
         /// </summary>
         public static string SPAWNS_MOVING {

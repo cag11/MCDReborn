@@ -111,6 +111,25 @@
 
                 <Separator Margin="0,0,0,10"/>
 
+                <Label x:Name="doorsLabel" Content="*Doors*"
+                       Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+                <TextBlock x:Name="doorsHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
+                           Foreground="{DynamicResource Brush.TextMuted}"/>
+                <ListBox x:Name="doorsList" MaxHeight="120" Margin="0,0,0,6"
+                         SelectionChanged="doorsList_SelectionChanged"/>
+                <TextBox x:Name="doorNameBox" Height="26" Margin="0,0,0,6"
+                         VerticalContentAlignment="Center"/>
+                <WrapPanel Margin="0,0,0,12">
+                    <Button x:Name="addDoorButton" Content="*Add door*" Padding="10,4"
+                            Margin="0,0,6,6" Click="addDoorButton_Click"/>
+                    <Button x:Name="removeDoorButton" Content="*Remove door*" Padding="10,4"
+                            Margin="0,0,6,6" Click="removeDoorButton_Click"/>
+                    <Button x:Name="entryDoorButton" Content="*Make the way in*" Padding="10,4"
+                            Margin="0,0,0,6" Click="entryDoorButton_Click"/>
+                </WrapPanel>
+
+                <Separator Margin="0,0,0,10"/>
+
                 <Label x:Name="waysLabel" Content="*Ways in and out*"
                        Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
                 <TextBlock x:Name="waysHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"

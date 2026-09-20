@@ -579,6 +579,229 @@ namespace MCDSaveEdit.Logic
             return true;
         }
 
+        //--- the doors themselves ----------------------------------------------------------------
+
+        /// <summary>
+        /// One door in a tile's wall.
+        ///
+        /// A door is the same four fields a region is - name, position, size and tags - just kept
+        /// in a different array. What makes it a door is what names it: the tile's entry-door
+        /// field, or a teleport, both of which refer to a door BY NAME rather than by position.
+        /// </summary>
+        public sealed class Door
+        {
+            public Door(int at, string name, int[] pos, int[] size, string tags, bool isEntry,
+                        bool onWall)
+            {
+                At = at;
+                Name = name;
+                Pos = pos;
+                Size = size;
+                Tags = tags;
+                IsEntry = isEntry;
+                OnWall = onWall;
+            }
+
+            /// <summary>Where it sits in the tile's door list, which is how it is removed.</summary>
+            public int At { get; }
+
+            public string Name { get; }
+            public int[] Pos { get; }
+            public int[] Size { get; }
+            public string Tags { get; }
+
+            /// <summary>Whether the level names this one as the way in.</summary>
+            public bool IsEntry { get; }
+
+            /// <summary>
+            /// Whether it sits in the tile's outer wall.
+            ///
+            /// The same test welding uses to decide which doors to carry across, so a door that
+            /// is not on a wall is one a later weld would throw away - and one nobody can walk in
+            /// through, because there is no outside next to it.
+            /// </summary>
+            public bool OnWall { get; }
+
+            /// <summary>Which way it faces, worked out from which axis it is wide along.</summary>
+            public string Facing => Size[0] >= Size[2] ? "along x" : "along z";
+
+            public override string ToString()
+            {
+                var called = Name.Length > 0 ? Name : "(unnamed)";
+                var where = $"{Pos[0]}, {Pos[1]}, {Pos[2]}";
+                var note = IsEntry ? "   \u2190  the way in"
+                    : Tags.Length > 0 ? $"   \u00b7  {Tags}" : string.Empty;
+
+                //The facing is on the row because it is the thing that is easy to get wrong and
+                //impossible to see otherwise: a door lying along the wrong axis is buried in the
+                //wall it was meant to be a hole in.
+                var wall = OnWall ? string.Empty : "   \u00b7  NOT in a wall";
+
+                return $"{called}   \u2014   {where}   \u00b7  {Facing}{wall}{note}";
+            }
+        }
+
+        /// <summary>The name of the door the level starts you at, if it names one.</summary>
+        public static string entryDoorOf(Map map, Room room)
+        {
+            foreach (var declared in map.Level["tiles"] as JsonArray ?? new JsonArray())
+            {
+                if (declared is not JsonObject tile) { continue; }
+                if (!string.Equals(tile["id"]?.GetValue<string>(), room.Id,
+                    StringComparison.OrdinalIgnoreCase)) { continue; }
+
+                return tile["entry-door"]?.GetValue<string>() ?? string.Empty;
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>Every door in a room's own wall.</summary>
+        public static List<Door> doorsOf(Map map, Room room)
+        {
+            var made = new List<Door>();
+            var entry = entryDoorOf(map, room);
+
+            var doors = room.Tile["doors"] as JsonArray ?? new JsonArray();
+
+            for (var at = 0; at < doors.Count; at++)
+            {
+                if (doors[at] is not JsonObject door) { continue; }
+
+                var name = door["name"]?.GetValue<string>() ?? string.Empty;
+
+                var pos = ints(door["pos"], 3);
+
+                made.Add(new Door(at, name, pos,
+                    ints(door["size"], 3),
+                    door["tags"]?.GetValue<string>() ?? string.Empty,
+                    name.Length > 0 && string.Equals(name, entry, StringComparison.OrdinalIgnoreCase),
+                    onWall(room, pos)));
+            }
+
+            return made;
+        }
+
+        /// <summary>
+        /// Whether a spot is in the tile's outer wall - the same test welding applies.
+        /// </summary>
+        private static bool onWall(Room room, int[] pos)
+            => pos[0] == 0 || pos[0] >= room.Size[0] - 1
+            || pos[2] == 0 || pos[2] >= room.Size[2] - 1;
+
+        /// <summary>
+        /// Puts a door in the wall.
+        ///
+        /// The size is not asked for. Every door in the game is three cells wide along one axis
+        /// and one along the other, and which axis is decided by the wall it is in - so it is
+        /// taken from whichever edge of the tile the spot is nearest rather than left to somebody
+        /// to get right. A door lying along the wrong axis is a door buried in a wall.
+        /// </summary>
+        public static Door addDoor(Map map, Room room, string name, int x, int y, int z)
+        {
+            if (room.Tile["doors"] is not JsonArray doors)
+            {
+                doors = new JsonArray();
+                room.Tile["doors"] = doors;
+            }
+
+            //Which wall this is nearest, measured to all four.
+            var toXLow = x;
+            var toXHigh = Math.Max(0, room.Size[0] - 1 - x);
+            var toZLow = z;
+            var toZHigh = Math.Max(0, room.Size[2] - 1 - z);
+
+            var nearestX = Math.Min(toXLow, toXHigh);
+            var nearestZ = Math.Min(toZLow, toZHigh);
+
+            //In an x wall it spans z, and the other way about.
+            var size = nearestX <= nearestZ
+                ? new JsonArray(1, 1, 3)
+                : new JsonArray(3, 1, 1);
+
+            var made = new JsonObject
+            {
+                ["name"] = name,
+                ["pos"] = new JsonArray(x, y, z),
+                ["size"] = size,
+                ["tags"] = string.Empty,
+            };
+
+            doors.Add(made);
+
+            return doorsOf(map, room)[doors.Count - 1];
+        }
+
+        /// <summary>Takes a door out, by where it sits in the tile's door list.</summary>
+        public static bool removeDoorAt(Room room, int at)
+        {
+            if (room.Tile["doors"] is not JsonArray doors) { return false; }
+            if (at < 0 || at >= doors.Count) { return false; }
+
+            doors.RemoveAt(at);
+            return true;
+        }
+
+        /// <summary>The door nearest a spot, if one is close enough to have been meant.</summary>
+        public static Door? nearestDoor(Map map, Room room, int x, int y, int z, double within)
+        {
+            Door? best = null;
+            var bestGap = within * within;
+
+            foreach (var door in doorsOf(map, room))
+            {
+                var dx = (double)(door.Pos[0] - x);
+                var dy = (double)(door.Pos[1] - y);
+                var dz = (double)(door.Pos[2] - z);
+
+                var gap = dx * dx + dz * dz + dy * dy * 0.25;
+                if (gap > bestGap) { continue; }
+
+                bestGap = gap;
+                best = door;
+            }
+
+            return best;
+        }
+
+        /// <summary>
+        /// Says which door the level starts you at.
+        ///
+        /// Written onto the level's own tile table rather than onto the door, because that is
+        /// where the game looks - a door called "enter" is a convention, and a convention is not
+        /// something to rely on for a tile nobody at Mojang ever saw. Welding drops the field, so
+        /// a welded mission has nothing saying where to come in until this puts it back.
+        /// </summary>
+        public static bool setEntryDoor(Map map, Room room, string name)
+        {
+            if (map.Level["tiles"] is not JsonArray tiles)
+            {
+                tiles = new JsonArray();
+                map.Level["tiles"] = tiles;
+            }
+
+            foreach (var declared in tiles)
+            {
+                if (declared is not JsonObject tile) { continue; }
+                if (!string.Equals(tile["id"]?.GetValue<string>(), room.Id,
+                    StringComparison.OrdinalIgnoreCase)) { continue; }
+
+                tile["entry-door"] = name;
+                return true;
+            }
+
+            //A tile named by a stretch but missing from the table is a tile the game looks up and
+            //does not find, so the row is made rather than the setting being dropped.
+            tiles.Add(new JsonObject
+            {
+                ["id"] = room.Id,
+                ["rotations"] = 0,
+                ["entry-door"] = name,
+            });
+
+            return true;
+        }
+
         /// <summary>One way in or out of a room, and where it goes.</summary>
         public sealed class Teleport
         {

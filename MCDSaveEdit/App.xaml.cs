@@ -1565,6 +1565,112 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_DOORS=<mission> - the whole door workflow: what a mission already has, adding
+            //one, naming it as the way in, and taking it away again.
+            //
+            //Doors are the part of a custom mission that cannot be seen in Minecraft and cannot
+            //be seen in the game either - until the game refuses to load. A tile with no doors
+            //crashed the camp, and the only reason that was ever understood is that somebody ran
+            //the level twice. This checks the editor says so instead.
+            var probeDoors = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_DOORS="));
+            if (probeDoors != null)
+            {
+                var wanted = probeDoors.Substring("PROBE_DOORS=".Length).Trim('"');
+                var folder = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MCDReborn", "maps", wanted);
+
+                try
+                {
+                    var map = Logic.MapSpawns.load(folder);
+                    var window = new UI.SpawnsWindow(map);
+
+                    window.WindowState = WindowState.Normal;
+                    window.Width = 1280;
+                    window.Height = 800;
+                    window.Left = -20000;
+                    window.Show();
+
+                    var waited = 0;
+                    var timer = new System.Windows.Threading.DispatcherTimer
+                    {
+                        Interval = TimeSpan.FromMilliseconds(250),
+                    };
+
+                    timer.Tick += (_, _) =>
+                    {
+                        waited += 250;
+                        if (!window.mapReady && waited < 15000) { return; }
+                        timer.Stop();
+
+                        var had = window.doorRows;
+                        Console.WriteLine($"[doors] {had.Length} to start with, "
+                            + $"entry = \"{window.entryDoorNow}\"");
+                        foreach (var one in had.Take(6)) { Console.WriteLine($"[doors]   {one}"); }
+                        Console.WriteLine($"[doors] hint: {window.doorHint}");
+
+                        //1. Add one, at a spot picked to be near an x wall so the size should come
+                        //   out spanning z.
+                        window.probeAddDoor("probe_way_in", 1, 40, 30);
+
+                        var now = window.doorRows;
+                        Console.WriteLine($"[doors] after adding: {now.Length}");
+                        Console.WriteLine(now.Length == had.Length + 1
+                            ? "[doors] one door added"
+                            : "[doors] WRONG - the door was not added");
+
+                        var added = now.FirstOrDefault(one => one.StartsWith("probe_way_in"));
+                        Console.WriteLine(added != null
+                            ? $"[doors]   {added}"
+                            : "[doors] WRONG - the added door is not in the list");
+
+                        //2. It has to lie ALONG Z next to an x wall, or it is buried in the wall.
+                        Console.WriteLine(added != null && added.Contains("along z")
+                            ? "[doors] and it lies along z, which is right for an x wall"
+                            : "[doors] WRONG - the door lies the wrong way for the wall it is in");
+
+                        //3. Name it as the way in and check the LEVEL, not the panel.
+                        var at = Array.FindIndex(now, one => one.StartsWith("probe_way_in"));
+                        window.probePickDoor(at);
+                        window.probeMakeEntry();
+
+                        Console.WriteLine(window.entryDoorNow == "probe_way_in"
+                            ? "[doors] the level now names it as the way in"
+                            : $"[doors] WRONG - the level says \"{window.entryDoorNow}\"");
+
+                        Console.WriteLine(window.doorRows.Any(one => one.Contains("the way in"))
+                            ? "[doors] and the list marks it"
+                            : "[doors] WRONG - the list does not mark the entry door");
+
+                        Console.WriteLine($"[doors] hint: {window.doorHint}");
+
+                        //4. Take it away again, leaving the mission as it was found.
+                        var back = Array.FindIndex(window.doorRows,
+                            one => one.StartsWith("probe_way_in"));
+                        window.probePickDoor(back);
+                        window.probeRemoveDoor();
+
+                        Console.WriteLine(window.doorRows.Length == had.Length
+                            ? "[doors] removed again, back to where it started"
+                            : "[doors] WRONG - the door did not come out");
+                        Console.WriteLine($"[doors] status: {window.probeStatus}");
+
+                        //Nothing is saved: the probe never presses Save, so the mission on disk
+                        //is untouched whatever happened above.
+                        this.Shutdown();
+                    };
+
+                    timer.Start();
+                    return;
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[doors] refused: {problem.Message}");
+                    this.Shutdown();
+                    return;
+                }
+            }
+
             //PROBE_DRAG=<mission> - takes hold of a spawn point in the 3D view and drags it,
             //through the same press, move and release the mouse goes through.
             //
@@ -2090,6 +2196,62 @@ namespace MCDSaveEdit
                     }
                 }
 
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_UIFORMS[=<substring>] - every interface texture the Gear list offers, with
+            //the size and pixel format each is stored in.
+            //
+            //The list on its own says what CAN be picked. Whether any of it can be REPAINTED is a
+            //different question that only the stored format answers: B8G8R8A8 is written back byte
+            //for byte, DXT1 goes through the block encoder, and anything else is refused. Bulk
+            //work needs to know which bucket each one is in before it starts, not after.
+            var probeForms = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_UIFORMS"));
+            if (probeForms != null)
+            {
+                var wanted = probeForms.StartsWith("PROBE_UIFORMS=")
+                    ? probeForms.Substring("PROBE_UIFORMS=".Length).Trim('"')
+                    : string.Empty;
+
+                var all = Logic.CosmeticSkins.userInterface();
+                var pak = Logic.CustomSkins.index;
+                var shown = 0;
+
+                foreach (var entry in all)
+                {
+                    if (wanted.Length > 0
+                        && entry.Id.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) < 0)
+                    {
+                        continue;
+                    }
+
+                    var size = "?";
+                    var form = "unreadable";
+
+                    try
+                    {
+                        var pkg = pak?.extractPackage(entry.Id);
+                        var tex = pkg?.GetExport<PakReader.Parsers.Class.UTexture2D>();
+                        //A struct, so it cannot be compared to null - the length of the array
+                        //is what says whether there is one.
+                        if (tex?.PlatformDatas is { Length: > 0 } datas)
+                        {
+                            var platform = datas[0];
+                            size = $"{platform.SizeX}x{platform.SizeY}";
+                            form = platform.PixelFormat.ToString();
+                        }
+                    }
+                    catch (Exception problem)
+                    {
+                        form = "threw: " + problem.GetType().Name;
+                    }
+
+                    Console.WriteLine($"[ui] {form}\t{size}\t{entry.Id}");
+                    shown++;
+                }
+
+                Console.WriteLine($"[ui] {shown:N0} of {all.Count:N0} interface textures");
                 this.Shutdown();
                 return;
             }
