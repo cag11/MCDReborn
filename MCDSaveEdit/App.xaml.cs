@@ -950,6 +950,1075 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_COLD=<mission> - whether Edit spawns works from nothing at all.
+            //
+            //The documented first step used to be "press Export map", which existed only because
+            //the app would not take it. Deleting the folder and pressing the button is the only
+            //honest test of that.
+            var probeCold = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_COLD="));
+            if (probeCold != null)
+            {
+                var wanted = probeCold.Substring("PROBE_COLD=".Length).Trim('"');
+                var folder = Logic.MapWorkshop.folderFor(wanted);
+
+                if (System.IO.Directory.Exists(folder))
+                {
+                    System.IO.Directory.Delete(folder, true);
+                }
+
+                Console.WriteLine($"[cold] deleted the folder - exists? {System.IO.Directory.Exists(folder)}");
+
+                //The real tab, the real button. Hosted off-screen because a UserControl that is
+                //never shown never loads its mission list.
+                var tab = new UI.MapsTab();
+                var host = new Window
+                {
+                    Content = tab, Width = 900, Height = 600,
+                    Left = -20000, WindowStartupLocation = WindowStartupLocation.Manual,
+                };
+                host.Show();
+
+                if (!tab.probePick(wanted))
+                {
+                    Console.WriteLine($"[cold] no mission called {wanted}");
+                    host.Close();
+                    this.Shutdown();
+                    return;
+                }
+
+                _ = tab.openSpawns().ContinueWith(_ =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        var made = Logic.MapWorkshop.exported(wanted);
+                        var welded = System.IO.File.Exists(
+                            System.IO.Path.Combine(Logic.MapWorkshop.folderFor(wanted),
+                                "level.json.multitile"));
+
+                        Console.WriteLine($"[cold] tab says: {tab.probeStatus}");
+                        Console.WriteLine(made
+                            ? "[cold] it exported on its own"
+                            : "[cold] WRONG - nothing was exported");
+                        Console.WriteLine(welded
+                            ? "[cold] and welded it into one mission"
+                            : "[cold] WRONG - it was not welded");
+
+                        foreach (var open in Windows.OfType<UI.SpawnsWindow>())
+                        {
+                            Console.WriteLine($"[cold] the editor opened on: {open.roomChosen}");
+                            open.Close();
+                        }
+
+                        host.Close();
+                        this.Shutdown();
+                    });
+                });
+
+                return;
+            }
+
+            //PROBE_CLEAR - whether Clear actually clears.
+            //
+            //Deleting a tree on Windows is not one call: the contents go and the directory can
+            //linger, which by hand looked exactly like the delete had failed. Worth a probe
+            //because the button is destructive and a half-delete is worse than none.
+            if (_startupArguments.Any(a => a == "PROBE_CLEAR"))
+            {
+                var scratch = System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+                    "mcd-clear-probe", "objectgroups", "deep");
+                System.IO.Directory.CreateDirectory(scratch);
+                System.IO.File.WriteAllText(System.IO.Path.Combine(scratch, "objectgroup.json"), "{}");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(scratch, "objectgroup.json.before"), "{}");
+
+                var top = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "mcd-clear-probe");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(top, "level.json"), "{}");
+
+                Console.WriteLine($"[clear] built {System.IO.Directory.GetFiles(top, "*", System.IO.SearchOption.AllDirectories).Length} files under {top}");
+
+                try
+                {
+                    UI.MapsTab.erase(top);
+                    Console.WriteLine(System.IO.Directory.Exists(top)
+                        ? "[clear] WRONG - the folder is still there"
+                        : "[clear] gone, folder and all");
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[clear] refused: {problem.Message}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_WORKSHOP[=<mission>] - where the app thinks a mission's files are.
+            //
+            //Export asks for a folder and everything else used to assume one, so a mission
+            //exported to the Desktop was edited in AppData without a word. This is the answer
+            //every button now shares.
+            var probeShop = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_WORKSHOP"));
+            if (probeShop != null)
+            {
+                var wanted = probeShop.Contains('=')
+                    ? probeShop.Substring(probeShop.IndexOf('=') + 1).Trim('"')
+                    : "creeperwoods";
+
+                Console.WriteLine($"[shop] default root: {Logic.MapWorkshop.root}");
+                Console.WriteLine($"[shop] {wanted} -> {Logic.MapWorkshop.folderFor(wanted)}");
+                Console.WriteLine($"[shop] exported? {Logic.MapWorkshop.exported(wanted)}");
+
+                //Prove it survives being written and read back, without disturbing a real record.
+                var scratch = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "mcd-shop-probe");
+                System.IO.Directory.CreateDirectory(scratch);
+                Logic.MapWorkshop.remember("probe_mission", scratch);
+                Console.WriteLine(Logic.MapWorkshop.folderFor("probe_mission") == scratch
+                    ? "[shop] a remembered folder comes back"
+                    : "[shop] WRONG - the record did not stick");
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_SPAWNWINDOW=<mission> - opens the spawns window for real and says whether a map
+            //appeared in it.
+            //
+            //Everything under the window can be right while the window shows nothing, which is
+            //exactly what happened: the room list was the only thing that ever chose a room, and
+            //hiding it left nothing selected and a black rectangle. A probe that only tested the
+            //layer below would have passed.
+            var probeWindow = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_SPAWNWINDOW="));
+            if (probeWindow != null)
+            {
+                var wanted = probeWindow.Substring("PROBE_SPAWNWINDOW=".Length).Trim('"');
+                var folder = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MCDReborn", "maps", wanted);
+
+                try
+                {
+                    var map = Logic.MapSpawns.load(folder);
+                    var window = new UI.SpawnsWindow(map);
+
+                    //Off the screen rather than minimised: a minimised window may never lay out,
+                    //and layout is half of what is being tested.
+                    window.WindowState = WindowState.Normal;
+                    window.Left = -20000;
+                    window.Show();
+
+                    var waited = 0;
+                    var timer = new System.Windows.Threading.DispatcherTimer
+                    {
+                        Interval = TimeSpan.FromMilliseconds(250),
+                    };
+
+                    timer.Tick += (_, _) =>
+                    {
+                        waited += 250;
+
+                        if (!window.mapReady && waited < 15000) { return; }
+
+                        timer.Stop();
+                        Console.WriteLine($"[window] room: {window.roomChosen}");
+                        Console.WriteLine($"[window] spawn points: {window.spawnsShown}");
+                        Console.WriteLine(window.mapReady
+                            ? $"[window] map built after {waited:N0} ms"
+                            : "[window] NOTHING BUILT - the view is empty");
+
+                        //Every mob row has to be showing a mob. They were all blank, because an
+                        //editable ComboBox given its text before it reaches the tree keeps none
+                        //of it, and a blank row looks like a second empty dropdown.
+                        var rows = window.mobRows;
+                        var blank = rows.Count(one => one.Trim().Length == 0);
+                        Console.WriteLine($"[window] mob rows: {rows.Length} "
+                            + $"({string.Join(", ", rows.Take(6))})");
+                        Console.WriteLine(blank == 0
+                            ? "[window] every mob row shows a mob"
+                            : $"[window] WRONG - {blank} of {rows.Length} mob rows are blank");
+
+                        Console.WriteLine(window.editableMobRows == 0
+                            ? "[window] no mob row is editable, so all of them can draw"
+                            : $"[window] WRONG - {window.editableMobRows} editable rows will show blank");
+
+                        //The group list has to say where each group is used, or editing the wrong
+                        //one looks like the editor ignoring you.
+                        var shown = window.groupRows;
+                        Console.WriteLine($"[window] {shown.Length} mob groups, first four:");
+                        foreach (var one in shown.Take(4)) { Console.WriteLine($"[window]   {one}"); }
+                        var ender = shown.FirstOrDefault(one => one.StartsWith("enderboss"));
+                        Console.WriteLine(ender == null ? "[window]   (no enderboss)" : $"[window]   {ender}");
+
+                        //Choosing a group other than the first and adding a mob has to leave you
+                        //in that group, or the mob looks as though it went somewhere else.
+                        var (chose, ended, mobs) = window.probeAddMob();
+                        Console.WriteLine(chose == ended
+                            ? $"[window] added a mob to \"{chose}\" and stayed there ({mobs} mobs)"
+                            : $"[window] WRONG - chose \"{chose}\" but ended on \"{ended}\"");
+
+                        var (buttonRows, over) = window.buttonLayout;
+                        Console.WriteLine($"[window] action buttons sit on {buttonRows} row(s)");
+                        Console.WriteLine(over.Length == 0
+                            ? "[window] none of them runs off the edge"
+                            : $"[window] WRONG - off the edge: {string.Join(", ", over)}");
+
+                        Console.WriteLine(window.probePlaceKeepsCamera()
+                            ? "[window] placing points left the camera alone"
+                            : "[window] WRONG - placing points moved the camera");
+
+                        Console.WriteLine(window.probeWalks()
+                            ? "[window] W moves the view"
+                            : "[window] WRONG - W does nothing");
+
+                        //Removing a point must not throw the camera back to the start.
+                        Console.WriteLine(window.probeRemoveKeepsCamera()
+                            ? "[window] removing a point left the camera alone"
+                            : "[window] WRONG - removing a point moved the camera");
+
+                        //Clicking a spawn point has to select THAT point, not aim beside it.
+                        var (gotIt, before, after) = window.probeRemoveFirst();
+                        Console.WriteLine(gotIt && after == before - 1
+                            ? $"[window] clicked a spawn point and removed it ({before} -> {after})"
+                            : $"[window] WRONG - clicking a spawn point did not select it ({before} -> {after})");
+
+                        //Back to the whole mission first. The walk test above moved the camera on
+                        //purpose, and a ray cast from wherever it drifted to says nothing about
+                        //whether picking works.
+                        window.probeFrame();
+
+                        //A click down the middle, through the real ray. The coordinates have to
+                        //come back in the order the boxes expect and the height has to be a
+                        //height - inside the room, and the ground the view itself believes in.
+                        var hit = window.mapReady ? window.probeClick() : null;
+                        if (hit == null)
+                        {
+                            Console.WriteLine("[window] a click in the middle hits nothing");
+                        }
+                        else
+                        {
+                            var (hx, hy, hz) = hit.Value;
+                            var ground = window.groundAt(hx, hz);
+                            var sane = hy > 0 && hy <= window.roomHeight && hy == ground;
+
+                            Console.WriteLine($"[window] a click in the middle lands on "
+                                + $"x {hx}, y {hy}, z {hz} (room is {window.roomHeight} tall, "
+                                + $"ground there is {ground})");
+                            Console.WriteLine(sane
+                                ? "[window] the coordinates are in the right order"
+                                : "[window] WRONG - that is not the ground under that column");
+                        }
+
+                        window.Close();
+                        this.Shutdown();
+                    };
+
+                    timer.Start();
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[window] refused: {problem}");
+                    this.Shutdown();
+                }
+
+                return;
+            }
+
+            //PROBE_RELIEF=<mission>[;<png to write>[;<ceiling>]] - the mission as ground: how many
+            //quads it takes to say it, what it costs, and what it looks like from above.
+            //
+            //The picture is the point. A quad count can be right while the map is painted in
+            //noise, and the only way to know which is to look at it.
+            var probeRelief = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_RELIEF="));
+            if (probeRelief != null)
+            {
+                var bits = probeRelief.Substring("PROBE_RELIEF=".Length).Trim('"').Split(';');
+                var folder = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MCDReborn", "maps", bits[0]);
+                var into = bits.Length > 1 && bits[1].Length > 0 ? bits[1] : null;
+                var ceiling = bits.Length > 2 && int.TryParse(bits[2], out var asked) ? asked : 0;
+
+                try
+                {
+                    var clock = System.Diagnostics.Stopwatch.StartNew();
+                    var map = Logic.MapSpawns.load(folder);
+                    Console.WriteLine($"[relief] loaded {map.Rooms.Count} rooms in {clock.ElapsedMilliseconds:N0} ms");
+
+                    var palette = Logic.BlockPalette.forMission(map.Level);
+                    foreach (var note in Logic.BlockPalette.Notes) { Console.WriteLine($"[relief] {note}"); }
+                    Console.WriteLine($"[relief] palette: {palette.Length} ids, "
+                        + $"{palette.Count(one => one != null && one.topOf(0) != 0)} with a colour");
+
+                    for (var id = 0; id < Math.Min(palette.Length, 6); id++)
+                    {
+                        var look = palette[id];
+                        if (look == null) { continue; }
+                        Console.WriteLine($"[relief]   {id,3} {look.Name,-18} top #{look.topOf(0) & 0xFFFFFF:x6} side #{look.sideOf(0) & 0xFFFFFF:x6} {look.Variants} var {look.Shape}");
+                    }
+
+                    var room = map.Rooms.FirstOrDefault();
+                    if (room == null) { Console.WriteLine("[relief] no rooms"); this.Shutdown(); return; }
+
+                    clock.Restart();
+                    var relief = Logic.MapRelief.build(room, palette, ceiling);
+                    foreach (var note in Logic.MapRelief.Notes) { Console.WriteLine($"[relief] {note}"); }
+
+                    if (relief == null) { Console.WriteLine("[relief] nothing built"); this.Shutdown(); return; }
+
+                    Console.WriteLine($"[relief] built in {clock.ElapsedMilliseconds:N0} ms");
+                    Console.WriteLine($"[relief] {relief.Points.Count / 3:N0} vertices, "
+                        + $"{relief.Indices.Count / 3:N0} triangles, {relief.Quads:N0} quads");
+                    Console.WriteLine($"[relief] against one quad per column that is "
+                        + $"{relief.Sx * relief.Sz / (double)Math.Max(1, relief.Quads):F1}x fewer");
+
+                    Console.WriteLine("[relief] what the roof is made of:");
+                    foreach (var one in relief.Census)
+                    {
+                        var look = one.id < palette.Length ? palette[one.id] : null;
+                        var colour = look?.topOf(one.meta) ?? 0u;
+                        Console.WriteLine($"[relief]   {one.count,7:N0} ({one.count * 100.0 / (relief.Sx * relief.Sz),4:F1}%) "
+                            + $"id {one.id,3}:{one.meta,-2} {look?.Name ?? "?",-22} "
+                            + (colour == 0 ? "NO COLOUR" : $"#{colour & 0xFFFFFF:x6}"));
+                    }
+
+                    //What the window actually pays for: turning the mesh into WPF's own
+                    //collections. Freezable collections are famously slower to fill than a plain
+                    //list, and half a million points is where that stops being a footnote.
+                    var shaping = System.Diagnostics.Stopwatch.StartNew();
+                    var positions = new System.Windows.Media.Media3D.Point3DCollection(relief.Points.Count / 3);
+                    for (var i = 0; i < relief.Points.Count; i += 3)
+                    {
+                        positions.Add(new System.Windows.Media.Media3D.Point3D(
+                            relief.Points[i], relief.Points[i + 1], relief.Points[i + 2]));
+                    }
+                    var uv = new System.Windows.Media.PointCollection(relief.Uvs.Count / 2);
+                    for (var i = 0; i < relief.Uvs.Count; i += 2)
+                    {
+                        uv.Add(new System.Windows.Point(relief.Uvs[i], relief.Uvs[i + 1]));
+                    }
+                    var tris = new System.Windows.Media.Int32Collection(relief.Indices);
+                    var geometry = new System.Windows.Media.Media3D.MeshGeometry3D
+                    {
+                        Positions = positions, TextureCoordinates = uv, TriangleIndices = tris,
+                    };
+                    geometry.Freeze();
+                    Console.WriteLine($"[relief] into WPF geometry in {shaping.ElapsedMilliseconds:N0} ms");
+
+                    //Straight down the middle, looking down: the click the window will send.
+                    var hit = Logic.MapRelief.pick(relief,
+                        relief.Sx / 2.0, relief.Highest + 64.0, relief.Sz / 2.0, 0, -1, 0);
+                    Console.WriteLine($"[relief] a look straight down the middle lands on "
+                        + (hit == null ? "nothing" : $"{hit.Value.x},{hit.Value.z} at height {hit.Value.y}"));
+
+                    if (into != null)
+                    {
+                        var stride = relief.Sx * 4;
+                        var pixels = new byte[stride * relief.TextureHeight];
+                        for (var i = 0; i < relief.Texture.Length; i++)
+                        {
+                            var colour = relief.Texture[i];
+                            pixels[i * 4 + 0] = (byte)(colour & 0xFF);
+                            pixels[i * 4 + 1] = (byte)((colour >> 8) & 0xFF);
+                            pixels[i * 4 + 2] = (byte)((colour >> 16) & 0xFF);
+                            pixels[i * 4 + 3] = (byte)((colour >> 24) & 0xFF);
+                        }
+
+                        var bitmap = System.Windows.Media.Imaging.BitmapSource.Create(
+                            relief.Sx, relief.TextureHeight, 96, 96,
+                            System.Windows.Media.PixelFormats.Bgra32, null, pixels, stride);
+
+                        var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                        encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+                        using var file = System.IO.File.Create(into);
+                        encoder.Save(file);
+                        Console.WriteLine($"[relief] picture written to {into}");
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[relief] refused: {problem}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_SPAWNS=<mission> - loads a mission's spawn data the way the editor window
+            //does, and reports what it found. The window itself cannot be checked from here, but
+            //everything behind it can.
+            var probeSpawns = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_SPAWNS="));
+            if (probeSpawns != null)
+            {
+                var wanted = probeSpawns.Substring("PROBE_SPAWNS=".Length).Trim('"');
+                var folder = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MCDReborn", "maps", wanted);
+
+                try
+                {
+                    var map = Logic.MapSpawns.load(folder);
+                    foreach (var note in map.Notes) { Console.WriteLine($"[spawn] {note}"); }
+
+                    Console.WriteLine($"[spawn] mob vocabulary: {Logic.GameMobs.ALL.Count} mobs, "
+                        + $"{Logic.GameMobs.ALL.Count(one => one.Boss)} bosses");
+
+                    foreach (var room in map.Rooms.Take(8))
+                    {
+                        Console.WriteLine($"[spawn]   {room.Pos[0],5},{room.Pos[1],4},{room.Pos[2],5}"
+                            + $"  {room.Size[0],3}x{room.Size[1],3}x{room.Size[2],3}  {room}");
+                    }
+
+                    var first = map.Rooms.FirstOrDefault();
+                    if (first != null)
+                    {
+                        var blocks = Logic.MapSpawns.blocksOf(first);
+                        Console.WriteLine($"[spawn] blocks of {first.Id}: "
+                            + (blocks == null ? "unreadable" : $"{blocks.Length:N0} cells"));
+
+                        //The floor plan is what the window draws. Without it the map is an empty
+                        //box, which is the difference between useful and not.
+                        var heights = Logic.MapSpawns.heightsOf(first);
+                        if (heights == null)
+                        {
+                            Console.WriteLine("[spawn] floor plan: UNREADABLE - the map would be blank");
+                        }
+                        else
+                        {
+                            var ground = heights.Count(one => one != 0);
+                            Console.WriteLine($"[spawn] floor plan: {heights.Length:N0} columns, "
+                                + $"{ground:N0} with ground ({ground * 100.0 / heights.Length:F0}%), "
+                                + $"heights {heights.Where(one => one != 0).DefaultIfEmpty().Min()}"
+                                + $"-{heights.Max()}");
+                        }
+
+                        var was = first.Spawns;
+                        var made = Logic.MapSpawns.place(first,
+                            first.Size[0] / 2, first.Size[1] / 2, first.Size[2] / 2, 8, 5, "", 7);
+                        Console.WriteLine($"[spawn] placed {made} of 5 in {first.Id} "
+                            + $"({was} -> {first.Spawns})");
+                        Console.WriteLine($"[spawn] cleared {Logic.MapSpawns.clear(first)}");
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[spawn] refused: {problem.Message}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_MAPS_LEVEL=<mission>[;keep] - the whole-level path: export, pin, lay the rooms
+            //out against each other, convert, read back, install.
+            var probeLevel = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_MAPS_LEVEL="));
+            if (probeLevel != null)
+            {
+                var bits = probeLevel.Substring("PROBE_MAPS_LEVEL=".Length).Trim('"').Split(';');
+                var mission = Logic.GameMaps.all()
+                    .FirstOrDefault(one => one.Name.Equals(bits[0], StringComparison.OrdinalIgnoreCase));
+
+                if (mission == null || !Logic.MapTools.available)
+                {
+                    Console.WriteLine("[lvl] nothing to do");
+                    this.Shutdown();
+                    return;
+                }
+
+                try
+                {
+                    var folder = System.IO.Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "MCDReborn", "maps", mission.Name);
+
+                    Console.WriteLine($"[lvl] exported {Logic.MapMod.export(mission, folder).Files} files");
+                    Console.WriteLine($"[lvl] pinned: {Logic.MapTools.makeFixed(folder).GetAwaiter().GetResult().Ok}");
+
+                    var out1 = Logic.MapTools.toMinecraftLevel(folder, mission).GetAwaiter().GetResult();
+                    Console.WriteLine($"[lvl] laid out: ok={out1.Ok} world={out1.World ?? "none"}");
+                    foreach (var line in out1.Output.Split((char)10)
+                        .Where(one => one.Trim().StartsWith("[") || one.Contains("lifted")))
+                    {
+                        Console.WriteLine($"[lvl]   {line.Trim()}");
+                    }
+
+                    if (out1.World == null) { this.Shutdown(); return; }
+
+                    Console.WriteLine($"[lvl] whole level? {Logic.MapTools.isWholeLevel(out1.World)}");
+
+                    var out2 = Logic.MapTools.fromMinecraftLevel(out1.World).GetAwaiter().GetResult();
+                    Console.WriteLine($"[lvl] back again: ok={out2.Ok}");
+                    foreach (var line in out2.Output.Split((char)10)
+                        .Where(one => one.Contains("updated") || one.Contains("read back")))
+                    {
+                        Console.WriteLine($"[lvl]   {line.Trim()}");
+                    }
+
+                    var mod = Logic.MapMod.install(folder, mission);
+                    Console.WriteLine($"[lvl] installed {System.IO.Path.GetFileName(mod.Path)}, "
+                        + $"{mod.Size / 1024:N0} KB");
+
+                    if (!bits.Contains("keep", StringComparer.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine($"[lvl] removed: {Logic.MapMod.remove(mission)}");
+                        System.IO.Directory.Delete(out1.World, true);
+                    }
+                    else
+                    {
+                        Console.WriteLine("[lvl] left installed, world kept");
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[lvl] refused: {problem.Message}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_MAPS_MC=<mission>;<group> - the whole one-click path: export, convert to a
+            //Minecraft world, convert it straight back, install the pak, read it, remove it.
+            var probeMapsMc = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_MAPS_MC="));
+            if (probeMapsMc != null)
+            {
+                var bits = probeMapsMc.Substring("PROBE_MAPS_MC=".Length).Trim('"').Split(';');
+
+                Console.WriteLine($"[mc] tools: {Logic.MapTools.folder ?? "NOT FOUND"}");
+                Console.WriteLine($"[mc] saves: {Logic.MapTools.saves ?? "no Minecraft"}");
+
+                var mission = Logic.GameMaps.all()
+                    .FirstOrDefault(one => one.Name.Equals(bits[0], StringComparison.OrdinalIgnoreCase));
+
+                if (mission == null || !Logic.MapTools.available)
+                {
+                    Console.WriteLine("[mc] nothing to do");
+                    this.Shutdown();
+                    return;
+                }
+
+                try
+                {
+                    var folder = System.IO.Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "MCDReborn", "maps", mission.Name);
+
+                    var made = Logic.MapMod.export(mission, folder);
+                    Console.WriteLine($"[mc] exported {made.Files} files to {made.Folder}");
+
+                    if (bits.Contains("fixed", StringComparer.OrdinalIgnoreCase))
+                    {
+                        var fix = Logic.MapTools.makeFixed(folder).GetAwaiter().GetResult();
+                        Console.WriteLine($"[mc] pinned: ok={fix.Ok}");
+                        foreach (var line in fix.Output.Split((char)10)
+                            .Where(one => one.Trim().StartsWith("[")))
+                        {
+                            Console.WriteLine($"[mc]   {line.Trim()}");
+                        }
+                    }
+
+                    var out1 = Logic.MapTools.toMinecraft(folder, bits[1], mission).GetAwaiter().GetResult();
+                    Console.WriteLine($"[mc] to Minecraft: ok={out1.Ok}  world={out1.World ?? "none"}");
+                    if (out1.World == null) { Console.WriteLine(out1.Output); this.Shutdown(); return; }
+
+                    var origin = Logic.MapTools.originOf(out1.World);
+                    Console.WriteLine($"[mc] world remembers: mission={origin?.Mission}, "
+                        + $"group={origin?.Group}");
+
+                    var out2 = Logic.MapTools.fromMinecraft(out1.World, origin!).GetAwaiter().GetResult();
+                    Console.WriteLine($"[mc] back again: ok={out2.Ok}  {out2.Last}");
+
+                    var mod = Logic.MapMod.install(origin!.Map, mission);
+                    Console.WriteLine($"[mc] installed {System.IO.Path.GetFileName(mod.Path)}, "
+                        + $"{mod.Size / 1024:N0} KB");
+
+                    var reader = new PakReader.Pak.PakFileReader(mod.Path);
+                    reader.ReadIndex(null);
+                    Console.WriteLine($"[mc] pak holds {reader.Count()} entries");
+                    reader.Stream?.Dispose();
+
+                    if (bits.Contains("keep", StringComparer.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine("[mc] left installed, world kept");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[mc] removed: {Logic.MapMod.remove(mission)}");
+                        System.IO.Directory.Delete(out1.World, true);
+                        Console.WriteLine("[mc] world deleted");
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[mc] refused: {problem.Message}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_MAPS_IN=<folder>;<mission> - installs a map folder over a mission, reads the
+            //pak back, and removes it again. It writes into the real Paks folder because that is
+            //the path being tested; it deletes what it wrote before returning.
+            var probeMapsIn = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_MAPS_IN="));
+            if (probeMapsIn != null)
+            {
+                var bits = probeMapsIn.Substring("PROBE_MAPS_IN=".Length).Trim('"').Split(';');
+                var mission = Logic.GameMaps.all()
+                    .FirstOrDefault(one => one.Name.Equals(bits[1], StringComparison.OrdinalIgnoreCase));
+
+                if (mission == null)
+                {
+                    Console.WriteLine($"[in] no mission called {bits[1]}");
+                    this.Shutdown();
+                    return;
+                }
+
+                try
+                {
+                    var mod = Logic.MapMod.install(bits[0], mission);
+                    Console.WriteLine($"[in] wrote {System.IO.Path.GetFileName(mod.Path)}, "
+                        + $"{mod.Size / 1024:N0} KB, over {mission.Label}");
+
+                    //Read back with the same reader the game's own paks go through, because a pak
+                    //that writes without complaint and cannot be opened looks identical from here.
+                    var reader = new PakReader.Pak.PakFileReader(mod.Path);
+                    reader.ReadIndex(null);
+                    Console.WriteLine($"[in] reads back: initialised {reader.Initialized}, "
+                        + $"{reader.Count()} entries");
+
+                    foreach (var entry in reader.Take(4))
+                    {
+                        Console.WriteLine($"[in]   {entry.Value.UncompressedSize,10:N0}  "
+                            + reader.MountPoint + entry.Key);
+                    }
+
+                    //Let go of the file before removing it. The tab never opens the pak it wrote,
+                    //so only this check needs to - and without closing it, remove() fails on a
+                    //lock this probe is holding itself.
+                    reader.Stream?.Dispose();
+
+                    Console.WriteLine($"[in] installedFor says: "
+                        + (Logic.MapMod.installedFor(mission) != null ? "found" : "NOT FOUND"));
+                    //"keep" leaves it installed, for when the point is to go and play it.
+                    if (bits.Length > 2 && bits[2].Equals("keep", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine("[in] left installed");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[in] removed: {Logic.MapMod.remove(mission)}");
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[in] refused: {problem.Message}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_MAPS[=<mission>;<folder>] - the mission catalogue, and optionally an export
+            //of one of them. The Maps tab is two file moves and a pak write, and each of those
+            //fails in a way that looks the same from the tab: nothing appears.
+            var probeMaps = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_MAPS"));
+            if (probeMaps != null)
+            {
+                var at = probeMaps.IndexOf('=');
+                var bits = at > 0 ? probeMaps.Substring(at + 1).Trim('"').Split(';') : Array.Empty<string>();
+
+                var missions = Logic.GameMaps.all();
+                Console.WriteLine($"[maps] {missions.Count} missions");
+                foreach (var note in Logic.GameMaps.Notes) { Console.WriteLine($"[maps]   {note}"); }
+
+                foreach (var one in missions.Take(bits.Length > 0 ? 6 : 80))
+                {
+                    Console.WriteLine($"[maps]   {one.Bytes / 1024,6:N0} KB  {one.Label}");
+                }
+
+                if (bits.Length >= 2)
+                {
+                    var wanted = missions.FirstOrDefault(one =>
+                        one.Name.Equals(bits[0], StringComparison.OrdinalIgnoreCase));
+
+                    if (wanted == null)
+                    {
+                        Console.WriteLine($"[maps] no mission called {bits[0]}");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    try
+                    {
+                        var made = Logic.MapMod.export(wanted, bits[1]);
+                        Console.WriteLine($"[maps] exported {made.Files} files, "
+                            + $"{made.Bytes / 1024:N0} KB, to {made.Folder}");
+                        foreach (var note in made.Notes) { Console.WriteLine($"[maps]   {note}"); }
+                    }
+                    catch (Exception problem)
+                    {
+                        Console.WriteLine($"[maps] export refused: {problem.Message}");
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_INDEX=<substring>[;<how many>] - which entries of the game's own paks match.
+            //
+            //PROBE_PAK reads a mod, which is unencrypted and answers for itself. The game's paks
+            //are not, and the index the app unlocked at startup is the only way to see inside
+            //them - so asking "does the game ship block textures" had no answer until now.
+            var probeIndex = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_INDEX="));
+            if (probeIndex != null)
+            {
+                var bits = probeIndex.Substring("PROBE_INDEX=".Length).Trim('"').Split(';');
+                var wanted = bits[0];
+                var many = bits.Length > 1 && int.TryParse(bits[1], out var asked) ? asked : 60;
+
+                var index = Logic.CustomSkins.index;
+                var seen = 0;
+                var shown = 0;
+
+                //The entry type is not public, so the loop has to be written where var can see it
+                //rather than handed an empty sequence of the same type.
+                foreach (var entry in index!.AllEntries())
+                {
+                    if (entry.Key.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) < 0) { continue; }
+                    seen++;
+                    if (shown++ < many) { Console.WriteLine($"[index] {entry.Key}"); }
+                }
+
+                Console.WriteLine($"[index] {seen:N0} match \"{wanted}\"");
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_RAW=<pak path>;<file to write> - the bytes of one entry in the game's own paks.
+            //
+            //extractPackage is for .uasset/.uexp pairs and returns nothing for anything else, which
+            //is most of data/ - the level JSON, the object groups, the resource packs. Those are
+            //plain files sitting in an encrypted pak, and the index the app already unlocked is the
+            //only thing that can reach them.
+            var probeRaw = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_RAW="));
+            if (probeRaw != null)
+            {
+                var bits = probeRaw.Substring("PROBE_RAW=".Length).Trim('"').Split(';');
+                var index = Logic.CustomSkins.index;
+
+                var got = index?.GetFile(bits[0]);
+                if (got == null)
+                {
+                    Console.WriteLine($"[raw] nothing at {bits[0]}");
+                    this.Shutdown();
+                    return;
+                }
+
+                var bytes = got.Value.ToArray();
+                Console.WriteLine($"[raw] {bits[0]}: {bytes.Length:N0} bytes");
+
+                if (bits.Length > 1 && bits[1].Length > 0)
+                {
+                    System.IO.File.WriteAllBytes(bits[1], bytes);
+                    Console.WriteLine($"[raw] written to {bits[1]}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_PAK=<pak file>[;<substring>[;<folder to write into>]] - what is inside somebody
+            //else's mod, and optionally the bytes of the entries that match.
+            //
+            //Reading a published mod is how nearly everything in this project was learned, and
+            //until now it meant unzipping by hand. The index is a separate ask after the
+            //constructor, which is the mistake that makes a pak look empty.
+            var probePak = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_PAK="));
+            if (probePak != null)
+            {
+                var bits = probePak.Substring("PROBE_PAK=".Length).Trim('"').Split(';');
+                var wanted = bits.Length > 1 && bits[1].Length > 0 ? bits[1] : null;
+                var into = bits.Length > 2 && bits[2].Length > 0 ? bits[2] : null;
+
+                try
+                {
+                    var reader = new PakReader.Pak.PakFileReader(bits[0]);
+                    reader.ReadIndex(null);
+
+                    Console.WriteLine($"[pak] {System.IO.Path.GetFileName(bits[0])}");
+                    Console.WriteLine($"[pak] initialised {reader.Initialized}, mount \"{reader.MountPoint}\"");
+
+                    var shown = 0;
+                    var total = 0;
+                    long bytes = 0;
+
+                    foreach (var entry in reader)
+                    {
+                        total++;
+                        bytes += entry.Value.UncompressedSize;
+
+                        var path = reader.MountPoint + entry.Key.Replace(System.IO.Path.DirectorySeparatorChar, '/');
+                        if (wanted != null
+                            && path.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) < 0)
+                        {
+                            continue;
+                        }
+
+                        if (shown < 400)
+                        {
+                            Console.WriteLine($"[pak] {entry.Value.UncompressedSize,10:N0}  {path}");
+                        }
+                        shown++;
+
+                        if (into != null)
+                        {
+                            //Flattened, because a mod's tree is deep and what is wanted here is
+                            //to look at the bytes rather than to rebuild the layout.
+                            var name = path.Replace('/', '_')
+                                .Replace(System.IO.Path.DirectorySeparatorChar, '_').Trim('_');
+                            System.IO.Directory.CreateDirectory(into);
+                            var got = (ReadOnlyMemory<byte>)entry.Value.GetData(
+                                reader.Stream, reader.AesKey, reader.Info.CompressionMethods);
+                            System.IO.File.WriteAllBytes(
+                                System.IO.Path.Combine(into, name), got.ToArray());
+                        }
+                    }
+
+                    Console.WriteLine($"[pak] {total:N0} entries, {bytes:N0} bytes uncompressed"
+                        + (wanted == null ? "" : $", {shown:N0} matched \"{wanted}\""));
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[pak] could not read it: {problem.Message}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_CALLSIG=<function name> - the pins of a native function, recovered from the
+            //blueprints that call it.
+            //
+            //A native signature is written down nowhere a mod can read: the import table gives the
+            //name alone, and the parameters live in Kismet bytecode. But the blueprint compiler
+            //leaves them behind by accident. Every call spills its pins into local variables named
+            //CallFunc_<Function>_<Pin>, and each local is an export with a type - so gathering
+            //those across every asset in the game reconstructs the pin list without decoding a
+            //single instruction.
+            //
+            //It recovers names and types, NOT the order or which way a pin faces. ReturnValue is
+            //the output; the rest have to be matched against a call seen in the editor.
+            var probeCallSig = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_CALLSIG="));
+            if (probeCallSig != null)
+            {
+                var wanted = probeCallSig.Substring("PROBE_CALLSIG=".Length).Trim('"');
+                var prefix = "CallFunc_" + wanted + "_";
+
+                var index = Logic.CustomSkins.index;
+                if (index == null)
+                {
+                    Console.WriteLine("[pins] the game's paks are not loaded");
+                    this.Shutdown();
+                    return;
+                }
+
+                //pin name -> type -> how many callers spelled it that way. More than one type for
+                //a pin means the name is used by two different functions, and the count says which
+                //reading to trust.
+                var pins = new Dictionary<string, Dictionary<string, int>>(StringComparer.Ordinal);
+                var callers = new List<string>();
+
+                foreach (var entry in index.AllEntries())
+                {
+                    var path = "/" + entry.Key
+                        .Replace(System.IO.Path.DirectorySeparatorChar, '/').TrimStart('/');
+
+                    byte[] uasset;
+                    try
+                    {
+                        var package = index.extractPackage(path);
+                        if (package == null) { continue; }
+                        uasset = package.Value.UAsset.ToArray();
+                    }
+                    catch (Exception) { continue; }
+
+                    var exports = Logic.CookedPackage.readExports(uasset);
+                    var imports = Logic.CookedPackage.readImports(uasset);
+                    var any = false;
+
+                    foreach (var one in exports)
+                    {
+                        if (!one.Name.StartsWith(prefix, StringComparison.Ordinal)) { continue; }
+
+                        //Trailing digits are the compiler disambiguating a second call in the same
+                        //graph - ReturnValue1 is ReturnValue.
+                        var pin = one.Name.Substring(prefix.Length).TrimEnd(
+                            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
+
+                        var type = "?";
+                        if (one.ClassIndex < 0 && -one.ClassIndex - 1 < imports.Count)
+                        {
+                            type = imports[-one.ClassIndex - 1].ObjectName;
+                        }
+
+                        if (!pins.TryGetValue(pin, out var types))
+                        {
+                            types = new Dictionary<string, int>(StringComparer.Ordinal);
+                            pins[pin] = types;
+                        }
+                        types.TryGetValue(type, out var was);
+                        types[type] = was + 1;
+                        any = true;
+                    }
+
+                    if (any && callers.Count < 12) { callers.Add(path); }
+                }
+
+                Console.WriteLine($"[pins] {wanted}: {pins.Count} distinct pins");
+                foreach (var pin in pins.OrderByDescending(x => x.Value.Values.Sum()))
+                {
+                    var spelling = string.Join(", ",
+                        pin.Value.OrderByDescending(x => x.Value).Select(x => $"{x.Key} x{x.Value}"));
+                    Console.WriteLine($"[pins]   {pin.Key,-28} {spelling}");
+                }
+
+                Console.WriteLine($"[pins] seen in:");
+                foreach (var one in callers) { Console.WriteLine($"[pins]   {one}"); }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_SIG=<asset path>[;<function>] - the functions a blueprint declares, and what
+            //each one takes.
+            //
+            //The import table names a native function and stops there, so a signature cannot be
+            //looked up - it has to be read off a blueprint that overrides or wraps the call. A
+            //function is an export; its parameters are exports whose Outer is that function, and
+            //each one's class says its type. Wrong parameters do not fail to compile, they read
+            //the stack in the wrong places at run time, so this is the difference between calling
+            //the game's own code and corrupting it.
+            var probeSig = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_SIG="));
+            if (probeSig != null)
+            {
+                var bits = probeSig.Substring("PROBE_SIG=".Length).Trim('"').Split(';');
+                var wanted = bits.Length > 1 ? bits[1] : null;
+
+                var index = Logic.CustomSkins.index;
+                var package = index?.extractPackage(bits[0]);
+                if (package == null)
+                {
+                    Console.WriteLine($"[sig] {bits[0]} could not be read");
+                    this.Shutdown();
+                    return;
+                }
+
+                var uasset = package.Value.UAsset.ToArray();
+                var exports = Logic.CookedPackage.readExports(uasset);
+                var imports = Logic.CookedPackage.readImports(uasset);
+
+                //An FPackageIndex points either way: above zero into the exports, below into the
+                //imports. A parameter's type is nearly always an import (IntProperty and friends
+                //are CoreUObject classes), and its owner nearly always an export.
+                string spell(int packageIndex)
+                {
+                    if (packageIndex > 0)
+                    {
+                        var at = packageIndex - 1;
+                        return at < exports.Count ? exports[at].Name : "?";
+                    }
+                    if (packageIndex < 0)
+                    {
+                        var at = -packageIndex - 1;
+                        return at < imports.Count ? imports[at].ObjectName : "?";
+                    }
+                    return "-";
+                }
+
+                Console.WriteLine($"[sig] {bits[0]}");
+                Console.WriteLine($"[sig] {exports.Count:N0} exports, {imports.Count:N0} imports");
+
+                var functions = exports
+                    .Select((one, at) => (one, at))
+                    .Where(x => spell(x.one.ClassIndex) == "Function")
+                    .Where(x => wanted == null
+                        || x.one.Name.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) >= 0)
+                    .ToList();
+
+                Console.WriteLine($"[sig] {functions.Count:N0} functions"
+                    + (wanted == null ? "" : $" matching \"{wanted}\""));
+
+                foreach (var (fn, at) in functions)
+                {
+                    //Exports index from one, so the function at table position N is referred to
+                    //by N+1 - getting this off by one silently reports every parameter against
+                    //its neighbour.
+                    var mine = at + 1;
+                    var parameters = exports.Where(one => one.Outer == mine).ToList();
+
+                    Console.WriteLine($"[sig]   {fn.Name}  ({parameters.Count} parameters)");
+                    foreach (var one in parameters)
+                    {
+                        Console.WriteLine($"[sig]       {spell(one.ClassIndex),-24} {one.Name}");
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //FIND_SCRIPT=<name> - which assets import a given /Script/Dungeons class or function.
+            //
+            //PROBE_SCRIPT says a name exists; this says where to go and read it. A signature is not
+            //in the import table, so the only way to learn one is the Kismet bytecode of something
+            //that already makes the call.
+            var findScript = _startupArguments.FirstOrDefault(a => a.StartsWith("FIND_SCRIPT="));
+            if (findScript != null)
+            {
+                var wanted = findScript.Substring("FIND_SCRIPT=".Length).Trim('"');
+                var index = Logic.CustomSkins.index;
+                if (index == null)
+                {
+                    Console.WriteLine("[who] the game's paks are not loaded");
+                    this.Shutdown();
+                    return;
+                }
+
+                var shown = 0;
+                foreach (var entry in index.AllEntries())
+                {
+                    var path = "/" + entry.Key
+                        .Replace(System.IO.Path.DirectorySeparatorChar, '/').TrimStart('/');
+
+                    byte[] uasset;
+                    try
+                    {
+                        var package = index.extractPackage(path);
+                        if (package == null) { continue; }
+                        uasset = package.Value.UAsset.ToArray();
+                    }
+                    catch (Exception) { continue; }
+
+                    var imports = Logic.CookedPackage.readImports(uasset);
+                    var hit = imports.FirstOrDefault(one =>
+                        string.Equals(one.ObjectName, wanted, StringComparison.OrdinalIgnoreCase));
+                    if (hit == null) { continue; }
+
+                    //What it is, and what owns it, so a function is reported against its class.
+                    var owner = "";
+                    if (hit.Outer < 0 && -hit.Outer - 1 < imports.Count)
+                    {
+                        owner = imports[-hit.Outer - 1].ObjectName;
+                    }
+
+                    Console.WriteLine($"[who] {hit.ClassName,-12} {owner,-28} {path}");
+                    if (++shown >= 60) { Console.WriteLine("[who] ..."); break; }
+                }
+
+                Console.WriteLine($"[who] {shown} shown");
+                this.Shutdown();
+                return;
+            }
+
             //PROBE_SCRIPT[=<how many assets>] - what /Script/Dungeons actually exposes.
             //
             //The stub module makes a cast compile by being NAMED Dungeons; what it cannot do is say

@@ -4416,6 +4416,15 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Storage.
+        /// </summary>
+        public static string CHEST_TAB {
+            get {
+                return ResourceManager.GetString("CHEST_TAB", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Installed Mods.
         /// </summary>
         public static string MODS_TAB {
@@ -4624,8 +4633,887 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Game assets.
+        ///   Looks up a localized string similar to Bring back….
         /// </summary>
+        public static string MAPS_FROM_MINECRAFT {
+            get {
+                return ResourceManager.GetString("MAPS_FROM_MINECRAFT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Reads a world this tab made, writes its blocks b.
+        /// </summary>
+        public static string MAPS_FROM_MINECRAFT_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_FROM_MINECRAFT_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Converting {0}….
+        /// </summary>
+        public static string MAPS_WORKING {
+            get {
+                return ResourceManager.GetString("MAPS_WORKING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to "{0}" is in your Minecraft world list. Open it w.
+        /// </summary>
+        public static string MAPS_WORLD_READY {
+            get {
+                return ResourceManager.GetString("MAPS_WORLD_READY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The converter did not finish. Nothing was change.
+        /// </summary>
+        public static string MAPS_CONVERT_FAILED {
+            get {
+                return ResourceManager.GetString("MAPS_CONVERT_FAILED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The Minecraft world to bring back.
+        /// </summary>
+        public static string MAPS_PICK_WORLD {
+            get {
+                return ResourceManager.GetString("MAPS_PICK_WORLD", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to That world was not made by this tab, so there is.
+        /// </summary>
+        public static string MAPS_NOT_OURS {
+            get {
+                return ResourceManager.GetString("MAPS_NOT_OURS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Minecraft converter not found - expected at {0}.
+        /// </summary>
+        public static string MAPS_NO_TOOLS {
+            get {
+                return ResourceManager.GetString("MAPS_NO_TOOLS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Minecraft not found - worlds will be written bes.
+        /// </summary>
+        public static string MAPS_NO_MINECRAFT {
+            get {
+                return ResourceManager.GetString("MAPS_NO_MINECRAFT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Fixed to Minecraft….
+        /// </summary>
+        public static string MAPS_FIXED_TO_MINECRAFT {
+            get {
+                return ResourceManager.GetString("MAPS_FIXED_TO_MINECRAFT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The same as Edit in Minecraft, but the mission i.
+        /// </summary>
+        public static string MAPS_FIXED_TO_MINECRAFT_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_FIXED_TO_MINECRAFT_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to "{0}" is in your Minecraft world list, and the m.
+        /// </summary>
+        public static string MAPS_WORLD_READY_FIXED {
+            get {
+                return ResourceManager.GetString("MAPS_WORLD_READY_FIXED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The mission was rebuilt.
+        /// </summary>
+        public static string SPAWNS_REWELDED {
+            get {
+                return ResourceManager.GetString("SPAWNS_REWELDED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Spawns.
+        /// </summary>
+        public static string SPAWNS_TITLE {
+            get {
+                return ResourceManager.GetString("SPAWNS_TITLE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Rooms.
+        /// </summary>
+        public static string SPAWNS_ROOMS {
+            get {
+                return ResourceManager.GetString("SPAWNS_ROOMS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Place spawn points.
+        /// </summary>
+        public static string SPAWNS_PLACE {
+            get {
+                return ResourceManager.GetString("SPAWNS_PLACE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Click a room on the map to pick it, then cli.
+        /// </summary>
+        public static string SPAWNS_PLACE_HINT {
+            get {
+                return ResourceManager.GetString("SPAWNS_PLACE_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to radius.
+        /// </summary>
+        public static string SPAWNS_RADIUS {
+            get {
+                return ResourceManager.GetString("SPAWNS_RADIUS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to count.
+        /// </summary>
+        public static string SPAWNS_COUNT {
+            get {
+                return ResourceManager.GetString("SPAWNS_COUNT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Place.
+        /// </summary>
+        public static string SPAWNS_PLACE_BUTTON {
+            get {
+                return ResourceManager.GetString("SPAWNS_PLACE_BUTTON", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Clear room.
+        /// </summary>
+        public static string SPAWNS_CLEAR {
+            get {
+                return ResourceManager.GetString("SPAWNS_CLEAR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to What spawns.
+        /// </summary>
+        public static string SPAWNS_RULES {
+            get {
+                return ResourceManager.GetString("SPAWNS_RULES", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Spawn points decide where and how many. The .
+        /// </summary>
+        public static string SPAWNS_RULES_HINT {
+            get {
+                return ResourceManager.GetString("SPAWNS_RULES_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Add mob.
+        /// </summary>
+        public static string SPAWNS_ADD_MOB {
+            get {
+                return ResourceManager.GetString("SPAWNS_ADD_MOB", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Save.
+        /// </summary>
+        public static string SPAWNS_SAVE {
+            get {
+                return ResourceManager.GetString("SPAWNS_SAVE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Reload.
+        /// </summary>
+        public static string SPAWNS_RELOAD {
+            get {
+                return ResourceManager.GetString("SPAWNS_RELOAD", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No room chosen.
+        /// </summary>
+        public static string SPAWNS_NO_ROOM {
+            get {
+                return ResourceManager.GetString("SPAWNS_NO_ROOM", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to nothing changed yet.
+        /// </summary>
+        public static string SPAWNS_NO_CHANGES {
+            get {
+                return ResourceManager.GetString("SPAWNS_NO_CHANGES", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} file(s) changed.
+        /// </summary>
+        public static string SPAWNS_CHANGES {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHANGES", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Placed {0} spawn points..
+        /// </summary>
+        public static string SPAWNS_PLACED {
+            get {
+                return ResourceManager.GetString("SPAWNS_PLACED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Placed {0} of {1} - the rest had no floor to.
+        /// </summary>
+        public static string SPAWNS_PLACED_SOME {
+            get {
+                return ResourceManager.GetString("SPAWNS_PLACED_SOME", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Removed {0} spawn points from {1}..
+        /// </summary>
+        /// <summary>
+        ///   Looks up a localized string similar to walkable.
+        /// </summary>
+        public static string SPAWNS_WALKABLE {
+            get {
+                return ResourceManager.GetString("SPAWNS_WALKABLE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to not walkable.
+        /// </summary>
+        public static string SPAWNS_UNWALKABLE {
+            get {
+                return ResourceManager.GetString("SPAWNS_UNWALKABLE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The {0} mobs in this group — × removes one:.
+        /// </summary>
+        public static string SPAWNS_MOBS_IN {
+            get {
+                return ResourceManager.GetString("SPAWNS_MOBS_IN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Save and install.
+        /// </summary>
+        public static string SPAWNS_INSTALL {
+            get {
+                return ResourceManager.GetString("SPAWNS_INSTALL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Saves your changes, rebuilds the mission, and installs it over the game's own. The game's files are never modified — Remove in the Maps tab puts the original back..
+        /// </summary>
+        public static string SPAWNS_INSTALL_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_INSTALL_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Installed over {0} as {1} ({2:N0} KB). Start the game and play it — Remove in the Maps tab puts the original back..
+        /// </summary>
+        public static string SPAWNS_INSTALLED {
+            get {
+                return ResourceManager.GetString("SPAWNS_INSTALLED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to That spawn point at {0}, {1}, {2} — Remove point takes it out..
+        /// </summary>
+        public static string SPAWNS_ON_POINT {
+            get {
+                return ResourceManager.GetString("SPAWNS_ON_POINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove point.
+        /// </summary>
+        public static string SPAWNS_REMOVE_POINT {
+            get {
+                return ResourceManager.GetString("SPAWNS_REMOVE_POINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Removed it. {0} spawn points left in this room..
+        /// </summary>
+        public static string SPAWNS_REMOVED_ONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_REMOVED_ONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Click a spawn point on the map first..
+        /// </summary>
+        public static string SPAWNS_NOT_A_POINT {
+            get {
+                return ResourceManager.GetString("SPAWNS_NOT_A_POINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to roams the level, weight {0:0.#}.
+        /// </summary>
+        public static string SPAWNS_GROUP_ROAMS {
+            get {
+                return ResourceManager.GetString("SPAWNS_GROUP_ROAMS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} arena wave(s) only.
+        /// </summary>
+        public static string SPAWNS_GROUP_WAVES {
+            get {
+                return ResourceManager.GetString("SPAWNS_GROUP_WAVES", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to not used by this mission.
+        /// </summary>
+        public static string SPAWNS_GROUP_UNUSED {
+            get {
+                return ResourceManager.GetString("SPAWNS_GROUP_UNUSED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to difficulty {0:0.#} and below only.
+        /// </summary>
+        public static string SPAWNS_DIFF_MAX {
+            get {
+                return ResourceManager.GetString("SPAWNS_DIFF_MAX", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to difficulty {0:0.#} and above only.
+        /// </summary>
+        public static string SPAWNS_DIFF_MIN {
+            get {
+                return ResourceManager.GetString("SPAWNS_DIFF_MIN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to difficulty {0:0.#} to {1:0.#} only.
+        /// </summary>
+        public static string SPAWNS_DIFF_RANGE {
+            get {
+                return ResourceManager.GetString("SPAWNS_DIFF_RANGE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Aimed at {0}, {1}, {2}  ·  Place drops {3} within {4} blocks. Double-click the map to skip the button..
+        /// </summary>
+        public static string SPAWNS_AIMED {
+            get {
+                return ResourceManager.GetString("SPAWNS_AIMED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Building the map….
+        /// </summary>
+        public static string SPAWNS_BUILDING {
+            get {
+                return ResourceManager.GetString("SPAWNS_BUILDING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This room carries no height plane, so there is nothing to draw..
+        /// </summary>
+        public static string SPAWNS_NO_SHAPE {
+            get {
+                return ResourceManager.GetString("SPAWNS_NO_SHAPE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to roof off above {0}.
+        /// </summary>
+        public static string SPAWNS_CEILING {
+            get {
+                return ResourceManager.GetString("SPAWNS_CEILING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to whole mission.
+        /// </summary>
+        public static string SPAWNS_CEILING_ALL {
+            get {
+                return ResourceManager.GetString("SPAWNS_CEILING_ALL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Fit.
+        /// </summary>
+        public static string SPAWNS_FIT {
+            get {
+                return ResourceManager.GetString("SPAWNS_FIT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Top down.
+        /// </summary>
+        public static string SPAWNS_OVERHEAD {
+            get {
+                return ResourceManager.GetString("SPAWNS_OVERHEAD", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Drag to turn · shift-drag to slide · wheel to zoom. Click the ground to aim, then Place.
+        /// </summary>
+        public static string SPAWNS_TURN_HINT {
+            get {
+                return ResourceManager.GetString("SPAWNS_TURN_HINT", resourceCulture);
+            }
+        }
+        
+        public static string SPAWNS_CLEARED {
+            get {
+                return ResourceManager.GetString("SPAWNS_CLEARED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Saved {0} file(s) into {1}. The originals ar.
+        /// </summary>
+        public static string SPAWNS_SAVED {
+            get {
+                return ResourceManager.GetString("SPAWNS_SAVED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Reloading throws away every change you have .
+        /// </summary>
+        public static string SPAWNS_DISCARD {
+            get {
+                return ResourceManager.GetString("SPAWNS_DISCARD", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Edit spawns….
+        /// </summary>
+        public static string MAPS_SPAWNS {
+            get {
+                return ResourceManager.GetString("MAPS_SPAWNS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Opens the mission in its own window: every r.
+        /// </summary>
+        public static string MAPS_SPAWNS_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_SPAWNS_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export this mission first - the spawn editor.
+        /// </summary>
+        public static string MAPS_NO_EXPORT {
+            get {
+                return ResourceManager.GetString("MAPS_NO_EXPORT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Maps.
+        /// </summary>
+        public static string MAPS_TAB {
+            get {
+                return ResourceManager.GetString("MAPS_TAB", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Game missions.
+        /// </summary>
+        public static string MAPS_MISSIONS {
+            get {
+                return ResourceManager.GetString("MAPS_MISSIONS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A mission in this game is data, not an Unreal ma.
+        /// </summary>
+        public static string MAPS_HINT {
+            get {
+                return ResourceManager.GetString("MAPS_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to First.
+        /// </summary>
+        public static string MAPS_GROUP_START {
+            get {
+                return ResourceManager.GetString("MAPS_GROUP_START", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to pulls the mission into a folder you can change. Do this once..
+        /// </summary>
+        public static string MAPS_GROUP_START_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_GROUP_START_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Terrain.
+        /// </summary>
+        public static string MAPS_GROUP_TERRAIN {
+            get {
+                return ResourceManager.GetString("MAPS_GROUP_TERRAIN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Mobs, spawns.
+        /// </summary>
+        public static string MAPS_GROUP_SPAWNS {
+            get {
+                return ResourceManager.GetString("MAPS_GROUP_SPAWNS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to never leaves the app — it saves and installs itself..
+        /// </summary>
+        public static string MAPS_GROUP_SPAWNS_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_GROUP_SPAWNS_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Undo.
+        /// </summary>
+        public static string MAPS_GROUP_UNDO {
+            get {
+                return ResourceManager.GetString("MAPS_GROUP_UNDO", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to out to Minecraft, back again, then into the game..
+        /// </summary>
+        public static string MAPS_GROUP_TERRAIN_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_GROUP_TERRAIN_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This mission is already exported to {0}. Exporting again rebuilds that folder from the game's own files, and any spawn or terrain changes in it are lost. Carry on?.
+        /// </summary>
+        public static string MAPS_ALREADY_EXPORTED {
+            get {
+                return ResourceManager.GetString("MAPS_ALREADY_EXPORTED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Welding {0} into one mission — this takes a moment on a big level….
+        /// </summary>
+        public static string MAPS_WELDING {
+            get {
+                return ResourceManager.GetString("MAPS_WELDING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} is one mission now. Every run uses this layout — the game no longer shuffles its tiles..
+        /// </summary>
+        public static string MAPS_WELDED {
+            get {
+                return ResourceManager.GetString("MAPS_WELDED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The Minecraft tools are not set up, so this opens as separate rooms rather than one mission..
+        /// </summary>
+        public static string MAPS_NO_WELD {
+            get {
+                return ResourceManager.GetString("MAPS_NO_WELD", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Clear.
+        /// </summary>
+        public static string MAPS_CLEAR {
+            get {
+                return ResourceManager.GetString("MAPS_CLEAR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Deletes this mission's exported folder, so the next export starts from the game's own files again. The game itself is not touched — use Remove for an installed mission..
+        /// </summary>
+        public static string MAPS_CLEAR_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_CLEAR_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Delete {0}?  {1} file(s) go, including any spawn or terrain changes in them. Export map builds it again from the game's own files..
+        /// </summary>
+        public static string MAPS_CLEAR_CONFIRM {
+            get {
+                return ResourceManager.GetString("MAPS_CLEAR_CONFIRM", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} file(s) in there have been edited — those changes are not saved anywhere else..
+        /// </summary>
+        public static string MAPS_CLEAR_EDITED {
+            get {
+                return ResourceManager.GetString("MAPS_CLEAR_EDITED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Deleted {0}..
+        /// </summary>
+        public static string MAPS_CLEARED {
+            get {
+                return ResourceManager.GetString("MAPS_CLEARED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing is exported for {0}..
+        /// </summary>
+        public static string MAPS_NOTHING_TO_CLEAR {
+            get {
+                return ResourceManager.GetString("MAPS_NOTHING_TO_CLEAR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Exporting {0} so there is something to edit….
+        /// </summary>
+        public static string MAPS_EXPORTING {
+            get {
+                return ResourceManager.GetString("MAPS_EXPORTING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Clear throws away the working folder; Remove puts the game's own mission back..
+        /// </summary>
+        public static string MAPS_GROUP_UNDO_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_GROUP_UNDO_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Export map….
+        /// </summary>
+        public static string MAPS_EXPORT {
+            get {
+                return ResourceManager.GetString("MAPS_EXPORT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Writes everything the chosen mission is made of .
+        /// </summary>
+        public static string MAPS_EXPORT_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_EXPORT_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Import map….
+        /// </summary>
+        public static string MAPS_IMPORT {
+            get {
+                return ResourceManager.GetString("MAPS_IMPORT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Installs a folder as a mod pak over the mission .
+        /// </summary>
+        public static string MAPS_IMPORT_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_IMPORT_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove.
+        /// </summary>
+        public static string MAPS_REMOVE {
+            get {
+                return ResourceManager.GetString("MAPS_REMOVE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No mission chosen.
+        /// </summary>
+        public static string MAPS_NONE_CHOSEN {
+            get {
+                return ResourceManager.GetString("MAPS_NONE_CHOSEN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Where to put the exported map.
+        /// </summary>
+        public static string MAPS_EXPORT_PICK {
+            get {
+                return ResourceManager.GetString("MAPS_EXPORT_PICK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The map folder to install.
+        /// </summary>
+        public static string MAPS_IMPORT_PICK {
+            get {
+                return ResourceManager.GetString("MAPS_IMPORT_PICK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Exported {0} files, {1:N0} KB, to {2}.
+        /// </summary>
+        public static string MAPS_EXPORTED {
+            get {
+                return ResourceManager.GetString("MAPS_EXPORTED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} replaced - {1}, {2:N0} KB.
+        /// </summary>
+        public static string MAPS_IMPORTED {
+            get {
+                return ResourceManager.GetString("MAPS_IMPORTED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Removed {0}.
+        /// </summary>
+        public static string MAPS_REMOVED {
+            get {
+                return ResourceManager.GetString("MAPS_REMOVED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} is back to the game's own.
+        /// </summary>
+        public static string MAPS_PUT_BACK {
+            get {
+                return ResourceManager.GetString("MAPS_PUT_BACK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} was not replaced.
+        /// </summary>
+        public static string MAPS_NOT_REPLACED {
+            get {
+                return ResourceManager.GetString("MAPS_NOT_REPLACED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to folder: {0}.
+        /// </summary>
+        public static string MAPS_FOLDER_CHOSEN {
+            get {
+                return ResourceManager.GetString("MAPS_FOLDER_CHOSEN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to That folder was exported from {0}, and it will b.
+        /// </summary>
+        public static string MAPS_DIFFERENT_MISSION {
+            get {
+                return ResourceManager.GetString("MAPS_DIFFERENT_MISSION", resourceCulture);
+            }
+        }
+        
         /// <summary>
         ///   Looks up a localized string similar to Game assets.
         /// </summary>

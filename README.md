@@ -37,6 +37,16 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **Installed Mods Tab:** Every mod pak in one place. You can import and export multiple mods via a zip package.
 * **Payload loader**, built into the app one button. Install a payload folder, point it at a folder cooked in Unreal and the whole tree is installed at once, the level and the blueprints, models, materials and resource packs it is built from. 
 
+#### Custom Maps Feature
+* **A mission in this game is a Minecraft world** - a level file naming a sequence of rooms, and tiles whose geometry is Minecraft blocks. So any of the game's missions can be exported, changed and put back
+* **You can save and later edit terrain in Minecraft**: the whole mission goes out as one Minecraft world you can walk start to end, you build in it, and **Bring back** writes your blocks into the tiles they came from
+* **Edit spawns and mobs in the app**, in a 3D view of the mission drawn in its own block colours - taken from the mission's own resource pack. Drag to turn, WASD to move, and a slider takes the roof off so you can see inside buildings
+* **Place spawn points by clicking the ground**, with a radius and a count; each one drops onto the floor beneath it. Click one to pick it out and remove it. 
+* **Change what spawns**: every mob group in the mission, bosses included, with each one saying whether it roams the level, fires only inside an arena fight, or is not used at all
+* **Installed as a mod pak** beside the game's own files. The game's files are never modified, and **Remove** puts the original mission back
+
+See **[CustomMaps.md](CustomMaps.md)** for the whole workflow: which Minecraft blocks survive the trip, what the converter needs, and the three reasons a mob edit can look ignored.
+
 #### Camera Feature
 * **Change the camera while the game is running** - distance, angle, field of view, where it looks, shoulder offset and swing smoothing, all applied as you drag the slider. No mod pak, nothing written to disk, and quitting the game puts everything back
 * **Third person and first person**, in a game that has neither: mouse look turns the view, W A S D move you, and clicking attacks instead of walking you there
