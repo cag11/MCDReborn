@@ -58,11 +58,38 @@ and that costs nothing, because coming home converts back down anyway.
    back down anyway.
 4. **Bring back…** — pick that world. Your blocks are written back into the tiles they came from
    and installed over the mission you selected. Build past the edge of the platform and the tile
-   grows to cover it; nothing is cropped.
+   grows to cover it, in every direction, so nothing is lost sideways. **Height is different**:
+   anything above 69 blocks is left behind, because the game will not load a tile taller than
+   that. See [How tall you can build](#how-tall-you-can-build).
 5. Play it. **Remove** puts the original mission back.
 
 There is no export step, and nothing to press between building and playing. **Bring back…**
 installs as well as reads, so after it the map is already in the game.
+
+### How tall you can build
+
+**69 blocks.** Anything above that is not brought back, and the import tells you, with the number,
+when it happens.
+
+This is a limit of the game rather than of the conversion. A tile 112 blocks tall crashes Minecraft
+Dungeons on load - every time, with no error anywhere - on a map whose level file, block ids,
+planes and resource pack all matched a known-working custom mission field for field. The same map
+at 69 loads and plays.
+
+69 is the height of the whole of Creeper Woods once the game welds it out of its own tiles, which
+makes it the tallest thing in that mission known to work. For scale: none of Creeper Woods' own 92
+tiles is taller than 44, and Blossoming Isles - a custom mission that works - tops out at 60.
+
+Somewhere between 69 and 112 is a real ceiling that nobody has measured. To go looking for it:
+
+```
+env\Scripts\python.exe from_minecraft_level.py "<your world>" --max-height 96
+```
+
+`--max-height 0` removes the limit altogether, which is how to crash the game on purpose.
+
+What counts against the 69 is the floor of your build, not sea level. Put a tower on a hill and the
+hill is part of the budget.
 
 ### The buttons
 
