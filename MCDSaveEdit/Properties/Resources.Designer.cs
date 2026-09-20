@@ -4978,6 +4978,141 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Make this the main way in.
+        /// </summary>
+        public static string SPAWNS_MAIN_START {
+            get {
+                return ResourceManager.GetString("SPAWNS_MAIN_START", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to One, and it is the main way in..
+        /// </summary>
+        public static string SPAWNS_STARTS_ONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_STARTS_ONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to That is already the main way in..
+        /// </summary>
+        public static string SPAWNS_START_ALREADY_MAIN {
+            get {
+                return ResourceManager.GetString("SPAWNS_START_ALREADY_MAIN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to That is now where the mission starts you. The others are teleport arrivals..
+        /// </summary>
+        public static string SPAWNS_START_NOW_MAIN {
+            get {
+                return ResourceManager.GetString("SPAWNS_START_NOW_MAIN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Where you come in.
+        /// </summary>
+        public static string SPAWNS_STARTS {
+            get {
+                return ResourceManager.GetString("SPAWNS_STARTS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The green marker. This is where the mission materialises you - an area, not a door. Doors are how tiles join and what teleports attach to; you can have several and still arrive nowhere near any of them. A mission with no green marker has nowhere to put you..
+        /// </summary>
+        public static string SPAWNS_STARTS_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_STARTS_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Put the start here.
+        /// </summary>
+        public static string SPAWNS_ADD_START {
+            get {
+                return ResourceManager.GetString("SPAWNS_ADD_START", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove start.
+        /// </summary>
+        public static string SPAWNS_REMOVE_START {
+            get {
+                return ResourceManager.GetString("SPAWNS_REMOVE_START", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to None. Aim at the map and press Put the start here - without one the mission has nowhere to put you..
+        /// </summary>
+        public static string SPAWNS_STARTS_NONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_STARTS_NONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} place(s) you can arrive..
+        /// </summary>
+        public static string SPAWNS_STARTS_SOME {
+            get {
+                return ResourceManager.GetString("SPAWNS_STARTS_SOME", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to You arrive at {0}, {1}, {2}..
+        /// </summary>
+        public static string SPAWNS_START_AT {
+            get {
+                return ResourceManager.GetString("SPAWNS_START_AT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to You now come into this mission at {0}, {1}, {2}..
+        /// </summary>
+        public static string SPAWNS_START_ADDED {
+            get {
+                return ResourceManager.GetString("SPAWNS_START_ADDED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Start put at {0}, {1}, {2} - but the game calls that ground unwalkable, so it may have nowhere to stand you. Try somewhere the floor is lit in the map..
+        /// </summary>
+        public static string SPAWNS_START_ADDED_UNWALKABLE {
+            get {
+                return ResourceManager.GetString("SPAWNS_START_ADDED_UNWALKABLE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Removed. {0} place(s) left to arrive..
+        /// </summary>
+        public static string SPAWNS_START_REMOVED {
+            get {
+                return ResourceManager.GetString("SPAWNS_START_REMOVED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to That was the last one. The mission now has nowhere to put you - add one before installing..
+        /// </summary>
+        public static string SPAWNS_START_LAST_GONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_START_LAST_GONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Doors.
         /// </summary>
         public static string SPAWNS_DOORS {
@@ -5127,6 +5262,24 @@ namespace MCDSaveEdit.Properties {
         public static string SPAWNS_MOVING {
             get {
                 return ResourceManager.GetString("SPAWNS_MOVING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Moved that door from {0}, {1}, {2} to {3}, {4}, {5}..
+        /// </summary>
+        public static string SPAWNS_MOVED_DOOR {
+            get {
+                return ResourceManager.GetString("SPAWNS_MOVED_DOOR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to You now come in at {3}, {4}, {5} instead of {0}, {1}, {2}..
+        /// </summary>
+        public static string SPAWNS_MOVED_START {
+            get {
+                return ResourceManager.GetString("SPAWNS_MOVED_START", resourceCulture);
             }
         }
         

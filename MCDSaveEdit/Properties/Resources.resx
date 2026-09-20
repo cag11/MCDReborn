@@ -2303,12 +2303,72 @@ The save file is not changed until you save it.</value>
     <value>That spawn point at {0}, {1}, {2} — drag it to move it, or Remove point takes it out.</value>
     <comment>Status when a click lands on an existing spawn point</comment>
   </data>
+  <data name="SPAWNS_MAIN_START" xml:space="preserve">
+    <value>Make this the main way in</value>
+    <comment>Button that promotes an arrival area</comment>
+  </data>
+  <data name="SPAWNS_STARTS_ONE" xml:space="preserve">
+    <value>One, in yellow, and it is the main way in.</value>
+    <comment>Hint when there is exactly one arrival area</comment>
+  </data>
+  <data name="SPAWNS_START_ALREADY_MAIN" xml:space="preserve">
+    <value>That is already the main way in.</value>
+    <comment>Status when promoting the first one</comment>
+  </data>
+  <data name="SPAWNS_START_NOW_MAIN" xml:space="preserve">
+    <value>That is now where the mission starts you. The others are teleport arrivals.</value>
+    <comment>Status after promoting</comment>
+  </data>
+  <data name="SPAWNS_STARTS" xml:space="preserve">
+    <value>Where you come in</value>
+    <comment>Player-start section heading</comment>
+  </data>
+  <data name="SPAWNS_STARTS_WHY" xml:space="preserve">
+    <value>Where the mission materialises you - an area, not a door. Doors are how tiles join and what teleports attach to; you can have several and still arrive nowhere near any of them. YELLOW is the way the mission begins, green are teleport arrivals.</value>
+    <comment>Player-start section explanation</comment>
+  </data>
+  <data name="SPAWNS_ADD_START" xml:space="preserve">
+    <value>Put the start here</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_REMOVE_START" xml:space="preserve">
+    <value>Remove start</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_STARTS_NONE" xml:space="preserve">
+    <value>None. Aim at the map and press Put the start here - without one the mission has nowhere to put you.</value>
+    <comment>Hint when a room has no player start</comment>
+  </data>
+  <data name="SPAWNS_STARTS_SOME" xml:space="preserve">
+    <value>{0} places you can arrive. The YELLOW one is where the mission starts you; the green ones are where teleports drop you. Order decides it - nothing else about them differs.</value>
+    <comment>Hint when a room has player starts</comment>
+  </data>
+  <data name="SPAWNS_START_AT" xml:space="preserve">
+    <value>You arrive at {0}, {1}, {2}.</value>
+    <comment>Status when a start is picked</comment>
+  </data>
+  <data name="SPAWNS_START_ADDED" xml:space="preserve">
+    <value>You now come into this mission at {0}, {1}, {2}.</value>
+    <comment>Status after adding a player start</comment>
+  </data>
+  <data name="SPAWNS_START_ADDED_UNWALKABLE" xml:space="preserve">
+    <value>Start put at {0}, {1}, {2} - but the game calls that ground unwalkable, so it may have nowhere to stand you. Try somewhere the floor is lit in the map.</value>
+    <comment>Status after adding a player start on unwalkable ground</comment>
+  </data>
+  <data name="SPAWNS_START_REMOVED" xml:space="preserve">
+    <value>Removed. {0} place(s) left to arrive.</value>
+    <comment>Status after removing a player start</comment>
+  </data>
+  <data name="SPAWNS_START_LAST_GONE" xml:space="preserve">
+    <value>That was the last one. The mission now has nowhere to put you - add one before installing.</value>
+    <comment>Status after removing the only player start</comment>
+  </data>
   <data name="SPAWNS_DOORS" xml:space="preserve">
     <value>Doors</value>
     <comment>Doors section heading in the spawns editor</comment>
   </data>
   <data name="SPAWNS_DOORS_WHY" xml:space="preserve">
-    <value>A door is where the game puts you, and what a teleport points at. It is four numbers in the tile rather than a block, so it is invisible in Minecraft - this is the only place it can be seen. Aim at the map, name it, and Add door. The one named as the way in is drawn brighter.</value>
+    <value>A door is how two tiles join and what a teleport attaches to. It is four numbers in the tile rather than a block, so it is invisible in Minecraft - this is the only place it can be seen. It is NOT where you come in: that is the green marker above.</value>
     <comment>Doors section explanation</comment>
   </data>
   <data name="SPAWNS_ADD_DOOR" xml:space="preserve">
@@ -2320,19 +2380,19 @@ The save file is not changed until you save it.</value>
     <comment>Button</comment>
   </data>
   <data name="SPAWNS_ENTRY_DOOR" xml:space="preserve">
-    <value>Make the way in</value>
+    <value>Mark as the joining door</value>
     <comment>Button that names the chosen door as the entry</comment>
   </data>
   <data name="SPAWNS_DOORS_NONE" xml:space="preserve">
-    <value>No doors. The game has nowhere to put you and will stop on the loading screen - add one.</value>
+    <value>No doors. A tile with none crashes the game on the loading screen - add one.</value>
     <comment>Hint when a tile has no doors at all</comment>
   </data>
   <data name="SPAWNS_DOORS_ENTRY" xml:space="preserve">
-    <value>{0} door(s). You come in at “{1}”.</value>
+    <value>{0} door(s). Tiles join at “{1}”.</value>
     <comment>Hint when a tile has doors and names one as the entry</comment>
   </data>
   <data name="SPAWNS_DOORS_NO_ENTRY" xml:space="preserve">
-    <value>{0} door(s), but none is named as the way in - the game will pick one. Choose one and press Make the way in.</value>
+    <value>{0} door(s), none marked as the joining one. That is fine for a single welded mission.</value>
     <comment>Hint when a tile has doors but no entry-door</comment>
   </data>
   <data name="SPAWNS_DOOR_AT" xml:space="preserve">
@@ -2364,12 +2424,20 @@ The save file is not changed until you save it.</value>
     <comment>Status when the entry button is pressed on an unnamed door</comment>
   </data>
   <data name="SPAWNS_DOOR_IS_ENTRY" xml:space="preserve">
-    <value>You now come into this mission at “{0}”.</value>
+    <value>Tiles now join this mission at “{0}”.</value>
     <comment>Status after naming the entry door</comment>
   </data>
   <data name="SPAWNS_MOVING" xml:space="preserve">
     <value>Moving it to {0}, {1}, {2}  ·  let go to keep it there, Escape to put it back.</value>
     <comment>Status while a spawn point is being dragged</comment>
+  </data>
+  <data name="SPAWNS_MOVED_DOOR" xml:space="preserve">
+    <value>Moved that door from {0}, {1}, {2} to {3}, {4}, {5}.</value>
+    <comment>Status after dragging a door</comment>
+  </data>
+  <data name="SPAWNS_MOVED_START" xml:space="preserve">
+    <value>You now come in at {3}, {4}, {5} instead of {0}, {1}, {2}.</value>
+    <comment>Status after dragging the arrival area</comment>
   </data>
   <data name="SPAWNS_MOVED" xml:space="preserve">
     <value>Moved that spawn point from {0}, {1}, {2} to {3}, {4}, {5}.</value>

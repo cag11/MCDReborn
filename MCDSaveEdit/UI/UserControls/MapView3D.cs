@@ -43,6 +43,8 @@ namespace MCDSaveEdit.UI
         //A group rather than one model: the entry door is the same pink at a different strength,
         //and two materials cannot share one mesh.
         private Model3DGroup? _doorGroup;
+
+        private Model3DGroup? _startGroup;
         private GeometryModel3D? _cursor;
 
         //Where the camera is looking and from how far. Yaw and pitch are degrees because every
@@ -62,12 +64,18 @@ namespace MCDSaveEdit.UI
         private bool _panning;
         private bool _moved;
 
-        //Where the spawn points are, so a press can tell "take hold of that one" from "turn the
-        //camera". The view is handed them by mark() anyway, so hit testing them here costs
-        //nothing and keeps the two answers from drifting apart.
+        //Where the pins are, so a press can tell "take hold of that one" from "turn the camera".
+        //The view is handed them by mark(), markDoors() and markStarts() anyway, so hit testing
+        //them here costs nothing and keeps the two answers from drifting apart.
         private readonly List<(int x, int y, int z)> _marks = new List<(int x, int y, int z)>();
+        private readonly List<(int x, int y, int z)> _doorPins = new List<(int x, int y, int z)>();
+        private readonly List<(int x, int y, int z)> _startPins = new List<(int x, int y, int z)>();
+
+        /// <summary>The kinds of thing standing on the map that can be taken hold of.</summary>
+        public enum Pin { Spawn, Door, Start }
 
         private bool _dragging;
+        private Pin _dragKind;
         private (int x, int y, int z) _dragAt;
 
         /// <summary>
@@ -95,7 +103,15 @@ namespace MCDSaveEdit.UI
         /// </summary>
         public event Action<int, int, int>? Confirmed;
 
-        /// <summary>A held point has been dragged over a new block. Fires as it travels.</summary>
+        /// <summary>
+        /// A pin has been taken hold of: which kind, and where that pin actually is.
+        ///
+        /// The position is the PIN's, not the floor cell the ray hit - those are up to GRAB
+        /// blocks apart, which is the whole point of GRAB.
+        /// </summary>
+        public event Action<Pin, int, int, int>? Grabbed;
+
+        /// <summary>A held pin has been dragged over a new block. Fires as it travels.</summary>
         public event Action<int, int, int>? Dragged;
 
         /// <summary>The button came up and the point is where it was left.</summary>
@@ -213,6 +229,7 @@ namespace MCDSaveEdit.UI
 
             if (_ways != null) { group.Children.Add(_ways); }
             if (_doorGroup != null) { group.Children.Add(_doorGroup); }
+            if (_startGroup != null) { group.Children.Add(_startGroup); }
             if (_markers != null) { group.Children.Add(_markers); }
             if (_cursor != null) { group.Children.Add(_cursor); }
 
@@ -430,6 +447,97 @@ namespace MCDSaveEdit.UI
         }
 
         /// <summary>
+        /// Where the mission puts you when it starts.
+        ///
+        /// Green, and the broadest marker of the lot, because it is an area rather than a point -
+        /// the game's own are three to six cells across and you materialise somewhere inside.
+        ///
+        /// It gets its own colour because it is not any of the other three. A door is how tiles
+        /// join, a teleport is a way to another dungeon, a spawn point is where mobs appear, and
+        /// none of them is where YOU arrive - which is the single thing a hand-built mission most
+        /// needs and the easiest to leave out, because nothing about the map looks wrong without it.
+        /// </summary>
+        public void markStarts(IEnumerable<(int x, int y, int z, bool main)> starts)
+        {
+            var mesh = new MeshGeometry3D();
+            var bright = new MeshGeometry3D();
+            var count = 0;
+            var mains = 0;
+
+            _startPins.Clear();
+
+            foreach (var one in starts)
+            {
+                //The main way in stands taller. A mission can have several arrival areas and only
+                //one of them is where the mission BEGINS - the rest are where teleports drop you -
+                //and nothing about the regions themselves tells them apart.
+                if (one.main)
+                {
+                    pillar(bright, one.x + 0.5, one.y, one.z + 0.5, 3.4, 26.0);
+                    mains++;
+                }
+                else
+                {
+                    pillar(mesh, one.x + 0.5, one.y, one.z + 0.5, 2.6, 15.0);
+                }
+
+                _startPins.Add((one.x, one.y, one.z));
+                count++;
+            }
+
+            if (count == 0)
+            {
+                _startGroup = null;
+                redraw();
+                return;
+            }
+
+            var group = new Model3DGroup();
+
+            if (count > mains)
+            {
+                mesh.Freeze();
+                group.Children.Add(new GeometryModel3D(mesh, arrival(false))
+                {
+                    BackMaterial = arrival(false),
+                });
+            }
+
+            if (mains > 0)
+            {
+                bright.Freeze();
+                group.Children.Add(new GeometryModel3D(bright, arrival(true))
+                {
+                    BackMaterial = arrival(true),
+                });
+            }
+
+            _startGroup = group;
+            redraw();
+        }
+
+        /// <summary>
+        /// The arrival markers: yellow for the way the mission begins, green for the rest.
+        ///
+        /// A different HUE rather than a brighter green, because a shade is only legible next to
+        /// the thing it is a shade of - and these two are usually at opposite ends of a mission a
+        /// thousand blocks long, never in the same view. Yellow has to be read on its own.
+        ///
+        /// It survives the company it keeps: the spawn points are orange but a twentieth the
+        /// size, the doors are pink, the teleports pale blue. Nothing else on the map is yellow.
+        /// </summary>
+        private static Material arrival(bool main)
+        {
+            var material = new MaterialGroup();
+            material.Children.Add(new DiffuseMaterial(new SolidColorBrush(
+                main ? Color.FromRgb(255, 226, 64) : Color.FromRgb(80, 195, 105))));
+            material.Children.Add(new EmissiveMaterial(new SolidColorBrush(
+                main ? Color.FromRgb(160, 130, 18) : Color.FromRgb(26, 92, 40))));
+            material.Freeze();
+            return material;
+        }
+
+        /// <summary>
         /// The doors in the room's wall.
         ///
         /// Pink, and a different shape again: spawn points are short orange spikes, teleports are
@@ -448,8 +556,11 @@ namespace MCDSaveEdit.UI
             var count = 0;
             var entries = 0;
 
+            _doorPins.Clear();
+
             foreach (var one in doors)
             {
+                _doorPins.Add((one.x, one.y, one.z));
                 if (one.entry)
                 {
                     pillar(bright, one.x + 0.5, one.y, one.z + 0.5, 2.2, 22.0);
@@ -536,6 +647,7 @@ namespace MCDSaveEdit.UI
             if (_ground != null) { made.Children.Add(_ground); }
             if (_ways != null) { made.Children.Add(_ways); }
             if (_doorGroup != null) { made.Children.Add(_doorGroup); }
+            if (_startGroup != null) { made.Children.Add(_startGroup); }
             if (_markers != null) { made.Children.Add(_markers); }
             if (_cursor != null) { made.Children.Add(_cursor); }
             _scene.Content = made;
@@ -766,14 +878,18 @@ namespace MCDSaveEdit.UI
             _moved = false;
 
             var on = look(at);
-            if (on == null || !holding(on.Value)) { return false; }
+            if (on == null) { return false; }
+
+            var held = holding(on.Value);
+            if (held == null) { return false; }
 
             _dragging = true;
-            _dragAt = on.Value;
+            _dragKind = held.Value.kind;
+            _dragAt = held.Value.at;
 
             //Selected on the way down rather than on the way up, because a drag has no way up
-            //until it is over and the point being moved has to be chosen before it can move.
-            Picked?.Invoke(on.Value.x, on.Value.y, on.Value.z);
+            //until it is over and the pin being moved has to be chosen before it can move.
+            Grabbed?.Invoke(held.Value.kind, held.Value.at.x, held.Value.at.y, held.Value.at.z);
             return true;
         }
 
@@ -803,6 +919,9 @@ namespace MCDSaveEdit.UI
             if (_moved) { Dropped?.Invoke(_dragAt.x, _dragAt.y, _dragAt.z); }
         }
 
+        /// <summary>Which kind of pin is being dragged, for whoever has to move it.</summary>
+        public Pin heldKind => _dragKind;
+
         /// <summary>
         /// The same press, drag and release the mouse makes, for a probe to run.
         ///
@@ -821,22 +940,48 @@ namespace MCDSaveEdit.UI
         /// <summary>The spawn points as the view has them, for a probe to aim at.</summary>
         internal IReadOnlyList<(int x, int y, int z)> probeMarks => _marks;
 
-        /// <summary>Whether a spot is close enough to a spawn point to have meant that one.</summary>
-        private bool holding((int x, int y, int z) at)
-        {
-            foreach (var one in _marks)
-            {
-                //The same lopsided measure the click uses: height counts for a quarter, because
-                //two points stacked vertically are rare and a few blocks out across the floor is
-                //the normal cost of aiming at a hillside.
-                var dx = (double)(one.x - at.x);
-                var dy = (double)(one.y - at.y);
-                var dz = (double)(one.z - at.z);
+        /// <summary>The doors and arrival areas as the view has them.</summary>
+        internal IReadOnlyList<(int x, int y, int z)> probeDoorPins => _doorPins;
 
-                if (dx * dx + dz * dz + dy * dy * 0.25 <= GRAB * GRAB) { return true; }
+        internal IReadOnlyList<(int x, int y, int z)> probeStartPins => _startPins;
+
+        /// <summary>
+        /// Which pin a spot is close enough to have meant, if any.
+        ///
+        /// All three kinds are searched and the nearest wins rather than the first kind that
+        /// matches, because a door and an arrival area often stand within a few blocks of each
+        /// other - that is what a mission entrance looks like - and taking hold of whichever was
+        /// checked first would move the wrong one about half the time.
+        /// </summary>
+        private (Pin kind, (int x, int y, int z) at)? holding((int x, int y, int z) at)
+        {
+            (Pin kind, (int x, int y, int z) at)? best = null;
+            var bestGap = GRAB * GRAB;
+
+            void search(List<(int x, int y, int z)> pins, Pin kind)
+            {
+                foreach (var one in pins)
+                {
+                    //The same lopsided measure the click uses: height counts for a quarter,
+                    //because two pins stacked vertically are rare and a few blocks out across the
+                    //floor is the normal cost of aiming at a hillside.
+                    var dx = (double)(one.x - at.x);
+                    var dy = (double)(one.y - at.y);
+                    var dz = (double)(one.z - at.z);
+
+                    var gap = dx * dx + dz * dz + dy * dy * 0.25;
+                    if (gap > bestGap) { continue; }
+
+                    bestGap = gap;
+                    best = (kind, one);
+                }
             }
 
-            return false;
+            search(_marks, Pin.Spawn);
+            search(_doorPins, Pin.Door);
+            search(_startPins, Pin.Start);
+
+            return best;
         }
 
         private (int x, int y, int z)? look(Point at)

@@ -1565,6 +1565,294 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_DRAGKIND=<mission> - dragging each KIND of pin: spawn, door, arrival area.
+            //
+            //Three kinds share one gesture, and the thing that goes wrong when they do is taking
+            //hold of the wrong one. A door and an arrival area stand within a few blocks of each
+            //other at every mission entrance - that is what an entrance IS - so "nearest wins"
+            //has to actually be nearest rather than whichever list was searched first.
+            var probeKind = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_DRAGKIND="));
+            if (probeKind != null)
+            {
+                var wanted = probeKind.Substring("PROBE_DRAGKIND=".Length).Trim('"');
+                var folder = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MCDReborn", "maps", wanted);
+
+                try
+                {
+                    var window = new UI.SpawnsWindow(Logic.MapSpawns.load(folder));
+                    window.WindowState = WindowState.Normal;
+                    window.Width = 1280;
+                    window.Height = 800;
+                    window.Left = -20000;
+                    window.Show();
+
+                    var waited = 0;
+                    var timer = new System.Windows.Threading.DispatcherTimer
+                    {
+                        Interval = TimeSpan.FromMilliseconds(250),
+                    };
+
+                    timer.Tick += (_, _) =>
+                    {
+                        waited += 250;
+                        if (!window.mapReady && waited < 15000) { return; }
+                        timer.Stop();
+
+                        var view = window.probeView;
+
+                        //Where each kind of pin is on screen, found with the same ray a click uses.
+                        Point? find(System.Collections.Generic.IReadOnlyList<(int x, int y, int z)> pins)
+                        {
+                            for (var sy = 12.0; sy < view.ActualHeight - 12; sy += 5)
+                            {
+                                for (var sx = 12.0; sx < view.ActualWidth - 12; sx += 5)
+                                {
+                                    var at = new Point(sx, sy);
+                                    var hit = view.probeLook(at);
+                                    if (hit == null) { continue; }
+
+                                    foreach (var one in pins)
+                                    {
+                                        double dx = one.x - hit.Value.x, dy = one.y - hit.Value.y,
+                                               dz = one.z - hit.Value.z;
+                                        if (dx * dx + dz * dz + dy * dy * 0.25 <= 2.0) { return at; }
+                                    }
+                                }
+                            }
+                            return null;
+                        }
+
+                        Point? bare = null;
+                        (int x, int y, int z) bareAt = default;
+                        for (var sy = 12.0; sy < view.ActualHeight - 12 && bare == null; sy += 9)
+                        {
+                            for (var sx = 12.0; sx < view.ActualWidth - 12; sx += 9)
+                            {
+                                var at = new Point(sx, sy);
+                                var hit = view.probeLook(at);
+                                if (hit == null) { continue; }
+
+                                var here = hit.Value;
+                                var clear = view.probeMarks.Concat(view.probeDoorPins)
+                                    .Concat(view.probeStartPins)
+                                    //Scaled to the room: a 20x20 baseline has no cell 14 blocks
+                                    //clear of everything, and demanding one skips the whole test.
+                                    .All(one => Math.Abs(one.x - here.x) + Math.Abs(one.z - here.z)
+                                        > Math.Max(5, Math.Min(14, window.roomAcross / 4)));
+
+                                if (clear) { bare = at; bareAt = here; break; }
+                            }
+                        }
+
+                        if (bare == null)
+                        {
+                            Console.WriteLine("[kind] no clear ground on screen to drag to");
+                            this.Shutdown();
+                            return;
+                        }
+
+                        void check(string label,
+                                   System.Collections.Generic.IReadOnlyList<(int x, int y, int z)> pins,
+                                   MCDSaveEdit.UI.MapView3D.Pin expect,
+                                   Func<string[]> rows)
+                        {
+                            if (pins.Count == 0)
+                            {
+                                Console.WriteLine($"[kind] {label}: none in this room, skipped");
+                                return;
+                            }
+
+                            var on = find(pins);
+                            if (on == null)
+                            {
+                                Console.WriteLine($"[kind] {label}: none visible on screen, skipped");
+                                return;
+                            }
+
+                            var was = rows();
+
+                            var took = view.probeGrab(on.Value);
+                            Console.WriteLine(took && view.heldKind == expect
+                                ? $"[kind] {label}: took hold of a {view.heldKind} pin"
+                                : $"[kind] {label}: WRONG - took {(took ? view.heldKind.ToString() : "nothing")}, wanted {expect}");
+
+                            if (!took) { return; }
+
+                            view.probeDragTo(bare.Value);
+                            view.probeDrop();
+
+                            var now = rows();
+                            Console.WriteLine(now.Length == was.Length
+                                ? $"[kind] {label}: still {now.Length} of them"
+                                : $"[kind] {label}: WRONG - the count changed");
+
+                            Console.WriteLine(!now.SequenceEqual(was)
+                                ? $"[kind] {label}: moved  ->  {now.FirstOrDefault(one => !was.Contains(one))}"
+                                : $"[kind] {label}: WRONG - nothing moved");
+                            Console.WriteLine($"[kind] {label}: {window.probeStatus}");
+                        }
+
+                        check("spawn", view.probeMarks, MCDSaveEdit.UI.MapView3D.Pin.Spawn,
+                            () => window.probePoints.Select(one => $"{one.x},{one.y},{one.z}").ToArray());
+
+                        check("door", view.probeDoorPins, MCDSaveEdit.UI.MapView3D.Pin.Door,
+                            () => window.doorRows);
+
+                        check("start", view.probeStartPins, MCDSaveEdit.UI.MapView3D.Pin.Start,
+                            () => window.startRows);
+
+                        this.Shutdown();
+                    };
+
+                    timer.Start();
+                    return;
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[kind] refused: {problem.Message}");
+                    this.Shutdown();
+                    return;
+                }
+            }
+
+            //PROBE_START=<mission> - where a mission puts the player, and placing one.
+            //
+            //This exists because the editor was wrong about this once. Doors looked like the way
+            //in - a welded Creeper Woods has one called "enter" sitting in its outer wall - and
+            //they are not. Arriving is a trigger region tagged "playerstart", and the only way to
+            //know the editor has the right idea is to find the ones the game itself ships.
+            var probeStart = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_START="));
+            if (probeStart != null)
+            {
+                var wanted = probeStart.Substring("PROBE_START=".Length).Trim('"');
+                var folder = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MCDReborn", "maps", wanted);
+
+                try
+                {
+                    var map = Logic.MapSpawns.load(folder);
+
+                    //Every room, not just the chosen one: a mission's start is in whichever room
+                    //it begins in, and reporting only the open one would say "none" about a
+                    //mission that has one three rooms along.
+                    var total = 0;
+                    foreach (var room in map.Rooms)
+                    {
+                        var here = Logic.MapSpawns.startsOf(room);
+                        total += here.Count;
+                        foreach (var one in here)
+                        {
+                            Console.WriteLine($"[start] {room.Id}: {one}");
+                        }
+                    }
+
+                    //Which one is the MAIN way in, and whether it is the one that comes from the
+                    //tile the first stretch plays. Those two have to agree: order is the only
+                    //thing distinguishing otherwise identical regions, so if the front of the
+                    //array is not the start room's, the editor is pointing at the wrong pin.
+                    foreach (var room in map.Rooms)
+                    {
+                        var here = Logic.MapSpawns.startsOf(room);
+                        var main = here.FirstOrDefault(one => one.IsMain);
+                        if (main == null) { continue; }
+
+                        Console.WriteLine($"[start] {room.Id}: main = {main.Pos[0]},{main.Pos[1]},{main.Pos[2]}"
+                            + $" ({main.Size[0]}x{main.Size[2]}), index {main.At}");
+
+                        var others = here.Where(one => !one.IsMain).ToList();
+                        Console.WriteLine(here.Count(one => one.IsMain) == 1
+                            ? $"[start] exactly one is main, {others.Count} teleport arrival(s)"
+                            : "[start] WRONG - more than one claims to be the main way in");
+
+                        Console.WriteLine(others.All(one => one.At > main.At)
+                            ? "[start] and it sits in front of all the others"
+                            : "[start] WRONG - a teleport arrival comes before the main way in");
+                    }
+
+                    Console.WriteLine($"[start] {total} arrival area(s) across {map.Rooms.Count} room(s)");
+                    Console.WriteLine(total > 0
+                        ? "[start] the game's own mission has one, so the editor is looking for the right thing"
+                        : "[start] WRONG - found none, which cannot be true of a mission that plays");
+
+                    var window = new UI.SpawnsWindow(map);
+                    window.WindowState = WindowState.Normal;
+                    window.Width = 1280;
+                    window.Height = 800;
+                    window.Left = -20000;
+                    window.Show();
+
+                    var waited = 0;
+                    var timer = new System.Windows.Threading.DispatcherTimer
+                    {
+                        Interval = TimeSpan.FromMilliseconds(250),
+                    };
+
+                    timer.Tick += (_, _) =>
+                    {
+                        waited += 250;
+                        if (!window.mapReady && waited < 15000) { return; }
+                        timer.Stop();
+
+                        var had = window.startRows;
+                        Console.WriteLine($"[start] the open room shows {had.Length}");
+                        Console.WriteLine($"[start] hint: {window.startHint}");
+
+                        window.probeAddStart(40, 30, 40);
+
+                        var now = window.startRows;
+                        Console.WriteLine(now.Length == had.Length + 1
+                            ? $"[start] added one, now {now.Length}"
+                            : "[start] WRONG - the start was not added");
+                        Console.WriteLine($"[start]   {now.LastOrDefault()}");
+                        Console.WriteLine($"[start] status: {window.probeStatus}");
+
+                        //It has to come back as a playerstart when the room is read again, not
+                        //just appear in the list - the list is this session, the region is the file.
+                        var reread = Logic.MapSpawns.startsOf(map.Rooms.First(
+                            one => one.Id == map.Rooms[0].Id));
+                        Console.WriteLine(window.startRows.Length == now.Length
+                            ? "[start] and it reads back as a playerstart region"
+                            : "[start] WRONG - it does not read back");
+
+                        //Promoting the one just added has to make it the main way in, and
+                        //demote whatever was main before - there can only ever be one.
+                        window.probePickStart(now.Length - 1);
+                        window.probeMakeMain();
+
+                        var after = window.startRows;
+                        Console.WriteLine(after.Count(one => one.Contains("main way in")) == 1
+                            ? "[start] still exactly one main way in after promoting"
+                            : "[start] WRONG - promoting left the wrong number of main ways in");
+                        Console.WriteLine(after.FirstOrDefault()?.Contains("main way in") == true
+                            ? $"[start] and it is at the front: {after.FirstOrDefault()}"
+                            : "[start] WRONG - the main way in is not at the front of the list");
+                        Console.WriteLine($"[start] status: {window.probeStatus}");
+
+                        window.probePickStart(after.Length - 1);
+                        window.probeRemoveStart();
+
+                        Console.WriteLine(window.startRows.Length == had.Length
+                            ? "[start] removed again, back to where it started"
+                            : "[start] WRONG - the start did not come out");
+                        Console.WriteLine($"[start] status: {window.probeStatus}");
+
+                        this.Shutdown();
+                    };
+
+                    timer.Start();
+                    return;
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[start] refused: {problem.Message}");
+                    this.Shutdown();
+                    return;
+                }
+            }
+
             //PROBE_DOORS=<mission> - the whole door workflow: what a mission already has, adding
             //one, naming it as the way in, and taking it away again.
             //

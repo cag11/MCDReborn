@@ -66,6 +66,7 @@ namespace MCDSaveEdit.UI
             mapView.Picked += mapView_Picked;
             mapView.Hovered += mapView_Hovered;
             mapView.Confirmed += mapView_Confirmed;
+            mapView.Grabbed += mapView_Grabbed;
             mapView.Dragged += mapView_Dragged;
             mapView.Dropped += mapView_Dropped;
             mapView.DragCancelled += mapView_DragCancelled;
@@ -250,6 +251,35 @@ namespace MCDSaveEdit.UI
         /// <summary>What the status line says, which is the only thing a person is told.</summary>
         internal string probeStatus => statusLabel.Text;
 
+        /// <summary>The arrival areas as the list shows them.</summary>
+        internal string[] startRows => startsList.Items.OfType<MapSpawns.Start>()
+            .Select(one => one.ToString()).ToArray();
+
+        internal string startHint => startsHint.Text;
+
+        /// <summary>How wide the chosen room is, so a probe can scale what it asks for.</summary>
+        internal int roomAcross => _room == null ? 0 : Math.Min(_room.Size[0], _room.Size[2]);
+
+        internal void probeAddStart(int x, int y, int z)
+        {
+            xBox.Text = x.ToString();
+            yBox.Text = y.ToString();
+            zBox.Text = z.ToString();
+            addStartButton_Click(this, new RoutedEventArgs());
+        }
+
+        internal void probePickStart(int row)
+        {
+            startsList.SelectedIndex = row;
+            startsList_SelectionChanged(this, new SelectionChangedEventArgs(
+                System.Windows.Controls.Primitives.Selector.SelectionChangedEvent,
+                new object[0], new object[0]));
+        }
+
+        internal void probeRemoveStart() => removeStartButton_Click(this, new RoutedEventArgs());
+
+        internal void probeMakeMain() => mainStartButton_Click(this, new RoutedEventArgs());
+
         /// <summary>The doors as the list shows them, which is what a person reads.</summary>
         internal string[] doorRows => doorsList.Items.OfType<MapSpawns.Door>()
             .Select(one => one.ToString()).ToArray();
@@ -343,6 +373,11 @@ namespace MCDSaveEdit.UI
             placeButton.Content = R.SPAWNS_PLACE_BUTTON;
             clearButton.Content = R.SPAWNS_CLEAR;
             removeButton.Content = R.SPAWNS_REMOVE_POINT;
+            startsLabel.Content = R.SPAWNS_STARTS;
+            startsHint.Text = R.SPAWNS_STARTS_WHY;
+            addStartButton.Content = R.SPAWNS_ADD_START;
+            removeStartButton.Content = R.SPAWNS_REMOVE_START;
+            mainStartButton.Content = R.SPAWNS_MAIN_START;
             doorsLabel.Content = R.SPAWNS_DOORS;
             doorsHint.Text = R.SPAWNS_DOORS_WHY;
             addDoorButton.Content = R.SPAWNS_ADD_DOOR;
@@ -488,6 +523,7 @@ namespace MCDSaveEdit.UI
             markPoints();
             markWays();
             fillDoors();
+            fillStarts();
         }
 
         /// <summary>
@@ -512,6 +548,124 @@ namespace MCDSaveEdit.UI
             }
 
             mapView.mark(found, Color.FromRgb(255, 120, 60));
+        }
+
+        //--- where you come in ---------------------------------------------------------------------
+
+        /// <summary>Which arrival area is picked, by its place in the region list.</summary>
+        private int _start = -1;
+
+        /// <summary>
+        /// Draws the arrival areas in green and lists them.
+        ///
+        /// This is the thing a hand-built mission is most likely to be missing, and the hardest
+        /// to notice: nothing about a map looks wrong without one. The game's own missions always
+        /// have at least one, and a welded Creeper Woods carries two.
+        /// </summary>
+        private void fillStarts()
+        {
+            if (_room == null)
+            {
+                startsList.ItemsSource = null;
+                mapView.markStarts(Array.Empty<(int, int, int, bool)>());
+                return;
+            }
+
+            var starts = MapSpawns.startsOf(_room);
+
+            _filling = true;
+            var wasAt = _start;
+            startsList.ItemsSource = starts;
+            startsList.SelectedIndex = starts.FindIndex(one => one.At == wasAt);
+            _filling = false;
+
+            mapView.markStarts(starts.Select(one =>
+                (one.Pos[0], one.Pos[1], one.Pos[2], one.IsMain)));
+
+            startsHint.Text = starts.Count == 0
+                ? R.SPAWNS_STARTS_NONE
+                : starts.Count == 1
+                    ? R.SPAWNS_STARTS_ONE
+                    : string.Format(R.SPAWNS_STARTS_SOME, starts.Count);
+        }
+
+        private void startsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            if (startsList.SelectedItem is not MapSpawns.Start start) { _start = -1; return; }
+
+            _start = start.At;
+            mapView.aim(start.Pos[0], start.Pos[1], start.Pos[2], true);
+
+            statusLabel.Text = string.Format(R.SPAWNS_START_AT,
+                start.Pos[0], start.Pos[1], start.Pos[2]);
+
+            updateUI();
+        }
+
+        private void addStartButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null) { return; }
+
+            var made = MapSpawns.addStart(_room,
+                number(xBox, _room.Size[0] / 2),
+                number(yBox, _room.Size[1] / 2),
+                number(zBox, _room.Size[2] / 2));
+
+            _map.Changed.Add(_room.File);
+            _start = made.At;
+
+            //Whether the game can actually stand you there. An arrival area on ground it calls
+            //unwalkable is a mission that loads and then does not know what to do with you.
+            var ok = mapView.walkableAt(made.Pos[0], made.Pos[2]);
+
+            statusLabel.Text = string.Format(ok ? R.SPAWNS_START_ADDED : R.SPAWNS_START_ADDED_UNWALKABLE,
+                made.Pos[0], made.Pos[1], made.Pos[2]);
+
+            fillStarts();
+            updateUI();
+        }
+
+        private void mainStartButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null || _start < 0) { return; }
+
+            if (!MapSpawns.promoteStart(_room, _start))
+            {
+                statusLabel.Text = R.SPAWNS_START_ALREADY_MAIN;
+                return;
+            }
+
+            _map.Changed.Add(_room.File);
+
+            //Promoting moves the region up the array, so every index after it has shifted and
+            //the one that was picked is no longer where it was.
+            _start = MapSpawns.startsOf(_room).FirstOrDefault(one => one.IsMain)?.At ?? -1;
+
+            statusLabel.Text = R.SPAWNS_START_NOW_MAIN;
+
+            fillStarts();
+            updateUI();
+        }
+
+        private void removeStartButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null || _start < 0) { return; }
+
+            if (!MapSpawns.removeStartAt(_room, _start)) { return; }
+
+            _map.Changed.Add(_room.File);
+            _start = -1;
+
+            var left = MapSpawns.startsOf(_room).Count;
+
+            statusLabel.Text = left == 0
+                ? R.SPAWNS_START_LAST_GONE
+                : string.Format(R.SPAWNS_START_REMOVED, left);
+
+            fillStarts();
+            updateUI();
         }
 
         //--- doors -------------------------------------------------------------------------------
@@ -792,19 +946,103 @@ namespace MCDSaveEdit.UI
             return (pos[0]!.GetValue<int>(), pos[1]!.GetValue<int>(), pos[2]!.GetValue<int>());
         }
 
+        /// <summary>
+        /// A pin has been taken hold of: pick the matching row, whichever kind it is.
+        ///
+        /// All three kinds drag the same way, and they have to - a person who has just learned
+        /// that spawn points drag will try it on the green one within about four seconds, and an
+        /// entrance that cannot be nudged is the one you most want to nudge.
+        /// </summary>
+        private void mapView_Grabbed(MapView3D.Pin kind, int x, int y, int z)
+        {
+            switch (kind)
+            {
+                case MapView3D.Pin.Door:
+                    _door = MapSpawns.doorsOf(_map, _room!)
+                        .FirstOrDefault(one => one.Pos[0] == x && one.Pos[1] == y && one.Pos[2] == z)
+                        ?.At ?? -1;
+                    selectRow(doorsList, one => one is MapSpawns.Door door && door.At == _door);
+                    break;
+
+                case MapView3D.Pin.Start:
+                    _start = MapSpawns.startsOf(_room!)
+                        .FirstOrDefault(one => one.Pos[0] == x && one.Pos[1] == y && one.Pos[2] == z)
+                        ?.At ?? -1;
+                    selectRow(startsList, one => one is MapSpawns.Start start && start.At == _start);
+                    break;
+
+                default:
+                    mapView_Picked(x, y, z);
+                    break;
+            }
+
+            if (kind != MapView3D.Pin.Spawn)
+            {
+                mapView.aim(x, y, z, true);
+                updateUI();
+            }
+        }
+
+        /// <summary>Picks a row without the list's own handler treating it as a fresh choice.</summary>
+        private void selectRow(System.Windows.Controls.ListBox list, Func<object, bool> which)
+        {
+            _filling = true;
+            list.SelectedIndex = list.Items.Cast<object>().ToList().FindIndex(one => which(one));
+            _filling = false;
+        }
+
+        /// <summary>Where the pin being dragged sits now, whichever kind it is.</summary>
+        private (int x, int y, int z)? heldPosition()
+        {
+            if (_room == null) { return null; }
+
+            switch (mapView.heldKind)
+            {
+                case MapView3D.Pin.Door:
+                    var door = MapSpawns.doorsOf(_map, _room).FirstOrDefault(one => one.At == _door);
+                    return door == null ? null : (door.Pos[0], door.Pos[1], door.Pos[2]);
+
+                case MapView3D.Pin.Start:
+                    var start = MapSpawns.startsOf(_room).FirstOrDefault(one => one.At == _start);
+                    return start == null ? null : (start.Pos[0], start.Pos[1], start.Pos[2]);
+
+                default:
+                    return positionOf(_selected);
+            }
+        }
+
+        /// <summary>Puts the pin being dragged somewhere, whichever kind it is.</summary>
+        private bool moveHeld(int x, int y, int z)
+        {
+            if (_room == null) { return false; }
+
+            return mapView.heldKind switch
+            {
+                MapView3D.Pin.Door => _door >= 0 && MapSpawns.moveDoor(_room, _door, x, y, z),
+                MapView3D.Pin.Start => _start >= 0 && MapSpawns.moveStart(_room, _start, x, y, z),
+                _ => _selected >= 0 && MapSpawns.moveTo(_room, _selected, x, y, z),
+            };
+        }
+
         private void mapView_Dragged(int x, int y, int z)
         {
-            if (_room == null || _selected < 0) { return; }
+            if (_room == null) { return; }
 
-            _held ??= positionOf(_selected);
+            _held ??= heldPosition();
             if (_held == null) { return; }
 
-            if (!MapSpawns.moveTo(_room, _selected, x, y, z)) { return; }
+            if (!moveHeld(x, y, z)) { return; }
 
-            //Only the points, and no room list rebuild. Both of those happen once on the drop -
-            //a list that renumbers itself under the pointer is unreadable, and rebuilding it per
+            //Only the markers, and no list rebuild. Both of those happen once on the drop - a
+            //list that renumbers itself under the pointer is unreadable, and rebuilding it per
             //block crossed is work nobody sees.
-            markPoints();
+            switch (mapView.heldKind)
+            {
+                case MapView3D.Pin.Door: redrawDoorPins(); break;
+                case MapView3D.Pin.Start: redrawStartPins(); break;
+                default: markPoints(); break;
+            }
+
             mapView.aim(x, y, z, true);
 
             xBox.Text = x.ToString();
@@ -814,12 +1052,28 @@ namespace MCDSaveEdit.UI
             statusLabel.Text = string.Format(R.SPAWNS_MOVING, x, y, z);
         }
 
+        /// <summary>The pink pins alone, without rebuilding the list under the pointer.</summary>
+        private void redrawDoorPins()
+        {
+            if (_room == null) { return; }
+            mapView.markDoors(MapSpawns.doorsOf(_map, _room)
+                .Select(one => (one.Pos[0], one.Pos[1], one.Pos[2], one.IsEntry)));
+        }
+
+        /// <summary>The green pins alone.</summary>
+        private void redrawStartPins()
+        {
+            if (_room == null) { return; }
+            mapView.markStarts(MapSpawns.startsOf(_room)
+                .Select(one => (one.Pos[0], one.Pos[1], one.Pos[2], one.IsMain)));
+        }
+
         private void mapView_Dropped(int x, int y, int z)
         {
             var from = _held;
             _held = null;
 
-            if (_room == null || _selected < 0 || from == null) { return; }
+            if (_room == null || from == null) { return; }
 
             //Nothing actually changed if it came back to where it started, and saying a file
             //changed when it did not means a rewrite and a .before backup for no reason.
@@ -827,9 +1081,21 @@ namespace MCDSaveEdit.UI
 
             _map.Changed.Add(_room.File);
 
-            statusLabel.Text = string.Format(R.SPAWNS_MOVED,
+            //Named for what it is. "Moved that spawn point" about the thing that decides where
+            //you come into the mission is the sort of wrong that makes somebody undo a good edit.
+            var said = mapView.heldKind switch
+            {
+                MapView3D.Pin.Door => R.SPAWNS_MOVED_DOOR,
+                MapView3D.Pin.Start => R.SPAWNS_MOVED_START,
+                _ => R.SPAWNS_MOVED,
+            };
+
+            statusLabel.Text = string.Format(said,
                 from.Value.x, from.Value.y, from.Value.z, x, y, z);
 
+            //A door dragged into a different wall has been turned to suit it, and a door dragged
+            //off every wall is no longer a door anybody can arrive through - both of which the
+            //rows say, so they are rebuilt here rather than left stale.
             markSpawns();
             fillRooms();
             updateUI();
@@ -840,13 +1106,10 @@ namespace MCDSaveEdit.UI
             var from = _held;
             _held = null;
 
-            if (_room == null || _selected < 0 || from == null) { return; }
-            if (!MapSpawns.moveTo(_room, _selected, from.Value.x, from.Value.y, from.Value.z))
-            {
-                return;
-            }
+            if (_room == null || from == null) { return; }
+            if (!moveHeld(from.Value.x, from.Value.y, from.Value.z)) { return; }
 
-            markPoints();
+            markSpawns();
             mapView.aim(from.Value.x, from.Value.y, from.Value.z, true);
 
             xBox.Text = from.Value.x.ToString();
@@ -873,8 +1136,9 @@ namespace MCDSaveEdit.UI
             _room = picked?.Room as MapSpawns.Room;
 
             //Doors are held by their place in one room's door array, so an index kept across a
-            //room change points at a different door entirely.
+            //room change points at a different door entirely. Same for arrival areas.
             _door = -1;
+            _start = -1;
             _selected = -1;
 
             if (_room != null)
@@ -1315,6 +1579,10 @@ namespace MCDSaveEdit.UI
 
             //A door can be added wherever the map is aimed; the other two need one picked out of
             //the list, because they act on that one rather than on wherever you are looking.
+            addStartButton.IsEnabled = has;
+            removeStartButton.IsEnabled = has && _start >= 0;
+            mainStartButton.IsEnabled = has && _start >= 0;
+
             addDoorButton.IsEnabled = has;
             removeDoorButton.IsEnabled = has && _door >= 0;
             entryDoorButton.IsEnabled = has && _door >= 0;

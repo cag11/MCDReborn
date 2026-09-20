@@ -111,6 +111,23 @@
 
                 <Separator Margin="0,0,0,10"/>
 
+                <Label x:Name="startsLabel" Content="*Where you come in*"
+                       Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+                <TextBlock x:Name="startsHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
+                           Foreground="{DynamicResource Brush.TextMuted}"/>
+                <ListBox x:Name="startsList" MaxHeight="80" Margin="0,0,0,6"
+                         SelectionChanged="startsList_SelectionChanged"/>
+                <WrapPanel Margin="0,0,0,12">
+                    <Button x:Name="addStartButton" Content="*Put the start here*" Padding="10,4"
+                            Margin="0,0,6,6" Click="addStartButton_Click"/>
+                    <Button x:Name="mainStartButton" Content="*Make this the main way in*" Padding="10,4"
+                            Margin="0,0,6,6" Click="mainStartButton_Click"/>
+                    <Button x:Name="removeStartButton" Content="*Remove start*" Padding="10,4"
+                            Margin="0,0,0,6" Click="removeStartButton_Click"/>
+                </WrapPanel>
+
+                <Separator Margin="0,0,0,10"/>
+
                 <Label x:Name="doorsLabel" Content="*Doors*"
                        Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
                 <TextBlock x:Name="doorsHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"

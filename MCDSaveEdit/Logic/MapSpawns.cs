@@ -579,6 +579,170 @@ namespace MCDSaveEdit.Logic
             return true;
         }
 
+        //--- where you come in -------------------------------------------------------------------
+
+        /// <summary>The tag and name the game marks the player's arrival area with.</summary>
+        public const string PLAYERSTART = "playerstart";
+
+        /// <summary>
+        /// One place the mission puts you when it starts.
+        ///
+        /// Not a door, which is what it looks like from the outside and is worth saying plainly:
+        /// a door is how two tiles join and what a teleport attaches to, and it is perfectly
+        /// possible to have several and still materialise nowhere near any of them. Arriving is a
+        /// trigger region called "playerstart" - an AREA you appear in, three to six cells across.
+        /// </summary>
+        public sealed class Start
+        {
+            public Start(int at, int[] pos, int[] size, bool isMain)
+            {
+                At = at;
+                Pos = pos;
+                Size = size;
+                IsMain = isMain;
+            }
+
+            /// <summary>
+            /// Whether this is the one the mission starts you at.
+            ///
+            /// A mission can have several arrival areas and they are identical - same name, same
+            /// tags, same type - so nothing in the region itself says which is which. What says
+            /// it is ORDER: welding appends each room's regions in playing order, so the start
+            /// room's land at the front, and the first one in the array is the way in. The rest
+            /// are where teleports drop you.
+            ///
+            /// Checked against Creeper Woods: of its two, the one at index 1 of 220 comes from
+            /// cw_start_a001 - the tile the first stretch plays - and the one at index 148 comes
+            /// from cw_obj_alt, which is reached by teleport.
+            /// </summary>
+            public bool IsMain { get; }
+
+            /// <summary>Where it sits in the room's region list, which is how it is removed.</summary>
+            public int At { get; }
+
+            public int[] Pos { get; }
+            public int[] Size { get; }
+
+            public override string ToString()
+            {
+                var note = IsMain ? "   \u2190  the main way in" : "   \u00b7  teleport arrival";
+                return $"{Pos[0]}, {Pos[1]}, {Pos[2]}   \u00b7  {Size[0]}\u00d7{Size[2]} area{note}";
+            }
+        }
+
+        /// <summary>Whether a region is the player's arrival area.</summary>
+        private static bool isStart(JsonObject region)
+        {
+            if (region["type"]?.GetValue<string>() != "trigger") { return false; }
+
+            //Matched on either, because the game's own data sets both and a region carrying only
+            //one of them is still plainly meant to be the same thing.
+            return string.Equals(region["tags"]?.GetValue<string>(), PLAYERSTART,
+                       StringComparison.OrdinalIgnoreCase)
+                || string.Equals(region["name"]?.GetValue<string>(), PLAYERSTART,
+                       StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>Every place this room can put you when the mission starts.</summary>
+        public static List<Start> startsOf(Room room)
+        {
+            var made = new List<Start>();
+            var regions = room.Regions;
+
+            for (var at = 0; at < regions.Count; at++)
+            {
+                if (regions[at] is not JsonObject region || !isStart(region)) { continue; }
+
+                //The first one found is the main way in, because that is what order means here.
+                made.Add(new Start(at, ints(region["pos"], 3), ints(region["size"], 3),
+                    made.Count == 0));
+            }
+
+            return made;
+        }
+
+        /// <summary>
+        /// Puts the player's arrival area somewhere.
+        ///
+        /// Three by three, which is at the small end of what the game ships - they run from 3x3
+        /// to 5x6 - and small is the safer default: an arrival area that overlaps a wall is worse
+        /// than one that is snug.
+        /// </summary>
+        public static Start addStart(Room room, int x, int y, int z)
+        {
+            var region = new JsonObject
+            {
+                ["locked"] = false,
+                ["name"] = PLAYERSTART,
+                ["pos"] = new JsonArray(x, y, z),
+                ["size"] = new JsonArray(3, 1, 3),
+                ["tags"] = PLAYERSTART,
+                ["type"] = "trigger",
+            };
+
+            room.Regions.Add(region);
+
+            //Appended, so it is the main way in only when it is the first. A second one added to
+            //a mission that already has one is a teleport arrival until somebody promotes it.
+            var main = startsOf(room).Count == 1;
+
+            return new Start(room.Regions.Count - 1, new[] { x, y, z }, new[] { 3, 1, 3 }, main);
+        }
+
+        /// <summary>
+        /// Makes one arrival area the main way in, by moving it in front of the others.
+        ///
+        /// Order is the only thing that distinguishes them, so promoting one is literally moving
+        /// it up the array - there is no flag to set. The node is copied rather than moved
+        /// because a JsonNode already in a document has a parent, and re-inserting the same
+        /// instance throws halfway through.
+        /// </summary>
+        public static bool promoteStart(Room room, int at)
+        {
+            var regions = room.Regions;
+            if (at < 0 || at >= regions.Count) { return false; }
+            if (regions[at] is not JsonObject region || !isStart(region)) { return false; }
+
+            var first = -1;
+            for (var i = 0; i < regions.Count; i++)
+            {
+                if (regions[i] is JsonObject found && isStart(found)) { first = i; break; }
+            }
+
+            //Already at the front, so there is nothing to do and saying so is better than
+            //rewriting the file to produce an identical one.
+            if (first < 0 || first == at) { return false; }
+
+            if (JsonNode.Parse(region.ToJsonString()) is not JsonObject copy) { return false; }
+
+            //Taken out first. `at` is always after `first`, so removing it cannot shift `first`.
+            regions.RemoveAt(at);
+            regions.Insert(first, copy);
+            return true;
+        }
+
+        /// <summary>Puts the arrival area somewhere else, by where it sits in the region list.</summary>
+        public static bool moveStart(Room room, int at, int x, int y, int z)
+        {
+            var regions = room.Regions;
+            if (at < 0 || at >= regions.Count) { return false; }
+            if (regions[at] is not JsonObject region || !isStart(region)) { return false; }
+
+            region["pos"] = new JsonArray(x, y, z);
+            return true;
+        }
+
+        /// <summary>Takes one arrival area out, by where it sits in the region list.</summary>
+        public static bool removeStartAt(Room room, int at)
+        {
+            var regions = room.Regions;
+            if (at < 0 || at >= regions.Count) { return false; }
+            if (regions[at] is not JsonObject region || !isStart(region)) { return false; }
+
+            regions.RemoveAt(at);
+            return true;
+        }
+
         //--- the doors themselves ----------------------------------------------------------------
 
         /// <summary>
@@ -683,6 +847,21 @@ namespace MCDSaveEdit.Logic
         }
 
         /// <summary>
+        /// Which way a door in this spot has to lie.
+        ///
+        /// A door is three cells along one axis and one along the other, and which axis follows
+        /// from the wall: in an x wall it spans z, and the other way about. Checked against every
+        /// door the game ships - 622 of the 622 that sit in an outer wall agree with this.
+        /// </summary>
+        private static JsonArray facing(Room room, int x, int z)
+        {
+            var nearestX = Math.Min(x, Math.Max(0, room.Size[0] - 1 - x));
+            var nearestZ = Math.Min(z, Math.Max(0, room.Size[2] - 1 - z));
+
+            return nearestX <= nearestZ ? new JsonArray(1, 1, 3) : new JsonArray(3, 1, 1);
+        }
+
+        /// <summary>
         /// Whether a spot is in the tile's outer wall - the same test welding applies.
         /// </summary>
         private static bool onWall(Room room, int[] pos)
@@ -705,31 +884,35 @@ namespace MCDSaveEdit.Logic
                 room.Tile["doors"] = doors;
             }
 
-            //Which wall this is nearest, measured to all four.
-            var toXLow = x;
-            var toXHigh = Math.Max(0, room.Size[0] - 1 - x);
-            var toZLow = z;
-            var toZHigh = Math.Max(0, room.Size[2] - 1 - z);
-
-            var nearestX = Math.Min(toXLow, toXHigh);
-            var nearestZ = Math.Min(toZLow, toZHigh);
-
-            //In an x wall it spans z, and the other way about.
-            var size = nearestX <= nearestZ
-                ? new JsonArray(1, 1, 3)
-                : new JsonArray(3, 1, 1);
-
             var made = new JsonObject
             {
                 ["name"] = name,
                 ["pos"] = new JsonArray(x, y, z),
-                ["size"] = size,
+                ["size"] = facing(room, x, z),
                 ["tags"] = string.Empty,
             };
 
             doors.Add(made);
 
             return doorsOf(map, room)[doors.Count - 1];
+        }
+
+        /// <summary>
+        /// Puts a door somewhere else.
+        ///
+        /// The size is recomputed rather than carried along, because a door's facing belongs to
+        /// the wall it is in, not to the door. Dragging one from a north wall to an east wall
+        /// without turning it leaves it lying across the opening instead of filling it.
+        /// </summary>
+        public static bool moveDoor(Room room, int at, int x, int y, int z)
+        {
+            if (room.Tile["doors"] is not JsonArray doors) { return false; }
+            if (at < 0 || at >= doors.Count) { return false; }
+            if (doors[at] is not JsonObject door) { return false; }
+
+            door["pos"] = new JsonArray(x, y, z);
+            door["size"] = facing(room, x, z);
+            return true;
         }
 
         /// <summary>Takes a door out, by where it sits in the tile's door list.</summary>
