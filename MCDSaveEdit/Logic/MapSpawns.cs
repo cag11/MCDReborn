@@ -579,6 +579,308 @@ namespace MCDSaveEdit.Logic
             return true;
         }
 
+        //--- what the mission asks of you ------------------------------------------------------------
+
+        /// <summary>
+        /// One step of the mission's objective chain.
+        ///
+        /// They are a SEQUENCE, not a set. Creeper Woods asks for one villager, then for you to
+        /// reach the caravan, then for five more villagers, then for you to reach the end, and
+        /// only then does the exit gate become clickable. A step nobody can finish stops every
+        /// step after it - and the symptom is a gate that is drawn, and lit, and does nothing.
+        ///
+        /// That matters most for a hand-built mission, which inherits whichever chain belonged to
+        /// the mission it was installed over. Somebody who replaced Creeper Woods with a city has
+        /// no villagers to free and no caravan to find, so the gate at the end of their city can
+        /// never be reached.
+        /// </summary>
+        public sealed class Objective
+        {
+            public Objective(int at, string description, string kind, int count,
+                             string[] needs, bool isExit)
+            {
+                At = at;
+                Description = description;
+                Kind = kind;
+                Count = count;
+                Needs = needs;
+                IsExit = isExit;
+            }
+
+            public int At { get; }
+            public string Description { get; }
+
+            /// <summary>"click" something, or "reach" somewhere.</summary>
+            public string Kind { get; }
+
+            public int Count { get; }
+
+            /// <summary>The region names it needs, without the stretch and tile parts.</summary>
+            public string[] Needs { get; }
+
+            /// <summary>Whether this is the one that clicks the exit gate.</summary>
+            public bool IsExit { get; }
+
+            public override string ToString()
+            {
+                var what = Count > 1 ? $"{Kind} \u00d7{Count}" : Kind;
+                var where = Needs.Length > 0 ? "  \u2192  " + string.Join(", ", Needs) : string.Empty;
+                var note = IsExit ? "   \u2190  the way out" : string.Empty;
+
+                return $"{At + 1}. {tidy(Description)}   \u00b7  {what}{where}{note}";
+            }
+
+            /// <summary>The game's own string keys, made readable.</summary>
+            private static string tidy(string key)
+            {
+                var said = key.StartsWith("description_", StringComparison.OrdinalIgnoreCase)
+                    ? key.Substring("description_".Length)
+                    : key;
+
+                return said.Replace('_', ' ');
+            }
+        }
+
+        /// <summary>The region name out of a "stretch.tile.region" reference.</summary>
+        private static string lastPart(string reference)
+        {
+            var at = reference.LastIndexOf('.');
+            return at < 0 ? reference : reference.Substring(at + 1);
+        }
+
+        /// <summary>The mission's objective chain, in the order it is asked of you.</summary>
+        public static List<Objective> objectivesOf(Map map)
+        {
+            var made = new List<Objective>();
+            var all = map.Level["objectives"] as JsonArray ?? new JsonArray();
+
+            for (var at = 0; at < all.Count; at++)
+            {
+                if (all[at] is not JsonObject objective) { continue; }
+
+                var click = objective["click"] as JsonObject;
+                var gauntlet = objective["gauntlet"] as JsonObject;
+                var body = click ?? gauntlet;
+
+                var needs = new List<string>();
+
+                if (body?["locations"] is JsonArray places)
+                {
+                    foreach (var one in places)
+                    {
+                        var said = one?.GetValue<string>();
+                        if (said != null) { needs.Add(lastPart(said)); }
+                    }
+                }
+
+                var region = body?["end-region"]?.GetValue<string>();
+                if (region != null) { needs.Add(lastPart(region)); }
+
+                made.Add(new Objective(at,
+                    objective["description"]?.GetValue<string>() ?? "(no description)",
+                    click != null ? "click" : gauntlet != null ? "reach" : "?",
+                    body?["count"]?.GetValue<int>() ?? 1,
+                    needs.ToArray(),
+                    click != null && string.Equals(click["object"]?.GetValue<string>(), EXIT_DOOR,
+                        StringComparison.OrdinalIgnoreCase)));
+            }
+
+            return made;
+        }
+
+        /// <summary>Takes one step out of the chain.</summary>
+        public static bool removeObjectiveAt(Map map, int at)
+        {
+            if (map.Level["objectives"] is not JsonArray all) { return false; }
+            if (at < 0 || at >= all.Count) { return false; }
+
+            all.RemoveAt(at);
+            return true;
+        }
+
+        /// <summary>
+        /// Strips the chain down to the exit gate alone.
+        ///
+        /// What a hand-built mission usually wants: walk in, do whatever the map is for, click
+        /// the gate, leave. Everything the old mission asked for refers to things that are no
+        /// longer in the map, and each one blocks the steps behind it.
+        /// </summary>
+        public static int keepOnlyExit(Map map)
+        {
+            if (map.Level["objectives"] is not JsonArray all) { return 0; }
+
+            var gone = 0;
+
+            for (var at = all.Count - 1; at >= 0; at--)
+            {
+                if (all[at] is JsonObject objective
+                    && objective["click"] is JsonObject click
+                    && string.Equals(click["object"]?.GetValue<string>(), EXIT_DOOR,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                all.RemoveAt(at);
+                gone++;
+            }
+
+            return gone;
+        }
+
+        //--- the way out ---------------------------------------------------------------------------
+
+        /// <summary>What the region marking the exit gate is called, and what it is tagged.</summary>
+        public const string EXIT = "exit";
+        public const string GATE = "gate";
+
+        /// <summary>The glowing gate the game draws and you click to leave.</summary>
+        public const string EXIT_DOOR = "Decor/Prefabs/DoorExit/BP_DoorExit_CW";
+
+        /// <summary>
+        /// One way out of the mission.
+        ///
+        /// Two things have to agree for this to work, which is why leaving it to somebody to hand
+        /// craft went wrong:
+        ///
+        ///   * a REGION named "exit", tagged "gate" - a single cell saying where the gate stands
+        ///   * an OBJECTIVE whose click.object is the gate prefab and whose click.locations names
+        ///     that region as "stretch.tile.region"
+        ///
+        /// Either alone does nothing. The region on its own is an unmarked cell; the objective on
+        /// its own points at a region that is not there, and the mission simply has no way out -
+        /// which is exactly what it looks like in game, with no error anywhere.
+        ///
+        /// It is NOT a teleport. Teleports are the glowing doors BETWEEN places - side areas,
+        /// crypts, the camp's own rooms - and they name a door. This names a region and finishes
+        /// the mission.
+        /// </summary>
+        public sealed class Exit
+        {
+            public Exit(int at, int[] pos, bool claimed)
+            {
+                At = at;
+                Pos = pos;
+                Claimed = claimed;
+            }
+
+            public int At { get; }
+            public int[] Pos { get; }
+
+            /// <summary>Whether an objective actually points at it.</summary>
+            public bool Claimed { get; }
+
+            public override string ToString()
+                => $"{Pos[0]}, {Pos[1]}, {Pos[2]}"
+                + (Claimed ? "   \u2190  the way out" : "   \u00b7  NO objective points at it");
+        }
+
+        private static bool isExit(JsonObject region)
+            => region["type"]?.GetValue<string>() == "trigger"
+            && string.Equals(region["name"]?.GetValue<string>(), EXIT,
+                   StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>Whether the level has an objective that clicks an exit gate.</summary>
+        public static bool hasExitObjective(Map map)
+        {
+            foreach (var one in map.Level["objectives"] as JsonArray ?? new JsonArray())
+            {
+                if (one is not JsonObject objective) { continue; }
+                if (objective["click"] is not JsonObject click) { continue; }
+
+                if (string.Equals(click["object"]?.GetValue<string>(), EXIT_DOOR,
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Every exit gate in a room.</summary>
+        public static List<Exit> exitsOf(Map map, Room room)
+        {
+            var made = new List<Exit>();
+            var claimed = hasExitObjective(map);
+            var regions = room.Regions;
+
+            for (var at = 0; at < regions.Count; at++)
+            {
+                if (regions[at] is not JsonObject region || !isExit(region)) { continue; }
+
+                made.Add(new Exit(at, ints(region["pos"], 3), claimed));
+            }
+
+            return made;
+        }
+
+        /// <summary>
+        /// Puts a way out somewhere, and makes sure something points at it.
+        ///
+        /// The objective is added too, because a gate nobody has claimed is the failure this is
+        /// here to prevent. The reference is written loose - "*.*.exit" - so it matches whichever
+        /// stretch and tile the region ends up in, which is what welding leaves behind anyway.
+        /// </summary>
+        public static Exit addExit(Map map, Room room, int x, int y, int z)
+        {
+            room.Regions.Add(new JsonObject
+            {
+                ["locked"] = false,
+                ["name"] = EXIT,
+                ["pos"] = new JsonArray(x, y, z),
+                ["size"] = new JsonArray(1, 1, 1),
+                ["tags"] = GATE,
+                ["type"] = "trigger",
+            });
+
+            if (!hasExitObjective(map))
+            {
+                if (map.Level["objectives"] is not JsonArray objectives)
+                {
+                    objectives = new JsonArray();
+                    map.Level["objectives"] = objectives;
+                }
+
+                objectives.Add(new JsonObject
+                {
+                    ["name"] = "name_the_escape",
+                    ["description"] = "description_exit_through_the_gate",
+                    ["displayMode"] = "MainObjective",
+                    ["click"] = new JsonObject
+                    {
+                        ["object"] = EXIT_DOOR,
+                        ["count"] = 1,
+                        ["locations"] = new JsonArray("*.*." + EXIT),
+                    },
+                });
+            }
+
+            return new Exit(room.Regions.Count - 1, new[] { x, y, z }, true);
+        }
+
+        /// <summary>Puts the exit gate somewhere else.</summary>
+        public static bool moveExit(Room room, int at, int x, int y, int z)
+        {
+            var regions = room.Regions;
+            if (at < 0 || at >= regions.Count) { return false; }
+            if (regions[at] is not JsonObject region || !isExit(region)) { return false; }
+
+            region["pos"] = new JsonArray(x, y, z);
+            return true;
+        }
+
+        /// <summary>Takes one exit gate out. The objective is left alone - it may claim another.</summary>
+        public static bool removeExitAt(Room room, int at)
+        {
+            var regions = room.Regions;
+            if (at < 0 || at >= regions.Count) { return false; }
+            if (regions[at] is not JsonObject region || !isExit(region)) { return false; }
+
+            regions.RemoveAt(at);
+            return true;
+        }
+
         //--- where you come in -------------------------------------------------------------------
 
         /// <summary>The tag and name the game marks the player's arrival area with.</summary>

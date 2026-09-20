@@ -1318,6 +1318,18 @@ namespace MCDSaveEdit
                             ? "[window] no mob row is editable, so all of them can draw"
                             : $"[window] WRONG - {window.editableMobRows} editable rows will show blank");
 
+                        //The side panel has to reach its own bottom. Six sections went in and
+                        //the mob list - the thing this window is mostly opened for - fell off it.
+                        var scroll = window.panelScrollNow;
+                        Console.WriteLine($"[window] side panel: content {scroll.content:F0}px, "
+                            + $"viewport {scroll.viewport:F0}px, scrollable {scroll.scrollable:F0}px");
+                        Console.WriteLine(scroll.scrollable > 0
+                            ? "[window] the panel scrolls, so what is below the fold can be reached"
+                            : "[window] the panel does not scroll - either it all fits, or it is clipped");
+                        Console.WriteLine(scroll.mobsReachable
+                            ? "[window] the mob list is inside the scrollable content"
+                            : "[window] WRONG - the mob list cannot be scrolled to");
+
                         var ways = window.wayRows;
                         Console.WriteLine($"[window] ways in and out: {ways.Length}");
                         foreach (var one in ways.Take(8)) { Console.WriteLine($"[window]   {one}"); }
@@ -1712,6 +1724,115 @@ namespace MCDSaveEdit
                 catch (Exception problem)
                 {
                     Console.WriteLine($"[kind] refused: {problem.Message}");
+                    this.Shutdown();
+                    return;
+                }
+            }
+
+            //PROBE_EXIT=<mission> - the way out: whether the mission has one, and building one.
+            //
+            //An exit needs a region AND an objective that names it, and either alone does nothing
+            //with no error anywhere - the mission simply cannot be finished. That is the failure
+            //this checks for, because it is invisible until somebody plays to the end.
+            var probeExit = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_EXIT="));
+            if (probeExit != null)
+            {
+                var wanted = probeExit.Substring("PROBE_EXIT=".Length).Trim('"');
+                var folder = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MCDReborn", "maps", wanted);
+
+                try
+                {
+                    var map = Logic.MapSpawns.load(folder);
+
+                    Console.WriteLine(Logic.MapSpawns.hasExitObjective(map)
+                        ? "[exit] the level has an objective that clicks an exit gate"
+                        : "[exit] the level has NO exit objective");
+
+                    var total = 0;
+                    foreach (var room in map.Rooms)
+                    {
+                        foreach (var one in Logic.MapSpawns.exitsOf(map, room))
+                        {
+                            Console.WriteLine($"[exit] {room.Id}: {one}");
+                            total++;
+                        }
+                    }
+                    Console.WriteLine($"[exit] {total} gate region(s) across {map.Rooms.Count} room(s)");
+
+                    var window = new UI.SpawnsWindow(map);
+                    window.WindowState = WindowState.Normal;
+                    window.Width = 1280; window.Height = 800; window.Left = -20000;
+                    window.Show();
+
+                    var waited = 0;
+                    var timer = new System.Windows.Threading.DispatcherTimer
+                    {
+                        Interval = TimeSpan.FromMilliseconds(250),
+                    };
+
+                    timer.Tick += (_, _) =>
+                    {
+                        waited += 250;
+                        if (!window.mapReady && waited < 15000) { return; }
+                        timer.Stop();
+
+                        Console.WriteLine($"[exit] hint: {window.exitHint}");
+
+                        //The chain, which is the other half of why a gate does nothing.
+                        foreach (var step in window.questRows)
+                        {
+                            Console.WriteLine($"[exit]   {step}");
+                        }
+                        Console.WriteLine($"[exit] chain: {window.questHintNow}");
+
+                        var steps = window.questRows.Length;
+                        window.probeOnlyExit();
+
+                        Console.WriteLine(window.questRows.Length < steps
+                            ? $"[exit] trimmed the chain from {steps} to {window.questRows.Length}"
+                            : "[exit] WRONG - the chain was not trimmed");
+
+                        Console.WriteLine(window.questRows.All(one => one.Contains("the way out"))
+                            ? "[exit] and what is left is the way out"
+                            : "[exit] WRONG - something other than the exit survived");
+
+                        Console.WriteLine($"[exit] status: {window.probeStatus}");
+
+                        var had = window.exitRows.Length;
+                        var hadObjective = window.exitObjectiveNow;
+
+                        window.probeAddExit(30, 20, 30);
+
+                        Console.WriteLine(window.exitRows.Length == had + 1
+                            ? $"[exit] added a gate, now {window.exitRows.Length}"
+                            : "[exit] WRONG - the gate was not added");
+
+                        Console.WriteLine(window.exitObjectiveNow
+                            ? "[exit] and an objective points at it"
+                            : "[exit] WRONG - no objective was written, the gate would never appear");
+
+                        Console.WriteLine(window.exitRows.All(one => one.Contains("the way out"))
+                            ? "[exit] every gate reads as claimed"
+                            : "[exit] WRONG - a gate says nothing points at it");
+
+                        Console.WriteLine(hadObjective || window.probeStatus.Contains("finished")
+                            ? "[exit] the status says the mission can now be finished"
+                            : "[exit] WRONG - adding the first gate did not say so");
+
+                        Console.WriteLine($"[exit] status: {window.probeStatus}");
+                        Console.WriteLine($"[exit] hint: {window.exitHint}");
+
+                        this.Shutdown();
+                    };
+
+                    timer.Start();
+                    return;
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[exit] refused: {problem.Message}");
                     this.Shutdown();
                     return;
                 }

@@ -4978,6 +4978,231 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to What the mission asks.
+        /// </summary>
+        public static string SPAWNS_QUEST {
+            get {
+                return ResourceManager.GetString("SPAWNS_QUEST", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The steps, in order. They are a SEQUENCE - a step nobody can finish blocks every step after it, including the exit gate, which is always last. A map built over another mission inherits that mission's steps, and they usually ask for things your map does not have..
+        /// </summary>
+        public static string SPAWNS_QUEST_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_QUEST_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Keep only the way out.
+        /// </summary>
+        public static string SPAWNS_QUEST_ONLY_EXIT {
+            get {
+                return ResourceManager.GetString("SPAWNS_QUEST_ONLY_EXIT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove step.
+        /// </summary>
+        public static string SPAWNS_QUEST_REMOVE {
+            get {
+                return ResourceManager.GetString("SPAWNS_QUEST_REMOVE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No steps. Nothing has to be done before the exit gate can be clicked..
+        /// </summary>
+        public static string SPAWNS_QUEST_NONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_QUEST_NONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} step(s), and this room has a region for every one of them..
+        /// </summary>
+        public static string SPAWNS_QUEST_OK {
+            get {
+                return ResourceManager.GetString("SPAWNS_QUEST_OK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Step {0} needs a region called “{1}” and this room has not got one. That step can never finish, so nothing after it can either - including the exit gate. Remove it, or press Keep only the way out..
+        /// </summary>
+        public static string SPAWNS_QUEST_STUCK {
+            get {
+                return ResourceManager.GetString("SPAWNS_QUEST_STUCK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Step removed. {0} left..
+        /// </summary>
+        public static string SPAWNS_QUEST_REMOVED {
+            get {
+                return ResourceManager.GetString("SPAWNS_QUEST_REMOVED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Dropped {0} step(s). Clicking the gate is now the whole mission..
+        /// </summary>
+        public static string SPAWNS_QUEST_ONLY_EXIT_LEFT {
+            get {
+                return ResourceManager.GetString("SPAWNS_QUEST_ONLY_EXIT_LEFT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Dropped {0} step(s). There was no exit objective to keep - add an exit gate and one gets written..
+        /// </summary>
+        public static string SPAWNS_QUEST_ALL_GONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_QUEST_ALL_GONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to There is nothing but the way out already..
+        /// </summary>
+        public static string SPAWNS_QUEST_NOTHING_TO_DROP {
+            get {
+                return ResourceManager.GetString("SPAWNS_QUEST_NOTHING_TO_DROP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The way out.
+        /// </summary>
+        public static string SPAWNS_EXITS {
+            get {
+                return ResourceManager.GetString("SPAWNS_EXITS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The RED marker: the glowing gate you click to finish the mission. It is not a teleport. It needs two things that must agree - a region named “exit” and an objective pointing at it - and either one alone does nothing at all. The button writes both..
+        /// </summary>
+        public static string SPAWNS_EXITS_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_EXITS_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Put the exit gate here.
+        /// </summary>
+        public static string SPAWNS_ADD_EXIT {
+            get {
+                return ResourceManager.GetString("SPAWNS_ADD_EXIT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove gate.
+        /// </summary>
+        public static string SPAWNS_REMOVE_EXIT {
+            get {
+                return ResourceManager.GetString("SPAWNS_REMOVE_EXIT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to None. Without one the mission cannot be finished and there is no way back to camp - the game says nothing, there is simply no gate..
+        /// </summary>
+        public static string SPAWNS_EXITS_NONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_EXITS_NONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} gate(s), and an objective points at them..
+        /// </summary>
+        public static string SPAWNS_EXITS_SOME {
+            get {
+                return ResourceManager.GetString("SPAWNS_EXITS_SOME", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} gate(s), but NO objective points at any of them, so none will appear. Remove one and add it again to write the objective..
+        /// </summary>
+        public static string SPAWNS_EXITS_UNCLAIMED {
+            get {
+                return ResourceManager.GetString("SPAWNS_EXITS_UNCLAIMED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to An objective is looking for an exit gate, but there is no region for it to stand on. Add one..
+        /// </summary>
+        public static string SPAWNS_EXITS_OBJECTIVE_ONLY {
+            get {
+                return ResourceManager.GetString("SPAWNS_EXITS_OBJECTIVE_ONLY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Exit gate at {0}, {1}, {2}..
+        /// </summary>
+        public static string SPAWNS_EXIT_AT {
+            get {
+                return ResourceManager.GetString("SPAWNS_EXIT_AT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Exit gate at {0}, {1}, {2}..
+        /// </summary>
+        public static string SPAWNS_EXIT_ADDED {
+            get {
+                return ResourceManager.GetString("SPAWNS_EXIT_ADDED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Exit gate at {0}, {1}, {2}, and an objective to click it - this mission can now be finished..
+        /// </summary>
+        public static string SPAWNS_EXIT_ADDED_WITH_OBJECTIVE {
+            get {
+                return ResourceManager.GetString("SPAWNS_EXIT_ADDED_WITH_OBJECTIVE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Gate removed. {0} left..
+        /// </summary>
+        public static string SPAWNS_EXIT_REMOVED {
+            get {
+                return ResourceManager.GetString("SPAWNS_EXIT_REMOVED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to That was the last gate. The mission can no longer be finished - add one before installing..
+        /// </summary>
+        public static string SPAWNS_EXIT_LAST_GONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_EXIT_LAST_GONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Moved the exit gate from {0}, {1}, {2} to {3}, {4}, {5}..
+        /// </summary>
+        public static string SPAWNS_MOVED_EXIT {
+            get {
+                return ResourceManager.GetString("SPAWNS_MOVED_EXIT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Make this the main way in.
         /// </summary>
         public static string SPAWNS_MAIN_START {

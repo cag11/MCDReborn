@@ -43,6 +43,13 @@
         <Border DockPanel.Dock="Right" Width="290" Margin="10,0,0,0" Padding="12"
                 Background="{DynamicResource Brush.Surface}"
                 BorderBrush="{DynamicResource Brush.Border}" BorderThickness="1" CornerRadius="4">
+
+            <!-- Scrolls, because this panel now holds six sections and the window is whatever
+                 height the screen allows. What fell off the bottom was the mob list, which is
+                 the thing most people open this window for. -->
+            <ScrollViewer x:Name="panelScroll" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          Padding="0,0,6,0">
             <StackPanel>
                 <Label x:Name="placeLabel" Content="*Place spawn points*"
                        Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
@@ -128,6 +135,36 @@
 
                 <Separator Margin="0,0,0,10"/>
 
+                <Label x:Name="questLabel" Content="*What the mission asks*"
+                       Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+                <TextBlock x:Name="questHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
+                           Foreground="{DynamicResource Brush.TextMuted}"/>
+                <ListBox x:Name="questList" MaxHeight="120" Margin="0,0,0,6"
+                         SelectionChanged="questList_SelectionChanged"/>
+                <WrapPanel Margin="0,0,0,12">
+                    <Button x:Name="onlyExitButton" Content="*Keep only the way out*" Padding="10,4"
+                            Margin="0,0,6,6" Click="onlyExitButton_Click"/>
+                    <Button x:Name="removeQuestButton" Content="*Remove step*" Padding="10,4"
+                            Margin="0,0,0,6" Click="removeQuestButton_Click"/>
+                </WrapPanel>
+
+                <Separator Margin="0,0,0,10"/>
+
+                <Label x:Name="exitsLabel" Content="*The way out*"
+                       Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+                <TextBlock x:Name="exitsHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
+                           Foreground="{DynamicResource Brush.TextMuted}"/>
+                <ListBox x:Name="exitsList" MaxHeight="80" Margin="0,0,0,6"
+                         SelectionChanged="exitsList_SelectionChanged"/>
+                <WrapPanel Margin="0,0,0,12">
+                    <Button x:Name="addExitButton" Content="*Put the exit gate here*" Padding="10,4"
+                            Margin="0,0,6,6" Click="addExitButton_Click"/>
+                    <Button x:Name="removeExitButton" Content="*Remove gate*" Padding="10,4"
+                            Margin="0,0,0,6" Click="removeExitButton_Click"/>
+                </WrapPanel>
+
+                <Separator Margin="0,0,0,10"/>
+
                 <Label x:Name="doorsLabel" Content="*Doors*"
                        Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
                 <TextBlock x:Name="doorsHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
@@ -176,9 +213,7 @@
                 <TextBlock x:Name="mobsLabel" FontSize="11" Margin="0,4,0,4"
                            Foreground="{DynamicResource Brush.TextMuted}"/>
 
-                <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
-                    <StackPanel x:Name="mobStack"/>
-                </ScrollViewer>
+                <StackPanel x:Name="mobStack"/>
 
                 <WrapPanel Margin="0,8,0,0">
                     <Button x:Name="addMobButton" Content="*Add mob*" Padding="10,4"
@@ -187,6 +222,7 @@
                             Click="addGroupButton_Click"/>
                 </WrapPanel>
             </StackPanel>
+            </ScrollViewer>
         </Border>
 
         <!-- The mission itself. Drag to turn it, shift-drag or right-drag to slide it about,

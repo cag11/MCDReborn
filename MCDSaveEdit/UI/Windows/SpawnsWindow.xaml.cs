@@ -251,6 +251,54 @@ namespace MCDSaveEdit.UI
         /// <summary>What the status line says, which is the only thing a person is told.</summary>
         internal string probeStatus => statusLabel.Text;
 
+        /// <summary>
+        /// How far the side panel can scroll, and whether the mob list is inside the part that
+        /// scrolls into view.
+        ///
+        /// A ScrollViewer that is present but cannot scroll is the vacuous version of this check:
+        /// it would pass on a panel whose content still overflowed a fixed-height child. What
+        /// matters is that the content is taller than the window AND that the bottom of the mob
+        /// list can be brought into view.
+        /// </summary>
+        internal (double scrollable, double content, double viewport, bool mobsReachable) panelScrollNow
+        {
+            get
+            {
+                panelScroll.UpdateLayout();
+
+                var bottom = mobStack.TranslatePoint(new Point(0, mobStack.ActualHeight), panelScroll).Y
+                    + panelScroll.VerticalOffset;
+
+                return (panelScroll.ScrollableHeight, panelScroll.ExtentHeight,
+                    panelScroll.ViewportHeight,
+                    mobStack.ActualHeight > 0 && bottom <= panelScroll.ExtentHeight + 1);
+            }
+        }
+
+        /// <summary>The objective chain as the list shows it.</summary>
+        internal string[] questRows => questList.Items.OfType<MapSpawns.Objective>()
+            .Select(one => one.ToString()).ToArray();
+
+        internal string questHintNow => questHint.Text;
+
+        internal void probeOnlyExit() => onlyExitButton_Click(this, new RoutedEventArgs());
+
+        /// <summary>The exit gates as the list shows them.</summary>
+        internal string[] exitRows => exitsList.Items.OfType<MapSpawns.Exit>()
+            .Select(one => one.ToString()).ToArray();
+
+        internal string exitHint => exitsHint.Text;
+
+        internal bool exitObjectiveNow => MapSpawns.hasExitObjective(_map);
+
+        internal void probeAddExit(int x, int y, int z)
+        {
+            xBox.Text = x.ToString();
+            yBox.Text = y.ToString();
+            zBox.Text = z.ToString();
+            addExitButton_Click(this, new RoutedEventArgs());
+        }
+
         /// <summary>The arrival areas as the list shows them.</summary>
         internal string[] startRows => startsList.Items.OfType<MapSpawns.Start>()
             .Select(one => one.ToString()).ToArray();
@@ -373,6 +421,14 @@ namespace MCDSaveEdit.UI
             placeButton.Content = R.SPAWNS_PLACE_BUTTON;
             clearButton.Content = R.SPAWNS_CLEAR;
             removeButton.Content = R.SPAWNS_REMOVE_POINT;
+            questLabel.Content = R.SPAWNS_QUEST;
+            questHint.Text = R.SPAWNS_QUEST_WHY;
+            onlyExitButton.Content = R.SPAWNS_QUEST_ONLY_EXIT;
+            removeQuestButton.Content = R.SPAWNS_QUEST_REMOVE;
+            exitsLabel.Content = R.SPAWNS_EXITS;
+            exitsHint.Text = R.SPAWNS_EXITS_WHY;
+            addExitButton.Content = R.SPAWNS_ADD_EXIT;
+            removeExitButton.Content = R.SPAWNS_REMOVE_EXIT;
             startsLabel.Content = R.SPAWNS_STARTS;
             startsHint.Text = R.SPAWNS_STARTS_WHY;
             addStartButton.Content = R.SPAWNS_ADD_START;
@@ -524,6 +580,8 @@ namespace MCDSaveEdit.UI
             markWays();
             fillDoors();
             fillStarts();
+            fillExits();
+            fillQuest();
         }
 
         /// <summary>
@@ -548,6 +606,179 @@ namespace MCDSaveEdit.UI
             }
 
             mapView.mark(found, Color.FromRgb(255, 120, 60));
+        }
+
+        //--- what the mission asks of you -----------------------------------------------------------
+
+        private int _quest = -1;
+
+        /// <summary>
+        /// The objective chain, and whether each step can still be finished.
+        ///
+        /// A step whose regions are not in the map can never complete, and every step behind it
+        /// is then unreachable - including the exit gate, which is the last one in every mission
+        /// the game ships. That is a gate that draws, lights up and does nothing, with no error
+        /// anywhere, so it is worth saying out loud here.
+        /// </summary>
+        private void fillQuest()
+        {
+            if (_room == null) { questList.ItemsSource = null; return; }
+
+            var steps = MapSpawns.objectivesOf(_map);
+
+            //What regions this room actually has to offer, by name.
+            var have = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var region in _room.Regions)
+            {
+                var name = region?["name"]?.GetValue<string>();
+                if (!string.IsNullOrEmpty(name)) { have.Add(name!); }
+            }
+
+            _filling = true;
+            var wasAt = _quest;
+            questList.ItemsSource = steps;
+            questList.SelectedIndex = steps.FindIndex(one => one.At == wasAt);
+            _filling = false;
+
+            var stuck = steps.FirstOrDefault(one => one.Needs.Any(need => !have.Contains(need)));
+
+            questHint.Text = steps.Count == 0
+                ? R.SPAWNS_QUEST_NONE
+                : stuck != null
+                    ? string.Format(R.SPAWNS_QUEST_STUCK, stuck.At + 1,
+                        string.Join(", ", stuck.Needs.Where(need => !have.Contains(need))))
+                    : string.Format(R.SPAWNS_QUEST_OK, steps.Count);
+        }
+
+        private void questList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+            _quest = questList.SelectedItem is MapSpawns.Objective step ? step.At : -1;
+            updateUI();
+        }
+
+        private void removeQuestButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_quest < 0) { return; }
+            if (!MapSpawns.removeObjectiveAt(_map, _quest)) { return; }
+
+            _map.Changed.Add("level.json");
+            _quest = -1;
+
+            statusLabel.Text = string.Format(R.SPAWNS_QUEST_REMOVED,
+                MapSpawns.objectivesOf(_map).Count);
+
+            fillQuest();
+            updateUI();
+        }
+
+        private void onlyExitButton_Click(object sender, RoutedEventArgs e)
+        {
+            var gone = MapSpawns.keepOnlyExit(_map);
+
+            if (gone == 0)
+            {
+                statusLabel.Text = R.SPAWNS_QUEST_NOTHING_TO_DROP;
+                return;
+            }
+
+            _map.Changed.Add("level.json");
+            _quest = -1;
+
+            statusLabel.Text = MapSpawns.objectivesOf(_map).Count == 0
+                ? string.Format(R.SPAWNS_QUEST_ALL_GONE, gone)
+                : string.Format(R.SPAWNS_QUEST_ONLY_EXIT_LEFT, gone);
+
+            fillQuest();
+            updateUI();
+        }
+
+        //--- the way out ----------------------------------------------------------------------------
+
+        private int _exit = -1;
+
+        private void fillExits()
+        {
+            if (_room == null)
+            {
+                exitsList.ItemsSource = null;
+                mapView.markExits(Array.Empty<(int, int, int)>());
+                return;
+            }
+
+            var exits = MapSpawns.exitsOf(_map, _room);
+
+            _filling = true;
+            var wasAt = _exit;
+            exitsList.ItemsSource = exits;
+            exitsList.SelectedIndex = exits.FindIndex(one => one.At == wasAt);
+            _filling = false;
+
+            mapView.markExits(exits.Select(one => (one.Pos[0], one.Pos[1], one.Pos[2])));
+
+            //Both halves are reported, because either alone silently does nothing.
+            var claimed = MapSpawns.hasExitObjective(_map);
+
+            exitsHint.Text = exits.Count == 0
+                ? (claimed ? R.SPAWNS_EXITS_OBJECTIVE_ONLY : R.SPAWNS_EXITS_NONE)
+                : claimed
+                    ? string.Format(R.SPAWNS_EXITS_SOME, exits.Count)
+                    : string.Format(R.SPAWNS_EXITS_UNCLAIMED, exits.Count);
+        }
+
+        private void exitsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+            if (exitsList.SelectedItem is not MapSpawns.Exit found) { _exit = -1; return; }
+
+            _exit = found.At;
+            mapView.aim(found.Pos[0], found.Pos[1], found.Pos[2], true);
+            statusLabel.Text = string.Format(R.SPAWNS_EXIT_AT,
+                found.Pos[0], found.Pos[1], found.Pos[2]);
+            updateUI();
+        }
+
+        private void addExitButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null) { return; }
+
+            var had = MapSpawns.hasExitObjective(_map);
+
+            var made = MapSpawns.addExit(_map, _room,
+                number(xBox, _room.Size[0] / 2),
+                number(yBox, _room.Size[1] / 2),
+                number(zBox, _room.Size[2] / 2));
+
+            _map.Changed.Add(_room.File);
+            _exit = made.At;
+
+            //The objective lives in the level, not the object group, so that file changed too -
+            //and forgetting to say so is a gate that saves without anything pointing at it.
+            if (!had) { _map.Changed.Add("level.json"); }
+
+            statusLabel.Text = string.Format(
+                had ? R.SPAWNS_EXIT_ADDED : R.SPAWNS_EXIT_ADDED_WITH_OBJECTIVE,
+                made.Pos[0], made.Pos[1], made.Pos[2]);
+
+            fillExits();
+            updateUI();
+        }
+
+        private void removeExitButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null || _exit < 0) { return; }
+            if (!MapSpawns.removeExitAt(_room, _exit)) { return; }
+
+            _map.Changed.Add(_room.File);
+            _exit = -1;
+
+            var left = MapSpawns.exitsOf(_map, _room).Count;
+            statusLabel.Text = left == 0
+                ? R.SPAWNS_EXIT_LAST_GONE
+                : string.Format(R.SPAWNS_EXIT_REMOVED, left);
+
+            fillExits();
+            updateUI();
         }
 
         //--- where you come in ---------------------------------------------------------------------
@@ -971,6 +1202,13 @@ namespace MCDSaveEdit.UI
                     selectRow(startsList, one => one is MapSpawns.Start start && start.At == _start);
                     break;
 
+                case MapView3D.Pin.Exit:
+                    _exit = MapSpawns.exitsOf(_map, _room!)
+                        .FirstOrDefault(one => one.Pos[0] == x && one.Pos[1] == y && one.Pos[2] == z)
+                        ?.At ?? -1;
+                    selectRow(exitsList, one => one is MapSpawns.Exit found && found.At == _exit);
+                    break;
+
                 default:
                     mapView_Picked(x, y, z);
                     break;
@@ -1006,6 +1244,10 @@ namespace MCDSaveEdit.UI
                     var start = MapSpawns.startsOf(_room).FirstOrDefault(one => one.At == _start);
                     return start == null ? null : (start.Pos[0], start.Pos[1], start.Pos[2]);
 
+                case MapView3D.Pin.Exit:
+                    var found = MapSpawns.exitsOf(_map, _room).FirstOrDefault(one => one.At == _exit);
+                    return found == null ? null : (found.Pos[0], found.Pos[1], found.Pos[2]);
+
                 default:
                     return positionOf(_selected);
             }
@@ -1020,6 +1262,7 @@ namespace MCDSaveEdit.UI
             {
                 MapView3D.Pin.Door => _door >= 0 && MapSpawns.moveDoor(_room, _door, x, y, z),
                 MapView3D.Pin.Start => _start >= 0 && MapSpawns.moveStart(_room, _start, x, y, z),
+                MapView3D.Pin.Exit => _exit >= 0 && MapSpawns.moveExit(_room, _exit, x, y, z),
                 _ => _selected >= 0 && MapSpawns.moveTo(_room, _selected, x, y, z),
             };
         }
@@ -1040,6 +1283,7 @@ namespace MCDSaveEdit.UI
             {
                 case MapView3D.Pin.Door: redrawDoorPins(); break;
                 case MapView3D.Pin.Start: redrawStartPins(); break;
+                case MapView3D.Pin.Exit: redrawExitPins(); break;
                 default: markPoints(); break;
             }
 
@@ -1058,6 +1302,14 @@ namespace MCDSaveEdit.UI
             if (_room == null) { return; }
             mapView.markDoors(MapSpawns.doorsOf(_map, _room)
                 .Select(one => (one.Pos[0], one.Pos[1], one.Pos[2], one.IsEntry)));
+        }
+
+        /// <summary>The red pins alone.</summary>
+        private void redrawExitPins()
+        {
+            if (_room == null) { return; }
+            mapView.markExits(MapSpawns.exitsOf(_map, _room)
+                .Select(one => (one.Pos[0], one.Pos[1], one.Pos[2])));
         }
 
         /// <summary>The green pins alone.</summary>
@@ -1087,6 +1339,7 @@ namespace MCDSaveEdit.UI
             {
                 MapView3D.Pin.Door => R.SPAWNS_MOVED_DOOR,
                 MapView3D.Pin.Start => R.SPAWNS_MOVED_START,
+                MapView3D.Pin.Exit => R.SPAWNS_MOVED_EXIT,
                 _ => R.SPAWNS_MOVED,
             };
 
@@ -1139,6 +1392,8 @@ namespace MCDSaveEdit.UI
             //room change points at a different door entirely. Same for arrival areas.
             _door = -1;
             _start = -1;
+            _exit = -1;
+            _quest = -1;
             _selected = -1;
 
             if (_room != null)
@@ -1579,6 +1834,12 @@ namespace MCDSaveEdit.UI
 
             //A door can be added wherever the map is aimed; the other two need one picked out of
             //the list, because they act on that one rather than on wherever you are looking.
+            onlyExitButton.IsEnabled = has;
+            removeQuestButton.IsEnabled = has && _quest >= 0;
+
+            addExitButton.IsEnabled = has;
+            removeExitButton.IsEnabled = has && _exit >= 0;
+
             addStartButton.IsEnabled = has;
             removeStartButton.IsEnabled = has && _start >= 0;
             mainStartButton.IsEnabled = has && _start >= 0;

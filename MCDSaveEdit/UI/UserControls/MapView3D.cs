@@ -45,6 +45,7 @@ namespace MCDSaveEdit.UI
         private Model3DGroup? _doorGroup;
 
         private Model3DGroup? _startGroup;
+        private GeometryModel3D? _exits;
         private GeometryModel3D? _cursor;
 
         //Where the camera is looking and from how far. Yaw and pitch are degrees because every
@@ -70,9 +71,10 @@ namespace MCDSaveEdit.UI
         private readonly List<(int x, int y, int z)> _marks = new List<(int x, int y, int z)>();
         private readonly List<(int x, int y, int z)> _doorPins = new List<(int x, int y, int z)>();
         private readonly List<(int x, int y, int z)> _startPins = new List<(int x, int y, int z)>();
+        private readonly List<(int x, int y, int z)> _exitPins = new List<(int x, int y, int z)>();
 
         /// <summary>The kinds of thing standing on the map that can be taken hold of.</summary>
-        public enum Pin { Spawn, Door, Start }
+        public enum Pin { Spawn, Door, Start, Exit }
 
         private bool _dragging;
         private Pin _dragKind;
@@ -230,6 +232,7 @@ namespace MCDSaveEdit.UI
             if (_ways != null) { group.Children.Add(_ways); }
             if (_doorGroup != null) { group.Children.Add(_doorGroup); }
             if (_startGroup != null) { group.Children.Add(_startGroup); }
+            if (_exits != null) { group.Children.Add(_exits); }
             if (_markers != null) { group.Children.Add(_markers); }
             if (_cursor != null) { group.Children.Add(_cursor); }
 
@@ -447,6 +450,47 @@ namespace MCDSaveEdit.UI
         }
 
         /// <summary>
+        /// The way out - the glowing gate that finishes the mission.
+        ///
+        /// Red, and nothing else on the map is red. There are five kinds of marker standing on
+        /// one map by now and the only one that reliably tells them apart at a glance is hue, so
+        /// each gets its own rather than a shade of somebody else's.
+        /// </summary>
+        public void markExits(IEnumerable<(int x, int y, int z)> exits)
+        {
+            var mesh = new MeshGeometry3D();
+            var count = 0;
+
+            _exitPins.Clear();
+
+            foreach (var one in exits)
+            {
+                pillar(mesh, one.x + 0.5, one.y, one.z + 0.5, 2.8, 24.0);
+                _exitPins.Add((one.x, one.y, one.z));
+                count++;
+            }
+
+            if (count == 0)
+            {
+                _exits = null;
+                redraw();
+                return;
+            }
+
+            mesh.Freeze();
+
+            var material = new MaterialGroup();
+            material.Children.Add(new DiffuseMaterial(new SolidColorBrush(
+                Color.FromRgb(255, 72, 72))));
+            material.Children.Add(new EmissiveMaterial(new SolidColorBrush(
+                Color.FromRgb(150, 25, 25))));
+            material.Freeze();
+
+            _exits = new GeometryModel3D(mesh, material) { BackMaterial = material };
+            redraw();
+        }
+
+        /// <summary>
         /// Where the mission puts you when it starts.
         ///
         /// Green, and the broadest marker of the lot, because it is an area rather than a point -
@@ -648,6 +692,7 @@ namespace MCDSaveEdit.UI
             if (_ways != null) { made.Children.Add(_ways); }
             if (_doorGroup != null) { made.Children.Add(_doorGroup); }
             if (_startGroup != null) { made.Children.Add(_startGroup); }
+            if (_exits != null) { made.Children.Add(_exits); }
             if (_markers != null) { made.Children.Add(_markers); }
             if (_cursor != null) { made.Children.Add(_cursor); }
             _scene.Content = made;
@@ -945,6 +990,8 @@ namespace MCDSaveEdit.UI
 
         internal IReadOnlyList<(int x, int y, int z)> probeStartPins => _startPins;
 
+        internal IReadOnlyList<(int x, int y, int z)> probeExitPins => _exitPins;
+
         /// <summary>
         /// Which pin a spot is close enough to have meant, if any.
         ///
@@ -980,6 +1027,7 @@ namespace MCDSaveEdit.UI
             search(_marks, Pin.Spawn);
             search(_doorPins, Pin.Door);
             search(_startPins, Pin.Start);
+            search(_exitPins, Pin.Exit);
 
             return best;
         }

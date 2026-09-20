@@ -2319,6 +2319,106 @@ The save file is not changed until you save it.</value>
     <value>That is now where the mission starts you. The others are teleport arrivals.</value>
     <comment>Status after promoting</comment>
   </data>
+  <data name="SPAWNS_QUEST" xml:space="preserve">
+    <value>What the mission asks</value>
+    <comment>Objective chain section heading</comment>
+  </data>
+  <data name="SPAWNS_QUEST_WHY" xml:space="preserve">
+    <value>The steps, in order. They are a SEQUENCE - a step nobody can finish blocks every step after it, including the exit gate, which is always last. A map built over another mission inherits that mission's steps, and they usually ask for things your map does not have.</value>
+    <comment>Objective chain explanation</comment>
+  </data>
+  <data name="SPAWNS_QUEST_ONLY_EXIT" xml:space="preserve">
+    <value>Keep only the way out</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_QUEST_REMOVE" xml:space="preserve">
+    <value>Remove step</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_QUEST_NONE" xml:space="preserve">
+    <value>No steps. Nothing has to be done before the exit gate can be clicked.</value>
+    <comment>Hint when there are no objectives</comment>
+  </data>
+  <data name="SPAWNS_QUEST_OK" xml:space="preserve">
+    <value>{0} step(s), and this room has a region for every one of them.</value>
+    <comment>Hint when all objectives can be satisfied</comment>
+  </data>
+  <data name="SPAWNS_QUEST_STUCK" xml:space="preserve">
+    <value>Step {0} needs a region called “{1}” and this room has not got one. That step can never finish, so nothing after it can either - including the exit gate. Remove it, or press Keep only the way out.</value>
+    <comment>Hint when an objective cannot be satisfied</comment>
+  </data>
+  <data name="SPAWNS_QUEST_REMOVED" xml:space="preserve">
+    <value>Step removed. {0} left.</value>
+    <comment>Status after removing an objective</comment>
+  </data>
+  <data name="SPAWNS_QUEST_ONLY_EXIT_LEFT" xml:space="preserve">
+    <value>Dropped {0} step(s). Clicking the gate is now the whole mission.</value>
+    <comment>Status after keeping only the exit</comment>
+  </data>
+  <data name="SPAWNS_QUEST_ALL_GONE" xml:space="preserve">
+    <value>Dropped {0} step(s). There was no exit objective to keep - add an exit gate and one gets written.</value>
+    <comment>Status when keeping only the exit left nothing</comment>
+  </data>
+  <data name="SPAWNS_QUEST_NOTHING_TO_DROP" xml:space="preserve">
+    <value>There is nothing but the way out already.</value>
+    <comment>Status when keep-only-exit would change nothing</comment>
+  </data>
+  <data name="SPAWNS_EXITS" xml:space="preserve">
+    <value>The way out</value>
+    <comment>Exit-gate section heading</comment>
+  </data>
+  <data name="SPAWNS_EXITS_WHY" xml:space="preserve">
+    <value>The RED marker: the glowing gate you click to finish the mission. It is not a teleport. It needs two things that must agree - a region named “exit” and an objective pointing at it - and either one alone does nothing at all. The button writes both.</value>
+    <comment>Exit-gate explanation</comment>
+  </data>
+  <data name="SPAWNS_ADD_EXIT" xml:space="preserve">
+    <value>Put the exit gate here</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_REMOVE_EXIT" xml:space="preserve">
+    <value>Remove gate</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_EXITS_NONE" xml:space="preserve">
+    <value>None. Without one the mission cannot be finished and there is no way back to camp - the game says nothing, there is simply no gate.</value>
+    <comment>Hint when there is no exit</comment>
+  </data>
+  <data name="SPAWNS_EXITS_SOME" xml:space="preserve">
+    <value>{0} gate(s), and an objective points at them.</value>
+    <comment>Hint when exits exist and are claimed</comment>
+  </data>
+  <data name="SPAWNS_EXITS_UNCLAIMED" xml:space="preserve">
+    <value>{0} gate(s), but NO objective points at any of them, so none will appear. Remove one and add it again to write the objective.</value>
+    <comment>Hint when exits exist without an objective</comment>
+  </data>
+  <data name="SPAWNS_EXITS_OBJECTIVE_ONLY" xml:space="preserve">
+    <value>An objective is looking for an exit gate, but there is no region for it to stand on. Add one.</value>
+    <comment>Hint when the objective exists without a region</comment>
+  </data>
+  <data name="SPAWNS_EXIT_AT" xml:space="preserve">
+    <value>Exit gate at {0}, {1}, {2}.</value>
+    <comment>Status when a gate is picked</comment>
+  </data>
+  <data name="SPAWNS_EXIT_ADDED" xml:space="preserve">
+    <value>Exit gate at {0}, {1}, {2}.</value>
+    <comment>Status after adding a gate</comment>
+  </data>
+  <data name="SPAWNS_EXIT_ADDED_WITH_OBJECTIVE" xml:space="preserve">
+    <value>Exit gate at {0}, {1}, {2}, and an objective to click it - this mission can now be finished.</value>
+    <comment>Status after adding the first gate</comment>
+  </data>
+  <data name="SPAWNS_EXIT_REMOVED" xml:space="preserve">
+    <value>Gate removed. {0} left.</value>
+    <comment>Status after removing a gate</comment>
+  </data>
+  <data name="SPAWNS_EXIT_LAST_GONE" xml:space="preserve">
+    <value>That was the last gate. The mission can no longer be finished - add one before installing.</value>
+    <comment>Status after removing the last gate</comment>
+  </data>
+  <data name="SPAWNS_MOVED_EXIT" xml:space="preserve">
+    <value>Moved the exit gate from {0}, {1}, {2} to {3}, {4}, {5}.</value>
+    <comment>Status after dragging the gate</comment>
+  </data>
   <data name="SPAWNS_STARTS" xml:space="preserve">
     <value>Where you come in</value>
     <comment>Player-start section heading</comment>
