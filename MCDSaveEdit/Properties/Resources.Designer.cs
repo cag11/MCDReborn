@@ -5059,6 +5059,96 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Ways in and out.
+        /// </summary>
+        public static string SPAWNS_WAYS {
+            get {
+                return ResourceManager.GetString("SPAWNS_WAYS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} teleport(s) on this room, drawn in blue. A tall one takes you somewhere; a short one is where you arrive..
+        /// </summary>
+        public static string SPAWNS_WAYS_HINT {
+            get {
+                return ResourceManager.GetString("SPAWNS_WAYS_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This room has none. Welding removes them, because a teleport names a door and the doors between rooms go when the rooms become one..
+        /// </summary>
+        public static string SPAWNS_NO_WAYS {
+            get {
+                return ResourceManager.GetString("SPAWNS_NO_WAYS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to →  {0}  leads to {1}.
+        /// </summary>
+        public static string SPAWNS_WAY_OUT {
+            get {
+                return ResourceManager.GetString("SPAWNS_WAY_OUT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ←  {0}  is where you arrive.
+        /// </summary>
+        public static string SPAWNS_WAY_IN {
+            get {
+                return ResourceManager.GetString("SPAWNS_WAY_IN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to ⚠  {0}  names a door this room no longer has.
+        /// </summary>
+        public static string SPAWNS_WAY_LOST {
+            get {
+                return ResourceManager.GetString("SPAWNS_WAY_LOST", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to New group.
+        /// </summary>
+        public static string SPAWNS_ADD_GROUP {
+            get {
+                return ResourceManager.GetString("SPAWNS_ADD_GROUP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Creates a mob group and sets it to roam the level, so spawn points have something to draw from. The camp ships with none..
+        /// </summary>
+        public static string SPAWNS_ADD_GROUP_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_ADD_GROUP_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Made “{0}” and set it roaming. Add the mobs you want to it..
+        /// </summary>
+        public static string SPAWNS_GROUP_MADE {
+            get {
+                return ResourceManager.GetString("SPAWNS_GROUP_MADE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This mission has no mob groups — nothing is meant to spawn here. New group makes one and sets it roaming..
+        /// </summary>
+        public static string SPAWNS_NO_GROUPS {
+            get {
+                return ResourceManager.GetString("SPAWNS_NO_GROUPS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Aimed at {0}, {1}, {2}  ·  Place drops {3} within {4} blocks. Double-click the map to skip the button..
         /// </summary>
         public static string SPAWNS_AIMED {
@@ -5376,6 +5466,33 @@ namespace MCDSaveEdit.Properties {
         public static string MAPS_GROUP_UNDO_WHY {
             get {
                 return ResourceManager.GetString("MAPS_GROUP_UNDO_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Handing {0} over in the Minecraft you play….
+        /// </summary>
+        public static string MAPS_MODERNISING {
+            get {
+                return ResourceManager.GetString("MAPS_MODERNISING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Reading {0} back from the Minecraft you built in….
+        /// </summary>
+        public static string MAPS_LEGACYISING {
+            get {
+                return ResourceManager.GetString("MAPS_LEGACYISING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Installed without welding — {0}, which a merged tile would not..
+        /// </summary>
+        public static string MAPS_NOT_WELDABLE {
+            get {
+                return ResourceManager.GetString("MAPS_NOT_WELDABLE", resourceCulture);
             }
         }
         

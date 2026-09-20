@@ -111,6 +111,22 @@
 
                 <Separator Margin="0,0,0,10"/>
 
+                <Label x:Name="waysLabel" Content="*Ways in and out*"
+                       Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+                <TextBlock x:Name="waysHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
+                           Foreground="{DynamicResource Brush.TextMuted}"/>
+                <ItemsControl x:Name="waysList" Margin="0,0,0,12">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}" FontSize="11" Margin="0,0,0,3"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource Brush.Text}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <Separator Margin="0,0,0,10"/>
+
                 <Label x:Name="rulesLabel" Content="*What spawns*"
                        Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
                 <TextBlock x:Name="rulesHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
@@ -128,8 +144,12 @@
                     <StackPanel x:Name="mobStack"/>
                 </ScrollViewer>
 
-                <Button x:Name="addMobButton" Content="*Add mob*" Padding="10,4" Margin="0,8,0,0"
-                        HorizontalAlignment="Left" Click="addMobButton_Click"/>
+                <WrapPanel Margin="0,8,0,0">
+                    <Button x:Name="addMobButton" Content="*Add mob*" Padding="10,4"
+                            Margin="0,0,6,0" Click="addMobButton_Click"/>
+                    <Button x:Name="addGroupButton" Content="*New group*" Padding="10,4"
+                            Click="addGroupButton_Click"/>
+                </WrapPanel>
             </StackPanel>
         </Border>
 

@@ -202,10 +202,26 @@ namespace MCDSaveEdit.UI
         internal bool probePlaceKeepsCamera()
         {
             var before = mapView.cameraNow;
-            xBox.Text = "500"; yBox.Text = "40"; zBox.Text = "180";
+
+            //The middle of whatever room this is. Fixed coordinates fall outside a small one -
+            //they were landing past the edge of the camp and placing nothing, which looks
+            //exactly like a broken button.
+            xBox.Text = ((_room?.Size[0] ?? 2) / 2).ToString();
+            yBox.Text = ((_room?.Size[1] ?? 2) / 2).ToString();
+            zBox.Text = ((_room?.Size[2] ?? 2) / 2).ToString();
+
             placeButton_Click(this, new RoutedEventArgs());
             return mapView.cameraNow == before;
         }
+
+        /// <summary>How many spawn points the chosen room holds right now.</summary>
+        internal int spawnsNow => _room?.Spawns ?? -1;
+
+        /// <summary>How many mob groups the mission has, for a probe.</summary>
+        internal int groupCount => groupBox.Items.Count;
+
+        /// <summary>Makes a group the way the button does.</summary>
+        internal void probeAddGroup() => addGroupButton_Click(this, new RoutedEventArgs());
 
         /// <summary>Whether holding W actually moves the view.</summary>
         internal bool probeWalks()
@@ -231,6 +247,10 @@ namespace MCDSaveEdit.UI
         /// <summary>Puts the whole mission back in view, so a probe can aim from a known place.</summary>
         internal void probeFrame() => mapView.frame();
 
+        /// <summary>The ways in and out as the panel lists them, for a probe to read.</summary>
+        internal string[] wayRows => (waysList.ItemsSource as System.Collections.IEnumerable)?
+            .Cast<string>().ToArray() ?? Array.Empty<string>();
+
         /// <summary>What a click in the middle of the view would choose.</summary>
         internal (int x, int y, int z)? probeClick()
             => mapView.probeLook(new Point(mapView.ActualWidth / 2, mapView.ActualHeight / 2));
@@ -252,9 +272,12 @@ namespace MCDSaveEdit.UI
             placeButton.Content = R.SPAWNS_PLACE_BUTTON;
             clearButton.Content = R.SPAWNS_CLEAR;
             removeButton.Content = R.SPAWNS_REMOVE_POINT;
+            waysLabel.Content = R.SPAWNS_WAYS;
             rulesLabel.Content = R.SPAWNS_RULES;
             rulesHint.Text = R.SPAWNS_RULES_HINT;
             addMobButton.Content = R.SPAWNS_ADD_MOB;
+            addGroupButton.Content = R.SPAWNS_ADD_GROUP;
+            addGroupButton.ToolTip = R.SPAWNS_ADD_GROUP_WHY;
             saveButton.Content = R.SPAWNS_SAVE;
             revertButton.Content = R.SPAWNS_RELOAD;
             frameButton.Content = R.SPAWNS_FIT;
@@ -399,6 +422,39 @@ namespace MCDSaveEdit.UI
             }
 
             mapView.mark(found, Color.FromRgb(255, 120, 60));
+            markWays();
+        }
+
+        /// <summary>
+        /// Draws and lists the ways in and out of this room.
+        ///
+        /// Worth showing beside the spawn points because they are the other half of what a room
+        /// is: where things come from, and where you can go. A teleport whose door has gone is
+        /// listed too, and said so - that is the failure that crashed the camp, and it is
+        /// invisible in Minecraft because a teleport is not a block.
+        /// </summary>
+        private void markWays()
+        {
+            if (_room == null) { waysList.ItemsSource = null; return; }
+
+            var ways = MapSpawns.teleportsOf(_map, _room);
+
+            mapView.markWays(ways
+                .Where(one => one.At[0] >= 0)
+                .Select(one => (one.At[0], one.At[1], one.At[2], one.Leaves)));
+
+            waysList.ItemsSource = ways
+                .Select(one => one.At[0] < 0
+                    ? string.Format(R.SPAWNS_WAY_LOST, one.Door)
+                    : one.Leaves
+                        ? string.Format(R.SPAWNS_WAY_OUT, one.Door,
+                            one.Dungeons.Length > 0 ? one.Dungeons : one.Exit)
+                        : string.Format(R.SPAWNS_WAY_IN, one.Door))
+                .ToList();
+
+            waysHint.Text = ways.Count == 0
+                ? R.SPAWNS_NO_WAYS
+                : string.Format(R.SPAWNS_WAYS_HINT, ways.Count);
         }
 
         private void frameButton_Click(object sender, RoutedEventArgs e) => mapView.frame();
@@ -694,7 +750,13 @@ namespace MCDSaveEdit.UI
             mobStack.Children.Clear();
 
             var group = chosenGroup;
-            if (group?["types"] is not JsonArray types) { mobsLabel.Text = ""; return; }
+            if (group?["types"] is not JsonArray types)
+            {
+                //An empty list is not the same as an empty room. The camp has no mob groups at
+                //all, and a blank dropdown says nothing about why.
+                mobsLabel.Text = groupBox.Items.Count == 0 ? R.SPAWNS_NO_GROUPS : "";
+                return;
+            }
 
             //Say what the rows below are. Two dropdowns with nothing between them reads as one
             //control repeated by mistake, which is exactly how it was read.
@@ -781,6 +843,31 @@ namespace MCDSaveEdit.UI
 
                 mobStack.Children.Add(row);
             }
+        }
+
+        /// <summary>
+        /// Makes a mob group where there was none, and points the mission at it.
+        ///
+        /// The camp has no groups at all and nothing set to roam - nothing is meant to spawn
+        /// there - so a spawn point put in it draws from nothing. This is the missing half.
+        /// </summary>
+        private void addGroupButton_Click(object sender, RoutedEventArgs e)
+        {
+            var made = MapSpawns.addGroup(_map);
+
+            fillGroups();
+
+            //Show the one just made rather than leaving them to find it.
+            for (var at = 0; at < groupBox.Items.Count; at++)
+            {
+                if (!ReferenceEquals((groupBox.Items[at] as ComboBoxItem)?.Tag, made)) { continue; }
+                groupBox.SelectedIndex = at;
+                break;
+            }
+
+            statusLabel.Text = string.Format(R.SPAWNS_GROUP_MADE,
+                made["id"]?.GetValue<string>() ?? "?");
+            updateUI();
         }
 
         private void addMobButton_Click(object sender, RoutedEventArgs e)

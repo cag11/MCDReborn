@@ -1017,6 +1017,185 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_CHUNKER=<world folder> - a world up to the modern Minecraft and back again.
+            //
+            //The round trip is the thing worth testing: going up is only useful if coming down
+            //returns what went in, and a converter that quietly drops blocks would look exactly
+            //like a converter that works.
+            var probeChunk = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_CHUNKER="));
+            if (probeChunk != null)
+            {
+                var world = probeChunk.Substring("PROBE_CHUNKER=".Length).Trim('"');
+
+                Console.WriteLine($"[chunker] jar: {Logic.MapTools.chunker ?? "NOT INSTALLED"}");
+                _ = System.Threading.Tasks.Task.Run(async () =>
+                {
+                    var clock = System.Diagnostics.Stopwatch.StartNew();
+                    var down = await Logic.MapTools.convert(world, Logic.MapTools.LEGACY);
+                    Console.WriteLine(down.Ok
+                        ? $"[chunker] down to {Logic.MapTools.LEGACY} in {clock.ElapsedMilliseconds:N0} ms"
+                        : $"[chunker] WRONG - coming down failed: {down.Last}");
+
+                    //Everything the tools put in the world has to still be there. Chunker keeps
+                    //level.dat and the regions and discards the rest, which is most of what the
+                    //trip home reads.
+                    foreach (var needed in new[]
+                    {
+                        Logic.MapTools.LEVEL_MARKER, "objectgroup.json",
+                        "region_plane", "region_y_plane", "walkable_plane",
+                    })
+                    {
+                        var at = System.IO.Path.Combine(world, needed);
+                        var there = System.IO.File.Exists(at) || System.IO.Directory.Exists(at);
+                        Console.WriteLine(there
+                            ? $"[chunker] kept {needed}"
+                            : $"[chunker] WRONG - lost {needed}");
+                    }
+
+                    //The swap must leave one world, not a graveyard of halves.
+                    foreach (var leftover in new[] { ".converting", ".before-convert" })
+                    {
+                        if (System.IO.Directory.Exists(world + leftover))
+                        {
+                            Console.WriteLine($"[chunker] WRONG - left {leftover} behind");
+                        }
+                    }
+
+                    Dispatcher.Invoke(() => this.Shutdown());
+                });
+
+                return;
+            }
+
+            //PROBE_WELDABLE - which of the game's levels can be welded and which must not be.
+            //
+            //Welding the camp crashed the game fourteen seconds into loading, because the merged
+            //tile declares none of the teleports its tiles did. Worth checking every level rather
+            //than the one that happened to break.
+            if (_startupArguments.Any(a => a == "PROBE_WELDABLE"))
+            {
+                var root = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MCDReborn", "maps");
+
+                if (!System.IO.Directory.Exists(root)) { Console.WriteLine("[weld] nothing exported"); }
+                else
+                {
+                    foreach (var folder in System.IO.Directory.GetDirectories(root))
+                    {
+                        //Judged on the level as it stands BEFORE welding. An already-welded level
+                        //plays one merged tile that declares nothing, and would pass every time.
+                        var pre = System.IO.Path.Combine(folder, "level.json.multitile");
+                        var judged = folder;
+
+                        if (System.IO.File.Exists(pre))
+                        {
+                            judged = System.IO.Path.Combine(
+                                System.IO.Path.GetTempPath(), "weld-probe", System.IO.Path.GetFileName(folder));
+                            System.IO.Directory.CreateDirectory(judged);
+                            System.IO.File.Copy(pre, System.IO.Path.Combine(judged, "level.json"), true);
+                        }
+
+                        var ok = Logic.MapTools.weldable(judged, out var why);
+                        Console.WriteLine($"[weld] {System.IO.Path.GetFileName(folder),-16} "
+                            + (ok ? "weldable" : "NOT weldable - " + why)
+                            + (judged == folder ? "" : "   (judged pre-weld)"));
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_DXT1=<texture asset path> - whether a compressed texture can be rewritten.
+            //
+            //Two things have to hold. The encoded replacement must be exactly as long as what it
+            //replaces, or the swap-in-place refuses; and the picture has to survive the trip, which
+            //a size check says nothing about. So it encodes the game's own artwork and measures how
+            //far the result drifted from it.
+            var probeDxt = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_DXT1="));
+            if (probeDxt != null)
+            {
+                var wantedName = probeDxt.Substring("PROBE_DXT1=".Length).Trim('"');
+
+                //Found the way the tab finds it, rather than by me spelling out a path. These
+                //entries carry a doubled mount point and guessing at it wasted more time than
+                //reusing the one function that already knows.
+                var asset = Logic.CosmeticSkins.userInterface()
+                    .Select(one => one.TexturePath)
+                    .FirstOrDefault(one => one.EndsWith("/" + wantedName, StringComparison.OrdinalIgnoreCase))
+                    ?? wantedName;
+
+                Console.WriteLine($"[dxt1] asset: {asset}");
+
+                try
+                {
+                    var package = Logic.CustomSkins.index!.extractPackage(asset)
+                        ?? throw new InvalidOperationException("could not read it");
+                    var texture = package.GetExport<PakReader.Parsers.Class.UTexture2D>()
+                        ?? throw new InvalidOperationException("that is not a texture");
+                    var platform = texture.PlatformDatas[0];
+                    var mip = platform.Mips[0].BulkData.Data!;
+
+                    Console.WriteLine($"[dxt1] {System.IO.Path.GetFileName(asset)} "
+                        + $"{platform.SizeX}x{platform.SizeY} {platform.PixelFormat}, mip0 {mip.Length:N0} bytes");
+
+                    var wanted = Logic.BlockCompression.dxt1Size(platform.SizeX, platform.SizeY);
+                    Console.WriteLine(wanted == mip.Length
+                        ? $"[dxt1] an encode of that size is {wanted:N0} bytes - the same"
+                        : $"[dxt1] WRONG - an encode would be {wanted:N0} bytes, not {mip.Length:N0}");
+
+                    //Round trip the game's own picture: decode what it ships, encode it again,
+                    //and see how much moved.
+                    var shown = texture.Image;
+                    if (shown == null) { Console.WriteLine("[dxt1] could not decode it"); }
+                    else
+                    {
+                        var bgra = new byte[platform.SizeX * platform.SizeY * 4];
+                        using (var bitmap = new SkiaSharp.SKBitmap(new SkiaSharp.SKImageInfo(
+                            platform.SizeX, platform.SizeY, SkiaSharp.SKColorType.Bgra8888,
+                            SkiaSharp.SKAlphaType.Unpremul)))
+                        {
+                            shown.ReadPixels(bitmap.Info, bitmap.GetPixels(), bitmap.RowBytes, 0, 0);
+                            System.Runtime.InteropServices.Marshal.Copy(
+                                bitmap.GetPixels(), bgra, 0, bgra.Length);
+                        }
+
+                        var again = Logic.BlockCompression.toDxt1(bgra, platform.SizeX, platform.SizeY);
+                        Console.WriteLine(again.Length == mip.Length
+                            ? $"[dxt1] re-encoded to {again.Length:N0} bytes - fits exactly"
+                            : $"[dxt1] WRONG - re-encoded to {again.Length:N0}, needed {mip.Length:N0}");
+
+                        //How far the picture moved, which is the only question that matters.
+                        var back = Logic.BlockCompression.fromDxt1(again, platform.SizeX, platform.SizeY);
+
+                        double total = 0;
+                        var worst = 0;
+                        for (var i = 0; i < bgra.Length; i++)
+                        {
+                            if (i % 4 == 3) { continue; }
+                            var gap = bgra[i] - back[i];
+                            total += gap * (double)gap;
+                            if (Math.Abs(gap) > worst) { worst = Math.Abs(gap); }
+                        }
+
+                        var rms = Math.Sqrt(total / (bgra.Length * 0.75));
+                        Console.WriteLine($"[dxt1] re-encoded picture differs by {rms:F2} of 255 on "
+                            + $"average, worst channel {worst}");
+                        Console.WriteLine(rms < 8
+                            ? "[dxt1] the artwork survives the trip"
+                            : "[dxt1] WRONG - that is visible damage, not compression");
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[dxt1] refused: {problem.Message}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
             //PROBE_CLEAR - whether Clear actually clears.
             //
             //Deleting a tree on Windows is not one call: the contents go and the directory can
@@ -1139,6 +1318,10 @@ namespace MCDSaveEdit
                             ? "[window] no mob row is editable, so all of them can draw"
                             : $"[window] WRONG - {window.editableMobRows} editable rows will show blank");
 
+                        var ways = window.wayRows;
+                        Console.WriteLine($"[window] ways in and out: {ways.Length}");
+                        foreach (var one in ways.Take(8)) { Console.WriteLine($"[window]   {one}"); }
+
                         //The group list has to say where each group is used, or editing the wrong
                         //one looks like the editor ignoring you.
                         var shown = window.groupRows;
@@ -1146,6 +1329,17 @@ namespace MCDSaveEdit
                         foreach (var one in shown.Take(4)) { Console.WriteLine($"[window]   {one}"); }
                         var ender = shown.FirstOrDefault(one => one.StartsWith("enderboss"));
                         Console.WriteLine(ender == null ? "[window]   (no enderboss)" : $"[window]   {ender}");
+
+                        //A mission with no groups has to be able to grow one, or its spawn points
+                        //draw from nothing for ever. The camp ships with none.
+                        if (window.groupCount == 0)
+                        {
+                            window.probeAddGroup();
+                            Console.WriteLine(window.groupCount == 1
+                                ? "[window] had no mob groups; New group made one: "
+                                    + window.groupRows.FirstOrDefault()
+                                : "[window] WRONG - New group made nothing");
+                        }
 
                         //Choosing a group other than the first and adding a mob has to leave you
                         //in that group, or the mob looks as though it went somewhere else.
@@ -1160,9 +1354,13 @@ namespace MCDSaveEdit
                             ? "[window] none of them runs off the edge"
                             : $"[window] WRONG - off the edge: {string.Join(", ", over)}");
 
+                        var wasSpawns = window.spawnsNow;
                         Console.WriteLine(window.probePlaceKeepsCamera()
                             ? "[window] placing points left the camera alone"
                             : "[window] WRONG - placing points moved the camera");
+
+                        Console.WriteLine($"[window] Place put down {window.spawnsNow - wasSpawns} "
+                            + $"point(s) ({wasSpawns} -> {window.spawnsNow})");
 
                         Console.WriteLine(window.probeWalks()
                             ? "[window] W moves the view"
@@ -1302,6 +1500,32 @@ namespace MCDSaveEdit
                     geometry.Freeze();
                     Console.WriteLine($"[relief] into WPF geometry in {shaping.ElapsedMilliseconds:N0} ms");
 
+                    //Every block at the top of a column should be one the palette knows. An id
+                    //outside it means the block array was read wrongly, not that the game has a
+                    //block nobody has heard of - reading 16-bit ids the wrong way round turns
+                    //dirt into 768 and paints the whole room grey.
+                    var strange = relief.Census
+                        .Where(one => one.id >= palette.Length || palette[one.id] == null)
+                        .ToList();
+
+                    //Measured as a SHARE, not a count. A block the conversion table never mapped
+                    //is normal and rare - the camp has one, id 366, worth a fraction of a per
+                    //cent. A misread block array is not rare: reading 16-bit ids the wrong way
+                    //round made unknown ids the commonest thing on the map. The difference
+                    //between a gap and a bug is how much of the room it covers.
+                    var counted = relief.Census.Sum(one => one.count);
+                    var lost = strange.Sum(one => one.count);
+                    var share = counted == 0 ? 0 : lost * 100.0 / counted;
+
+                    Console.WriteLine($"[relief] surface blocks the palette does not know: "
+                        + $"{lost:N0} of {counted:N0} ({share:F2}%)"
+                        + (strange.Count == 0 ? "" : " - ids "
+                            + string.Join(", ", strange.Take(6).Select(one => one.id))));
+
+                    Console.WriteLine(share < 5
+                        ? "[relief] the block array reads correctly"
+                        : "[relief] WRONG - that is too many to be gaps; the array is misread");
+
                     //Straight down the middle, looking down: the click the window will send.
                     var hit = Logic.MapRelief.pick(relief,
                         relief.Sx / 2.0, relief.Highest + 64.0, relief.Sz / 2.0, 0, -1, 0);
@@ -1387,6 +1611,24 @@ namespace MCDSaveEdit
                                 + $"{ground:N0} with ground ({ground * 100.0 / heights.Length:F0}%), "
                                 + $"heights {heights.Where(one => one != 0).DefaultIfEmpty().Min()}"
                                 + $"-{heights.Max()}");
+                        }
+
+                        //A few spots around the room, to see where placing succeeds and where it
+                        //quietly puts nothing down.
+                        var blocksFor = Logic.MapSpawns.blocksOf(first);
+                        if (blocksFor != null)
+                        {
+                            foreach (var (x, y, z) in new[]
+                            {
+                                (57, 93, 50),
+                                (first.Size[0] / 2, first.Size[1] / 2, first.Size[2] / 2),
+                                (first.Size[0] / 2, first.Size[1] - 1, first.Size[2] / 2),
+                            })
+                            {
+                                var floor = Logic.MapSpawns.floorUnder(first, blocksFor, x, z, y + 2);
+                                Console.WriteLine($"[spawn] floor under {x},{z} looking down from "
+                                    + $"{y + 2}: " + (floor == null ? "NONE" : floor.Value.ToString()));
+                            }
                         }
 
                         var was = first.Spawns;
