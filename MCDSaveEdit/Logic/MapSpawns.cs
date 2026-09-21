@@ -828,13 +828,14 @@ namespace MCDSaveEdit.Logic
         /// </summary>
         public sealed class Gate
         {
-            public Gate(int at, string name, int[] pos, int[] size, string openedBy)
+            public Gate(int at, string name, int[] pos, int[] size, string openedBy, string drawn)
             {
                 At = at;
                 Name = name;
                 Pos = pos;
                 Size = size;
                 OpenedBy = openedBy;
+                Drawn = drawn;
             }
 
             public int At { get; }
@@ -845,31 +846,102 @@ namespace MCDSaveEdit.Logic
             /// <summary>The objective that opens it, or empty when nothing does.</summary>
             public string OpenedBy { get; }
 
+            /// <summary>The prefab drawn over it, or empty when there is none to see.</summary>
+            public string Drawn { get; }
+
             public bool Across => Size[0] >= Size[2];
 
             public override string ToString()
             {
                 var wide = Math.Max(Size[0], Size[2]);
                 var lie = Across ? "across x" : "across z";
+                //A gate with no objective is not half-finished, it is the worst of both:
+                //the prefab that draws it lives on the objective, so nothing opens it AND there
+                //is nothing to see. Walking into thin air is what that looks like in game.
                 var note = OpenedBy.Length > 0
                     ? $"   \u2190  opens: {OpenedBy}"
-                    : "   \u00b7  nothing opens it - it stays shut";
+                    : "   \u00b7  NOTHING OPENS IT - shut for good, and invisible";
 
-                return $"{Name}   \u2014   {Pos[0]}, {Pos[1]}, {Pos[2]}   \u00b7  {wide} wide, {lie}{note}";
+                //Worth its own words rather than a missing field: a gate nobody can see is one
+                //people walk into, and it looks exactly like the map being broken.
+                var look = OpenedBy.Length == 0
+                    ? string.Empty
+                    : Drawn.Length == 0
+                        ? "   \u00b7  INVISIBLE"
+                        : "   \u00b7  " + (GATE_LOOKS.FirstOrDefault(one => one.path == Drawn).name
+                                          ?? "a prefab");
+
+                return $"{Name}   \u2014   {Pos[0]}, {Pos[1]}, {Pos[2]}   \u00b7  {wide} wide, {lie}{note}{look}";
             }
+        }
+
+        /// <summary>
+        /// What a held gate is drawn as, which is the difference between a wall and an ambush.
+        ///
+        /// Counted off all 374 gate regions the game holds shut: 187 of them name no prefab at
+        /// all. Those are not broken - they are doorways whose tile already has a door built out
+        /// of blocks, and the region only decides when you may walk through it. A gate carved
+        /// into a hand-built map has no such blocks, so it needs one of these or it is an
+        /// invisible wall.
+        ///
+        /// These stretch to whatever region they are given rather than coming in fixed widths:
+        /// the kitchen gate is used at 5, 6, 7, 9 and 11 cells and along both axes, and the
+        /// bamboo one at 5 and 9. So there is no sizing to get right - only a look to pick.
+        ///
+        /// Base game only. A prefab out of a download somebody has not bought is a mission that
+        /// will not start for them.
+        /// </summary>
+        public static readonly (string path, string name)[] GATE_LOOKS =
+        {
+            ("Decor/Prefabs/Platforms/BP_KitchenGateHH", "Iron portcullis"),
+            ("Decor/Prefabs/DingyJungle/Jungle_DesignAssets/BP_Gate_BB_Bamboo_x5", "Bamboo gate"),
+            ("Decor/Prefabs/Door/BP_RedstoneToggle_Gate", "Redstone gate"),
+            ("Decor/Prefabs/DingyJungle/Jungle_DesignAssets/Overgrown_Temple/BP_OT_Door_9x", "Temple door"),
+
+            //Capital S in "Structures". The game's own levels spell it lower case and the pak
+            //reader is literal, so the path out of a level file is not necessarily a path that
+            //resolves - every one of these is checked against the paks by PROBE_PREFABS.
+            ("Decor/Prefabs/_Creepingwinter_Structures/Ice_DesignAssets/BP_DoorWinter_5", "Frozen door"),
+
+            //Not offered although the game's own missions use them: "BP_Platform" and
+            //"BP_PlatformObsidian" are not assets. What exists is BP_Platform_1, BP_Platform_9
+            //and BP_PlatformObsidian_9 - fixed widths, and floor rather than doorway.
+            ("", "Nothing - the map's own blocks are the door"),
+        };
+
+        /// <summary>
+        /// The prefab an objective draws over the gates it holds, if any.
+        ///
+        /// Two fields, because the two gate shapes keep it in different places: a click has
+        /// "door-path" beside its "locked-doors", and a kill-group or arena has "object" inside
+        /// its "gate". Reading only the first reports every kill-group gate as invisible, which
+        /// is a false alarm on any mission built that way - Blossoming Isles builds six.
+        /// </summary>
+        public static string drawnBy(Map map, int objective)
+        {
+            var body = bodyOf(map, objective);
+            if (body == null) { return string.Empty; }
+
+            return body["door-path"]?.GetValue<string>()
+                ?? (body["gate"] as JsonObject)?["object"]?.GetValue<string>()
+                ?? string.Empty;
         }
 
         /// <summary>The gate regions an objective can name, and what names each one.</summary>
         public static List<Gate> gatesOf(Map map, Room room)
         {
-            //Which gate each objective holds shut, by region name.
+            //Which gate each objective holds shut, by region name, and what it draws there.
             var held = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var looks = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var step in objectivesOf(map))
             {
                 foreach (var name in lockedBy(map, step.At))
                 {
-                    if (!held.ContainsKey(name)) { held[name] = step.Title; }
+                    if (held.ContainsKey(name)) { continue; }
+
+                    held[name] = step.Title;
+                    looks[name] = drawnBy(map, step.At);
                 }
             }
 
@@ -879,7 +951,7 @@ namespace MCDSaveEdit.Logic
             for (var at = 0; at < regions.Count; at++)
             {
                 if (regions[at] is not JsonObject region) { continue; }
-                if (region["type"]?.GetValue<string>() != "trigger") { continue; }
+                if (!isTrigger(region)) { continue; }
 
                 var name = region["name"]?.GetValue<string>() ?? string.Empty;
 
@@ -893,7 +965,8 @@ namespace MCDSaveEdit.Logic
                 if ((size[0] > 1) == (size[2] > 1)) { continue; }
 
                 made.Add(new Gate(at, name, ints(region["pos"], 3), size,
-                    held.TryGetValue(name, out var by) ? by : string.Empty));
+                    held.TryGetValue(name, out var by) ? by : string.Empty,
+                    looks.TryGetValue(name, out var look) ? look : string.Empty));
             }
 
             return made;
@@ -955,7 +1028,7 @@ namespace MCDSaveEdit.Logic
             });
 
             return new Gate(room.Regions.Count - 1, name, new[] { x, y, z },
-                across ? new[] { 5, 1, 1 } : new[] { 1, 1, 5 }, string.Empty);
+                across ? new[] { 5, 1, 1 } : new[] { 1, 1, 5 }, string.Empty, string.Empty);
         }
 
         /// <summary>A name no gate in this room is using yet.</summary>
@@ -971,8 +1044,22 @@ namespace MCDSaveEdit.Logic
             }
         }
 
+        /// <summary>
+        /// Whether a region is one you walk into rather than one that spawns or holds something.
+        ///
+        /// A MISSING "type" counts. The game's own files leave it off constantly and the game
+        /// treats those as triggers - across Blossoming Isles' three tile sets, 27 of 60 regions
+        /// have no type key at all, including every one of its gates and arena spawn markers.
+        /// Requiring the word "trigger" hid half of that mod from this editor.
+        /// </summary>
+        private static bool isTrigger(JsonObject region)
+        {
+            var said = region["type"]?.GetValue<string>();
+            return said == null || string.Equals(said, "trigger", StringComparison.Ordinal);
+        }
+
         private static bool isGateRegion(JsonObject region)
-            => region["type"]?.GetValue<string>() == "trigger"
+            => isTrigger(region)
             && !isStart(region) && !isExit(region)
             && (region["name"]?.GetValue<string>() ?? string.Empty).Length > 0;
 
@@ -1059,7 +1146,7 @@ namespace MCDSaveEdit.Logic
         }
 
         /// <summary>Makes an objective hold a gate shut until it is finished.</summary>
-        public static bool lockTo(Map map, int objective, string gate)
+        public static bool lockTo(Map map, int objective, string gate, string look)
         {
             var body = bodyOf(map, objective);
             if (body == null || gate.Length == 0) { return false; }
@@ -1087,6 +1174,13 @@ namespace MCDSaveEdit.Logic
             }
 
             doors.Add(reference);
+
+            //ONE field for the whole objective, so every gate this step opens is drawn the same
+            //way. That is the game's shape, not a simplification: "door-path" sits beside
+            //"locked-doors" on the body, not on any one of them.
+            if (look.Length > 0) { body["door-path"] = look; }
+            else { body.Remove("door-path"); }
+
             return true;
         }
 
@@ -1110,8 +1204,13 @@ namespace MCDSaveEdit.Logic
                 gone = true;
             }
 
-            //An empty list left behind is noise in a file people read.
-            if (doors.Count == 0) { body.Remove("locked-doors"); }
+            //An empty list left behind is noise in a file people read, and a door-path with
+            //nothing to draw over is worse than noise - it is a prefab the game goes looking for.
+            if (doors.Count == 0)
+            {
+                body.Remove("locked-doors");
+                body.Remove("door-path");
+            }
 
             return gone;
         }
@@ -1648,7 +1747,7 @@ namespace MCDSaveEdit.Logic
         }
 
         private static bool isExit(JsonObject region)
-            => region["type"]?.GetValue<string>() == "trigger"
+            => isTrigger(region)
             && string.Equals(region["name"]?.GetValue<string>(), EXIT,
                    StringComparison.OrdinalIgnoreCase);
 

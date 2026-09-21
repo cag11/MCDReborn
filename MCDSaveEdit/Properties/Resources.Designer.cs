@@ -5248,6 +5248,51 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Drawn as:.
+        /// </summary>
+        public static string SPAWNS_GATE_DRAWN {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_DRAWN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to One look for every gate the chosen step opens - the game keeps it on the step, not on the gate. Without one the gate still blocks you, invisibly, which in game looks like the map being broken..
+        /// </summary>
+        public static string SPAWNS_GATE_DRAWN_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_DRAWN_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Added {0}, opened by “{1}” and drawn as {2}..
+        /// </summary>
+        public static string SPAWNS_GATE_ADDED_WIRED {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_ADDED_WIRED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Added {0}. Nothing opens it yet, so in game it is a wall you cannot see - the thing that draws a gate lives on the step that opens it. Add a step above, then pick this gate and press “{1}”..
+        /// </summary>
+        public static string SPAWNS_GATE_ADDED_LOOSE {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_ADDED_LOOSE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to nothing changed, and the game already has this one.
+        /// </summary>
+        public static string SPAWNS_NOTHING_TO_INSTALL {
+            get {
+                return ResourceManager.GetString("SPAWNS_NOTHING_TO_INSTALL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Opened by:.
         /// </summary>
         public static string SPAWNS_GATE_OPENS {

@@ -244,9 +244,20 @@ here**, then **Turn** it so it lies *across* the way through rather than along i
 **Narrower** to fit the gap. The taller post marks the end it is anchored at, which is the cell a
 drag moves.
 
-Then pick the gate and choose a step under **Opened by**, and press **This opens it**. **Nothing
-opens it** takes the wire off again. Picking either a gate or a step draws a line between them, so
-you can find the other end on a map where they are nowhere near each other.
+Then pick the gate, choose a step under **Opened by**, choose a look under **Drawn as**, and press
+**This opens it**. **Nothing opens it** takes the wire off again. Picking either a gate or a step
+draws a line between them, so you can find the other end on a map where they are nowhere near each
+other.
+
+**Drawn as** is not decoration. A gate with no look still blocks you - invisibly - which in game
+is indistinguishable from the map being broken. The list stretches to whatever size the gate is, so
+there is nothing to match up: 187 of the game's own 374 held gates name no prefab either, but those
+are doorways whose tile already has a door built out of blocks, and a gate you carved into your own
+map has none.
+
+The look belongs to the **step**, not the gate - that is the game's shape, not a shortcut - so every
+gate the same step opens is drawn the same way. The list marks any held gate with no look as
+`INVISIBLE`.
 
 **Only a step that asks you to click something can open a gate.** This is the game's rule, not the
 editor's: across all fifty-six of its own missions, eighty-five objectives hold a gate shut, and

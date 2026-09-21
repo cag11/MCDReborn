@@ -1283,7 +1283,32 @@ namespace MCDSaveEdit
                             ? "[steps] every spot is drawn"
                             : "[steps] WRONG - a spot was added that nothing draws");
 
-                        //--- the wire itself -------------------------------------------------
+                        //--- a gate on its own -----------------------------------------------
+                        //
+                        //The complaint: added a gate, ran the game, saw nothing. A gate with no
+                        //objective CANNOT be drawn - the prefab lives on the objective - so a
+                        //loose one is an invisible permanent wall. It should wire itself.
+                        //Counted before and after rather than absolutely: the map underneath is
+                        //somebody's own and may already hold a loose gate from before this
+                        //wired itself - which it does, and which is the bug being reported.
+                        var looseWere = window.gateRows.Count(one => one.Contains("NOTHING OPENS IT"));
+
+                        window.probeAddGate(across * 2, 20, across * 2);
+                        Console.WriteLine($"[steps] {window.probeStatus}");
+
+                        var looseNow = window.gateRows.Count(one => one.Contains("NOTHING OPENS IT"));
+                        Console.WriteLine($"[steps] invisible gates: {looseWere} before, {looseNow} after");
+
+                        Console.WriteLine(looseNow == looseWere
+                            ? "[steps] the new gate wired itself to a step, so it can be seen"
+                            : "[steps] WRONG - adding a gate made another invisible wall");
+
+                        Console.WriteLine(looseWere == 0
+                            ? "[steps] nothing was left loose beforehand either"
+                            : $"[steps] note: {looseWere} gate(s) in this map predate the wiring "
+                              + "and are still invisible - the list now says so");
+
+                        //--- the wire done by hand -------------------------------------------
                         window.probeAddGate(across, 20, across * 2);
                         window.probePickGate(window.gateRows.Length - 1);
                         window.probeLockGate(0);
@@ -1294,6 +1319,12 @@ namespace MCDSaveEdit
                         Console.WriteLine(held >= 1
                             ? "[steps] the gate says what opens it"
                             : "[steps] WRONG - no gate claims to be opened by anything");
+
+                        //The invisible-gate bug. A held gate with no prefab still blocks, which
+                        //in game reads as the map being broken rather than as a door.
+                        Console.WriteLine(window.gateRows.Any(one => one.Contains("INVISIBLE"))
+                            ? "[steps] WRONG - a held gate is invisible"
+                            : "[steps] every held gate is drawn as something");
 
                         //--- and what actually reached the file ------------------------------
                         //The writer the Save button uses, without the weld it also kicks off.
@@ -1361,6 +1392,31 @@ namespace MCDSaveEdit
                         Console.WriteLine(missing == 0
                             ? $"[steps] every word of it is in the \"{table}\" table"
                             : $"[steps] WRONG - {missing} key(s) will draw as missing on the banner");
+
+                        //And the prefab itself: written into the file, on the body beside the
+                        //locked-doors it applies to, and actually present in the game's paks.
+                        foreach (var each in steps)
+                        {
+                            if (each is not System.Text.Json.Nodes.JsonObject step) { continue; }
+                            if (step["click"] is not System.Text.Json.Nodes.JsonObject body) { continue; }
+                            if (body["locked-doors"] == null) { continue; }
+
+                            var drawn = body["door-path"]?.GetValue<string>();
+
+                            if (drawn == null)
+                            {
+                                Console.WriteLine("[steps] WRONG - a held gate went to file with no door-path");
+                                continue;
+                            }
+
+                            var there = Logic.CustomSkins.index?.extractPackage(
+                                "/Dungeons/Content/" + drawn) != null;
+
+                            Console.WriteLine($"[steps] door-path {drawn}");
+                            Console.WriteLine(there
+                                ? "[steps] the game has that prefab, so it will draw"
+                                : "[steps] WRONG - the game has no such prefab");
+                        }
                         Console.WriteLine(onClick == 1 && onGauntlet == 0
                             ? "[steps] the gate is held by the one body the game reads it from"
                             : "[steps] WRONG - that gate will not open");
@@ -1559,11 +1615,15 @@ namespace MCDSaveEdit
                     try
                     {
                         Console.WriteLine($"[buttons] at rest: save {window.saveEnabled}, "
-                            + $"install {window.installEnabled}, {window.changedNow} changed");
+                            + $"install {window.installEnabled}, {window.changedNow} changed, "
+                            + $"pak behind the folder: {window.worthInstallingNow}");
 
-                        Console.WriteLine(window.installEnabled
-                            ? "[buttons] Install is available before anything is pressed"
-                            : "[buttons] WRONG - Install is dead on arrival");
+                        //Install is offered when it would DO something - unsaved edits, or a pak
+                        //older than the folder. "Nothing changed yet" beside a live button is a
+                        //press that cannot be told apart from one that failed.
+                        Console.WriteLine(window.installEnabled == window.worthInstallingNow
+                            ? "[buttons] Install is offered exactly when it would change something"
+                            : "[buttons] WRONG - Install disagrees with whether there is anything to install");
 
                         //An edit, through the window's own button, so the changed list fills the
                         //way it does for somebody using it.
@@ -1605,6 +1665,15 @@ namespace MCDSaveEdit
                         Console.WriteLine(!window.saveEnabled
                             ? "[buttons] Save went off, because there is nothing left to save"
                             : "[buttons] WRONG - Save is offering to save nothing");
+
+                        //Saving writes the folder, so the pak is now behind it and installing
+                        //would genuinely do something - even though nothing is unsaved.
+                        Console.WriteLine($"[buttons] after saving, pak behind the folder: "
+                            + $"{window.worthInstallingNow}, install {window.installEnabled}");
+
+                        Console.WriteLine(window.installEnabled
+                            ? "[buttons] Install is still reachable with nothing unsaved"
+                            : "[buttons] WRONG - saving locked Install out");
 
                         Console.WriteLine($"[buttons] afterwards: save {window.saveEnabled}, "
                             + $"install {window.installEnabled}");
@@ -1823,6 +1892,604 @@ namespace MCDSaveEdit
                 foreach (var pair in found.Take(400))
                 {
                     Console.WriteLine($"[words] {pair.Key,-62} {pair.Value}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_DRAWN - what a gate the game actually draws looks like, region and all.
+            //
+            //Ours blocks and is invisible. The region is right - it holds you back - so the
+            //missing part is whatever tells the game to put something THERE. PROBE_GATES said
+            //the click body carries a "door-path" beside its "locked-doors", which is the
+            //candidate; this goes and reads the regions those names point at, in the game's own
+            //object groups, to see what else they carry.
+            if (_startupArguments.Any(a => a == "PROBE_DRAWN"))
+            {
+                var shapes = new SortedDictionary<string, int>(StringComparer.Ordinal);
+                var told = 0;
+
+                foreach (var mission in Logic.GameMaps.all())
+                {
+                    var raw = Logic.GameMaps.read(mission.PakPath);
+                    if (raw == null) { continue; }
+
+                    System.Text.Json.Nodes.JsonObject? level;
+                    try
+                    {
+                        level = System.Text.Json.Nodes.JsonNode.Parse(
+                            Logic.GameMaps.stripComments(
+                                new System.Text.UTF8Encoding(false).GetString(raw).TrimStart('\uFEFF')),
+                            documentOptions: new System.Text.Json.JsonDocumentOptions
+                            {
+                                AllowTrailingCommas = true,
+                                CommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                            }) as System.Text.Json.Nodes.JsonObject;
+                    }
+                    catch { continue; }
+
+                    if (level?["objectives"] is not System.Text.Json.Nodes.JsonArray all) { continue; }
+
+                    //Which gate names this mission holds shut, and what it says to draw there.
+                    var wanted = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var one in all)
+                    {
+                        if (one is not System.Text.Json.Nodes.JsonObject step) { continue; }
+                        if (step["click"] is not System.Text.Json.Nodes.JsonObject body) { continue; }
+                        if (body["locked-doors"] is not System.Text.Json.Nodes.JsonArray shut) { continue; }
+
+                        var drawn = body["door-path"]?.GetValue<string>() ?? "(none)";
+
+                        foreach (var said in shut)
+                        {
+                            var name = said?.GetValue<string>();
+                            if (name == null) { continue; }
+                            var at = name.LastIndexOf('.');
+                            wanted[at < 0 ? name : name.Substring(at + 1)] = drawn;
+                        }
+                    }
+
+                    if (wanted.Count == 0) { continue; }
+
+                    //And what those regions actually are, in the tiles they live in.
+                    var (groups, _) = Logic.GameMaps.referencedBy(raw);
+
+                    foreach (var group in groups)
+                    {
+                        var body = Logic.GameMaps.read("/Dungeons/Content/" + Logic.GameMaps.GROUPS + group);
+                        if (body == null) { continue; }
+
+                        System.Text.Json.Nodes.JsonObject? sheet;
+                        try
+                        {
+                            sheet = System.Text.Json.Nodes.JsonNode.Parse(
+                                Logic.GameMaps.stripComments(
+                                    new System.Text.UTF8Encoding(false).GetString(body)
+                                        .TrimStart('\uFEFF')),
+                                documentOptions: new System.Text.Json.JsonDocumentOptions
+                                {
+                                    AllowTrailingCommas = true,
+                                    CommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                                }) as System.Text.Json.Nodes.JsonObject;
+                        }
+                        catch { continue; }
+
+                        foreach (var one in sheet?["objects"] as System.Text.Json.Nodes.JsonArray
+                            ?? new System.Text.Json.Nodes.JsonArray())
+                        {
+                            if (one is not System.Text.Json.Nodes.JsonObject tile) { continue; }
+
+                            foreach (var each in tile["regions"] as System.Text.Json.Nodes.JsonArray
+                                ?? new System.Text.Json.Nodes.JsonArray())
+                            {
+                                if (each is not System.Text.Json.Nodes.JsonObject region) { continue; }
+
+                                var name = region["name"]?.GetValue<string>();
+                                if (name == null || !wanted.TryGetValue(name, out var drawn)) { continue; }
+
+                                //What is drawn, how wide it has to be, and which way it lies -
+                                //because a gate prefab that does not match its region is a gate
+                                //that looks wrong or is not there.
+                                var size = region["size"] as System.Text.Json.Nodes.JsonArray;
+                                var sx = size?[0]?.GetValue<int>() ?? 0;
+                                var sz = size?[2]?.GetValue<int>() ?? 0;
+
+                                var lie = sx >= sz ? "x" : "z";
+                                var wide = Math.Max(sx, sz);
+                                var tags = region["tags"]?.GetValue<string>() ?? "";
+
+                                var row = $"{drawn}  |  {wide} along {lie}  |  tags \"{tags}\"";
+                                shapes[row] = shapes.TryGetValue(row, out var was) ? was + 1 : 1;
+                                told++;
+                            }
+                        }
+                    }
+                }
+
+                Console.WriteLine();
+                Console.WriteLine($"{told} gate regions the game holds shut:");
+                foreach (var shape in shapes.OrderBy(one => one.Key, StringComparer.Ordinal))
+                {
+                    Console.WriteLine($"   {shape.Value,4}  {shape.Key}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_PREFABS - whether every prefab the editor offers is actually in the game.
+            //
+            //Both lists were read off the game's own missions, but some of those missions are
+            //downloads. A prefab that is not there is a mission that will not start, and the
+            //editor has no business offering one - so every path in both dropdowns is resolved
+            //against the paks rather than trusted.
+            if (_startupArguments.Any(a => a == "PROBE_PREFABS"))
+            {
+                var pak = Logic.CustomSkins.index;
+                if (pak == null) { Console.WriteLine("[prefabs] no pak index"); this.Shutdown(); return; }
+
+                var bad = 0;
+
+                void check(string what, (string path, string name)[] list)
+                {
+                    Console.WriteLine($"[prefabs] --- {what} ---");
+
+                    foreach (var one in list)
+                    {
+                        if (one.path.Length == 0)
+                        {
+                            Console.WriteLine($"[prefabs]  --   {one.name}");
+                            continue;
+                        }
+
+                        var there = pak.extractPackage("/Dungeons/Content/" + one.path) != null;
+                        if (!there) { bad++; }
+
+                        Console.WriteLine($"[prefabs]  {(there ? "ok" : "NO")}   {one.name,-34} {one.path}");
+                    }
+                }
+
+                check("things to click", Logic.MapSpawns.CLICKABLES);
+                check("gate looks", Logic.MapSpawns.GATE_LOOKS);
+                check("travel doors", Logic.MapSpawns.TRAVEL_DOORS);
+                check("the way out", new[] { (Logic.MapSpawns.EXIT_DOOR, "Exit gate") });
+
+                //Where the ones that did not resolve actually live. The game's own levels
+                //reference these by paths whose casing is not the pak's, and the reader is
+                //literal about it.
+                foreach (var hunt in new[] { "BP_Platform", "BP_PlatformObsidian", "BP_DoorWinter" })
+                {
+                    foreach (var item in pak)
+                    {
+                        if (item == null) { continue; }
+                        if (item.IndexOf(hunt, StringComparison.OrdinalIgnoreCase) < 0) { continue; }
+                        Console.WriteLine($"[prefabs] \"{hunt}\" really lives at {item}");
+                    }
+                }
+
+                Console.WriteLine(bad == 0
+                    ? "[prefabs] every one of them is in the game"
+                    : $"[prefabs] WRONG - {bad} are not, and would be offered anyway");
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_MODGUTS=<pak file>;<folder> - everything in somebody else's mod that is NOT
+            //map data, read out and written down.
+            //
+            //PROBE_UNPAK already pulls the levels, groups and packs, because those are the parts
+            //this app has a shape for. This one goes after the rest: the string table a mod
+            //ships beside the game's own, the sublevels, the blueprints. Read-only - it writes
+            //into the folder it is given and touches nothing else.
+            var probeGuts = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_MODGUTS="));
+            if (probeGuts != null)
+            {
+                var gutBits = probeGuts.Substring("PROBE_MODGUTS=".Length).Trim('"').Split(';');
+                if (gutBits.Length < 2)
+                {
+                    Console.WriteLine("[guts] PROBE_MODGUTS=<pak file>;<folder>");
+                    this.Shutdown();
+                    return;
+                }
+
+                var gutPak = gutBits[0].Trim();
+                var gutInto = gutBits[1].Trim();
+
+                if (!System.IO.File.Exists(gutPak))
+                {
+                    Console.WriteLine($"[guts] no such pak: {gutPak}");
+                    this.Shutdown();
+                    return;
+                }
+
+                PakReader.Pak.PakIndex? guts;
+
+                try
+                {
+                    guts = new PakReader.Pak.PakIndex(new[] { gutPak }, cacheFiles: true,
+                        caseSensitive: false, filter: null);
+
+                    if (guts.UseKey(new byte[32]) == 0)
+                    {
+                        foreach (var key in MCDSaveEdit.Data.Secrets.PAKS_AES_KEYS)
+                        {
+                            var said = key.key;
+                            var bytes = said.StartsWith("0x")
+                                ? said.Substring(2).ToBytesKey()
+                                : said.ToBytesKey();
+
+                            if (guts.UseKey(bytes) > 0) { break; }
+                        }
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[guts] the reader refused it: {problem.Message}");
+                    this.Shutdown();
+                    return;
+                }
+
+                System.IO.Directory.CreateDirectory(gutInto);
+
+                var gutAll = new List<string>();
+                foreach (var one in guts) { if (one != null) { gutAll.Add(one); } }
+
+                //The enumerated name carries a mount point the getters do not always want, so
+                //every spelling is tried rather than one being assumed.
+                IEnumerable<string> spellingsOf(string one)
+                {
+                    yield return one;
+                    var at = one.IndexOf("//", StringComparison.Ordinal);
+                    if (at >= 0)
+                    {
+                        yield return one.Substring(at + 1);
+                        yield return one.Substring(at + 2);
+                    }
+                }
+
+                byte[]? bytesOf(string one)
+                {
+                    foreach (var spelling in spellingsOf(one))
+                    {
+                        try
+                        {
+                            var got = guts.GetFile(spelling);
+                            if (got != null) { return got.Value.ToArray(); }
+                        }
+                        catch { }
+                    }
+                    return null;
+                }
+
+                //Everything that is not map data, written out as it sits. A .uasset carries its
+                //own name table, so the raw bytes are enough to see what a blueprint refers to
+                //without an Unreal editor in the room.
+                var wrote = 0;
+                foreach (var one in gutAll)
+                {
+                    if (one.IndexOf("/data/", StringComparison.OrdinalIgnoreCase) >= 0) { continue; }
+
+                    var raw = bytesOf(one);
+                    if (raw == null) { Console.WriteLine($"[guts] unreadable: {one}"); continue; }
+
+                    var relative = one.TrimStart('/').Replace('/', System.IO.Path.DirectorySeparatorChar);
+                    var full = System.IO.Path.Combine(gutInto, relative + ".bin");
+                    System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(full)!);
+                    System.IO.File.WriteAllBytes(full, raw);
+                    wrote++;
+
+                    Console.WriteLine($"[guts] {raw.Length,9:N0}  {one}");
+                }
+
+                Console.WriteLine($"[guts] wrote {wrote} file(s) under {gutInto}");
+
+                //The string table. This is the one that matters: a mission's objective wording
+                //is a key into the namespace its loctable-id names, and a mod shipping its own
+                //copy of Localization/Game/en/Game can put any key it likes in there.
+                var gutLoc = gutAll.FirstOrDefault(one =>
+                    one.IndexOf("localization/game/en/game", StringComparison.OrdinalIgnoreCase) >= 0);
+
+                if (gutLoc == null) { Console.WriteLine("[guts] no English string table in the mod"); }
+                else
+                {
+                    Dictionary<string, Dictionary<string, string>>? modTables = null;
+
+                    foreach (var spelling in spellingsOf(gutLoc))
+                    {
+                        try
+                        {
+                            if (!guts.TryGetFile(spelling, out var seg) || seg == null) { continue; }
+                            using var stream = new System.IO.MemoryStream(
+                                seg.Value.Array!, seg.Value.Offset, seg.Value.Count);
+                            modTables = new PakReader.LocResReader(stream).Entries;
+                            if (modTables != null) { break; }
+                        }
+                        catch (Exception problem)
+                        {
+                            Console.WriteLine($"[guts] locres \"{spelling}\": {problem.Message}");
+                        }
+                    }
+
+                    if (modTables == null) { Console.WriteLine("[guts] the mod's table would not read"); }
+                    else
+                    {
+                        var modCount = modTables.Sum(one => one.Value.Count);
+                        Console.WriteLine($"[guts] the mod's table: {modTables.Count} namespace(s), "
+                            + $"{modCount:N0} strings");
+
+                        var theirs = Logic.CustomSkins.index?
+                            .extractLocResFile("/Dungeons/Content/Localization/Game/en/Game");
+
+                        if (theirs == null) { Console.WriteLine("[guts] could not read the game's own table to compare"); }
+                        else
+                        {
+                            Console.WriteLine($"[guts] the game's table: {theirs.Count} namespace(s), "
+                                + $"{theirs.Sum(one => one.Value.Count):N0} strings");
+
+                            foreach (var space in modTables.OrderBy(one => one.Key, StringComparer.Ordinal))
+                            {
+                                theirs.TryGetValue(space.Key, out var was);
+
+                                var added = space.Value.Keys
+                                    .Where(k => was == null || !was.ContainsKey(k)).ToList();
+                                var changed = space.Value
+                                    .Where(kv => was != null && was.TryGetValue(kv.Key, out var old)
+                                                 && old != kv.Value).Select(kv => kv.Key).ToList();
+                                var dropped = was == null
+                                    ? new List<string>()
+                                    : was.Keys.Where(k => !space.Value.ContainsKey(k)).ToList();
+
+                                Console.WriteLine($"[guts] ns \"{space.Key}\": {space.Value.Count} strings, "
+                                    + $"game had {(was == null ? 0 : was.Count)} - "
+                                    + $"{added.Count} added, {changed.Count} reworded, {dropped.Count} gone");
+
+                                foreach (var k in added.OrderBy(k => k, StringComparer.Ordinal))
+                                {
+                                    Console.WriteLine($"[guts]   + {k,-44} {space.Value[k]}");
+                                }
+                                foreach (var k in changed.OrderBy(k => k, StringComparer.Ordinal))
+                                {
+                                    Console.WriteLine($"[guts]   ~ {k,-44} {was![k]}  ->  {space.Value[k]}");
+                                }
+                            }
+
+                            //Namespaces the game has and the mod's copy does not carry at all -
+                            //a mod that ships a partial table replaces the whole file.
+                            var lost = theirs.Keys.Where(k => !modTables.ContainsKey(k)).ToList();
+                            Console.WriteLine($"[guts] namespaces the mod's copy drops entirely: {lost.Count}"
+                                + (lost.Count == 0 ? "" : "  e.g. " + string.Join(", ", lost.Take(8))));
+                        }
+
+                        var dump = System.IO.Path.Combine(gutInto, "modstrings.txt");
+                        using (var pen = new System.IO.StreamWriter(dump, false,
+                            new System.Text.UTF8Encoding(false)))
+                        {
+                            foreach (var space in modTables.OrderBy(one => one.Key, StringComparer.Ordinal))
+                            {
+                                pen.WriteLine($"=== {space.Key} ({space.Value.Count}) ===");
+                                foreach (var kv in space.Value.OrderBy(k => k.Key, StringComparer.Ordinal))
+                                {
+                                    pen.WriteLine($"{kv.Key}\t{kv.Value}");
+                                }
+                            }
+                        }
+                        Console.WriteLine($"[guts] every string in the mod's table -> {dump}");
+                    }
+                }
+
+                //And how the mod's block table compares with the game's, since ids are positions
+                //in that file and a longer file means ids the base game has no name for.
+                foreach (var pack in gutAll
+                    .Where(one => one.IndexOf("/resourcepacks/", StringComparison.OrdinalIgnoreCase) >= 0
+                                  && one.EndsWith("/blocks", StringComparison.OrdinalIgnoreCase)))
+                {
+                    var raw = bytesOf(pack);
+                    if (raw == null) { continue; }
+                    var named = pack.Split('/');
+                    Console.WriteLine($"[guts] pack {named[named.Length - 2],-20} {raw.Length:N0} bytes");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_UNPAK=<pak file>;<folder> - takes somebody else's map mod apart into folders
+            //this app can open.
+            //
+            //A mission mod is a pak, and everything in this app works on folders: level.json,
+            //objectgroups/<name>/objectgroup.json, resourcepacks/<name>/blocks.json. So a mod
+            //cannot be looked at, only played. This writes one folder per level inside the pak,
+            //in exactly the shape Import map expects.
+            var probeUnpak = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_UNPAK="));
+            if (probeUnpak != null)
+            {
+                var bits = probeUnpak.Substring("PROBE_UNPAK=".Length).Trim('"').Split(';');
+                if (bits.Length < 2)
+                {
+                    Console.WriteLine("[unpak] PROBE_UNPAK=<pak file>;<folder where the maps go>");
+                    this.Shutdown();
+                    return;
+                }
+
+                var pakFile = bits[0].Trim();
+                var into = bits[1].Trim();
+
+                if (!System.IO.File.Exists(pakFile))
+                {
+                    Console.WriteLine($"[unpak] no such pak: {pakFile}");
+                    this.Shutdown();
+                    return;
+                }
+
+                PakReader.Pak.PakIndex? mod = null;
+
+                try
+                {
+                    mod = new PakReader.Pak.PakIndex(new[] { pakFile }, cacheFiles: true,
+                        caseSensitive: false, filter: null);
+
+                    //A mod pak is usually unencrypted, which the reader spells as a zero key.
+                    //The game's own keys are tried after, because a mod built out of the game's
+                    //files can carry its encryption with it.
+                    var opened = mod.UseKey(new byte[32]);
+
+                    if (opened == 0)
+                    {
+                        foreach (var key in MCDSaveEdit.Data.Secrets.PAKS_AES_KEYS)
+                        {
+                            var said = key.key;
+                            var bytes = said.StartsWith("0x")
+                                ? said.Substring(2).ToBytesKey()
+                                : said.ToBytesKey();
+
+                            if (mod.UseKey(bytes) > 0) { break; }
+                        }
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[unpak] the reader refused it: {problem.Message}");
+                    this.Shutdown();
+                    return;
+                }
+
+                var everything = new List<string>();
+                foreach (var item in mod) { if (item != null) { everything.Add(item); } }
+
+                Console.WriteLine($"[unpak] {everything.Count} entries in {System.IO.Path.GetFileName(pakFile)}");
+
+                //What is in there, by the part of the tree it lives in - a mod may carry meshes
+                //and textures as well as data, and only the data is a map.
+                var kinds = new SortedDictionary<string, int>(StringComparer.Ordinal);
+                foreach (var one in everything)
+                {
+                    var bit = one.Split('/');
+                    var head = string.Join("/", bit.Take(Math.Min(5, bit.Length - 1)));
+                    kinds[head] = kinds.TryGetValue(head, out var was) ? was + 1 : 1;
+                }
+
+                foreach (var kind in kinds.OrderByDescending(one => one.Value).Take(14))
+                {
+                    Console.WriteLine($"[unpak] {kind.Value,5}  {kind.Key}");
+                }
+
+                //Everything that is NOT map data, listed in full - a mod that ships its own
+                //prefabs, its own string table or its own blueprints is doing something this
+                //app has no idea about, and that is exactly what is worth knowing.
+                foreach (var one in everything)
+                {
+                    if (one.IndexOf("/data/", StringComparison.OrdinalIgnoreCase) >= 0) { continue; }
+                    Console.WriteLine($"[unpak] not-data: {one}");
+                }
+
+                //And which parts of the data tree, since a mod replacing the game's own files
+                //is different from one adding its own.
+                var seen = new SortedDictionary<string, int>(StringComparer.Ordinal);
+                foreach (var one in everything)
+                {
+                    var at = one.IndexOf("/data/", StringComparison.OrdinalIgnoreCase);
+                    if (at < 0) { continue; }
+
+                    var rest = one.Substring(at + 6).Split('/');
+                    var head = string.Join("/", rest.Take(Math.Min(3, rest.Length - 1)));
+                    seen[head] = seen.TryGetValue(head, out var was) ? was + 1 : 1;
+                }
+
+                foreach (var one in seen)
+                {
+                    Console.WriteLine($"[unpak] data/{one.Key,-44} {one.Value}");
+                }
+
+                byte[]? grab(string wanted)
+                {
+                    foreach (var one in everything)
+                    {
+                        if (one.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) < 0) { continue; }
+
+                        //The enumerated name carries the mount point - "//dungeons/content/..."
+                        //- and GetFile wants it without. Tried both ways rather than assumed,
+                        //because a mod chooses its own mount and they do not all agree.
+                        var at = one.IndexOf("//", StringComparison.Ordinal);
+                        var spellings = at < 0
+                            ? new[] { one }
+                            : new[] { one, one.Substring(at + 1), one.Substring(at + 2) };
+
+                        foreach (var spelling in spellings)
+                        {
+                            try
+                            {
+                                var got = mod.GetFile(spelling);
+                                if (got != null) { return got.Value.ToArray(); }
+                            }
+                            catch { }
+                        }
+                    }
+
+                    return null;
+                }
+
+                var levels = everything
+                    .Where(one => one.IndexOf("/levels/", StringComparison.OrdinalIgnoreCase) >= 0)
+                    .ToList();
+
+                Console.WriteLine($"[unpak] {levels.Count} level(s): "
+                    + string.Join(", ", levels.Select(System.IO.Path.GetFileName)));
+
+                foreach (var level in levels)
+                {
+                    var name = System.IO.Path.GetFileNameWithoutExtension(level);
+                    var folder = System.IO.Path.Combine(into, name);
+                    System.IO.Directory.CreateDirectory(folder);
+
+                    var raw = grab(level);
+                    if (raw == null)
+                    {
+                        Console.WriteLine($"[unpak] {name}: could not be read out");
+                        continue;
+                    }
+
+                    void put(string relative, byte[] data)
+                    {
+                        var full = System.IO.Path.Combine(folder,
+                            relative.Replace('/', System.IO.Path.DirectorySeparatorChar));
+                        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(full)!);
+                        System.IO.File.WriteAllBytes(full, data);
+                    }
+
+                    put("level.json", raw);
+
+                    var (groups, packs) = Logic.GameMaps.referencedBy(raw);
+                    var had = 0;
+
+                    foreach (var group in groups)
+                    {
+                        //Out of the mod first; a mod that only replaces the level still leans on
+                        //the game's own groups, so those are fetched from the game after.
+                        var got = grab("/objectgroups/" + group)
+                            ?? Logic.GameMaps.read("/Dungeons/Content/" + Logic.GameMaps.GROUPS + group);
+
+                        if (got == null) { continue; }
+                        put("objectgroups/" + group + ".json", got);
+                        had++;
+                    }
+
+                    var packed = 0;
+                    foreach (var pack in packs)
+                    {
+                        var got = grab("/resourcepacks/" + pack + "/blocks")
+                            ?? Logic.GameMaps.read("/Dungeons/Content/" + Logic.GameMaps.PACKS
+                                                   + pack + "/blocks");
+
+                        if (got == null) { continue; }
+                        put("resourcepacks/" + pack + "/blocks.json", got);
+                        packed++;
+                    }
+
+                    Console.WriteLine($"[unpak] {name}: {had}/{groups.Count} group(s), "
+                        + $"{packed}/{packs.Count} pack(s)  ->  {folder}");
                 }
 
                 this.Shutdown();

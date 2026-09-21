@@ -295,6 +295,13 @@
                                    Foreground="{DynamicResource Brush.TextMuted}"/>
                         <ComboBox x:Name="opensBox" Margin="0,0,0,6" Height="26"
                                   VerticalContentAlignment="Center"/>
+                        <TextBlock x:Name="drawnLabel" FontSize="11" Margin="0,2,0,4"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ComboBox x:Name="drawnBox" Margin="0,0,0,4" Height="26"
+                                  VerticalContentAlignment="Center"/>
+                        <TextBlock x:Name="drawnWhy" TextWrapping="Wrap" FontSize="11"
+                                   Margin="0,0,0,6"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
                         <WrapPanel Margin="0,0,0,12">
                             <Button x:Name="lockGateButton" Content="*This opens it*" Padding="10,4"
                                     Margin="0,0,6,0" Click="lockGateButton_Click"/>

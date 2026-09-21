@@ -265,6 +265,51 @@ namespace MCDSaveEdit.Logic
         }
 
         /// <summary>Every map mod installed.</summary>
+        /// <summary>
+        /// Whether installing would actually change what the game loads.
+        ///
+        /// "Nothing changed yet" beside a live Save and install is a button offering to do
+        /// nothing, and a press that does nothing is indistinguishable from a press that failed.
+        /// But "nothing changed" is not the same as "nothing to install": a folder that arrived
+        /// through Import, or one saved in an earlier session, has everything to install and no
+        /// unsaved edits at all.
+        ///
+        /// So the question is asked of the PAK rather than of the edit list - is there anything
+        /// in the folder the installed one has not got? File times only; nothing is read.
+        /// </summary>
+        public static bool worthInstalling(string folder, GameMaps.Mission over)
+        {
+            try
+            {
+                var pak = installedFor(over);
+                if (pak == null || !File.Exists(pak)) { return true; }
+
+                var packed = File.GetLastWriteTimeUtc(pak);
+
+                foreach (var file in Directory.GetFiles(folder, "*", SearchOption.AllDirectories))
+                {
+                    //The kept originals and the pre-weld copy are not what gets packed, so a
+                    //fresh one of those is not a reason to install.
+                    if (file.EndsWith(".before", StringComparison.OrdinalIgnoreCase)
+                        || file.EndsWith(".multitile", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    if (File.GetLastWriteTimeUtc(file) > packed) { return true; }
+                }
+
+                return false;
+            }
+            catch
+            {
+                //A folder that cannot be looked at is one where the honest answer is "maybe",
+                //and a button that is on when it need not be beats one that is off when it is
+                //wanted.
+                return true;
+            }
+        }
+
         public static IReadOnlyList<string> installed()
         {
             var folders = new List<string>();

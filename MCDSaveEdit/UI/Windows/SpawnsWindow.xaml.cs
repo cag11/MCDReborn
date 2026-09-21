@@ -47,6 +47,11 @@ namespace MCDSaveEdit.UI
         {
             _map = map;
             _mission = mission;
+
+            //Asked once on the way in, so a folder that arrived through Import - everything to
+            //install, nothing unsaved - still offers the button.
+            lookAtInstall();
+
             InitializeComponent();
             setStrings();
 
@@ -308,9 +313,12 @@ namespace MCDSaveEdit.UI
 
         internal void probeWidenGate() => widerGateButton_Click(this, new RoutedEventArgs());
 
-        internal void probeLockGate(int objectiveRow)
+        internal void probeLockGate(int objectiveRow) => probeLockGate(objectiveRow, 0);
+
+        internal void probeLockGate(int objectiveRow, int look)
         {
             opensBox.SelectedIndex = objectiveRow;
+            drawnBox.SelectedIndex = look;
             lockGateButton_Click(this, new RoutedEventArgs());
         }
 
@@ -325,6 +333,8 @@ namespace MCDSaveEdit.UI
         internal bool busyNow => _busy;
 
         internal bool installEnabled => installButton.IsEnabled;
+
+        internal bool worthInstallingNow => _worthInstalling;
 
         internal int changedNow => _map.Changed.Count;
 
@@ -551,6 +561,15 @@ namespace MCDSaveEdit.UI
             narrowerGateButton.Content = R.SPAWNS_NARROWER_GATE;
             removeGateRegionButton.Content = R.SPAWNS_REMOVE_GATE;
             opensLabel.Text = R.SPAWNS_GATE_OPENS;
+            drawnLabel.Text = R.SPAWNS_GATE_DRAWN;
+            drawnWhy.Text = R.SPAWNS_GATE_DRAWN_WHY;
+
+            drawnBox.Items.Clear();
+            foreach (var look in MapSpawns.GATE_LOOKS)
+            {
+                drawnBox.Items.Add(new ComboBoxItem { Content = look.name, Tag = look.path });
+            }
+            drawnBox.SelectedIndex = 0;
             lockGateButton.Content = R.SPAWNS_GATE_LOCK;
             unlockGateButton.Content = R.SPAWNS_GATE_UNLOCK;
             questLabel.Content = R.SPAWNS_QUEST;
@@ -962,6 +981,15 @@ namespace MCDSaveEdit.UI
             if (gatesList.SelectedItem is not MapSpawns.Gate gate) { _gate = -1; return; }
 
             _gate = gate.At;
+
+            //Moved to whatever this gate is already drawn as, so pressing the button again does
+            //not silently restyle a gate somebody was happy with.
+            if (gate.OpenedBy.Length > 0)
+            {
+                var row = MapSpawns.GATE_LOOKS.ToList().FindIndex(one => one.path == gate.Drawn);
+                if (row >= 0) { drawnBox.SelectedIndex = row; }
+            }
+
             mapView.aim(gate.Pos[0], gate.Pos[1], gate.Pos[2], true);
             drawWires();
             statusLabel.Text = string.Format(R.SPAWNS_GATE_AT, gate.Name,
@@ -987,7 +1015,26 @@ namespace MCDSaveEdit.UI
             _map.Changed.Add(_room.File);
             _gate = made.At;
 
-            statusLabel.Text = string.Format(R.SPAWNS_GATE_ADDED, made.Name);
+            //Wired on the spot. A gate on its own cannot be drawn at all - the prefab lives on
+            //the objective that opens it - so leaving one loose hands somebody an invisible
+            //permanent wall, which is exactly what it looked like in game.
+            var first = MapSpawns.objectivesOf(_map)
+                .FirstOrDefault(one => one.CanHoldGates && !one.IsExit);
+
+            var look = (drawnBox.SelectedItem as ComboBoxItem)?.Tag as string ?? string.Empty;
+
+            if (first != null && MapSpawns.lockTo(_map, first.At, made.Name, look))
+            {
+                _map.Changed.Add("level.json");
+
+                statusLabel.Text = string.Format(R.SPAWNS_GATE_ADDED_WIRED, made.Name, first.Title,
+                    (drawnBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "?");
+            }
+            else
+            {
+                statusLabel.Text = string.Format(R.SPAWNS_GATE_ADDED_LOOSE, made.Name,
+                    R.SPAWNS_GATE_LOCK);
+            }
 
             fillGates();
             drawWires();
@@ -1055,7 +1102,9 @@ namespace MCDSaveEdit.UI
             //them finishes, which is never what somebody meant by picking the second.
             foreach (var one in MapSpawns.objectivesOf(_map)) { MapSpawns.unlock(_map, one.At, gate.Name); }
 
-            if (!MapSpawns.lockTo(_map, step, gate.Name))
+            var look = (drawnBox.SelectedItem as ComboBoxItem)?.Tag as string ?? string.Empty;
+
+            if (!MapSpawns.lockTo(_map, step, gate.Name, look))
             {
                 //Refused rather than silently written - the only body the game reads
                 //"locked-doors" out of is a click.
@@ -2389,6 +2438,20 @@ namespace MCDSaveEdit.UI
         private bool _busy;
 
         /// <summary>
+        /// Whether the installed pak is behind the folder.
+        ///
+        /// Cached rather than asked each time, because updateUI runs on every block the pointer
+        /// crosses during a drag and this walks the folder.
+        /// </summary>
+        private bool _worthInstalling;
+
+        private void lookAtInstall()
+        {
+            _worthInstalling = _mission != null
+                && MapMod.worthInstalling(_map.Folder, _mission);
+        }
+
+        /// <summary>
         /// Saves, and rebuilds the weld if there is one, and says whether that worked.
         ///
         /// Split out of the button so that Install can genuinely WAIT for it. It used to call
@@ -2434,6 +2497,8 @@ namespace MCDSaveEdit.UI
 
             await saveNow();
 
+            lookAtInstall();
+
             _busy = false;
             updateUI();
         }
@@ -2477,6 +2542,8 @@ namespace MCDSaveEdit.UI
                 statusLabel.Text = problem.Message;
             }
 
+            lookAtInstall();
+
             _busy = false;
             updateUI();
         }
@@ -2506,10 +2573,11 @@ namespace MCDSaveEdit.UI
             clearButton.IsEnabled = has && _room!.Spawns > 0;
             saveButton.IsEnabled = !_busy && _map.Changed.Count > 0;
 
-            //Install stays available with nothing changed - the folder may already hold a map
-            //that was never packed, which is the whole point of the button on a folder that
-            //arrived through Import. It goes off only while one is running.
-            installButton.IsEnabled = !_busy && _mission != null;
+            //Offered only when pressing it would change what the game loads. Unsaved edits
+            //count, and so does a folder the installed pak is older than - a map that arrived
+            //through Import has everything to install and nothing unsaved.
+            installButton.IsEnabled = !_busy && _mission != null
+                && (_map.Changed.Count > 0 || _worthInstalling);
 
             //A door can be added wherever the map is aimed; the other two need one picked out of
             //the list, because they act on that one rather than on wherever you are looking.
@@ -2520,6 +2588,7 @@ namespace MCDSaveEdit.UI
             narrowerGateButton.IsEnabled = gate;
             removeGateRegionButton.IsEnabled = gate;
             lockGateButton.IsEnabled = gate && opensBox.Items.Count > 0;
+            drawnBox.IsEnabled = gate && opensBox.Items.Count > 0;
             unlockGateButton.IsEnabled = gate;
 
             onlyExitButton.IsEnabled = has;

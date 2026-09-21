@@ -2439,6 +2439,26 @@ The save file is not changed until you save it.</value>
     <value>{0} step(s), and {1} of them uses wording the game has not got - those draw as MISSING STRING TABLE ENTRY across the banner. Remove one and add it again to fix it.</value>
     <comment>Hint when an objective key is not in the table</comment>
   </data>
+  <data name="SPAWNS_GATE_DRAWN" xml:space="preserve">
+    <value>Drawn as:</value>
+    <comment>Label over the gate look picker</comment>
+  </data>
+  <data name="SPAWNS_GATE_DRAWN_WHY" xml:space="preserve">
+    <value>One look for every gate the chosen step opens - the game keeps it on the step, not on the gate. Without one the gate still blocks you, invisibly, which in game looks like the map being broken.</value>
+    <comment>Why the look is per step</comment>
+  </data>
+  <data name="SPAWNS_GATE_ADDED_WIRED" xml:space="preserve">
+    <value>Added {0}, opened by “{1}” and drawn as {2}.</value>
+    <comment>Status when a new gate is wired up for you</comment>
+  </data>
+  <data name="SPAWNS_GATE_ADDED_LOOSE" xml:space="preserve">
+    <value>Added {0}. Nothing opens it yet, so in game it is a wall you cannot see - the thing that draws a gate lives on the step that opens it. Add a step above, then pick this gate and press “{1}”.</value>
+    <comment>Status when a new gate cannot be wired</comment>
+  </data>
+  <data name="SPAWNS_NOTHING_TO_INSTALL" xml:space="preserve">
+    <value>nothing changed, and the game already has this one</value>
+    <comment>Status when neither save nor install would do anything</comment>
+  </data>
   <data name="SPAWNS_GATE_OPENS" xml:space="preserve">
     <value>Opened by:</value>
     <comment>Label above the objective picker</comment>
