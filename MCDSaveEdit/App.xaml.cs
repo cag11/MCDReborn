@@ -1067,6 +1067,858 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_GATES - which kinds of objective actually hold a gate shut, and with what.
+            //
+            //PROBE_QUESTS said "locked-doors" is a field of click and of nothing else, and that
+            //arena and killgroup keep a "gate" instead. If that holds across every mission then
+            //hanging a gate off a gauntlet writes a field the game never reads - a gate that is
+            //drawn, and lit, and never opens, with no error anywhere.
+            if (_startupArguments.Any(a => a == "PROBE_GATES"))
+            {
+                var held = new SortedDictionary<string, int>(StringComparer.Ordinal);
+                var clickers = new SortedDictionary<string, int>(StringComparer.Ordinal);
+                var doors = new SortedDictionary<string, int>(StringComparer.Ordinal);
+                var simplest = string.Empty;
+
+                foreach (var mission in Logic.GameMaps.all())
+                {
+                    var raw = Logic.GameMaps.read(mission.PakPath);
+                    if (raw == null) { continue; }
+
+                    System.Text.Json.Nodes.JsonObject? level;
+                    try
+                    {
+                        var text = Logic.GameMaps.stripComments(
+                            new System.Text.UTF8Encoding(false).GetString(raw).TrimStart('\uFEFF'));
+
+                        level = System.Text.Json.Nodes.JsonNode.Parse(text,
+                            documentOptions: new System.Text.Json.JsonDocumentOptions
+                            {
+                                AllowTrailingCommas = true,
+                                CommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                            }) as System.Text.Json.Nodes.JsonObject;
+                    }
+                    catch { continue; }
+
+                    if (level?["objectives"] is not System.Text.Json.Nodes.JsonArray all) { continue; }
+
+                    foreach (var one in all)
+                    {
+                        if (one is not System.Text.Json.Nodes.JsonObject step) { continue; }
+
+                        foreach (var part in step)
+                        {
+                            if (part.Value is not System.Text.Json.Nodes.JsonObject body) { continue; }
+
+                            var holds = body["locked-doors"] != null ? "locked-doors"
+                                : body["gate"] != null ? "gate"
+                                : null;
+
+                            if (holds == null) { continue; }
+
+                            var key = part.Key + "." + holds;
+                            held[key] = held.TryGetValue(key, out var was) ? was + 1 : 1;
+
+                            if (part.Key != "click") { continue; }
+
+                            //What you click to open it, and what the held thing is drawn as.
+                            var what = body["object"]?.GetValue<string>() ?? "(none)";
+                            clickers[what] = clickers.TryGetValue(what, out var seen) ? seen + 1 : 1;
+
+                            var leaf = body["door-path"]?.GetValue<string>() ?? "(none)";
+                            doors[leaf] = doors.TryGetValue(leaf, out var also) ? also + 1 : 1;
+
+                            //The smallest worked example, which is the one worth copying.
+                            var shown = step.ToJsonString(
+                                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+
+                            if (simplest.Length == 0 || shown.Length < simplest.Length)
+                            {
+                                simplest = mission.Name + ":\n" + shown;
+                            }
+                        }
+                    }
+                }
+
+                Console.WriteLine();
+                Console.WriteLine("what holds a gate shut:");
+                foreach (var one in held) { Console.WriteLine($"   {one.Key,-24} {one.Value}"); }
+
+                Console.WriteLine();
+                Console.WriteLine("what you click to open one:");
+                foreach (var one in clickers) { Console.WriteLine($"   {one.Value,3}  {one.Key}"); }
+
+                Console.WriteLine();
+                Console.WriteLine("what the held door is drawn as (door-path):");
+                foreach (var one in doors) { Console.WriteLine($"   {one.Value,3}  {one.Key}"); }
+
+                Console.WriteLine();
+                Console.WriteLine("the smallest one:");
+                Console.WriteLine(simplest);
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_STEPS=<mission> - building a step, a gate, and the wire between them, through
+            //the window's own buttons.
+            //
+            //The complaint this exists for: a gate could be made and then had nothing to be
+            //opened by, because the chain held one step - the way out - and there was no way to
+            //add another. PROBE_GATES then showed that offering every step would have been the
+            //worse bug, since the game reads "locked-doors" out of a click and out of nothing
+            //else. So there are two things to prove: that a step can be added, and that the kind
+            //which cannot hold a gate is never offered as one that can.
+            //
+            //On a COPY. Two of these probes have eaten the map they were pointed at.
+            var probeSteps = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_STEPS="));
+            if (probeSteps != null)
+            {
+                var wanted = probeSteps.Substring("PROBE_STEPS=".Length).Trim('"');
+
+                var live = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MCDReborn", "maps", wanted);
+
+                var folder = System.IO.Path.Combine(
+                    System.IO.Path.GetTempPath(), "mcd-steps-probe", wanted);
+
+                try
+                {
+                    if (System.IO.Directory.Exists(folder))
+                    {
+                        System.IO.Directory.Delete(folder, true);
+                    }
+
+                    foreach (var from in System.IO.Directory.GetFiles(
+                        live, "*", System.IO.SearchOption.AllDirectories))
+                    {
+                        var to = System.IO.Path.Combine(folder, from.Substring(live.Length + 1));
+                        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(to)!);
+                        System.IO.File.Copy(from, to, true);
+                    }
+
+                    Console.WriteLine($"[steps] working on a copy at {folder}");
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[steps] could not copy {live}: {problem.Message}");
+                    this.Shutdown();
+                    return;
+                }
+
+                var map = Logic.MapSpawns.load(folder);
+                var window = new UI.SpawnsWindow(map);
+
+                window.WindowState = WindowState.Normal;
+                window.Width = 1280;
+                window.Height = 800;
+                window.Left = -20000;
+                window.Show();
+
+                var waited = 0;
+                var timer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(250),
+                };
+
+                timer.Tick += (_, _) =>
+                {
+                    waited += 250;
+                    if (!window.mapReady && waited < 20000) { return; }
+                    timer.Stop();
+
+                    try
+                    {
+                        Console.WriteLine($"[steps] room: {window.roomChosen}");
+
+                        //Whatever the map had been left in the middle of, stripped back to the
+                        //way out. Through the window's own button, so this is a real starting
+                        //state rather than an assumed one - the copy underneath is somebody's
+                        //actual map and has no obligation to be tidy.
+                        Console.WriteLine($"[steps] found: {string.Join(" | ", window.questRows)}");
+                        window.probeOnlyExit();
+
+                        //--- what it looked like before ------------------------------------
+                        Console.WriteLine($"[steps] chain was: {string.Join(" | ", window.questRows)}");
+                        Console.WriteLine($"[steps] the gate picker offered {window.opensRows.Length}: "
+                            + string.Join(" | ", window.opensRows));
+
+                        var across = Math.Max(8, window.roomAcross / 4);
+
+                        //--- the wording, which is a key and not a sentence -----------------
+                        Console.WriteLine($"[steps] {window.wordingWhyNow}");
+                        Console.WriteLine($"[steps] wording on offer: "
+                            + string.Join(" | ", window.wordingRows.Take(6)));
+                        Console.WriteLine($"[steps] banner names: "
+                            + string.Join(" | ", window.bannerRows.Take(6)));
+
+                        Console.WriteLine(window.wordingRows.Length > 0
+                            ? "[steps] there is real wording to choose from"
+                            : "[steps] WRONG - nothing to say, so no step can be made");
+
+                        //--- a step you have to walk into, which CANNOT hold a gate ---------
+                        window.probeAddReachStep(0, across, 20, across);
+
+                        var reachOffered = window.opensRows.Length;
+                        Console.WriteLine($"[steps] after a reach step the picker offers {reachOffered}");
+                        Console.WriteLine(reachOffered == 0
+                            ? "[steps] right - neither a gauntlet nor the exit is offered"
+                            : "[steps] WRONG - something is offered that cannot usefully open a gate");
+
+                        //--- a step you have to click, which CAN ----------------------------
+                        window.probeAddClickStep(1, 0, across * 2, 20, across);
+
+                        var clickOffered = window.opensRows.Length;
+                        Console.WriteLine($"[steps] after a click step the picker offers {clickOffered}: "
+                            + string.Join(" | ", window.opensRows));
+                        Console.WriteLine(clickOffered == 1
+                            ? "[steps] right - the click alone, without the gauntlet or the exit"
+                            : "[steps] WRONG - expected exactly the click to be offered");
+
+                        Console.WriteLine($"[steps] chain now: {string.Join(" | ", window.questRows)}");
+                        Console.WriteLine($"[steps] spots: {string.Join(" | ", window.stepRows)}");
+                        Console.WriteLine($"[steps] amber pins: {window.stepPinsNow.Count}");
+                        Console.WriteLine(window.stepPinsNow.Count == window.stepRows.Length
+                            ? "[steps] every spot is drawn"
+                            : "[steps] WRONG - a spot was added that nothing draws");
+
+                        //--- the wire itself -------------------------------------------------
+                        window.probeAddGate(across, 20, across * 2);
+                        window.probePickGate(window.gateRows.Length - 1);
+                        window.probeLockGate(0);
+
+                        Console.WriteLine($"[steps] gates: {string.Join(" | ", window.gateRows)}");
+
+                        var held = window.gateRows.Count(one => one.Contains("opens:"));
+                        Console.WriteLine(held >= 1
+                            ? "[steps] the gate says what opens it"
+                            : "[steps] WRONG - no gate claims to be opened by anything");
+
+                        //--- and what actually reached the file ------------------------------
+                        //The writer the Save button uses, without the weld it also kicks off.
+                        Logic.MapSpawns.save(map);
+
+                        var raw = System.IO.File.ReadAllText(
+                            System.IO.Path.Combine(folder, "level.json"));
+
+                        var written = System.Text.Json.Nodes.JsonNode.Parse(
+                            Logic.GameMaps.stripComments(raw),
+                            documentOptions: new System.Text.Json.JsonDocumentOptions
+                            {
+                                AllowTrailingCommas = true,
+                                CommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                            }) as System.Text.Json.Nodes.JsonObject;
+
+                        var steps = written?["objectives"] as System.Text.Json.Nodes.JsonArray
+                            ?? new System.Text.Json.Nodes.JsonArray();
+
+                        Console.WriteLine($"[steps] the file now holds {steps.Count} objective(s)");
+
+                        var lastIsExit = steps.Count > 0
+                            && (steps[steps.Count - 1] as System.Text.Json.Nodes.JsonObject)
+                                ?["click"]?["object"]?.GetValue<string>() == Logic.MapSpawns.EXIT_DOOR;
+
+                        Console.WriteLine(lastIsExit
+                            ? "[steps] the way out is still last, so everything before it is asked for"
+                            : "[steps] WRONG - a step went in behind the exit and will never be asked");
+
+                        var onGauntlet = 0;
+                        var onClick = 0;
+
+                        foreach (var one in steps)
+                        {
+                            if (one is not System.Text.Json.Nodes.JsonObject step) { continue; }
+                            if (step["gauntlet"]?["locked-doors"] != null) { onGauntlet++; }
+                            if (step["click"]?["locked-doors"] != null) { onClick++; }
+                        }
+
+                        Console.WriteLine($"[steps] locked-doors written: {onClick} on a click, "
+                            + $"{onGauntlet} on a gauntlet");
+
+                        //The banner bug: every key written has to BE in the level's own table,
+                        //or the game draws <MISSING STRING TABLE ENTRY> and says nothing.
+                        var table = Logic.MapSpawns.loctableOf(map);
+                        var missing = 0;
+
+                        foreach (var each in steps)
+                        {
+                            if (each is not System.Text.Json.Nodes.JsonObject step) { continue; }
+
+                            foreach (var field in new[] { "name", "description" })
+                            {
+                                var key = step[field]?.GetValue<string>();
+                                if (key == null) { continue; }
+
+                                var said = Services.R.wordFor(table, key);
+                                Console.WriteLine($"[steps] {field,-12} {key,-42} "
+                                    + (said ?? "<MISSING STRING TABLE ENTRY>"));
+
+                                if (said == null) { missing++; }
+                            }
+                        }
+
+                        Console.WriteLine(missing == 0
+                            ? $"[steps] every word of it is in the \"{table}\" table"
+                            : $"[steps] WRONG - {missing} key(s) will draw as missing on the banner");
+                        Console.WriteLine(onClick == 1 && onGauntlet == 0
+                            ? "[steps] the gate is held by the one body the game reads it from"
+                            : "[steps] WRONG - that gate will not open");
+
+                        //--- and taking a step away takes its spot with it -------------------
+                        var spotsWere = window.stepRows.Length;
+                        window.probePickQuest(0);
+                        window.probeRemoveQuest();
+
+                        Console.WriteLine($"[steps] after removing step 1, spots: "
+                            + $"{string.Join(" | ", window.stepRows)}");
+                        Console.WriteLine(window.stepRows.Length == spotsWere - 1
+                            ? "[steps] the removed step took its own spot with it"
+                            : "[steps] WRONG - a spot was left behind with nothing asking for it");
+
+                        //--- and the pin can be dragged, like the other five -----------------
+                        //
+                        //Through grab/dragTo/drop, which is what the mouse calls. A sixth kind
+                        //of pin on one map is a sixth chance for "nearest wins" to take hold of
+                        //the wrong thing, and the amber ones stand near the gates on purpose.
+                        var view = window.probeView;
+
+                        Point? screen(System.Collections.Generic.IReadOnlyList<(int x, int y, int z)> pins)
+                        {
+                            for (var sy = 12.0; sy < view.ActualHeight - 12; sy += 5)
+                            {
+                                for (var sx = 12.0; sx < view.ActualWidth - 12; sx += 5)
+                                {
+                                    var at = new Point(sx, sy);
+                                    var hit = view.probeLook(at);
+                                    if (hit == null) { continue; }
+
+                                    foreach (var pin in pins)
+                                    {
+                                        double dx = pin.x - hit.Value.x, dy = pin.y - hit.Value.y,
+                                               dz = pin.z - hit.Value.z;
+                                        if (dx * dx + dz * dz + dy * dy * 0.25 <= 2.0) { return at; }
+                                    }
+                                }
+                            }
+
+                            return null;
+                        }
+
+                        var onPin = screen(window.stepPinsNow);
+
+                        if (onPin == null)
+                        {
+                            Console.WriteLine("[steps] the amber pin is not on screen, drag not tested");
+                        }
+                        else
+                        {
+                            var before = window.stepRows.FirstOrDefault() ?? string.Empty;
+
+                            var caught = view.probeGrab(onPin.Value);
+                            Console.WriteLine(caught && view.heldKind == UI.MapView3D.Pin.Step
+                                ? "[steps] took hold of the amber pin rather than a neighbour"
+                                : $"[steps] WRONG - took {(caught ? view.heldKind.ToString() : "nothing")}");
+
+                            if (caught)
+                            {
+                                //Somewhere else on the same map, found the same way the drag
+                                //itself finds ground.
+                                Point? bare = null;
+                                for (var sy = 12.0; sy < view.ActualHeight - 12 && bare == null; sy += 9)
+                                {
+                                    for (var sx = 12.0; sx < view.ActualWidth - 12; sx += 9)
+                                    {
+                                        var at = new Point(sx, sy);
+                                        var hit = view.probeLook(at);
+                                        if (hit == null) { continue; }
+
+                                        var here = hit.Value;
+                                        if (window.stepPinsNow.All(pin =>
+                                            Math.Abs(pin.x - here.x) + Math.Abs(pin.z - here.z) > 12))
+                                        {
+                                            bare = at;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if (bare == null)
+                                {
+                                    Console.WriteLine("[steps] no clear ground to drag onto");
+                                    view.probeDrop();
+                                }
+                                else
+                                {
+                                    view.probeDragTo(bare.Value);
+                                    view.probeDrop();
+
+                                    var after = window.stepRows.FirstOrDefault() ?? string.Empty;
+                                    Console.WriteLine($"[steps] {before}");
+                                    Console.WriteLine($"[steps] {after}");
+                                    Console.WriteLine(after != before && window.stepRows.Length == 1
+                                        ? "[steps] the spot moved, and there is still one of it"
+                                        : "[steps] WRONG - the drag did not move the spot");
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception problem)
+                    {
+                        Console.WriteLine($"[steps] threw: {problem}");
+                    }
+
+                    this.Shutdown();
+                };
+
+                timer.Start();
+                return;
+            }
+
+            //PROBE_BUTTONS=<mission> - whether Save and Install come back after they are used.
+            //
+            //They did not. Install switched itself off by hand on the way in and nothing ever
+            //switched it back on: updateUI, which owns every other button's state, had no line
+            //for it. One press and it was dead for the rest of the session, with the status bar
+            //still saying there was work to save.
+            //
+            //And underneath that, the wait it did instead of awaiting: it called the save
+            //handler - an async void, which returns at its first await - and then spun until
+            //"_map.Changed.Count > 0" went false. MapSpawns.save clears that list BEFORE the
+            //weld starts, so the condition was already false and the loop exited at once. The
+            //install packed whatever the last weld had left behind.
+            //
+            //On a COPY, and it never installs anything - the install path shares _busy and
+            //updateUI with the save path, which is the whole point of the fix.
+            var probeButtons = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_BUTTONS="));
+            if (probeButtons != null)
+            {
+                var wanted = probeButtons.Substring("PROBE_BUTTONS=".Length).Trim('"');
+
+                var live = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MCDReborn", "maps", wanted);
+
+                var folder = System.IO.Path.Combine(
+                    System.IO.Path.GetTempPath(), "mcd-buttons-probe", wanted);
+
+                try
+                {
+                    if (System.IO.Directory.Exists(folder)) { System.IO.Directory.Delete(folder, true); }
+
+                    foreach (var from in System.IO.Directory.GetFiles(
+                        live, "*", System.IO.SearchOption.AllDirectories))
+                    {
+                        var to = System.IO.Path.Combine(folder, from.Substring(live.Length + 1));
+                        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(to)!);
+                        System.IO.File.Copy(from, to, true);
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[buttons] could not copy {live}: {problem.Message}");
+                    this.Shutdown();
+                    return;
+                }
+
+                Console.WriteLine($"[buttons] working on a copy at {folder}");
+
+                //A mission, so Install is on screen at all - it is hidden without one.
+                var mission = Logic.GameMaps.all()
+                    .FirstOrDefault(one => string.Equals(one.Name, wanted,
+                        StringComparison.OrdinalIgnoreCase));
+
+                if (mission == null)
+                {
+                    Console.WriteLine($"[buttons] the game has no mission called {wanted}");
+                    this.Shutdown();
+                    return;
+                }
+
+                var map = Logic.MapSpawns.load(folder);
+                var window = new UI.SpawnsWindow(map, mission);
+
+                window.WindowState = WindowState.Normal;
+                window.Width = 1280;
+                window.Height = 800;
+                window.Left = -20000;
+                window.Show();
+
+                var waited = 0;
+                var timer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(250),
+                };
+
+                timer.Tick += async (_, _) =>
+                {
+                    waited += 250;
+                    if (!window.mapReady && waited < 20000) { return; }
+                    timer.Stop();
+
+                    try
+                    {
+                        Console.WriteLine($"[buttons] at rest: save {window.saveEnabled}, "
+                            + $"install {window.installEnabled}, {window.changedNow} changed");
+
+                        Console.WriteLine(window.installEnabled
+                            ? "[buttons] Install is available before anything is pressed"
+                            : "[buttons] WRONG - Install is dead on arrival");
+
+                        //An edit, through the window's own button, so the changed list fills the
+                        //way it does for somebody using it.
+                        window.probeAddGate(Math.Max(8, window.roomAcross / 4), 20,
+                                            Math.Max(8, window.roomAcross / 4));
+
+                        Console.WriteLine($"[buttons] after an edit: save {window.saveEnabled}, "
+                            + $"install {window.installEnabled}, {window.changedNow} changed");
+
+                        Console.WriteLine(window.saveEnabled
+                            ? "[buttons] Save woke up for the edit"
+                            : "[buttons] WRONG - there is work to save and Save is off");
+
+                        //The BUTTON, not the method under it - the bug was in what the button
+                        //leaves behind, so pressing anything less would miss it.
+                        var before = DateTime.UtcNow;
+                        window.probeSave();
+
+                        Console.WriteLine(window.busyNow
+                            ? "[buttons] both buttons are off while the save runs"
+                            : "[buttons] the save finished before the first look");
+
+                        Console.WriteLine(!window.saveEnabled && !window.installEnabled || !window.busyNow
+                            ? "[buttons] nothing can be pressed twice mid-save"
+                            : "[buttons] WRONG - a button is live while a save is running");
+
+                        var spun = 0;
+                        while (window.busyNow && spun < 120000)
+                        {
+                            await System.Threading.Tasks.Task.Delay(50);
+                            spun += 50;
+                        }
+
+                        var took = (DateTime.UtcNow - before).TotalMilliseconds;
+
+                        Console.WriteLine($"[buttons] the save finished in {took:N0} ms, "
+                            + $"{window.changedNow} changed");
+
+                        Console.WriteLine(!window.saveEnabled
+                            ? "[buttons] Save went off, because there is nothing left to save"
+                            : "[buttons] WRONG - Save is offering to save nothing");
+
+                        Console.WriteLine($"[buttons] afterwards: save {window.saveEnabled}, "
+                            + $"install {window.installEnabled}");
+
+                        //The regression itself. Nothing is left to save, so Save is rightly off;
+                        //Install has to be ON, because a folder with nothing unsaved is exactly
+                        //the folder somebody wants to install.
+                        Console.WriteLine(window.installEnabled
+                            ? "[buttons] Install is still available after a save"
+                            : "[buttons] WRONG - Install has not come back");
+
+                        //And a second round, which is what the session-long death looked like.
+                        window.probeAddGate(Math.Max(10, window.roomAcross / 3), 20,
+                                            Math.Max(10, window.roomAcross / 3));
+
+                        Console.WriteLine($"[buttons] second edit: save {window.saveEnabled}, "
+                            + $"install {window.installEnabled}, {window.changedNow} changed");
+
+                        Console.WriteLine(window.saveEnabled && window.installEnabled
+                            ? "[buttons] both buttons work a second time"
+                            : "[buttons] WRONG - a button did not come back for the second edit");
+
+                        //--- and now the half that only happens on a welded map ---------------
+                        //
+                        //Nothing in the workshop is welded - a hand-built map is one stretch and
+                        //saves in six milliseconds - so the branch the wait was broken in never
+                        //ran above. Faking the marker file makes saveNow take it. The weld will
+                        //REFUSE this folder, which is fine and is the point: what is being
+                        //measured is whether the save waits for the answer at all, and whether a
+                        //refusal is reported rather than installed over.
+                        var marker = System.IO.Path.Combine(folder, "level.json.multitile");
+                        System.IO.File.Copy(
+                            System.IO.Path.Combine(folder, "level.json"), marker, true);
+
+                        Console.WriteLine($"[buttons] pretending the map is welded "
+                            + $"(tools available: {Logic.MapTools.available})");
+
+                        var weldStart = DateTime.UtcNow;
+                        window.probeSave();
+
+                        var sawBusy = window.busyNow;
+
+                        var spun2 = 0;
+                        while (window.busyNow && spun2 < 180000)
+                        {
+                            await System.Threading.Tasks.Task.Delay(50);
+                            spun2 += 50;
+                        }
+
+                        var weldTook = (DateTime.UtcNow - weldStart).TotalMilliseconds;
+
+                        Console.WriteLine($"[buttons] the welded save took {weldTook:N0} ms, "
+                            + $"held the buttons: {sawBusy}");
+
+                        Console.WriteLine(sawBusy
+                            ? "[buttons] the save was still running when it returned, so it is awaited"
+                            : "[buttons] the weld returned instantly - nothing was waited for");
+
+                        Console.WriteLine($"[buttons] status: {window.probeStatus}");
+
+                        Console.WriteLine(window.installEnabled
+                            ? "[buttons] Install came back after the welded save too"
+                            : "[buttons] WRONG - Install is dead after a welded save");
+                    }
+                    catch (Exception problem)
+                    {
+                        Console.WriteLine($"[buttons] threw: {problem}");
+                    }
+
+                    this.Shutdown();
+                };
+
+                timer.Start();
+                return;
+            }
+
+            //PROBE_NAMESPACES - every namespace inside the game's own string table.
+            //
+            //The app cherry-picks a dozen of them by name, which is why an objective's
+            //description came back missing: not absent from the game, just never loaded.
+            if (_startupArguments.Any(a => a == "PROBE_NAMESPACES"))
+            {
+                var pak = Logic.CustomSkins.index;
+                if (pak == null) { Console.WriteLine("[ns] no pak index"); this.Shutdown(); return; }
+
+                var tables = pak.extractLocResFile("/Dungeons/Content/Localization/Game/en/Game");
+
+                if (tables == null)
+                {
+                    Console.WriteLine("[ns] could not read the English table");
+                    this.Shutdown();
+                    return;
+                }
+
+                foreach (var space in tables.OrderByDescending(one => one.Value.Count))
+                {
+                    Console.WriteLine($"[ns] {space.Value.Count,6}  \"{space.Key}\"   "
+                        + string.Join(", ", space.Value.Keys.Take(3)));
+                }
+
+                //How portable each key is. A map's wording comes out of the namespace its
+                //loctable-id names, and installing the same folder over a different mission
+                //changes which namespace that is - so a key only half the missions carry is a
+                //key that draws as missing on the other half.
+                var missions = tables
+                    .Where(one => one.Key.EndsWith("Labels", StringComparison.Ordinal)
+                                  && one.Value.Keys.Any(k => k.StartsWith("description_",
+                                      StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
+
+                Console.WriteLine($"[ns] {missions.Count} mission label namespaces: "
+                    + string.Join(", ", missions.Select(one => one.Key)));
+
+                var spread = new SortedDictionary<string, int>(StringComparer.Ordinal);
+
+                foreach (var space in missions)
+                {
+                    foreach (var key in space.Value.Keys)
+                    {
+                        spread[key] = spread.TryGetValue(key, out var was) ? was + 1 : 1;
+                    }
+                }
+
+                foreach (var key in spread.OrderByDescending(one => one.Value).Take(40))
+                {
+                    var said = missions.Select(one =>
+                        one.Value.TryGetValue(key.Key, out var v) ? v : null)
+                        .FirstOrDefault(v => v != null);
+
+                    Console.WriteLine($"[ns] {key.Value,3}/{missions.Count}  {key.Key,-46} {said}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_LOCRES - every string table in the paks, not just the one the app reads.
+            //
+            //The app loads Localization/<lang>/Game only, and that table has no objective
+            //descriptions in it - which is why offering to look one up came back empty. This
+            //says what else is in there.
+            if (_startupArguments.Any(a => a == "PROBE_LOCRES"))
+            {
+                var pak = Logic.CustomSkins.index;
+                if (pak == null) { Console.WriteLine("[locres] no pak index"); this.Shutdown(); return; }
+
+                var seen = 0;
+
+                foreach (var item in pak)
+                {
+                    if (item == null) { continue; }
+
+                    var at = item.IndexOf("//") + 1;
+                    var path = item.Substring(at);
+
+                    if (path.IndexOf("locres", StringComparison.OrdinalIgnoreCase) < 0
+                        && path.IndexOf("Localization", StringComparison.OrdinalIgnoreCase) < 0
+                        && path.IndexOf("StringTable", StringComparison.OrdinalIgnoreCase) < 0
+                        && path.IndexOf("loctable", StringComparison.OrdinalIgnoreCase) < 0)
+                    {
+                        continue;
+                    }
+
+                    //English and the shared ones only, or this is fifteen copies of one list.
+                    if (path.Contains("/ja/") || path.Contains("/de/") || path.Contains("/fr/")
+                        || path.Contains("/es/") || path.Contains("/it/") || path.Contains("/ko/")
+                        || path.Contains("/pl/") || path.Contains("/pt-BR/") || path.Contains("/ru/")
+                        || path.Contains("/zh-") || path.Contains("/nl/") || path.Contains("/sv/")
+                        || path.Contains("/da/") || path.Contains("/nb/") || path.Contains("/fi/")
+                        || path.Contains("/tr/") || path.Contains("/es-MX/") || path.Contains("/pt/"))
+                    {
+                        continue;
+                    }
+
+                    Console.WriteLine($"[locres] {path}");
+                    if (++seen > 60) { Console.WriteLine("[locres] ..."); break; }
+                }
+
+                Console.WriteLine($"[locres] {seen} listed");
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_WORDS - what an objective is allowed to say.
+            //
+            //Its "description" is a KEY, not a sentence. A key the game's table has not got
+            //draws as <MISSING STRING TABLE ENTRY> on the mission banner, which is what the
+            //first cut of the step editor produced for everybody who typed their own wording.
+            if (_startupArguments.Any(a => a == "PROBE_WORDS"))
+            {
+                var found = Services.R
+                    .missionStringsStartingWith("description_")
+                    .OrderBy(pair => pair.Value, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                Console.WriteLine($"[words] {found.Count} description keys the game can draw");
+
+                foreach (var table in Services.R.everyTable()
+                    .GroupBy(one => one.table)
+                    .OrderBy(one => one.Key, StringComparer.Ordinal))
+                {
+                    Console.WriteLine($"[words] table {table.Key,-16} {table.Count():N0} strings, "
+                        + $"e.g. {string.Join(", ", table.Take(3).Select(one => one.key))}");
+                }
+
+                foreach (var hunt in new[] { "exit_through", "the_escape", "objective" })
+                {
+                    foreach (var hit in Services.R.everyTable()
+                        .Where(one => one.key.IndexOf(hunt, StringComparison.OrdinalIgnoreCase) >= 0)
+                        .Take(6))
+                    {
+                        Console.WriteLine($"[words] \"{hunt}\" -> [{hit.table}] {hit.key} = {hit.value}");
+                    }
+                }
+
+                foreach (var pair in found.Take(400))
+                {
+                    Console.WriteLine($"[words] {pair.Key,-62} {pair.Value}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_QUESTS - every kind of objective the game's own missions ask for.
+            //
+            //The editor can only offer steps it knows the shape of, and a step whose shape is
+            //guessed at is a step that blocks every step behind it with no error anywhere. So
+            //the shapes are read off the game rather than invented: which bodies exist, which
+            //fields each one carries, and one worked example of each.
+            if (_startupArguments.Any(a => a == "PROBE_QUESTS"))
+            {
+                var kinds = new SortedDictionary<string, SortedSet<string>>(StringComparer.Ordinal);
+                var example = new Dictionary<string, string>(StringComparer.Ordinal);
+                var users = new SortedDictionary<string, SortedSet<string>>(StringComparer.Ordinal);
+
+                foreach (var mission in Logic.GameMaps.all())
+                {
+                    var raw = Logic.GameMaps.read(mission.PakPath);
+                    if (raw == null) { continue; }
+
+                    System.Text.Json.Nodes.JsonObject? level;
+                    try
+                    {
+                        var text = Logic.GameMaps.stripComments(
+                            new System.Text.UTF8Encoding(false).GetString(raw).TrimStart('\uFEFF'));
+
+                        level = System.Text.Json.Nodes.JsonNode.Parse(text,
+                            documentOptions: new System.Text.Json.JsonDocumentOptions
+                            {
+                                AllowTrailingCommas = true,
+                                CommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                            }) as System.Text.Json.Nodes.JsonObject;
+                    }
+                    catch (Exception problem)
+                    {
+                        Console.WriteLine($"[quests] {mission.Name}: {problem.Message}");
+                        continue;
+                    }
+
+                    if (level?["objectives"] is not System.Text.Json.Nodes.JsonArray all) { continue; }
+
+                    foreach (var one in all)
+                    {
+                        if (one is not System.Text.Json.Nodes.JsonObject step) { continue; }
+
+                        foreach (var part in step)
+                        {
+                            //The body is whichever key holds an object - "click", "gauntlet",
+                            //"killgroup" and whatever else turns up. Everything else is the
+                            //wrapper: name, description, displayMode.
+                            if (part.Value is not System.Text.Json.Nodes.JsonObject body) { continue; }
+
+                            if (!kinds.TryGetValue(part.Key, out var fields))
+                            {
+                                fields = new SortedSet<string>(StringComparer.Ordinal);
+                                kinds[part.Key] = fields;
+                            }
+
+                            foreach (var field in body) { fields.Add(field.Key); }
+
+                            if (!users.TryGetValue(part.Key, out var who))
+                            {
+                                who = new SortedSet<string>(StringComparer.Ordinal);
+                                users[part.Key] = who;
+                            }
+                            who.Add(mission.Name);
+
+                            //The fullest example wins, so the print shows every field rather
+                            //than whichever one happened to come first.
+                            var shown = step.ToJsonString(
+                                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+
+                            if (!example.TryGetValue(part.Key, out var had) || shown.Length > had.Length)
+                            {
+                                example[part.Key] = shown;
+                            }
+                        }
+                    }
+                }
+
+                foreach (var kind in kinds)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine($"=== {kind.Key} ===");
+                    Console.WriteLine("   fields : " + string.Join(", ", kind.Value));
+                    Console.WriteLine("   used by: " + string.Join(", ", users[kind.Key]));
+                    Console.WriteLine(example[kind.Key]);
+                }
+
+                this.Shutdown();
+                return;
+            }
+
             //PROBE_WELDABLE - which of the game's levels can be welded and which must not be.
             //
             //Welding the camp crashed the game fourteen seconds into loading, because the merged

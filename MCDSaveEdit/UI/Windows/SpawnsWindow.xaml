@@ -240,6 +240,37 @@
                                     Margin="0,0,0,6" Click="removeQuestButton_Click"/>
                         </WrapPanel>
 
+                        <Label x:Name="addStepLabel" Content="*Add a step*"
+                               Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+                        <TextBlock x:Name="stepWordingWhy" TextWrapping="Wrap" FontSize="11"
+                                   Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <TextBlock x:Name="stepBannerLabel" FontSize="11" Margin="0,2,0,4"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ComboBox x:Name="stepBannerBox" Margin="0,0,0,6" Height="26"
+                                  VerticalContentAlignment="Center"/>
+                        <TextBlock x:Name="stepWordingLabel" FontSize="11" Margin="0,2,0,4"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ComboBox x:Name="stepTitleBox" Margin="0,0,0,6" Height="26"
+                                  VerticalContentAlignment="Center"/>
+                        <TextBlock x:Name="stepThingLabel" FontSize="11" Margin="0,2,0,4"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ComboBox x:Name="stepThingBox" Margin="0,0,0,6" Height="26"
+                                  VerticalContentAlignment="Center"/>
+                        <WrapPanel Margin="0,0,0,12">
+                            <Button x:Name="addClickStepButton" Content="*Click a thing*" Padding="10,4"
+                                    Margin="0,0,6,6" Click="addClickStepButton_Click"/>
+                            <Button x:Name="addReachStepButton" Content="*Reach a spot*" Padding="10,4"
+                                    Margin="0,0,0,6" Click="addReachStepButton_Click"/>
+                        </WrapPanel>
+
+                        <Label x:Name="stepsLabel" Content="*The spots those steps use*"
+                               Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+                        <TextBlock x:Name="stepsHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ListBox x:Name="stepsList" MaxHeight="110" Margin="0,0,0,12"
+                                 SelectionChanged="stepsList_SelectionChanged"/>
+
                             <Separator Margin="0,4,0,10"/>
 
                         <Label x:Name="gatesLabel" Content="*Gates*"

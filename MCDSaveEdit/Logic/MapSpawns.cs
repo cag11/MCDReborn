@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using MCDSaveEdit.Services;
 #nullable enable
 
 namespace MCDSaveEdit.Logic
@@ -1063,6 +1064,11 @@ namespace MCDSaveEdit.Logic
             var body = bodyOf(map, objective);
             if (body == null || gate.Length == 0) { return false; }
 
+            //Refused rather than written, for the reason on Objective.CanHoldGates: the game
+            //reads "locked-doors" out of a click and out of nowhere else.
+            var holder = objectivesOf(map).FirstOrDefault(one => one.At == objective);
+            if (holder == null || !holder.CanHoldGates) { return false; }
+
             if (body["locked-doors"] is not JsonArray doors)
             {
                 doors = new JsonArray();
@@ -1128,10 +1134,11 @@ namespace MCDSaveEdit.Logic
         public sealed class Objective
         {
             public Objective(int at, string description, string kind, int count,
-                             string[] needs, bool isExit)
+                             string[] needs, bool isExit, string? says)
             {
                 At = at;
                 Description = description;
+                Says = says;
                 Kind = kind;
                 Count = count;
                 Needs = needs;
@@ -1139,7 +1146,20 @@ namespace MCDSaveEdit.Logic
             }
 
             public int At { get; }
+
+            /// <summary>The KEY the level stores, which is not what anybody reads.</summary>
             public string Description { get; }
+
+            /// <summary>
+            /// What that key reads as in game, or null when the level's table has not got it.
+            ///
+            /// Null is the interesting case: it is exactly what draws as
+            /// &lt;MISSING STRING TABLE ENTRY&gt; across the mission banner, and there is no
+            /// other warning of it anywhere - not in a log, not on load, not in the game.
+            /// </summary>
+            public string? Says { get; }
+
+            public bool Missing => Says == null;
 
             /// <summary>"click" something, or "reach" somewhere.</summary>
             public string Kind { get; }
@@ -1152,8 +1172,22 @@ namespace MCDSaveEdit.Logic
             /// <summary>Whether this is the one that clicks the exit gate.</summary>
             public bool IsExit { get; }
 
+            /// <summary>
+            /// Whether a gate can be hung off this step.
+            ///
+            /// Only a "click" can hold one. Read off all fifty-six of the game's own missions:
+            /// eighty-five objectives hold a gate shut, and every single one is a click with
+            /// "locked-doors", an arena with "gate", or a kill-group with "gate". Not one
+            /// gauntlet holds anything, and "locked-doors" appears under no other body.
+            ///
+            /// So writing the field onto a gauntlet does not half-work - the game never looks
+            /// for it there, and what you get is a gate that is drawn, and solid, and opens for
+            /// nobody, with no error anywhere. Offering it would be the cruellest kind of bug.
+            /// </summary>
+            public bool CanHoldGates => string.Equals(Kind, "click", StringComparison.Ordinal);
+
             /// <summary>The description with the game's key noise taken off.</summary>
-            public string Title => tidy(Description);
+            public string Title => Says ?? tidy(Description);
 
             public override string ToString()
             {
@@ -1161,7 +1195,11 @@ namespace MCDSaveEdit.Logic
                 var where = Needs.Length > 0 ? "  \u2192  " + string.Join(", ", Needs) : string.Empty;
                 var note = IsExit ? "   \u2190  the way out" : string.Empty;
 
-                return $"{At + 1}. {tidy(Description)}   \u00b7  {what}{where}{note}";
+                var said = Missing
+                    ? $"{tidy(Description)}   \u00b7  NO SUCH WORDING - draws as missing in game"
+                    : Says;
+
+                return $"{At + 1}. {said}   \u00b7  {what}{where}{note}";
             }
 
             /// <summary>The game's own string keys, made readable.</summary>
@@ -1188,6 +1226,9 @@ namespace MCDSaveEdit.Logic
             var made = new List<Objective>();
             var all = map.Level["objectives"] as JsonArray ?? new JsonArray();
 
+            //Looked up once rather than per step - it is a scan over 36 tables.
+            var table = loctableOf(map);
+
             for (var at = 0; at < all.Count; at++)
             {
                 if (all[at] is not JsonObject objective) { continue; }
@@ -1210,16 +1251,313 @@ namespace MCDSaveEdit.Logic
                 var region = body?["end-region"]?.GetValue<string>();
                 if (region != null) { needs.Add(lastPart(region)); }
 
+                var key = objective["description"]?.GetValue<string>() ?? "(no description)";
+
                 made.Add(new Objective(at,
-                    objective["description"]?.GetValue<string>() ?? "(no description)",
+                    key,
                     click != null ? "click" : gauntlet != null ? "reach" : "?",
                     body?["count"]?.GetValue<int>() ?? 1,
                     needs.ToArray(),
                     click != null && string.Equals(click["object"]?.GetValue<string>(), EXIT_DOOR,
-                        StringComparison.OrdinalIgnoreCase)));
+                        StringComparison.OrdinalIgnoreCase),
+                    R.wordFor(table, key)));
             }
 
             return made;
+        }
+
+        /// <summary>
+        /// Things the game lets you walk up to and click, with a gate on the other end.
+        ///
+        /// Fifty of the game's objectives hold a gate shut and every one of them is a click on
+        /// something like these. The list is the base game's own - nothing out of a DLC, because
+        /// a prefab that is not loaded is a mission that does not start, and a hand-built map
+        /// has no way of knowing which downloads somebody owns.
+        ///
+        /// Ordered by how obvious the thing is to walk up to rather than by how often the game
+        /// uses it. A bell and a lever read as "press me" to anybody; a magic book does not.
+        /// </summary>
+        public static readonly (string path, string name)[] CLICKABLES =
+        {
+            ("Decor/Prefabs/TownBell/BP_Townbell", "Town bell"),
+            ("Decor/Prefabs/GuideBeacon/BP_DoorLever", "Lever"),
+            ("Decor/Prefabs/GuideBeacon/BP_GuideBeacon", "Beacon"),
+            ("Decor/Prefabs/DrawBridge_Switch/BP_Switch_Drawbridge", "Drawbridge switch"),
+            ("Decor/Prefabs/RedstoneMachine/BP_RedstoneMachine", "Redstone machine"),
+            ("Decor/Prefabs/CapturedVillager/BP_CapturedVillager", "Captured villager"),
+            ("Decor/Prefabs/_Interactables/MagicBook/BP_MagicBook", "Magic book"),
+        };
+
+        /// <summary>
+        /// Which of the game's string tables this level's wording comes out of.
+        ///
+        /// "loctable-id" when it says one, its own id otherwise - the same fallback the game
+        /// makes. It matters because an objective's description is a key into exactly one of
+        /// thirty-six tables, and they share almost nothing.
+        /// </summary>
+        public static string loctableOf(Map map)
+            => map.Level["loctable-id"]?.GetValue<string>()
+               ?? map.Level["id"]?.GetValue<string>()
+               ?? string.Empty;
+
+        /// <summary>Where a step's own region stands, so it can be drawn and dragged.</summary>
+        public sealed class Step
+        {
+            public Step(int objective, int region, string name, int[] pos, string title, bool click)
+            {
+                Objective = objective;
+                Region = region;
+                Name = name;
+                Pos = pos;
+                Title = title;
+                Click = click;
+            }
+
+            /// <summary>Which objective it belongs to.</summary>
+            public int Objective { get; }
+
+            /// <summary>Where its region sits in the room, or -1 when the region is missing.</summary>
+            public int Region { get; }
+
+            public string Name { get; }
+            public int[] Pos { get; }
+            public string Title { get; }
+
+            /// <summary>Whether it is a thing to click rather than a place to reach.</summary>
+            public bool Click { get; }
+
+            public bool Broken => Region < 0;
+
+            public override string ToString()
+            {
+                var what = Click ? "click" : "reach";
+                var note = Broken
+                    ? "   \u00b7  NO region called that - this step can never finish"
+                    : $"   \u00b7  {Pos[0]}, {Pos[1]}, {Pos[2]}";
+
+                return $"{Objective + 1}. {Title}   \u00b7  {what}  {Name}{note}";
+            }
+        }
+
+        /// <summary>
+        /// The regions the mission's own steps stand on, other than the way out.
+        ///
+        /// The exit has its own panel and its own red pin, so it is left out of this one - it
+        /// would otherwise be drawn twice, in two colours, at one spot.
+        /// </summary>
+        public static List<Step> stepsOf(Map map, Room room)
+        {
+            var made = new List<Step>();
+
+            var where = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (var at = 0; at < room.Regions.Count; at++)
+            {
+                if (room.Regions[at] is not JsonObject region) { continue; }
+                var name = region["name"]?.GetValue<string>();
+                if (!string.IsNullOrEmpty(name) && !where.ContainsKey(name!)) { where[name!] = at; }
+            }
+
+            foreach (var step in objectivesOf(map))
+            {
+                if (step.IsExit) { continue; }
+
+                foreach (var name in step.Needs)
+                {
+                    //A step can name a region that is not in this room at all - every mission
+                    //the app inherited names regions from tiles that are no longer there. Those
+                    //are worth listing precisely because they are the reason a chain stalls.
+                    var at = where.TryGetValue(name, out var found) ? found : -1;
+
+                    made.Add(new Step(step.At, at, name,
+                        at < 0
+                            ? new[] { -1, -1, -1 }
+                            : ints((room.Regions[at] as JsonObject)?["pos"], 3),
+                        step.Title, step.CanHoldGates));
+                }
+            }
+
+            return made;
+        }
+
+        /// <summary>A region name nothing in this room is using yet.</summary>
+        public static string freeStepName(Room room, string stem)
+        {
+            var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var one in room.Regions)
+            {
+                var name = (one as JsonObject)?["name"]?.GetValue<string>();
+                if (!string.IsNullOrEmpty(name)) { taken.Add(name!); }
+            }
+
+            for (var n = 1; ; n++)
+            {
+                var tried = stem + n.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                if (!taken.Contains(tried)) { return tried; }
+            }
+        }
+
+        /// <summary>
+        /// Puts a new step in the chain, ahead of the way out.
+        ///
+        /// Ahead of it, always. The chain is a SEQUENCE - a step behind the exit is a step
+        /// nobody reaches, because clicking the exit ends the mission - so one added after it
+        /// would never be asked for and every gate hung off it would stay shut.
+        /// </summary>
+        private static int insert(Map map, JsonObject step)
+        {
+            if (map.Level["objectives"] is not JsonArray all)
+            {
+                all = new JsonArray();
+                map.Level["objectives"] = all;
+            }
+
+            var before = all.Count;
+
+            for (var at = 0; at < all.Count; at++)
+            {
+                if (all[at] is JsonObject one
+                    && one["click"] is JsonObject click
+                    && string.Equals(click["object"]?.GetValue<string>(), EXIT_DOOR,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    before = at;
+                    break;
+                }
+            }
+
+            all.Insert(before, step);
+            return before;
+        }
+
+        /// <summary>
+        /// A step that asks you to click something, which is the only kind a gate can hang off.
+        ///
+        /// The pair is the same shape as the way out: a REGION saying where the thing stands,
+        /// and an OBJECTIVE naming both the region and the prefab to draw there. Either alone
+        /// does nothing at all.
+        /// </summary>
+        public static int addClickStep(Map map, Room room, string title, string asks,
+                                       string prefab, int x, int y, int z)
+        {
+            var name = freeStepName(room, "button");
+
+            room.Regions.Add(new JsonObject
+            {
+                ["locked"] = false,
+                ["name"] = name,
+                ["pos"] = new JsonArray(x, y, z),
+                ["size"] = new JsonArray(1, 1, 1),
+                ["tags"] = string.Empty,
+                ["type"] = "trigger",
+            });
+
+            //Both of these are KEYS into the level's string table, never sentences. Typing
+            //wording straight in is what put <MISSING STRING TABLE ENTRY> on the banner.
+            return insert(map, new JsonObject
+            {
+                ["name"] = title,
+                ["description"] = asks,
+                ["displayMode"] = "MainObjective",
+                ["click"] = new JsonObject
+                {
+                    ["object"] = prefab,
+                    ["count"] = 1,
+                    ["locations"] = new JsonArray("*.*." + name),
+                },
+            });
+        }
+
+        /// <summary>
+        /// A step that asks you to get somewhere.
+        ///
+        /// One field, and the game's own missions use it forty-four times over - walk into the
+        /// region and the step is done. It cannot hold a gate, which is the whole reason the
+        /// other kind exists.
+        /// </summary>
+        public static int addReachStep(Map map, Room room, string title, string asks,
+                                       int x, int y, int z)
+        {
+            var name = freeStepName(room, "goal");
+
+            room.Regions.Add(new JsonObject
+            {
+                ["locked"] = false,
+                ["name"] = name,
+                ["pos"] = new JsonArray(x, y, z),
+                ["size"] = new JsonArray(5, 1, 5),
+                ["tags"] = string.Empty,
+                ["type"] = "trigger",
+            });
+
+            return insert(map, new JsonObject
+            {
+                ["name"] = title,
+                ["description"] = asks,
+                ["displayMode"] = "MainObjective",
+                ["gauntlet"] = new JsonObject
+                {
+                    ["end-region"] = "*.*." + name,
+                },
+            });
+        }
+
+        /// <summary>
+        /// Clears away the spots of steps that are no longer asked for.
+        ///
+        /// Only the ones this editor made - "button3", "goal1" - and only when no objective
+        /// names them any more. A region somebody placed by hand, or one that came with the
+        /// mission, is theirs: a tidy-up that deletes those is a tidy-up that quietly breaks a
+        /// map, and the space a stray trigger region costs is nothing.
+        /// </summary>
+        public static int dropOrphanSteps(Map map, Room room)
+        {
+            var wanted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var step in objectivesOf(map))
+            {
+                foreach (var name in step.Needs) { wanted.Add(name); }
+                foreach (var name in lockedBy(map, step.At)) { wanted.Add(name); }
+            }
+
+            var gone = 0;
+
+            for (var at = room.Regions.Count - 1; at >= 0; at--)
+            {
+                if (room.Regions[at] is not JsonObject region) { continue; }
+                if (region["type"]?.GetValue<string>() != "trigger") { continue; }
+
+                var name = region["name"]?.GetValue<string>() ?? string.Empty;
+                if (!ours(name) || wanted.Contains(name)) { continue; }
+
+                room.Regions.RemoveAt(at);
+                gone++;
+            }
+
+            return gone;
+        }
+
+        /// <summary>Whether a region name is one addClickStep or addReachStep made.</summary>
+        private static bool ours(string name)
+        {
+            foreach (var stem in new[] { "button", "goal" })
+            {
+                if (!name.StartsWith(stem, StringComparison.OrdinalIgnoreCase)) { continue; }
+
+                var tail = name.Substring(stem.Length);
+                if (tail.Length > 0 && tail.All(char.IsDigit)) { return true; }
+            }
+
+            return false;
+        }
+
+        /// <summary>Puts a step's region somewhere else.</summary>
+        public static bool moveStep(Room room, int at, int x, int y, int z)
+        {
+            if (at < 0 || at >= room.Regions.Count) { return false; }
+            if (room.Regions[at] is not JsonObject region) { return false; }
+
+            region["pos"] = new JsonArray(x, y, z);
+            return true;
         }
 
         /// <summary>Takes one step out of the chain.</summary>

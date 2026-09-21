@@ -47,6 +47,7 @@ namespace MCDSaveEdit.UI
         private Model3DGroup? _startGroup;
         private GeometryModel3D? _exits;
         private GeometryModel3D? _gates;
+        private GeometryModel3D? _steps;
         private GeometryModel3D? _wires;
         private GeometryModel3D? _cursor;
 
@@ -75,9 +76,10 @@ namespace MCDSaveEdit.UI
         private readonly List<(int x, int y, int z)> _startPins = new List<(int x, int y, int z)>();
         private readonly List<(int x, int y, int z)> _exitPins = new List<(int x, int y, int z)>();
         private readonly List<(int x, int y, int z)> _gatePins = new List<(int x, int y, int z)>();
+        private readonly List<(int x, int y, int z)> _stepPins = new List<(int x, int y, int z)>();
 
         /// <summary>The kinds of thing standing on the map that can be taken hold of.</summary>
-        public enum Pin { Spawn, Door, Start, Exit, Gate }
+        public enum Pin { Spawn, Door, Start, Exit, Gate, Step }
 
         private bool _dragging;
         private Pin _dragKind;
@@ -237,6 +239,7 @@ namespace MCDSaveEdit.UI
             if (_startGroup != null) { group.Children.Add(_startGroup); }
             if (_exits != null) { group.Children.Add(_exits); }
             if (_gates != null) { group.Children.Add(_gates); }
+            if (_steps != null) { group.Children.Add(_steps); }
             if (_wires != null) { group.Children.Add(_wires); }
             if (_markers != null) { group.Children.Add(_markers); }
             if (_cursor != null) { group.Children.Add(_cursor); }
@@ -605,6 +608,55 @@ namespace MCDSaveEdit.UI
         }
 
         /// <summary>
+        /// What the mission asks of you, other than leaving.
+        ///
+        /// Amber, because the five colours already on the map were taken. A step you have to
+        /// click stands taller and thinner than one you only have to walk into - the first is a
+        /// thing in the world and the second is a patch of floor, and at map scale the shape is
+        /// the only part of that anybody can see.
+        /// </summary>
+        public void markSteps(IEnumerable<(int x, int y, int z, bool click)> steps)
+        {
+            var mesh = new MeshGeometry3D();
+            var count = 0;
+
+            _stepPins.Clear();
+
+            foreach (var one in steps)
+            {
+                //A step whose region is not in this room has nowhere to stand. It is still
+                //listed, and still worth shouting about, but there is nothing to draw.
+                if (one.x < 0) { continue; }
+
+                _stepPins.Add((one.x, one.y, one.z));
+
+                pillar(mesh, one.x + 0.5, one.y, one.z + 0.5,
+                    one.click ? 1.8 : 3.4, one.click ? 22.0 : 10.0);
+
+                count++;
+            }
+
+            if (count == 0)
+            {
+                _steps = null;
+                redraw();
+                return;
+            }
+
+            mesh.Freeze();
+
+            var material = new MaterialGroup();
+            material.Children.Add(new DiffuseMaterial(new SolidColorBrush(
+                Color.FromRgb(255, 176, 46))));
+            material.Children.Add(new EmissiveMaterial(new SolidColorBrush(
+                Color.FromRgb(150, 96, 12))));
+            material.Freeze();
+
+            _steps = new GeometryModel3D(mesh, material) { BackMaterial = material };
+            redraw();
+        }
+
+        /// <summary>
         /// The way out - the glowing gate that finishes the mission.
         ///
         /// Red, and nothing else on the map is red. There are five kinds of marker standing on
@@ -849,6 +901,7 @@ namespace MCDSaveEdit.UI
             if (_startGroup != null) { made.Children.Add(_startGroup); }
             if (_exits != null) { made.Children.Add(_exits); }
             if (_gates != null) { made.Children.Add(_gates); }
+            if (_steps != null) { made.Children.Add(_steps); }
             if (_wires != null) { made.Children.Add(_wires); }
             if (_markers != null) { made.Children.Add(_markers); }
             if (_cursor != null) { made.Children.Add(_cursor); }
@@ -1151,6 +1204,8 @@ namespace MCDSaveEdit.UI
 
         internal IReadOnlyList<(int x, int y, int z)> probeGatePins => _gatePins;
 
+        internal IReadOnlyList<(int x, int y, int z)> probeStepPins => _stepPins;
+
         /// <summary>
         /// Which pin a spot is close enough to have meant, if any.
         ///
@@ -1188,6 +1243,7 @@ namespace MCDSaveEdit.UI
             search(_startPins, Pin.Start);
             search(_exitPins, Pin.Exit);
             search(_gatePins, Pin.Gate);
+            search(_stepPins, Pin.Step);
 
             return best;
         }

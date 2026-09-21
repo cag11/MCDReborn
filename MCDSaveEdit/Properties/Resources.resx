@@ -2359,6 +2359,86 @@ The save file is not changed until you save it.</value>
     <value>Remove</value>
     <comment>Button</comment>
   </data>
+  <data name="SPAWNS_STEP_ADD" xml:space="preserve">
+    <value>Add a step</value>
+    <comment>Heading over the step builder</comment>
+  </data>
+  <data name="SPAWNS_STEP_WORDING" xml:space="preserve">
+    <value>What it asks you to do:</value>
+    <comment>Label over the wording box</comment>
+  </data>
+  <data name="SPAWNS_STEP_THING" xml:space="preserve">
+    <value>The thing you click:</value>
+    <comment>Label over the prefab picker</comment>
+  </data>
+  <data name="SPAWNS_STEP_DEFAULT_TITLE" xml:space="preserve">
+    <value>Ring the bell</value>
+    <comment>The wording a new step starts with</comment>
+  </data>
+  <data name="SPAWNS_ADD_CLICK_STEP" xml:space="preserve">
+    <value>Click a thing</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_ADD_REACH_STEP" xml:space="preserve">
+    <value>Reach a spot</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_STEPS" xml:space="preserve">
+    <value>The spots those steps use</value>
+    <comment>Heading over the step region list</comment>
+  </data>
+  <data name="SPAWNS_STEPS_WHY" xml:space="preserve">
+    <value>Every step stands on a spot in the map. Pick one to find it, or drag its amber pin to move it. A step whose spot is missing can never finish - and nothing behind it in the list can either, including the way out.</value>
+    <comment>Why the step region list exists</comment>
+  </data>
+  <data name="SPAWNS_STEPS_NONE" xml:space="preserve">
+    <value>Nothing but the way out. Add a step above to give a gate something to open it.</value>
+    <comment>Hint when there are no steps</comment>
+  </data>
+  <data name="SPAWNS_STEPS_SOME" xml:space="preserve">
+    <value>{0} spot(s).</value>
+    <comment>Hint with a count</comment>
+  </data>
+  <data name="SPAWNS_STEPS_BROKEN" xml:space="preserve">
+    <value>{0} spot(s), and {1} of them names a region this room has not got - that step can never finish, and neither can anything after it.</value>
+    <comment>Hint when a step points at nothing</comment>
+  </data>
+  <data name="SPAWNS_STEP_ADDED" xml:space="preserve">
+    <value>Added step {0}: {1}. Its spot is at {2}, {3}, {4}.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="SPAWNS_STEP_AT" xml:space="preserve">
+    <value>{0} is at {1}, {2}, {3}.</value>
+    <comment>Status when a step spot is picked</comment>
+  </data>
+  <data name="SPAWNS_STEP_NEEDS_TITLE" xml:space="preserve">
+    <value>Give the step some wording first.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="SPAWNS_GATE_NEEDS_CLICK" xml:space="preserve">
+    <value>Only a step that asks you to click something can open a gate. Add one above.</value>
+    <comment>Hint when no objective can hold a gate</comment>
+  </data>
+  <data name="SPAWNS_GATE_NOT_CLICK" xml:space="preserve">
+    <value>{0} cannot open a gate - only clicking something can.</value>
+    <comment>Status when the chosen step is the wrong kind</comment>
+  </data>
+  <data name="SPAWNS_STEP_BANNER" xml:space="preserve">
+    <value>The name on the banner:</value>
+    <comment>Label over the name_ picker</comment>
+  </data>
+  <data name="SPAWNS_STEP_WORDS_FROM" xml:space="preserve">
+    <value>{0} pieces of wording, read out of the game's own "{1}" table. An objective's text is a key into that table, not free text - anything else draws as MISSING STRING TABLE ENTRY. Install this map over a different mission and the table changes with it.</value>
+    <comment>Why the wording is a list</comment>
+  </data>
+  <data name="SPAWNS_STEP_NO_WORDS" xml:space="preserve">
+    <value>The game has no string table called "{0}", so there is no wording a step could use. Install this map over one of the game's own missions first.</value>
+    <comment>When the loctable is unknown</comment>
+  </data>
+  <data name="SPAWNS_QUEST_MISSING" xml:space="preserve">
+    <value>{0} step(s), and {1} of them uses wording the game has not got - those draw as MISSING STRING TABLE ENTRY across the banner. Remove one and add it again to fix it.</value>
+    <comment>Hint when an objective key is not in the table</comment>
+  </data>
   <data name="SPAWNS_GATE_OPENS" xml:space="preserve">
     <value>Opened by:</value>
     <comment>Label above the objective picker</comment>

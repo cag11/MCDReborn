@@ -5068,6 +5068,186 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Add a step.
+        /// </summary>
+        public static string SPAWNS_STEP_ADD {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_ADD", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to What it asks you to do:.
+        /// </summary>
+        public static string SPAWNS_STEP_WORDING {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_WORDING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The thing you click:.
+        /// </summary>
+        public static string SPAWNS_STEP_THING {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_THING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Ring the bell.
+        /// </summary>
+        public static string SPAWNS_STEP_DEFAULT_TITLE {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_DEFAULT_TITLE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Click a thing.
+        /// </summary>
+        public static string SPAWNS_ADD_CLICK_STEP {
+            get {
+                return ResourceManager.GetString("SPAWNS_ADD_CLICK_STEP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Reach a spot.
+        /// </summary>
+        public static string SPAWNS_ADD_REACH_STEP {
+            get {
+                return ResourceManager.GetString("SPAWNS_ADD_REACH_STEP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The spots those steps use.
+        /// </summary>
+        public static string SPAWNS_STEPS {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEPS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Every step stands on a spot in the map. Pick one to find it, or drag its amber pin to move it. A step whose spot is missing can never finish - and nothing behind it in the list can either, including the way out..
+        /// </summary>
+        public static string SPAWNS_STEPS_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEPS_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing but the way out. Add a step above to give a gate something to open it..
+        /// </summary>
+        public static string SPAWNS_STEPS_NONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEPS_NONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} spot(s)..
+        /// </summary>
+        public static string SPAWNS_STEPS_SOME {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEPS_SOME", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} spot(s), and {1} of them names a region this room has not got - that step can never finish, and neither can anything after it..
+        /// </summary>
+        public static string SPAWNS_STEPS_BROKEN {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEPS_BROKEN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Added step {0}: {1}. Its spot is at {2}, {3}, {4}..
+        /// </summary>
+        public static string SPAWNS_STEP_ADDED {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_ADDED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} is at {1}, {2}, {3}..
+        /// </summary>
+        public static string SPAWNS_STEP_AT {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_AT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Give the step some wording first..
+        /// </summary>
+        public static string SPAWNS_STEP_NEEDS_TITLE {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_NEEDS_TITLE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Only a step that asks you to click something can open a gate. Add one above..
+        /// </summary>
+        public static string SPAWNS_GATE_NEEDS_CLICK {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_NEEDS_CLICK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} cannot open a gate - only clicking something can..
+        /// </summary>
+        public static string SPAWNS_GATE_NOT_CLICK {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_NOT_CLICK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The name on the banner:.
+        /// </summary>
+        public static string SPAWNS_STEP_BANNER {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_BANNER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} pieces of wording, read out of the game's own "{1}" table. An objective's text is a key into that table, not free text - anything else draws as MISSING STRING TABLE ENTRY. Install this map over a different mission and the table changes with it..
+        /// </summary>
+        public static string SPAWNS_STEP_WORDS_FROM {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_WORDS_FROM", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The game has no string table called "{0}", so there is no wording a step could use. Install this map over one of the game's own missions first..
+        /// </summary>
+        public static string SPAWNS_STEP_NO_WORDS {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_NO_WORDS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} step(s), and {1} of them uses wording the game has not got - those draw as MISSING STRING TABLE ENTRY across the banner. Remove one and add it again to fix it..
+        /// </summary>
+        public static string SPAWNS_QUEST_MISSING {
+            get {
+                return ResourceManager.GetString("SPAWNS_QUEST_MISSING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Opened by:.
         /// </summary>
         public static string SPAWNS_GATE_OPENS {

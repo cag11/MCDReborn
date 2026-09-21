@@ -318,6 +318,82 @@ namespace MCDSaveEdit.UI
 
         internal void probeRemoveGate() => removeGateRegionButton_Click(this, new RoutedEventArgs());
 
+        /// <summary>What the gate's picker is offering, which is the thing that was empty.</summary>
+        internal bool saveEnabled => saveButton.IsEnabled;
+
+        /// <summary>Whether a save or install is in flight, so a probe can wait it out.</summary>
+        internal bool busyNow => _busy;
+
+        internal bool installEnabled => installButton.IsEnabled;
+
+        internal int changedNow => _map.Changed.Count;
+
+        internal void probeSave() => saveButton_Click(this, new RoutedEventArgs());
+
+        /// <summary>The save a probe can actually wait for, weld and all.</summary>
+        internal System.Threading.Tasks.Task<bool> probeSaveNow() => saveNow();
+
+        internal void probeInstall() => installButton_Click(this, new RoutedEventArgs());
+
+        internal string[] opensRows => opensBox.Items.OfType<ComboBoxItem>()
+            .Select(one => one.Content?.ToString() ?? string.Empty).ToArray();
+
+        internal string opensLabelNow => opensLabel.Text;
+
+        /// <summary>The step spots as the list shows them.</summary>
+        internal string[] stepRows => stepsList.Items.OfType<MapSpawns.Step>()
+            .Select(one => one.ToString()).ToArray();
+
+        internal string stepsHintNow => stepsHint.Text;
+
+        internal IReadOnlyList<(int x, int y, int z)> stepPinsNow => mapView.probeStepPins;
+
+        /// <summary>The wording the pickers are offering, as it reads on the banner.</summary>
+        internal string[] wordingRows => stepTitleBox.Items.OfType<ComboBoxItem>()
+            .Select(one => one.Content?.ToString() ?? string.Empty).ToArray();
+
+        internal string[] bannerRows => stepBannerBox.Items.OfType<ComboBoxItem>()
+            .Select(one => one.Content?.ToString() ?? string.Empty).ToArray();
+
+        internal string wordingWhyNow => stepWordingWhy.Text;
+
+        internal void probeAddClickStep(int wording, int thing, int x, int y, int z)
+        {
+            stepTitleBox.SelectedIndex = wording;
+            stepThingBox.SelectedIndex = thing;
+            xBox.Text = x.ToString();
+            yBox.Text = y.ToString();
+            zBox.Text = z.ToString();
+            addClickStepButton_Click(this, new RoutedEventArgs());
+        }
+
+        internal void probeAddReachStep(int wording, int x, int y, int z)
+        {
+            stepTitleBox.SelectedIndex = wording;
+            xBox.Text = x.ToString();
+            yBox.Text = y.ToString();
+            zBox.Text = z.ToString();
+            addReachStepButton_Click(this, new RoutedEventArgs());
+        }
+
+        internal void probePickStep(int row)
+        {
+            stepsList.SelectedIndex = row;
+            stepsList_SelectionChanged(this, new SelectionChangedEventArgs(
+                System.Windows.Controls.Primitives.Selector.SelectionChangedEvent,
+                new object[0], new object[0]));
+        }
+
+        internal void probePickQuest(int row)
+        {
+            questList.SelectedIndex = row;
+            questList_SelectionChanged(this, new SelectionChangedEventArgs(
+                System.Windows.Controls.Primitives.Selector.SelectionChangedEvent,
+                new object[0], new object[0]));
+        }
+
+        internal void probeRemoveQuest() => removeQuestButton_Click(this, new RoutedEventArgs());
+
         /// <summary>The objective chain as the list shows it.</summary>
         internal string[] questRows => questList.Items.OfType<MapSpawns.Objective>()
             .Select(one => one.ToString()).ToArray();
@@ -478,6 +554,22 @@ namespace MCDSaveEdit.UI
             lockGateButton.Content = R.SPAWNS_GATE_LOCK;
             unlockGateButton.Content = R.SPAWNS_GATE_UNLOCK;
             questLabel.Content = R.SPAWNS_QUEST;
+
+            stepThingBox.Items.Clear();
+            foreach (var thing in MapSpawns.CLICKABLES)
+            {
+                stepThingBox.Items.Add(new ComboBoxItem { Content = thing.name, Tag = thing.path });
+            }
+            stepThingBox.SelectedIndex = 0;
+
+            addStepLabel.Content = R.SPAWNS_STEP_ADD;
+            stepBannerLabel.Text = R.SPAWNS_STEP_BANNER;
+            stepWordingLabel.Text = R.SPAWNS_STEP_WORDING;
+            stepThingLabel.Text = R.SPAWNS_STEP_THING;
+            addClickStepButton.Content = R.SPAWNS_ADD_CLICK_STEP;
+            addReachStepButton.Content = R.SPAWNS_ADD_REACH_STEP;
+            stepsLabel.Content = R.SPAWNS_STEPS;
+            stepsHint.Text = R.SPAWNS_STEPS_WHY;
             questHint.Text = R.SPAWNS_QUEST_WHY;
             onlyExitButton.Content = R.SPAWNS_QUEST_ONLY_EXIT;
             removeQuestButton.Content = R.SPAWNS_QUEST_REMOVE;
@@ -638,6 +730,8 @@ namespace MCDSaveEdit.UI
             fillStarts();
             fillExits();
             fillQuest();
+            fillWording();
+            fillSteps();
             fillGates();
         }
 
@@ -665,6 +759,158 @@ namespace MCDSaveEdit.UI
             mapView.mark(found, Color.FromRgb(255, 120, 60));
         }
 
+        //--- steps you can add ----------------------------------------------------------------------
+
+        /// <summary>Which region in the room the chosen step stands on, or -1.</summary>
+        private int _step = -1;
+
+        /// <summary>
+        /// The spots the mission's own steps use.
+        ///
+        /// Listed separately from the chain above because they are a different thing: the chain
+        /// is what the mission asks, in order, and this is where in the map each of those asks
+        /// actually lands. One step can use several spots, and a step can name a spot that is
+        /// not in the map at all - which is silent, and fatal, and the reason this list exists.
+        /// </summary>
+        private void fillSteps()
+        {
+            if (_room == null) { stepsList.ItemsSource = null; return; }
+
+            var steps = MapSpawns.stepsOf(_map, _room);
+
+            _filling = true;
+            var wasAt = _step;
+            stepsList.ItemsSource = steps;
+            stepsList.SelectedIndex = steps.FindIndex(one => one.Region == wasAt && wasAt >= 0);
+            _filling = false;
+
+            mapView.markSteps(steps.Select(one =>
+                (one.Pos[0], one.Pos[1], one.Pos[2], one.Click)));
+
+            var broken = steps.Count(one => one.Broken);
+
+            stepsHint.Text = steps.Count == 0
+                ? R.SPAWNS_STEPS_NONE
+                : broken > 0
+                    ? string.Format(R.SPAWNS_STEPS_BROKEN, steps.Count, broken)
+                    : string.Format(R.SPAWNS_STEPS_SOME, steps.Count);
+        }
+
+        private void stepsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+            if (stepsList.SelectedItem is not MapSpawns.Step step) { _step = -1; return; }
+
+            _step = step.Region;
+
+            //Also picks the objective it belongs to, so the chain, the wires and this list all
+            //agree about what is being looked at.
+            _quest = step.Objective;
+            selectRow(questList, one => one is MapSpawns.Objective found && found.At == _quest);
+
+            if (!step.Broken) { mapView.aim(step.Pos[0], step.Pos[1], step.Pos[2], true); }
+
+            drawWires();
+            statusLabel.Text = step.Broken
+                ? step.ToString()
+                : string.Format(R.SPAWNS_STEP_AT, step.Name, step.Pos[0], step.Pos[1], step.Pos[2]);
+            updateUI();
+        }
+
+        /// <summary>
+        /// What a new step is allowed to say.
+        ///
+        /// Not a text box, which is what this was and what put
+        /// &lt;MISSING STRING TABLE ENTRY&gt; across the mission banner. An objective's
+        /// "description" is a KEY into one of the game's 36 mission string tables, chosen by the
+        /// level's loctable-id - so the only wording that draws is wording that table already
+        /// has. The list is read straight out of it.
+        ///
+        /// Thirty-six tables that share almost nothing: the most widely held key in the game is
+        /// in five of them. That is why this is filled per map rather than once.
+        /// </summary>
+        private void fillWording()
+        {
+            var table = MapSpawns.loctableOf(_map);
+
+            void fill(System.Windows.Controls.ComboBox box, string stem)
+            {
+                box.Items.Clear();
+
+                foreach (var (key, said) in R.wordingFor(table, stem))
+                {
+                    box.Items.Add(new ComboBoxItem { Content = said, Tag = key });
+                }
+
+                if (box.Items.Count > 0) { box.SelectedIndex = 0; }
+            }
+
+            fill(stepBannerBox, "name_");
+            fill(stepTitleBox, "description_");
+
+            stepWordingWhy.Text = stepTitleBox.Items.Count == 0
+                ? string.Format(R.SPAWNS_STEP_NO_WORDS, table)
+                : string.Format(R.SPAWNS_STEP_WORDS_FROM,
+                    stepTitleBox.Items.Count + stepBannerBox.Items.Count, table);
+        }
+
+        /// <summary>The key a wording picker is on, or empty when it has nothing.</summary>
+        private static string keyOf(System.Windows.Controls.ComboBox box)
+            => (box.SelectedItem as ComboBoxItem)?.Tag as string ?? string.Empty;
+
+        /// <summary>The prefab the picker is on, whatever the list looks like.</summary>
+        private string chosenThing()
+            => (stepThingBox.SelectedItem as ComboBoxItem)?.Tag as string
+               ?? MapSpawns.CLICKABLES[0].path;
+
+        private void addClickStepButton_Click(object sender, RoutedEventArgs e)
+            => addStep(true);
+
+        private void addReachStepButton_Click(object sender, RoutedEventArgs e)
+            => addStep(false);
+
+        private void addStep(bool click)
+        {
+            if (_room == null) { return; }
+
+            var asks = keyOf(stepTitleBox);
+            if (asks.Length == 0) { statusLabel.Text = R.SPAWNS_STEP_NEEDS_TITLE; return; }
+
+            //The banner's smaller line. Not every table has a name_ key going spare, and an
+            //objective without one still draws - so this is allowed to be empty, where the
+            //description is not.
+            var banner = keyOf(stepBannerBox);
+            if (banner.Length == 0) { banner = asks; }
+
+            var title = (stepTitleBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? asks;
+
+            var x = number(xBox, _room.Size[0] / 2);
+            var y = number(yBox, _room.Size[1] / 2);
+            var z = number(zBox, _room.Size[2] / 2);
+
+            var at = click
+                ? MapSpawns.addClickStep(_map, _room, banner, asks, chosenThing(), x, y, z)
+                : MapSpawns.addReachStep(_map, _room, banner, asks, x, y, z);
+
+            //Both halves changed: the region lives in the room, the objective in the level.
+            _map.Changed.Add(_room.File);
+            _map.Changed.Add("level.json");
+
+            _quest = at;
+            _step = _room.Regions.Count - 1;
+
+            statusLabel.Text = string.Format(R.SPAWNS_STEP_ADDED, at + 1, title, x, y, z);
+
+            fillQuest();
+            fillSteps();
+
+            //The gate panel too: a new click step is a new thing a gate can be hung off, and
+            //that picker is the whole reason somebody adds one.
+            fillGates();
+            drawWires();
+            updateUI();
+        }
+
         //--- gates an objective opens ---------------------------------------------------------------
 
         private int _gate = -1;
@@ -680,11 +926,15 @@ namespace MCDSaveEdit.UI
             gatesList.ItemsSource = gates;
             gatesList.SelectedIndex = gates.FindIndex(one => one.At == wasAt);
 
-            //The objectives a gate can be handed to. A gauntlet can hold one shut as readily as
-            //a click can, so they are all offered.
+            //Only the steps that can actually hold a gate, which means clicking something.
+            //A gauntlet cannot, and offering one would write a field the game never reads - see
+            //MapSpawns.Objective.CanHoldGates. Better an empty picker that says why.
             opensBox.Items.Clear();
             foreach (var step in MapSpawns.objectivesOf(_map))
             {
+                //Not the way out, although it IS a click. A gate held by the exit opens at the
+                //moment the mission ends, which is a gate nobody ever walks through.
+                if (!step.CanHoldGates || step.IsExit) { continue; }
                 opensBox.Items.Add(new ComboBoxItem { Content = step.ToString(), Tag = step.At });
             }
             if (opensBox.Items.Count > 0) { opensBox.SelectedIndex = 0; }
@@ -694,6 +944,10 @@ namespace MCDSaveEdit.UI
                 (one.Pos[0], one.Pos[1], one.Pos[2], one.Size[0], one.Size[2])));
 
             var loose = gates.Count(one => one.OpenedBy.Length == 0);
+
+            opensLabel.Text = opensBox.Items.Count == 0
+                ? R.SPAWNS_GATE_NEEDS_CLICK
+                : R.SPAWNS_GATE_OPENS;
 
             gatesHint.Text = gates.Count == 0
                 ? R.SPAWNS_GATES_NONE
@@ -801,7 +1055,14 @@ namespace MCDSaveEdit.UI
             //them finishes, which is never what somebody meant by picking the second.
             foreach (var one in MapSpawns.objectivesOf(_map)) { MapSpawns.unlock(_map, one.At, gate.Name); }
 
-            if (!MapSpawns.lockTo(_map, step, gate.Name)) { return; }
+            if (!MapSpawns.lockTo(_map, step, gate.Name))
+            {
+                //Refused rather than silently written - the only body the game reads
+                //"locked-doors" out of is a click.
+                statusLabel.Text = string.Format(R.SPAWNS_GATE_NOT_CLICK,
+                    MapSpawns.objectivesOf(_map).FirstOrDefault(one => one.At == step)?.Title ?? "?");
+                return;
+            }
 
             _map.Changed.Add("level.json");
 
@@ -867,10 +1128,13 @@ namespace MCDSaveEdit.UI
             _filling = false;
 
             var stuck = steps.FirstOrDefault(one => one.Needs.Any(need => !have.Contains(need)));
+            var mute = steps.Count(one => one.Missing);
 
             questHint.Text = steps.Count == 0
                 ? R.SPAWNS_QUEST_NONE
-                : stuck != null
+                : mute > 0
+                    ? string.Format(R.SPAWNS_QUEST_MISSING, steps.Count, mute)
+                    : stuck != null
                     ? string.Format(R.SPAWNS_QUEST_STUCK, stuck.At + 1,
                         string.Join(", ", stuck.Needs.Where(need => !have.Contains(need))))
                     : string.Format(R.SPAWNS_QUEST_OK, steps.Count);
@@ -966,16 +1230,25 @@ namespace MCDSaveEdit.UI
 
         private void removeQuestButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_quest < 0) { return; }
+            if (_quest < 0 || _room == null) { return; }
             if (!MapSpawns.removeObjectiveAt(_map, _quest)) { return; }
 
             _map.Changed.Add("level.json");
+
+            //The step's own spot goes with it. Only the ones this editor made, and only when
+            //nothing else names them - a region somebody hand-placed is theirs to remove.
+            if (MapSpawns.dropOrphanSteps(_map, _room) > 0) { _map.Changed.Add(_room.File); }
+
             _quest = -1;
+            _step = -1;
 
             statusLabel.Text = string.Format(R.SPAWNS_QUEST_REMOVED,
                 MapSpawns.objectivesOf(_map).Count);
 
             fillQuest();
+            fillSteps();
+            fillGates();
+            drawWires();
             updateUI();
         }
 
@@ -990,13 +1263,23 @@ namespace MCDSaveEdit.UI
             }
 
             _map.Changed.Add("level.json");
+
+            if (_room != null && MapSpawns.dropOrphanSteps(_map, _room) > 0)
+            {
+                _map.Changed.Add(_room.File);
+            }
+
             _quest = -1;
+            _step = -1;
 
             statusLabel.Text = MapSpawns.objectivesOf(_map).Count == 0
                 ? string.Format(R.SPAWNS_QUEST_ALL_GONE, gone)
                 : string.Format(R.SPAWNS_QUEST_ONLY_EXIT_LEFT, gone);
 
             fillQuest();
+            fillSteps();
+            fillGates();
+            drawWires();
             updateUI();
         }
 
@@ -1523,6 +1806,13 @@ namespace MCDSaveEdit.UI
                     selectRow(gatesList, one => one is MapSpawns.Gate gate && gate.At == _gate);
                     break;
 
+                case MapView3D.Pin.Step:
+                    _step = MapSpawns.stepsOf(_map, _room!)
+                        .FirstOrDefault(one => one.Pos[0] == x && one.Pos[1] == y && one.Pos[2] == z)
+                        ?.Region ?? -1;
+                    selectRow(stepsList, one => one is MapSpawns.Step step && step.Region == _step);
+                    break;
+
                 default:
                     mapView_Picked(x, y, z);
                     break;
@@ -1566,6 +1856,13 @@ namespace MCDSaveEdit.UI
                     var gate = chosenGate();
                     return gate == null ? null : (gate.Pos[0], gate.Pos[1], gate.Pos[2]);
 
+                case MapView3D.Pin.Step:
+                    var step = MapSpawns.stepsOf(_map, _room)
+                        .FirstOrDefault(one => one.Region == _step && _step >= 0);
+                    return step == null || step.Broken
+                        ? null
+                        : (step.Pos[0], step.Pos[1], step.Pos[2]);
+
                 default:
                     return positionOf(_selected);
             }
@@ -1582,6 +1879,7 @@ namespace MCDSaveEdit.UI
                 MapView3D.Pin.Start => _start >= 0 && MapSpawns.moveStart(_room, _start, x, y, z),
                 MapView3D.Pin.Exit => _exit >= 0 && MapSpawns.moveExit(_room, _exit, x, y, z),
                 MapView3D.Pin.Gate => _gate >= 0 && MapSpawns.moveGate(_room, _gate, x, y, z),
+                MapView3D.Pin.Step => _step >= 0 && MapSpawns.moveStep(_room, _step, x, y, z),
                 _ => _selected >= 0 && MapSpawns.moveTo(_room, _selected, x, y, z),
             };
         }
@@ -1604,6 +1902,7 @@ namespace MCDSaveEdit.UI
                 case MapView3D.Pin.Start: redrawStartPins(); break;
                 case MapView3D.Pin.Exit: redrawExitPins(); break;
                 case MapView3D.Pin.Gate: redrawGatePins(); break;
+                case MapView3D.Pin.Step: redrawStepPins(); break;
                 default: markPoints(); break;
             }
 
@@ -1630,6 +1929,14 @@ namespace MCDSaveEdit.UI
             if (_room == null) { return; }
             mapView.markGates(MapSpawns.gatesOf(_map, _room)
                 .Select(one => (one.Pos[0], one.Pos[1], one.Pos[2], one.Size[0], one.Size[2])));
+        }
+
+        /// <summary>The amber pins alone.</summary>
+        private void redrawStepPins()
+        {
+            if (_room == null) { return; }
+            mapView.markSteps(MapSpawns.stepsOf(_map, _room)
+                .Select(one => (one.Pos[0], one.Pos[1], one.Pos[2], one.Click)));
         }
 
         /// <summary>The red pins alone.</summary>
@@ -1724,6 +2031,7 @@ namespace MCDSaveEdit.UI
             _exit = -1;
             _quest = -1;
             _gate = -1;
+            _step = -1;
             _selected = -1;
 
             if (_room != null)
@@ -2069,7 +2377,27 @@ namespace MCDSaveEdit.UI
 
         //--- saving ---------------------------------------------------------------------------------
 
-        private async void saveButton_Click(object sender, RoutedEventArgs e)
+        /// <summary>
+        /// Whether a save or an install is in flight.
+        ///
+        /// Both take a weld with them, which is a process and not a function call, and pressing
+        /// either again in the middle of one would have two of them writing the same folder. So
+        /// the buttons go off for the duration - through updateUI, like everything else, rather
+        /// than by hand. Doing it by hand is what left Install dead for the rest of the session
+        /// after one press: it switched itself off and nothing ever switched it back on.
+        /// </summary>
+        private bool _busy;
+
+        /// <summary>
+        /// Saves, and rebuilds the weld if there is one, and says whether that worked.
+        ///
+        /// Split out of the button so that Install can genuinely WAIT for it. It used to call
+        /// the handler and then spin until the save looked finished - but the handler is an
+        /// async void that returns at its first await, and MapSpawns.save clears the changed
+        /// list before that, so the condition it was spinning on was already false. It never
+        /// waited at all, and what got packed was the weld from before the edit.
+        /// </summary>
+        private async System.Threading.Tasks.Task<bool> saveNow()
         {
             try
             {
@@ -2079,20 +2407,34 @@ namespace MCDSaveEdit.UI
                 //The installed mission is a single welded tile built FROM the object groups, so
                 //saving spawns into those changes nothing until the weld is rebuilt. Done here
                 //rather than left as a step to remember.
-                if (System.IO.File.Exists(
+                if (!System.IO.File.Exists(
                         System.IO.Path.Combine(_map.Folder, "level.json.multitile"))
-                    && MapTools.available)
+                    || !MapTools.available)
                 {
-                    saveButton.IsEnabled = false;
-                    var run = await MapTools.weld(_map.Folder);
-                    statusLabel.Text += run.Ok ? "  " + R.SPAWNS_REWELDED : "  " + run.Last;
+                    return true;
                 }
+
+                var run = await MapTools.weld(_map.Folder);
+                statusLabel.Text += run.Ok ? "  " + R.SPAWNS_REWELDED : "  " + run.Last;
+                return run.Ok;
             }
             catch (Exception problem)
             {
                 statusLabel.Text = problem.Message;
+                return false;
             }
+        }
 
+        private async void saveButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_busy) { return; }
+
+            _busy = true;
+            updateUI();
+
+            await saveNow();
+
+            _busy = false;
             updateUI();
         }
 
@@ -2107,20 +2449,21 @@ namespace MCDSaveEdit.UI
         /// </summary>
         private async void installButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_mission == null) { return; }
+            if (_mission == null || _busy) { return; }
 
-            installButton.IsEnabled = false;
-            saveButton.IsEnabled = false;
+            _busy = true;
+            updateUI();
 
             try
             {
-                saveButton_Click(sender, e);
-
-                //Saving welds, and welding is a process. Installing the folder before it finishes
-                //would pack the mission as it was a moment ago.
-                while (!saveButton.IsEnabled && _map.Changed.Count > 0)
+                //Awaited, so the weld it kicks off has actually finished before the folder is
+                //packed. A weld that failed stops the install rather than shipping the one
+                //before it - installing stale geometry looks exactly like the edit not working.
+                if (!await saveNow())
                 {
-                    await System.Threading.Tasks.Task.Delay(100);
+                    _busy = false;
+                    updateUI();
+                    return;
                 }
 
                 var mod = MapMod.install(_map.Folder, _mission);
@@ -2134,6 +2477,7 @@ namespace MCDSaveEdit.UI
                 statusLabel.Text = problem.Message;
             }
 
+            _busy = false;
             updateUI();
         }
 
@@ -2160,7 +2504,12 @@ namespace MCDSaveEdit.UI
             var has = _room != null;
             placeButton.IsEnabled = has;
             clearButton.IsEnabled = has && _room!.Spawns > 0;
-            saveButton.IsEnabled = _map.Changed.Count > 0;
+            saveButton.IsEnabled = !_busy && _map.Changed.Count > 0;
+
+            //Install stays available with nothing changed - the folder may already hold a map
+            //that was never packed, which is the whole point of the button on a folder that
+            //arrived through Import. It goes off only while one is running.
+            installButton.IsEnabled = !_busy && _mission != null;
 
             //A door can be added wherever the map is aimed; the other two need one picked out of
             //the list, because they act on that one rather than on wherever you are looking.
@@ -2175,6 +2524,9 @@ namespace MCDSaveEdit.UI
 
             onlyExitButton.IsEnabled = has;
             removeQuestButton.IsEnabled = has && _quest >= 0;
+
+            addClickStepButton.IsEnabled = has;
+            addReachStepButton.IsEnabled = has;
 
             addExitButton.IsEnabled = has;
             removeExitButton.IsEnabled = has && _exit >= 0;

@@ -14,6 +14,26 @@ namespace MCDSaveEdit.Services
         private static Dictionary<string, string> _mission = new Dictionary<string, string>();
         private static Dictionary<string, string> _clickys = new Dictionary<string, string>();
 
+        /// <summary>
+        /// One table per mission, holding the wording its objectives are allowed to use.
+        ///
+        /// An objective's "description" is a KEY, and the table it is looked up in is chosen by
+        /// the level's own loctable-id: a level saying "creeperwoods" reads "creeperwoodsLabels".
+        /// A key that table has not got draws as &lt;MISSING STRING TABLE ENTRY&gt; on the
+        /// mission banner, with nothing in any log.
+        ///
+        /// There are 36 of these and they share almost nothing - the most widely held key of the
+        /// lot is in five of them. So there is no safe wording to offer blind; the editor has to
+        /// ask which table first.
+        /// </summary>
+        ///
+        /// Kept ORDINAL. Two of these differ only in case - "hypermissionLabels" and
+        /// "HyperMissionLabels" are separate tables with different wording behind the same
+        /// spelling - so a case-insensitive dictionary throws on the way in and takes the whole
+        /// of the game content down with it.
+        private static Dictionary<string, Dictionary<string, string>> _labels
+            = new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
+
         public static bool isStringsLoaded { get; private set; } = false;
 
         public static int totalStringCount {
@@ -68,6 +88,17 @@ namespace MCDSaveEdit.Services
                     .Concat(itemEffectDict)
                     .ToDictionary(pair => pair.Key.Trim(), pair => pair.Value);
             }
+            _labels = new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
+            foreach (var pair in stringLibrary)
+            {
+                if (!pair.Key.EndsWith("Labels", StringComparison.Ordinal)) { continue; }
+
+                //Assigned rather than Added: whatever the paks hand over twice, the last one
+                //wins and nothing throws. Losing one table's wording is a dropdown with fewer
+                //rows in it; throwing here is the app refusing to open at all.
+                _labels[pair.Key] = pair.Value;
+            }
+
             isStringsLoaded = true;
         }
 
@@ -78,6 +109,7 @@ namespace MCDSaveEdit.Services
             _armorProperties.Clear();
             _mission.Clear();
             _clickys.Clear();
+            _labels.Clear();
             isStringsLoaded = false;
         }
 
@@ -267,6 +299,81 @@ namespace MCDSaveEdit.Services
             EventLogger.logError($"Could not find string for mission {key}");
             return null;
         }
+
+        /// <summary>
+        /// Every mission string whose key starts with something, English text and all.
+        ///
+        /// The objective editor needs this because an objective's "description" is not text -
+        /// it is a KEY into this table, and a key the table has not got draws as
+        /// &lt;MISSING STRING TABLE ENTRY&gt; in game. So the editor offers what exists rather
+        /// than letting somebody type a sentence into a lookup.
+        /// </summary>
+        /// <summary>
+        /// The wording one mission's objectives can use, as (key, what it reads).
+        ///
+        /// Ordered by what it reads rather than by the key, because the key is the game's
+        /// spelling and the reading is the part anybody is choosing between.
+        /// </summary>
+        public static IReadOnlyList<(string key, string said)> wordingFor(string loctable, string stem)
+        {
+            var table = tableFor(loctable);
+            if (table == null) { return new List<(string, string)>(); }
+
+            return table
+                .Where(pair => pair.Key.StartsWith(stem, StringComparison.OrdinalIgnoreCase))
+                .Select(pair => (pair.Key, pair.Value))
+                .OrderBy(pair => pair.Value, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+        }
+
+        /// <summary>What one objective key reads as, or null when that table has not got it.</summary>
+        public static string? wordFor(string loctable, string key)
+        {
+            var table = tableFor(loctable);
+            return table != null && table.TryGetValue(key, out var said) ? said : null;
+        }
+
+        /// <summary>
+        /// The table a level's loctable-id names.
+        ///
+        /// Its own spelling first, then any casing of it. The game's own names are inconsistent -
+        /// the level "underhalls" reads a table called "UnderHallsLabels" - so an exact match
+        /// alone finds nothing for several missions. Exact still wins where both exist, which is
+        /// the case that matters: "hypermissionLabels" and "HyperMissionLabels" are two
+        /// different tables.
+        /// </summary>
+        private static Dictionary<string, string>? tableFor(string loctable)
+        {
+            if (string.IsNullOrEmpty(loctable)) { return null; }
+
+            var wanted = loctable + "Labels";
+            if (_labels.TryGetValue(wanted, out var exact)) { return exact; }
+
+            foreach (var pair in _labels)
+            {
+                if (string.Equals(pair.Key, wanted, StringComparison.OrdinalIgnoreCase))
+                {
+                    return pair.Value;
+                }
+            }
+
+            return null;
+        }
+
+        public static IEnumerable<KeyValuePair<string, string>> missionStringsStartingWith(string stem)
+            => everyString().Where(pair =>
+                pair.Key.StartsWith(stem, System.StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>Every loaded string, with which table it came out of.</summary>
+        public static IEnumerable<(string table, string key, string value)> everyTable()
+            => _itemType.Select(p => ("ItemType", p.Key, p.Value))
+                .Concat(_enchantment.Select(p => ("Enchantment", p.Key, p.Value)))
+                .Concat(_armorProperties.Select(p => ("ArmorProperties", p.Key, p.Value)))
+                .Concat(_mission.Select(p => ("Mission", p.Key, p.Value)))
+                .Concat(_clickys.Select(p => ("Other", p.Key, p.Value)));
+
+        private static IEnumerable<KeyValuePair<string, string>> everyString()
+            => _mission.Concat(_clickys).Concat(_itemType).Concat(_enchantment);
 
         public static string? getString(string key)
         {
