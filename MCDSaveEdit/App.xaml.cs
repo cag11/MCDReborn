@@ -4813,6 +4813,754 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_STAND[=home] - the Camp's map table, moved to where you are standing.
+            //
+            //The coordinate the table was cooked with is Blossoming Isles', beside the Mystery
+            //Merchant, and it was borrowed because it was PROVEN - somebody had already stood in
+            //front of it and clicked. Picking a different one by reading a map is how a table
+            //ends up inside terrain or floating a metre over a plaza. Reading it off the running
+            //game instead means the spot is one somebody walked to.
+            //
+            //Two corrections are applied to what the game says, and both matter:
+            //
+            //  * an actor's location is its capsule CENTRE, not its feet, so the half-height
+            //    comes off the Z. Skip it and the table hovers at chest height;
+            //  * the position is remembered OUTSIDE the pak, because every slot change
+            //    reinstalls the table - see MapTable.where().
+            //
+            //Writes the remembered position and the table pak. Nothing is written to the game's
+            //memory. The game must be RESTARTED to see it, because paks mount at startup.
+            var probeStand = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_STAND"));
+            if (probeStand != null)
+            {
+                var asked = probeStand.Contains('=')
+                    ? probeStand.Substring(probeStand.IndexOf('=') + 1).Trim('"')
+                    : string.Empty;
+
+                //Rebuilding the table means REPLACING its pak, and the game holds that file open
+                //for as long as it is running - paks are mounted at startup and kept. So the
+                //position and the install are deliberately two steps: standing somewhere records
+                //the spot while the game is up, and applying it happens once the game is down.
+                //Recording without installing is not a half-failure, it is the only order that
+                //can work.
+                bool rebuild()
+                {
+                    try
+                    {
+                        Logic.MapSlots.sync();
+                        return true;
+                    }
+                    catch (IOException)
+                    {
+                        Console.WriteLine("[stand] the spot is saved, but the table cannot be "
+                            + "rebuilt while the game is open - close it and run "
+                            + "PROBE_STAND=apply");
+                        return false;
+                    }
+                }
+
+                if (string.Equals(asked, "home", StringComparison.OrdinalIgnoreCase))
+                {
+                    Logic.MapTable.moveHome();
+
+                    var (hx, hy, hz) = Logic.MapTable.HOME;
+
+                    if (rebuild())
+                    {
+                        Console.WriteLine($"[stand] the table is back at {hx:F0} {hy:F0} {hz:F0}, "
+                            + "beside the Mystery Merchant");
+                    }
+
+                    this.Shutdown();
+                    return;
+                }
+
+                //The spot recorded earlier, installed now that the game is closed. No reflection,
+                //no running game - it reads the same remembered position every install reads.
+                if (string.Equals(asked, "apply", StringComparison.OrdinalIgnoreCase))
+                {
+                    var (ax, ay, az, _) = Logic.MapTable.where();
+
+                    if (rebuild())
+                    {
+                        Console.WriteLine($"[stand] the table now stands at {ax:F0} {ay:F0} "
+                            + $"{az:F0}");
+                    }
+
+                    this.Shutdown();
+                    return;
+                }
+
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null)
+                {
+                    Console.WriteLine($"[stand] the game is not open: {why}");
+                    this.Shutdown();
+                    return;
+                }
+
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game,
+                        step => Console.WriteLine($"[stand] {step}"));
+
+                    if (reflect == null)
+                    {
+                        Console.WriteLine("[stand] could not read the reflection data");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    int? offsetOf(string className, string field)
+                    {
+                        var klass = reflect.find(className, "Class");
+                        if (klass == 0) { return null; }
+
+                        foreach (var one in reflect.fieldsOf(klass))
+                        {
+                            if (one.Name == field) { return one.Offset; }
+                        }
+
+                        return null;
+                    }
+
+                    var rootAt = offsetOf("Actor", "RootComponent");
+                    var placeAt = offsetOf("SceneComponent", "RelativeLocation");
+                    var tallAt = offsetOf("CapsuleComponent", "CapsuleHalfHeight");
+                    var scaleAt = offsetOf("SceneComponent", "RelativeScale3D");
+                    var meshAt = offsetOf("StaticMeshComponent", "StaticMesh");
+                    var boundsAt = offsetOf("StaticMesh", "ExtendedBounds");
+
+                    if (rootAt == null || placeAt == null || tallAt == null)
+                    {
+                        Console.WriteLine("[stand] the engine's own fields are not where it says");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    //The hero's class is the SKIN's class - BP_AlexCharacter_C,
+                    //BP_SteveCharacter_C and so on - so asking for BP_PlayerCharacter_C by name
+                    //finds the class default and never a hero. It is the PARENT that every skin
+                    //has in common, which is what the chain is walked for.
+                    var chains = new Dictionary<string, bool>(StringComparer.Ordinal);
+
+                    bool isHero(string className)
+                    {
+                        if (chains.TryGetValue(className, out var known)) { return known; }
+
+                        var klass = reflect.find(className);
+                        var answer = klass != 0
+                            && reflect.chainOf(klass).Any(one => string.Equals(one,
+                                "BP_PlayerCharacter_C", StringComparison.Ordinal));
+
+                        chains[className] = answer;
+                        return answer;
+                    }
+
+                    (float x, float y, float z)? feet = null;
+                    var nearby = new List<(string name, float x, float y)>();
+
+                    //How far the prop's own geometry hangs below the point it is placed at.
+                    //
+                    //A blueprint's pivot is not its base - it is wherever the artist left it -
+                    //and for this table the mesh runs from 100 BELOW the origin to 172 above it.
+                    //So standing the origin on the floor buries the legs and leaves the top
+                    //floating with nothing under it, which is exactly what it did.
+                    //
+                    //Read off the table that is already in the world rather than written down as
+                    //a constant, because the next prop will have a different pivot and a constant
+                    //would silently be wrong for it.
+                    float? under = null;
+
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var at = reflect.objectAt(i);
+                        if (at == 0) { continue; }
+
+                        var kind = reflect.kindOf(at);
+                        var said = reflect.nameOf(at);
+
+                        if (kind == null || said == null
+                            || said.StartsWith("Default__", StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
+
+                        var wantsHero = kind.EndsWith("Character_C", StringComparison.Ordinal)
+                            && isHero(kind);
+
+                        //The mesh the table spawns to be looked at, which is where its bounds
+                        //are. Only when everything needed to read them resolved - a missing
+                        //offset means no correction rather than a wrong one.
+                        if (!wantsHero && scaleAt != null && meshAt != null && boundsAt != null
+                            && (reflect.outerOf(at) ?? string.Empty)
+                                .StartsWith(Logic.MapTable.VISUAL, StringComparison.Ordinal))
+                        {
+                            var ofWhat = reflect.find(kind);
+
+                            if (ofWhat != 0 && reflect.chainOf(ofWhat).Any(one =>
+                                string.Equals(one, "StaticMeshComponent", StringComparison.Ordinal)))
+                            {
+                                var meshRaw = game.read(new IntPtr(at + meshAt.Value), 8);
+                                var mesh = meshRaw == null ? 0 : BitConverter.ToInt64(meshRaw, 0);
+
+                                var bounds = mesh == 0 ? null
+                                    : game.read(new IntPtr(mesh + boundsAt.Value), 28);
+                                var lifted = game.read(new IntPtr(at + placeAt.Value), 12);
+                                var howBig = game.read(new IntPtr(at + scaleAt.Value), 12);
+
+                                if (bounds != null && lifted != null && howBig != null)
+                                {
+                                    var low = BitConverter.ToSingle(lifted, 8)
+                                        + (BitConverter.ToSingle(bounds, 8)
+                                            - BitConverter.ToSingle(bounds, 20))
+                                        * BitConverter.ToSingle(howBig, 8);
+
+                                    if (under == null || low < under) { under = low; }
+                                }
+                            }
+
+                            continue;
+                        }
+
+                        //Everything the Camp lets you click is a "merchant" in the game's own
+                        //naming, the mission select table included - it is
+                        //BP_LobbyAdventureHubMerchant. So this is the list of things whose
+                        //clicks could be stolen.
+                        var wantsMerchant = !wantsHero
+                            && kind.IndexOf("Merchant", StringComparison.OrdinalIgnoreCase) >= 0
+                            && string.Equals(reflect.outerOf(at), "PersistentLevel",
+                                StringComparison.Ordinal);
+
+                        if (!wantsHero && !wantsMerchant) { continue; }
+
+                        var rootRaw = game.read(new IntPtr(at + rootAt.Value), 8);
+                        var root = rootRaw == null ? 0 : BitConverter.ToInt64(rootRaw, 0);
+                        if (root == 0) { continue; }
+
+                        var place = game.read(new IntPtr(root + placeAt.Value), 12);
+                        if (place == null) { continue; }
+
+                        var x = BitConverter.ToSingle(place, 0);
+                        var y = BitConverter.ToSingle(place, 4);
+                        var z = BitConverter.ToSingle(place, 8);
+
+                        if (wantsMerchant)
+                        {
+                            nearby.Add((kind, x, y));
+                            continue;
+                        }
+
+                        //A Character's root IS its capsule, so the half-height is read off the
+                        //same object. Read rather than assumed: it is 110 for the heroes in this
+                        //game and 88 in a stock engine project, and the difference is a table
+                        //sunk a fifth of a metre into the ground.
+                        var tall = game.read(new IntPtr(root + tallAt.Value), 4);
+                        var half = tall == null ? 0f : BitConverter.ToSingle(tall, 0);
+
+                        Console.WriteLine($"[stand] {kind} at {x:F0} {y:F0} {z:F0}, "
+                            + $"standing on {z - half:F0} (capsule half-height {half:F0})");
+
+                        feet = (x, y, z - half);
+                    }
+
+                    if (feet == null)
+                    {
+                        Console.WriteLine("[stand] no hero is in the world - load the Camp first");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    var (fx, fy, fz) = feet.Value;
+
+                    //How close a click has to land is a literal in compiled bytecode and does NOT
+                    //move with the table. Parked beside something else clickable, our trace
+                    //accepts a hit on the other thing and the panel opens over the game's own
+                    //screen. Said here rather than discovered in game.
+                    foreach (var (name, mx, my) in nearby
+                        .OrderBy(one => Math.Sqrt(Math.Pow(one.x - fx, 2)
+                            + Math.Pow(one.y - fy, 2)))
+                        .Take(3))
+                    {
+                        var gap = Math.Sqrt(Math.Pow(mx - fx, 2) + Math.Pow(my - fy, 2));
+
+                        Console.WriteLine($"[stand]   {gap,7:F0} cm from {name}"
+                            + (gap < 600 ? "   <- close enough to steal its clicks" : string.Empty));
+                    }
+
+                    //The origin goes on the floor, and the bounds are only REPORTED.
+                    //
+                    //They were applied once, and it was wrong. UStaticMesh.ExtendedBounds says
+                    //this mesh runs from 100 below its origin to 172 above, so the origin was
+                    //lifted 100 to put that bottom on the ground - and the table rose by exactly
+                    //that, because the visible table stands ON the origin and the lower 100 is
+                    //bounding volume with nothing drawn in it. A bounding box is a promise about
+                    //what is INSIDE it, never about what touches its edges.
+                    //
+                    //So the number is printed, because it is the right thing to look at when a
+                    //prop sits wrong, and it is not acted on, because it does not answer where
+                    //the thing looks like it ends. PROBE_NUDGE settles that, once per prop.
+                    if (under != null)
+                    {
+                        Console.WriteLine($"[stand] for information: the mesh's bounds reach "
+                            + $"{-under:F0} below its origin. Not applied - they did not match "
+                            + "what is drawn");
+                    }
+
+                    //The sink, carried from wherever it was last settled by eye.
+                    //
+                    //Not the absolute height. Standing somewhere a metre lower and keeping the
+                    //old Z would leave the table a metre in the air, for a reason that looks
+                    //exactly like a fresh bug rather than like the calibration being dropped.
+                    //What stays true across a move is how far into the FLOOR it goes.
+                    var sink = Logic.MapTable.where().sink;
+
+                    if (sink != 0f)
+                    {
+                        Console.WriteLine($"[stand] the floor here is {fz:F0}; keeping the "
+                            + $"{-sink:F0} it sits into the ground");
+                    }
+
+                    Logic.MapTable.moveTo(fx, fy, fz + sink, sink);
+
+                    Console.WriteLine($"[stand] the table is to stand at {fx:F0} {fy:F0} "
+                        + $"{fz + sink:F0} (was {Logic.MapTable.HOME.x:F0} "
+                        + $"{Logic.MapTable.HOME.y:F0} {Logic.MapTable.HOME.z:F0})");
+
+                    if (rebuild())
+                    {
+                        Console.WriteLine("[stand] restart the game to see it");
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_SITS[=drop] - how far a prop's mesh floats above the point it is placed at.
+            //
+            //Standing the table exactly on the floor put it in the air, which says the thing this
+            //was written to measure: a blueprint's pivot is not its base. The visual is wherever
+            //the artist left it relative to the origin, and for this table that is some way up.
+            //
+            //So the gap is measured rather than nudged. Three things add up to where the mesh
+            //actually bottoms out, and leaving any of them out gives a confident wrong number:
+            //
+            //  * the component's own offset inside the blueprint;
+            //  * the mesh's local bounds, which are Origin +/- BoxExtent about the PIVOT - a mesh
+            //    modelled standing on its origin has a bottom of zero and this one does not;
+            //  * the component's scale, because bounds are pre-scale.
+            //
+            //Read from UStaticMesh.ExtendedBounds rather than the component's Bounds, because
+            //USceneComponent::Bounds is a plain member with no UPROPERTY on it - invisible to
+            //reflection, so there is nothing to ask for.
+            //
+            //Read-only unless asked to drop, which records the corrected position the same way
+            //PROBE_STAND does.
+            var probeSits = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_SITS"));
+            if (probeSits != null)
+            {
+                var how = probeSits.Contains('=')
+                    ? probeSits.Substring(probeSits.IndexOf('=') + 1).Trim('"')
+                    : string.Empty;
+
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null)
+                {
+                    Console.WriteLine($"[sits] the game is not open: {why}");
+                    this.Shutdown();
+                    return;
+                }
+
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game,
+                        step => Console.WriteLine($"[sits] {step}"));
+
+                    if (reflect == null)
+                    {
+                        Console.WriteLine("[sits] could not read the reflection data");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    int? offsetOf(string className, string field)
+                    {
+                        var klass = reflect.find(className, "Class");
+                        if (klass == 0) { return null; }
+
+                        foreach (var one in reflect.fieldsOf(klass))
+                        {
+                            if (one.Name == field) { return one.Offset; }
+                        }
+
+                        return null;
+                    }
+
+                    var rootAt = offsetOf("Actor", "RootComponent");
+                    var placeAt = offsetOf("SceneComponent", "RelativeLocation");
+                    var scaleAt = offsetOf("SceneComponent", "RelativeScale3D");
+                    var meshAt = offsetOf("StaticMeshComponent", "StaticMesh");
+                    var boundsAt = offsetOf("StaticMesh", "ExtendedBounds");
+
+                    if (rootAt == null || placeAt == null || scaleAt == null || meshAt == null
+                        || boundsAt == null)
+                    {
+                        Console.WriteLine("[sits] the engine's own fields are not where it says");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    //The actor that is placed, and the one it spawns to be looked at. They share
+                    //a transform by construction - the spawn uses GetTransform - so the gap
+                    //measured on the visual is the gap the placed one has.
+                    const string PLACED = "BP_MCDRebornMapTable_C";
+                    var VISUAL = Logic.MapTable.VISUAL;
+
+                    float? standsAt = null;
+                    float? bottom = null;
+                    float? top = null;
+
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var at = reflect.objectAt(i);
+                        if (at == 0) { continue; }
+
+                        var kind = reflect.kindOf(at);
+                        var said = reflect.nameOf(at);
+
+                        if (kind == null || said == null
+                            || said.StartsWith("Default__", StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
+
+                        if (string.Equals(kind, PLACED, StringComparison.Ordinal))
+                        {
+                            var rootRaw = game.read(new IntPtr(at + rootAt.Value), 8);
+                            var root = rootRaw == null ? 0 : BitConverter.ToInt64(rootRaw, 0);
+                            if (root == 0) { continue; }
+
+                            var place = game.read(new IntPtr(root + placeAt.Value), 12);
+                            if (place != null) { standsAt = BitConverter.ToSingle(place, 8); }
+
+                            continue;
+                        }
+
+                        //Components of the visual, found by their outer. A blueprint actor can
+                        //carry several meshes and the lowest one is what looks like the bottom.
+                        var outer = reflect.outerOf(at);
+                        if (outer == null
+                            || !outer.StartsWith(VISUAL, StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
+
+                        var klass = reflect.find(kind);
+                        if (klass == 0
+                            || !reflect.chainOf(klass).Any(one => string.Equals(one,
+                                "StaticMeshComponent", StringComparison.Ordinal)))
+                        {
+                            continue;
+                        }
+
+                        var meshRaw = game.read(new IntPtr(at + meshAt.Value), 8);
+                        var mesh = meshRaw == null ? 0 : BitConverter.ToInt64(meshRaw, 0);
+                        if (mesh == 0) { continue; }
+
+                        var bounds = game.read(new IntPtr(mesh + boundsAt.Value), 28);
+                        var where = game.read(new IntPtr(at + placeAt.Value), 12);
+                        var howBig = game.read(new IntPtr(at + scaleAt.Value), 12);
+
+                        if (bounds == null || where == null || howBig == null) { continue; }
+
+                        var middle = BitConverter.ToSingle(bounds, 8);
+                        var reach = BitConverter.ToSingle(bounds, 20);
+                        var lifted = BitConverter.ToSingle(where, 8);
+                        var scale = BitConverter.ToSingle(howBig, 8);
+
+                        var under = lifted + (middle - reach) * scale;
+                        var over = lifted + (middle + reach) * scale;
+
+                        Console.WriteLine($"[sits] {said} ({reflect.nameOf(mesh)}): "
+                            + $"offset {lifted:F0}, bounds {middle:F0} +/- {reach:F0}, "
+                            + $"scale {scale:F2}   -> {under:F0} to {over:F0} about the pivot");
+
+                        //The top as well as the bottom, because the next thing to go on this prop
+                        //is a label floating over it and "how high" is the same measurement.
+                        if (bottom == null || under < bottom) { bottom = under; }
+                        if (top == null || over > top) { top = over; }
+                    }
+
+                    if (standsAt == null || bottom == null)
+                    {
+                        Console.WriteLine("[sits] the table is not in the world - load the Camp "
+                            + "with it installed first");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    Console.WriteLine($"[sits] placed at {standsAt:F0}, mesh runs "
+                        + $"{standsAt + bottom:F0} to {standsAt + top:F0} - floating by "
+                        + $"{bottom:F0}, and {top:F0} tall above its pivot");
+
+                    if (!string.Equals(how, "drop", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine("[sits] run PROBE_SITS=drop to take that off its height");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    var (wx, wy, wz, wsink) = Logic.MapTable.where();
+                    Logic.MapTable.moveTo(wx, wy, wz - bottom.Value, wsink - bottom.Value);
+
+                    Console.WriteLine($"[sits] the table is to stand at {wx:F0} {wy:F0} "
+                        + $"{wz - bottom.Value:F0}");
+
+                    try
+                    {
+                        Logic.MapSlots.sync();
+                        Console.WriteLine("[sits] restart the game to see it");
+                    }
+                    catch (IOException)
+                    {
+                        Console.WriteLine("[sits] the height is saved, but the table cannot be "
+                            + "rebuilt while the game is open - close it and run "
+                            + "PROBE_STAND=apply");
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_NUDGE=<dz> or =<dx>;<dy>;<dz> - move the table by hand, in centimetres.
+            //
+            //For the part no probe can answer: where a prop LOOKS like it ends. The bounds do not
+            //say - they are a volume the mesh fits inside, and this table's reaches a metre below
+            //anything drawn. So the last step is somebody looking at it, and this is the smallest
+            //possible loop for that: one number, no game needed, no cook.
+            //
+            //Once it is right the answer is a constant for that prop for ever, which is why it is
+            //worth settling properly rather than approximately.
+            var probeNudge = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_NUDGE="));
+            if (probeNudge != null)
+            {
+                var bits = probeNudge.Substring("PROBE_NUDGE=".Length).Trim('"')
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+                float said(int at)
+                    => bits.Length > at && float.TryParse(bits[at],
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var one)
+                        ? one : 0f;
+
+                //One number means height, because height is what is ever wrong.
+                var (dx, dy, dz) = bits.Length >= 3
+                    ? (said(0), said(1), said(2))
+                    : (0f, 0f, said(0));
+
+                var (nx, ny, nz, sunk) = Logic.MapTable.where();
+
+                //Nudging the height IS recalibrating the sink - that is what the eyeballing is
+                //for - so the two move together. Keeping them apart would mean every nudge was
+                //forgotten by the next move.
+                Logic.MapTable.moveTo(nx + dx, ny + dy, nz + dz, sunk + dz);
+
+                Console.WriteLine($"[nudge] {nx:F0} {ny:F0} {nz:F0} -> {nx + dx:F0} {ny + dy:F0} "
+                    + $"{nz + dz:F0}");
+
+                try
+                {
+                    Logic.MapSlots.sync();
+                    Console.WriteLine("[nudge] restart the game to see it");
+                }
+                catch (IOException)
+                {
+                    Console.WriteLine("[nudge] the move is saved, but the table cannot be rebuilt "
+                        + "while the game is open - close it and run PROBE_STAND=apply");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_HUNT=<word>[;<word>...] - every blueprint matching those words, screened.
+            //
+            //Written because the first attempt at this cost fifteen minutes and found nothing.
+            //The probes are one-question-per-launch, and a launch loads every pak, every
+            //localisation and every image before it answers - about forty seconds. Asking eighty
+            //thousand assets one at a time was never going to finish, and no amount of patience
+            //was going to change that; the shape of the tool was wrong.
+            //
+            //So this asks all of them in ONE launch, and screens each against what actually
+            //disqualifies a prop. A candidate must pass all four:
+            //
+            //  * its mesh has SIMPLE collision - the trace runs with bTraceComplex = false, so a
+            //    mesh with only rendering geometry can never be hit, however solid it looks;
+            //  * that collision BLOCKS rather than ignores;
+            //  * the blueprint declares ZERO functions - anything with an ubergraph runs it, in
+            //    the Camp, on our actor's transform, with click events freshly forced on;
+            //  * it imports no /Script/Dungeons - that is how the game's own interactables get
+            //    pulled in, and they compete for the same click.
+            //
+            //What it CANNOT tell you is what a prop looks like. That is the half this does not
+            //replace: FModel shows you the mesh, and a name is not a picture.
+            //
+            //Read-only. Opens packages out of the game's paks and prints what it found.
+            var probeHunt = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_HUNT="));
+            if (probeHunt != null)
+            {
+                var words = probeHunt.Substring("PROBE_HUNT=".Length).Trim('"')
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+                var index = Logic.CustomSkins.index;
+                if (index == null)
+                {
+                    Console.WriteLine("[hunt] the game's paks could not be read");
+                    this.Shutdown();
+                    return;
+                }
+
+                //Name tables are what every check reads, and the same mesh is shared by whole
+                //families of props - so reading one twice is pure waste in a sweep this size.
+                var seen = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+                List<string>? namesOf(string path)
+                {
+                    if (seen.TryGetValue(path, out var already)) { return already; }
+
+                    try
+                    {
+                        var package = index.extractPackage(path);
+                        if (package == null) { seen[path] = null!; return null; }
+
+                        var made = Logic.CookedProperties.readNamesOf(package.Value.UAsset.ToArray())
+                            .ToList();
+
+                        seen[path] = made;
+                        return made;
+                    }
+                    catch (Exception)
+                    {
+                        seen[path] = null!;
+                        return null;
+                    }
+                }
+
+                var done = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                Console.WriteLine("[hunt] " + "path".PadRight(62) + "fns  dgns  hulls  blocks  verdict");
+
+                foreach (var word in words)
+                {
+                    var (found, _) = Logic.GameAssets.search(word, "Blueprint");
+
+                    foreach (var asset in found)
+                    {
+                        if (!done.Add(asset.EnginePath)) { continue; }
+
+                        var inside = "/Dungeons/Content/" + asset.EnginePath.Substring("/Game/".Length);
+
+                        byte[] uasset;
+
+                        try
+                        {
+                            var package = index.extractPackage(inside);
+                            if (package == null) { continue; }
+
+                            uasset = package.Value.UAsset.ToArray();
+                        }
+                        catch (Exception) { continue; }
+                        var exports = Logic.CookedPackage.readExports(uasset);
+                        var imports = Logic.CookedPackage.readImports(uasset);
+
+                        string spell(int at)
+                            => at < 0 && -at - 1 < imports.Count ? imports[-at - 1].ObjectName
+                                : at > 0 && at - 1 < exports.Count ? exports[at - 1].Name
+                                : string.Empty;
+
+                        var functions = exports.Count(one =>
+                            string.Equals(spell(one.ClassIndex), "Function", StringComparison.Ordinal));
+
+                        var dungeons = imports.Any(one =>
+                            one.ObjectName.IndexOf("/Script/Dungeons",
+                                StringComparison.OrdinalIgnoreCase) >= 0);
+
+                        //The meshes this blueprint draws, by the package each one lives in. An
+                        //import's Outer walks up to its package, which is the path to open.
+                        var meshes = new List<string>();
+
+                        for (var at = 0; at < imports.Count; at++)
+                        {
+                            if (!string.Equals(imports[at].ClassName, "StaticMesh",
+                                StringComparison.Ordinal))
+                            {
+                                continue;
+                            }
+
+                            var outer = imports[at].Outer;
+
+                            while (outer < 0 && -outer - 1 < imports.Count)
+                            {
+                                var up = imports[-outer - 1];
+
+                                if (string.Equals(up.ClassName, "Package", StringComparison.Ordinal)
+                                    && up.ObjectName.StartsWith("/Game/", StringComparison.Ordinal))
+                                {
+                                    meshes.Add("/Dungeons/Content/"
+                                        + up.ObjectName.Substring("/Game/".Length));
+                                    break;
+                                }
+
+                                outer = up.Outer;
+                            }
+                        }
+
+                        //Hulls in ANY of them is enough: one clickable mesh makes the prop
+                        //clickable, and a prop with several is usually one solid thing plus
+                        //decoration.
+                        var hulls = false;
+                        var blocks = false;
+                        var refused = false;
+
+                        foreach (var mesh in meshes.Distinct(StringComparer.OrdinalIgnoreCase))
+                        {
+                            var names = namesOf(mesh);
+                            if (names == null) { continue; }
+
+                            //An empty FKAggregateGeom serialises as nothing at all, so these
+                            //sub-property names appear only when there are actually hulls.
+                            hulls |= names.Any(one => one == "ConvexElems" || one == "KConvexElem"
+                                || one == "BoxElems" || one == "SphylElems" || one == "SphereElems");
+
+                            blocks |= names.Any(one => one == "BlockAll");
+                            refused |= names.Any(one => one == "NoCollision");
+                        }
+
+                        //The blueprint can override the mesh's own profile, so its name table
+                        //counts too.
+                        var mine = Logic.CookedProperties.readNamesOf(uasset).ToList();
+                        blocks |= mine.Any(one => one == "BlockAll");
+
+                        var ok = functions == 0 && !dungeons && hulls && blocks && !refused;
+
+                        //Everything is printed, passes and failures alike. A sweep that prints
+                        //only winners cannot be checked, and "found nothing" and "asked wrongly"
+                        //look identical in it.
+                        Console.WriteLine($"[hunt] {asset.EnginePath,-62}{functions,3}  "
+                            + $"{(dungeons ? "yes" : "no"),4}  {(hulls ? "yes" : "no"),5}  "
+                            + $"{(refused ? "NO" : blocks ? "yes" : "?"),6}  "
+                            + (ok ? "PASS" : "-"));
+                    }
+                }
+
+                Console.WriteLine($"[hunt] {done.Count} blueprint(s) screened");
+
+                this.Shutdown();
+                return;
+            }
+
             //PROBE_LOADED=<part of a name> - everything the game is holding whose name contains it.
             //
             //PROBE_STRUCT asks by exact name, which is the wrong question when the question is

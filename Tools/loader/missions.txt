@@ -1,0 +1,94 @@
+# id | display name | ELevelNames value |     ?
+#
+# The menu offers the rows marked `show`. Everything else stays in the file because the numbers
+# are expensive to work out and the list is generated - the names by MCDReborn.exe PROBE_MISSIONS,
+# the numbers by PROBE_STRUCT=ELevelNames - but it is not offered.
+#
+# Mark a row `show` when it is worth launching from the Camp, which means one of two things:
+#
+#   * a STANDALONE custom level, which is not one of the game's fifty-six at all. Add a line with
+#     the level json's bare name (no folder, no .json), whatever the menu should call it, and 157
+#     - ELevelNames::randommission, the value Blossoming Isles passes for every custom map it
+#     ships. levelFilename is what picks the level; `mission` only says what KIND it is.
+#
+#   * a stock mission MCD Reborn has REPLACED with a custom map. It keeps the game's own name and
+#     number, because as far as the game is concerned it IS that mission - only its level data
+#     changed. Look for MCDReborn_Map_<name>_P.pak in the Paks folder.
+#
+# The game's own missions are reachable from the game's own map table, so offering all fifty-six
+# here was duplicating something that already worked.
+#
+# Written from the running game: the names by MCDReborn.exe PROBE_MISSIONS, the
+# numbers by PROBE_STRUCT=ELevelNames. 42 of them have an enum entry of their own;
+# the rest get randommission (157), which is what Blossoming Isles passes for every
+# one of its custom maps - so it is the proven value for "not one of the built-ins".
+# The hyper missions (hm_*) have no entry; the game reaches them another way.
+#
+# A CUSTOM LEVEL that is not one of the game's own goes here too - add a line with the level
+# json's bare name (no folder, no .json), whatever you want the menu to call it, and 157.
+# 157 is ELevelNames::randommission, which is what Blossoming Isles passes for every custom map
+# it ships, so it is the proven value for "not one of the built-ins".
+#
+#   SakuraGarden               | Hidden Garden                | 157
+#
+# Nothing else is needed: levelFilename is what actually picks the level, and `mission` only
+# says what KIND of thing it is. Re-run build_maps_menu.py afterwards.
+AbyssalMonument            | Abyssal Monument             | 134  | 
+ancientdungeons            | Ancient Dungeons             | 157  | 
+archhaven                  | Arch Haven                   | 45   | 
+bamboobluff                | Bamboo Bluff                 | 52   | 
+basaltdeltas               | Basalt Deltas                | 93   | 
+hm_basaltdeltas            | Basalt Deltas (hyper)        | 157  | 
+blightedcitadel            | Blighted Citadel             | 146  | 
+CactiCanyon                | Cacti Canyon                 | 11   | 
+CoralRise                  | Coral Rise                   | 133  | 
+creeperwoods               | Creeper Woods                | 2    | 
+hm_creeperwoods            | Creeper Woods (hyper)        | 157  | 
+creepycrypt                | Creepy Crypt                 | 42   | 
+CrimsonForest              | Crimson Forest               | 92   | 
+hm_crimsonforest           | Crimson Forest (hyper)       | 157  | 
+Deserttemple               | Desert Temple                | 7    | 
+hm_deserttemple            | Desert Temple (hyper)        | 157  | 
+dingyjungle                | Dingy Jungle                 | 50   | 
+Enderwilds                 | Ender Wilds                  | 145  | 
+EndlessRampart             | Endless Rampart              | 119  | 
+fieryforge                 | Fiery Forge                  | 6    | 
+FrozenFjord                | Frozen Fjord                 | 53   | 
+GaleSanctum                | Gale Sanctum                 | 118  | 
+gauntletgales              | Gauntlet of Gales            | 120  | 
+HighblockHalls             | Highblock Halls              | 9    | 
+hm_spidercave              | hm_spidercave                | 157  | 
+hm_woodlandmansion         | hm_woodlandmansion           | 157  | 
+FreeJungle                 | Jungle Awakens               | 155  | 
+LonelyFortress             | Lonely Fortress              | 54   | 
+LostSettlement             | Lost Settlement              | 55   | 
+lowertemple                | Lower Temple                 | 46   | 
+menudummy                  | Main menu backdrop           | 157  | 
+mooncorecaverns            | Mooncore Caverns             | 5    | 
+mooshroomisland            | Mooshroom Island             | 47   | 
+netherfortress             | Nether Fortress              | 97   | 
+hm_netherfortress          | Nether Fortress (hyper)      | 157  | 
+netherwastes               | Nether Wastes                | 96   | 
+hm_netherwastes            | Nether Wastes (hyper)        | 157  | 
+netherhypermission-hyper   | netherhypermission-hyper     | 157  | 
+ObsidianPinnacle           | Obsidian Pinnacle            | 10   | 
+overgrowntemple            | overgrowntemple              | 51   | 
+pumpkinpastures            | Pumpkin Pastures             | 3    | 
+RadiantRavine              | Radiant Ravine               | 135  | 
+soggycave                  | Soggy Cave                   | 43   |     
+SoggySwamp                 | Soggy Swamp                  | 4    |     
+soulsandvalley             | Soul Sand Valley             | 95   | 
+hm_soulsandvalley          | Soul Sand Valley (hyper)     | 157  | 
+spidercave                 | spidercave                   | 49   | 
+SquidCoast                 | Squid Coast                  | 1    | 
+lobby                      | The Camp                     | 157  | 
+thestronghold              | thestronghold                | 147  | 
+thetower                   | thetower                     | 154  | 
+underhalls                 | Underhalls                   | 44   | 
+warpedforest               | Warped Forest                | 94   | 
+hm_warpedforest            | Warped Forest (hyper)        | 157  | 
+WindsweptPeaks             | Windswept Peaks              | 117  | 
+woodlandmansion            | woodlandmansion              | 48   | 
+
+# --- custom levels, not among the game's own ---
+SakuraGarden               | Hidden Garden (custom)       | 157  |     

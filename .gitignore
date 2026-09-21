@@ -291,7 +291,18 @@ Tools/**/Saved/
 Tools/**/Intermediate/
 Tools/**/DerivedDataCache/
 Tools/**/Binaries/
-Tools
+Tools/*
+
+# ...except the generators. These BUILD the cooked assets that ship inside the exe, and
+# every one of them carries the reason it is shaped the way it is: why a pivot is not a
+# base, why a UMG colour is linear and not sRGB, why a button is tinted through
+# BackgroundColor rather than a WidgetStyle, why add_component_to_blueprint must not run
+# twice. Shipping the cooked output while the source that made it lives on one machine is
+# how a binary becomes unreproducible.
+!Tools/loader/
+Tools/loader/*
+!Tools/loader/*.py
+!Tools/loader/*.txt
 
 # The loader's cooked blueprints are SOURCE, and must stay tracked.
 #

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -291,6 +291,45 @@ namespace MCDSaveEdit.Logic
             }
 
             return done > 0;
+        }
+
+        /// <summary>
+        /// Moves something, by rewriting a Vector property where it lies.
+        ///
+        /// An FVector is three floats and nothing else - no length prefix, no name index, no
+        /// tail - so a position is the one property in this file that can be changed without any
+        /// of the care the rest of it is made of. Twelve bytes for twelve, every time, which is
+        /// why the Camp's table can be moved from here rather than from an editor nobody
+        /// installing this has.
+        ///
+        /// Every export carrying the property is written, not the first. Our level holds exactly
+        /// one actor, so the answer is expected to be one - and returning the COUNT rather than a
+        /// bool is what lets a caller notice the day that stops being true, instead of moving the
+        /// first of two tables and reporting success.
+        ///
+        /// Only a 12-byte StructProperty is touched, and the property NAME is what decides which:
+        /// an FRotator is also three floats, so `RelativeLocation` and `RelativeRotation` are
+        /// indistinguishable by shape and a mix-up would spin the table rather than move it.
+        /// </summary>
+        public static int setVector(Package package, string property, float x, float y, float z)
+        {
+            var done = 0;
+
+            foreach (var export in package.Exports)
+            {
+                var found = findTag(package, export, property);
+                if (found == null) { continue; }
+
+                var (at, size, kind) = found.Value;
+                if (kind != "StructProperty" || size != 12) { continue; }
+
+                BitConverter.GetBytes(x).CopyTo(package.Data, at);
+                BitConverter.GetBytes(y).CopyTo(package.Data, at + 4);
+                BitConverter.GetBytes(z).CopyTo(package.Data, at + 8);
+                done++;
+            }
+
+            return done;
         }
 
         private static void writeString(BinaryWriter writer, string said)

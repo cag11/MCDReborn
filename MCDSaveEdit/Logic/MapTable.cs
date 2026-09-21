@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Globalization;
 using System.Linq;
 #nullable enable
 
@@ -68,6 +69,26 @@ namespace MCDSaveEdit.Logic
         /// <summary>The panel's own package, which is the one that gets edited on the way out.</summary>
         private const string PANEL = "UMG_MCDRebornMaps";
 
+        /// <summary>The level the loader streams in, which is the one that says WHERE.</summary>
+        private const string LEVEL = "MapTable";
+
+        /// <summary>
+        /// The game blueprint the prop borrows its looks from, as the running game names its
+        /// instances.
+        ///
+        /// Here rather than in each probe that wants it. The prop is DRAWN by spawning one of
+        /// these at the actor's own transform, so anything measuring the prop - how far it floats,
+        /// how tall it stands - has to find that spawned actor, and every copy of this string is
+        /// a place a swap would fail silently. A probe looking for a class name nothing has
+        /// reports "not in the world", which reads as the table being broken rather than as the
+        /// probe being out of date.
+        ///
+        /// Changing the prop means changing this AND `looks` in Tools/loader/build_prop.py, and
+        /// the two cannot be checked against each other from here - one is a cooked asset, the
+        /// other is a generator this app never runs.
+        /// </summary>
+        public const string VISUAL = "BP_VillagerStatuePodium_C";
+
         /// <summary>Which of the loader's folders this runs in.</summary>
         public const string TRIGGER = "Lobby";
 
@@ -86,7 +107,114 @@ namespace MCDSaveEdit.Logic
             ("/Game/MCDReborn/Lobby/MapTable", "MapTable", ".umap"),
             ("/Game/MCDReborn/Actors/BP_MCDRebornMapTable", "BP_MCDRebornMapTable", ".uasset"),
             ("/Game/MCDReborn/UI/UMG_MCDRebornMaps", "UMG_MCDRebornMaps", ".uasset"),
+
+            //The floating name over the table, which is a widget of its own rather than part of
+            //the panel - it is on screen the whole time the Camp is, and the panel only exists
+            //after a click. Leaving it out of a shipped table gives a WidgetComponent pointing at
+            //a class that is not there, which draws nothing and says nothing about why.
+            ("/Game/MCDReborn/UI/UMG_MCDRebornSign_MapTable", "UMG_MCDRebornSign_MapTable",
+                ".uasset"),
         };
+
+        /// <summary>
+        /// Where the table stands when nobody has moved it: beside the Mystery Merchant.
+        ///
+        /// Kept as a named constant rather than left as whatever the asset happens to be cooked
+        /// with, because it is the only way back. This is a spot somebody has stood in front of
+        /// and clicked - it was Blossoming Isles' before it was ours - and a position picked
+        /// later by standing somewhere is a guess by comparison. Moving the table is one write;
+        /// knowing what to write to undo it is this line.
+        /// </summary>
+        public static readonly (float x, float y, float z) HOME = (15950f, 9150f, 11800f);
+
+        /// <summary>Where a moved table is remembered, so the next install does not undo it.</summary>
+        private static string rememberedAt()
+            => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "MCDReborn", "table-where.txt");
+
+        /// <summary>
+        /// Where the table is to stand, and how far into the ground it sits there.
+        ///
+        /// Remembered OUTSIDE the pak on purpose. The table is rebuilt every time a slot changes
+        /// - <see cref="MapSlots.sync"/> reinstalls it to reveal the new row - so a position that
+        /// lived only in the installed file would survive until the next import and then quietly
+        /// walk back to the Mystery Merchant.
+        ///
+        /// The fourth number is the one that is hard to get and easy to lose. Where a prop looks
+        /// right vertically CANNOT be measured: its bounds describe a volume the mesh fits inside
+        /// and say nothing about where the drawn part of it ends, so the offset is found by eye
+        /// over several restarts. Keeping it means a later move is free; keeping only the
+        /// absolute height means every move to ground of a different height throws it away, and
+        /// the table floats again for a reason that looks like a new bug.
+        /// </summary>
+        public static (float x, float y, float z, float sink) where()
+        {
+            try
+            {
+                var said = File.ReadAllText(rememberedAt())
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+                float at(int one)
+                    => said.Length > one && float.TryParse(said[one], NumberStyles.Float,
+                        CultureInfo.InvariantCulture, out var got) ? got : 0f;
+
+                if (said.Length >= 3
+                    && float.TryParse(said[0], NumberStyles.Float, CultureInfo.InvariantCulture,
+                        out var x)
+                    && float.TryParse(said[1], NumberStyles.Float, CultureInfo.InvariantCulture,
+                        out var y)
+                    && float.TryParse(said[2], NumberStyles.Float, CultureInfo.InvariantCulture,
+                        out var z))
+                {
+                    //A file written before the sink existed has three numbers, and zero is the
+                    //right answer for it: it was placed at the height it was placed at.
+                    return (x, y, z, at(3));
+                }
+            }
+            catch (Exception)
+            {
+                //A position that cannot be read is a table at home, not an error. The file is a
+                //preference and the Camp gets its table either way.
+            }
+
+            return (HOME.x, HOME.y, HOME.z, 0f);
+        }
+
+        /// <summary>Whether the table is where it was cooked to stand.</summary>
+        public static bool isHome
+        {
+            get { var (x, y, z, _) = where(); return x == HOME.x && y == HOME.y && z == HOME.z; }
+        }
+
+        /// <summary>
+        /// Stands the table somewhere else, from the next install onwards.
+        ///
+        /// Written in INVARIANT digits. This app runs in whatever culture the machine is set to,
+        /// and a position saved as "11502,00" and read back expecting a point is three numbers
+        /// that all fail to parse - which is a table back at the Mystery Merchant with nothing
+        /// said about why.
+        /// </summary>
+        /// <param name="sink">
+        /// How far below the ground the origin has to go for the table to LOOK right, found by
+        /// eye. Carried so that moving the table somewhere with a different floor height keeps
+        /// the look instead of starting again.
+        /// </param>
+        public static void moveTo(float x, float y, float z, float sink = 0f)
+        {
+            var file = rememberedAt();
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+
+            File.WriteAllText(file, string.Format(CultureInfo.InvariantCulture,
+                "{0} {1} {2} {3}", x, y, z, sink));
+        }
+
+        /// <summary>Puts it back beside the Mystery Merchant.</summary>
+        public static void moveHome()
+        {
+            var file = rememberedAt();
+            if (File.Exists(file)) { File.Delete(file); }
+        }
 
         /// <summary>Whether the table is in the game's mods folder.</summary>
         public static bool isInstalled => installed() != null;
@@ -152,11 +280,56 @@ namespace MCDSaveEdit.Logic
                     Shown = reveal(head, data, filled, names);
                 }
 
+                if (string.Equals(file, LEVEL, StringComparison.Ordinal))
+                {
+                    stand(head, data);
+                }
+
                 entries.Add(new PakWriter.Entry(inside + header, head));
                 entries.Add(new PakWriter.Entry(inside + ".uexp", data));
             }
 
             return CustomSkins.writeModPak(PREFIX, entries);
+        }
+
+        /// <summary>
+        /// Puts the placed actor where <see cref="where"/> says, by editing the cooked level.
+        ///
+        /// The actor's position is its root component's RelativeLocation - twelve bytes of tagged
+        /// property - so this moves the table without the level changing size. No editor, no
+        /// cook, nothing downstream to correct.
+        ///
+        /// One write moves THREE things, which is worth knowing before anybody goes looking for
+        /// the other two: the mesh is spawned at the actor's own transform on BeginPlay, and the
+        /// click is accepted by measuring from the actor's own location on Tick. There is no
+        /// second coordinate anywhere that could disagree with this one.
+        ///
+        /// What does not move is how close a click has to land - that is a float literal in
+        /// compiled bytecode. It only matters if the table is parked within a few metres of
+        /// something else clickable, and then it matters a great deal.
+        /// </summary>
+        private static void stand(byte[] header, byte[] data)
+        {
+            var (x, y, z, _) = where();
+
+            try
+            {
+                var package = CookedEdit.read(header, data);
+                var moved = CookedEdit.setVector(package, "RelativeLocation", x, y, z);
+
+                //Exactly one actor is placed in this level, so anything but one means the level
+                //is not the shape this was written against and the table may be half-moved.
+                if (moved != 1)
+                {
+                    Console.WriteLine($"[table] expected one placed actor, found {moved} - "
+                        + "the table's position may not be what was asked for");
+                }
+            }
+            catch (Exception problem)
+            {
+                //A table beside the Mystery Merchant beats no table at all.
+                Console.WriteLine($"[table] could not move the table: {problem.Message}");
+            }
         }
 
         /// <summary>How many slots the last install put on screen.</summary>
