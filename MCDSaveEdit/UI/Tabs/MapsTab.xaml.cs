@@ -73,6 +73,7 @@ namespace MCDSaveEdit.UI
 
             fillList();
             fillInstalled();
+
             updateUI();
         }
 
@@ -83,7 +84,13 @@ namespace MCDSaveEdit.UI
 
             //Matched against the readable label as well as the file name, so "creeper" finds
             //creeperwoods - which is the reason the names are spelled out at all.
-            var shown = _missions
+            //The game's own, then the custom slots. Read fresh rather than cached, because a
+            //slot's contents change from this very tab and a stale list would have somebody
+            //overwrite a map they meant to keep.
+            var all = new List<GameMaps.Mission>(_missions);
+            all.AddRange(MapSlots.missions());
+
+            var shown = all
                 .Where(one => wanted.Length == 0
                     || one.Label.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) >= 0)
                 .ToList();
@@ -91,8 +98,12 @@ namespace MCDSaveEdit.UI
             missionList.ItemsSource = shown.Select(one => new
             {
                 Mission = one,
-                Text = $"{one.Label}   —   {one.Bytes / 1024:N0} KB"
-                     + (MapMod.installedFor(one) != null ? "   ·   replaced" : string.Empty),
+                Text = one.IsSlot
+                    ? $"{one.Label}"
+                        + (one.Bytes > 0 ? $"   —   {one.Bytes / 1024:N0} KB" : string.Empty)
+                        + (MapSlots.inSlot(one.Slot) != null ? "   ·   installed" : string.Empty)
+                    : $"{one.Label}   —   {one.Bytes / 1024:N0} KB"
+                        + (MapMod.installedFor(one) != null ? "   ·   replaced" : string.Empty),
             }).ToList();
             missionList.DisplayMemberPath = "Text";
         }
@@ -144,7 +155,9 @@ namespace MCDSaveEdit.UI
             //Needs a mission chosen, because an empty map is not a thing on its own - it is
             //something that gets installed OVER a mission, same as any other custom map.
             baselineButton.IsEnabled = ready && _chosen != null && !_busy && MapTools.available;
-            removeButton.IsEnabled = ready && _chosen != null && MapMod.installedFor(_chosen) != null;
+            removeButton.IsEnabled = ready && _chosen != null && (_chosen.IsSlot
+                ? MapSlots.inSlot(_chosen.Slot) != null
+                : MapMod.installedFor(_chosen) != null);
 
             fixedToMinecraftButton.IsEnabled = ready && tools && _chosen != null;
 
@@ -158,7 +171,11 @@ namespace MCDSaveEdit.UI
                 : string.Format(R.MAPS_NO_TOOLS, MapTools.wanted);
 
             chosenLabel.Text = _chosen?.Label ?? R.MAPS_NONE_CHOSEN;
-            chosenDetail.Text = _chosen == null
+            chosenDetail.Text = _chosen is { IsSlot: true } slotted
+                ? (slotted.Bytes > 0
+                    ? string.Format(R.MAPS_SLOT_WORKING, slotted.Bytes / 1024)
+                    : R.MAPS_SLOT_NOTHING)
+                : _chosen == null
                 ? string.Empty
                 : $"{_chosen.PakPath}   —   {_chosen.Bytes / 1024:N0} KB";
 
@@ -281,17 +298,39 @@ namespace MCDSaveEdit.UI
                 //than the one it came from is a real thing to want, but doing it by accident -
                 //because the wrong row was selected - is not, and afterwards it looks like the
                 //export was broken rather than like it went somewhere else.
-                var from = MapMod.cameFrom(picker.FolderName);
-                if (from != null && !string.Equals(from, _chosen.Name, StringComparison.OrdinalIgnoreCase))
+                //Only worth asking about when installing OVER a mission. A slot has no mission
+                //of its own to be the wrong one, so the question would be noise.
+                if (!_chosen.IsSlot)
+                {
+                    //Said plainly before anything is written. Installing a map over a mission
+                    //other than the one it came from is a real thing to want, but doing it by
+                    //accident - because the wrong row was selected - is not, and afterwards it
+                    //looks like the export was broken rather than like it went somewhere else.
+                    var from = MapMod.cameFrom(picker.FolderName);
+                    if (from != null
+                        && !string.Equals(from, _chosen.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var answer = MessageBox.Show(
+                            string.Format(R.MAPS_DIFFERENT_MISSION,
+                                GameMaps.prettyName(from), _chosen.Label),
+                            R.MAPS_IMPORT, MessageBoxButton.OKCancel, MessageBoxImage.Question);
+
+                        if (answer != MessageBoxResult.OK) { return; }
+                    }
+                }
+                else if (MapSlots.inSlot(_chosen.Slot) is MapSlots.Filled already)
                 {
                     var answer = MessageBox.Show(
-                        string.Format(R.MAPS_DIFFERENT_MISSION, GameMaps.prettyName(from), _chosen.Label),
+                        string.Format(R.MAPS_SLOT_OCCUPIED, _chosen.Slot, already.Name),
                         R.MAPS_IMPORT, MessageBoxButton.OKCancel, MessageBoxImage.Question);
 
                     if (answer != MessageBoxResult.OK) { return; }
                 }
 
-                var mod = MapMod.install(picker.FolderName, _chosen);
+                var mod = _chosen.IsSlot
+                    ? MapSlots.install(picker.FolderName, _chosen.Slot,
+                        System.IO.Path.GetFileName(picker.FolderName))
+                    : MapMod.install(picker.FolderName, _chosen);
                 _folder = picker.FolderName;
 
                 //Importing from somewhere says where this mission lives just as plainly as
@@ -325,6 +364,46 @@ namespace MCDSaveEdit.UI
         /// Wherever the last export put them, which is not necessarily under AppData - Export map
         /// asks, and answering "Desktop" used to leave every other button looking somewhere else.
         /// </summary>
+        /// <summary>
+        /// Puts a folder back into the game, as whatever the selected map IS.
+        ///
+        /// The counterpart of <see cref="exportTo"/>, and the reason the round trip works for a
+        /// custom slot at all: bringing terrain back from Minecraft, or editing spawns, changes
+        /// the FOLDER - and a folder is not in the game until something packs it. For a mission
+        /// that means writing over the mission; for a slot it means rebuilding the slot's pak and
+        /// the Camp's table with it.
+        /// </summary>
+        private static CustomSkins.InstalledMod installFrom(GameMaps.Mission mission, string folder)
+            => mission.IsSlot
+                ? MapSlots.install(folder, mission.Slot,
+                    mission.ShownAs ?? System.IO.Path.GetFileName(folder))
+                : MapMod.install(folder, mission);
+
+        /// <summary>
+        /// Writes a map out to a folder to work on, wherever it actually lives.
+        ///
+        /// One of the game's missions comes out of the game's own paks. A custom slot does not -
+        /// mod paks are not in the index - so it comes back out of the pak this app wrote for it.
+        /// Every tool downstream reads the folder and neither knows nor cares which it was.
+        ///
+        /// An empty slot throws rather than writing an empty folder, because "there is nothing
+        /// here yet" is a useful thing to be told and a bare folder is not.
+        /// </summary>
+        private static MapMod.Exported exportTo(GameMaps.Mission mission, string folder)
+        {
+            if (!mission.IsSlot) { return MapMod.export(mission, folder); }
+
+            var files = MapSlots.export(mission.Slot, folder);
+
+            var bytes = 0L;
+            foreach (var file in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
+            {
+                bytes += new FileInfo(file).Length;
+            }
+
+            return new MapMod.Exported(folder, files, bytes, new List<string>());
+        }
+
         private static string workshopFor(GameMaps.Mission mission)
             => MapWorkshop.folderFor(mission.Name);
 
@@ -362,7 +441,7 @@ namespace MCDSaveEdit.UI
 
             try
             {
-                var made = await Task.Run(() => MapMod.export(mission, folder));
+                var made = await Task.Run(() => exportTo(mission, folder));
                 _folder = made.Folder;
 
                 //This route exports too, so it settles where the mission lives just as much as
@@ -453,7 +532,7 @@ namespace MCDSaveEdit.UI
                 }
                 else
                 {
-                    var mod = await Task.Run(() => MapMod.install(origin.Map, mission));
+                    var mod = await Task.Run(() => installFrom(mission, origin.Map));
                     _folder = origin.Map;
 
                     statusLabel.Text = string.Format(R.MAPS_IMPORTED,
@@ -511,7 +590,7 @@ namespace MCDSaveEdit.UI
                     {
                         statusLabel.Text = string.Format(R.MAPS_NOT_WELDABLE, whyNot);
 
-                        var straight = await Task.Run(() => MapMod.install(folder, mission));
+                        var straight = await Task.Run(() => installFrom(mission, folder));
                         _folder = folder;
 
                         statusLabel.Text += "   " + string.Format(R.MAPS_IMPORTED,
@@ -537,7 +616,7 @@ namespace MCDSaveEdit.UI
                         return;
                     }
 
-                    var mod = await Task.Run(() => MapMod.install(folder, mission));
+                    var mod = await Task.Run(() => installFrom(mission, folder));
                     _folder = folder;
 
                     statusLabel.Text = string.Format(R.MAPS_IMPORTED,
@@ -605,7 +684,7 @@ namespace MCDSaveEdit.UI
 
                 try
                 {
-                    var made = await Task.Run(() => MapMod.export(mission, folder));
+                    var made = await Task.Run(() => exportTo(mission, folder));
                     MapWorkshop.remember(mission.Name, made.Folder);
                     _folder = made.Folder;
                     folder = made.Folder;
@@ -816,9 +895,19 @@ namespace MCDSaveEdit.UI
 
             try
             {
-                statusLabel.Text = MapMod.remove(_chosen)
-                    ? string.Format(R.MAPS_PUT_BACK, _chosen.Label)
-                    : string.Format(R.MAPS_NOT_REPLACED, _chosen.Label);
+                if (_chosen.IsSlot)
+                {
+                    //Nothing to put back - a slot replaced nothing. It simply stops being
+                    //offered, and the table in the Camp stops listing it.
+                    MapSlots.clear(_chosen.Slot);
+                    statusLabel.Text = string.Format(R.MAPS_SLOT_CLEARED, _chosen.Slot);
+                }
+                else
+                {
+                    statusLabel.Text = MapMod.remove(_chosen)
+                        ? string.Format(R.MAPS_PUT_BACK, _chosen.Label)
+                        : string.Format(R.MAPS_NOT_REPLACED, _chosen.Label);
+                }
 
                 fillInstalled();
                 fillList();

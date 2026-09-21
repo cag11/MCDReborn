@@ -39,12 +39,31 @@ namespace MCDSaveEdit.Logic
 
         public sealed class Mission
         {
-            public Mission(string name, string pakPath, long bytes)
+            public Mission(string name, string pakPath, long bytes, int slot = 0,
+                string? shownAs = null)
             {
                 Name = name;
                 PakPath = pakPath;
                 Bytes = bytes;
+                Slot = slot;
+                ShownAs = shownAs;
             }
+
+            /// <summary>
+            /// Which custom slot this is, or 0 for one of the game's own missions.
+            ///
+            /// A slot is a mission in every way that matters to the Maps tab: it has a level file
+            /// with a name, a folder to work in, spawns to edit and terrain to take to Minecraft
+            /// and back. Making it the same TYPE is what lets every one of those tools work on it
+            /// without being told about slots - only the handful of places that install or remove
+            /// have to know the difference.
+            /// </summary>
+            public int Slot { get; }
+
+            public bool IsSlot => Slot > 0;
+
+            /// <summary>What the map in this slot was called, when there is one.</summary>
+            public string? ShownAs { get; }
 
             /// <summary>The file name, which is the mission's identity - "creeperwoods".</summary>
             public string Name { get; }
@@ -59,6 +78,13 @@ namespace MCDSaveEdit.Logic
             {
                 get
                 {
+                    if (IsSlot)
+                    {
+                        return ShownAs == null
+                            ? $"Custom {Slot:00}  (empty)"
+                            : $"{ShownAs}  (custom {Slot:00})";
+                    }
+
                     var pretty = prettyName(Name);
                     return pretty == Name ? Name : $"{pretty}  ({Name})";
                 }

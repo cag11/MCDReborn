@@ -78,8 +78,6 @@
                        FontSize="11" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
         </StackPanel>
 
-
-
         <Border DockPanel.Dock="Bottom" Margin="2,8,2,0" Padding="8,5"
                 Background="#11FFFFFF" CornerRadius="3" Height="44">
             <StackPanel>

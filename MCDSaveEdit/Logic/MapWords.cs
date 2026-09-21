@@ -339,8 +339,19 @@ namespace MCDSaveEdit.Logic
         /// stale Game.locres to rename five strings, and quietly reverts a few hundred others.
         /// </summary>
         public static byte[]? tableFor(string folder, string loctable)
+            => tableWith(loctable, fromFolder(folder));
+
+        /// <summary>
+        /// The game's table with rows added, or null when there is nothing to add.
+        ///
+        /// Split out from <see cref="tableFor"/> because a map installed into a SLOT needs more
+        /// than the wording this editor minted: its objectives may name keys that belong to
+        /// whichever table the level used to read, and that table is not the one it will read
+        /// once it is standing on its own. Those rows have to travel with it, and the caller is
+        /// the only one that knows which they are.
+        /// </summary>
+        public static byte[]? tableWith(string loctable, IReadOnlyList<Word> mine)
         {
-            var mine = fromFolder(folder);
             if (mine.Count == 0) { return null; }
 
             var theirs = fromGame(loctable);
@@ -391,5 +402,28 @@ namespace MCDSaveEdit.Logic
         /// <summary>Where the table goes inside a pak, for one mission.</summary>
         public static string pakPathFor(string loctable)
             => "Dungeons/Content/Decor/Text/" + loctable + SUFFIX + ".csv";
+
+        /// <summary>
+        /// Where to WRITE a table, spelled the way the game spells it.
+        ///
+        /// Not the same question as what to call it. A loctable id and its file differ in case
+        /// more often than not - `slimysewers` is filed as `SlimySewersLabels` - and a pak entry
+        /// whose case does not match is a file the game may never look at. Reading is forgiving
+        /// because pathFor searches the index; writing is not, so writing asks pathFor too and
+        /// only invents a name when the game has none.
+        /// </summary>
+        public static string writePathFor(string loctable)
+        {
+            var found = pathFor(loctable);
+            if (found == null) { return pakPathFor(loctable); }
+
+            var leaf = found.Substring(found.LastIndexOf('/') + 1);
+
+            //The index drops the extension off entries that have one, so it is put back rather
+            //than assumed present.
+            if (!leaf.EndsWith(".csv", StringComparison.OrdinalIgnoreCase)) { leaf += ".csv"; }
+
+            return "Dungeons/Content/Decor/Text/" + leaf;
+        }
     }
 }

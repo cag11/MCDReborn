@@ -56,6 +56,12 @@
          anybody rather than only by somebody with UE 4.22 and an afternoon. -->
     <EmbeddedResource Include="Logic\LoaderAssets\*.uasset" />
     <EmbeddedResource Include="Logic\LoaderAssets\*.uexp" />
+
+    <!-- The Camp map table and its panel. A .umap as well as the usual pair, because a payload
+         is a LEVEL and that is the half the loader actually looks for. -->
+    <EmbeddedResource Include="Logic\TableAssets\*.uasset" />
+    <EmbeddedResource Include="Logic\TableAssets\*.uexp" />
+    <EmbeddedResource Include="Logic\TableAssets\*.umap" />
     <Resource Include="Images\**\*.png" />
     <Resource Include="Properties\icon.ico" />
   </ItemGroup>

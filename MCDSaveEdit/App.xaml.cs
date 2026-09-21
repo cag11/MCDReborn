@@ -4165,6 +4165,276 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_REVEAL=<slot>[;<slot>...] - showing a slot in the cooked panel.
+            //
+            //Proves the in-place edit before anything depends on it: read the widget this exe
+            //carries, walk to a slot button's visibility, point it at Visible, and check the file
+            //is the same length and the change reads back. A package that comes out a different
+            //size is a package with every later offset wrong, and it would install perfectly.
+            var probeReveal = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_REVEAL="));
+            if (probeReveal != null)
+            {
+                var wanted = probeReveal.Substring("PROBE_REVEAL=".Length).Trim('"')
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(int.Parse).ToList();
+
+                var cooked = System.IO.Path.Combine(
+                    @"C:\Users\Gaming\Documents\Unreal Projects\MyProject\Saved\Cooked",
+                    @"WindowsNoEditor\MyProject\Content\MCDReborn\UI\UMG_MCDRebornMaps");
+
+                var header = System.IO.File.ReadAllBytes(cooked + ".uasset");
+                var data = System.IO.File.ReadAllBytes(cooked + ".uexp");
+
+                var was = data.Length;
+                var package = Logic.CookedEdit.read(header, data);
+
+                Console.WriteLine($"[reveal] {package.Names.Count} name(s), "
+                    + $"{package.Exports.Count} export(s)");
+                Console.WriteLine($"[reveal] Visible is name {package.indexOf("ESlateVisibility::Visible")}, "
+                    + $"Collapsed is {package.indexOf("ESlateVisibility::Collapsed")}");
+
+                foreach (var one in package.Exports.Where(e =>
+                    e.Name.StartsWith("Mission", StringComparison.Ordinal)).Take(4))
+                {
+                    Console.WriteLine($"[reveal]   {one.Name} at {one.At}, {one.Size} bytes");
+                }
+
+                foreach (var slot in wanted)
+                {
+                    var button = Logic.MapTable.slotButton(slot);
+
+                    //How many exports carry that name, because a cooked widget serialises its
+                    //tree twice and a change to only one of them loses to the other.
+                    var copies = package.Exports.Count(one =>
+                        string.Equals(one.Name, button, StringComparison.Ordinal));
+
+                    var done = Logic.CookedEdit.setEnum(package, button, "Visibility",
+                        "ESlateVisibility::Visible");
+
+                    Console.WriteLine($"[reveal] {button}: {(done ? "shown" : "NOT CHANGED")}"
+                        + $"  ({copies} cop{(copies == 1 ? "y" : "ies")} in the package)");
+                }
+
+                Console.WriteLine($"[reveal] uexp was {was:N0} bytes, now {data.Length:N0}"
+                    + (was == data.Length ? "  (unchanged, as it must be)" : "  *** MOVED ***"));
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_SLOT=<folder>;<slot>;<name> - a map installed as its own mission.
+            //
+            //The other half of PROBE_TABLE. The table offers a hundred slots; this fills one, and
+            //says what went into the pak so that "the slot is empty" and "the slot holds the
+            //wrong thing" can be told apart without starting the game.
+            var probeSlot = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_SLOT="));
+            if (probeSlot != null)
+            {
+                var bits = probeSlot.Substring("PROBE_SLOT=".Length).Trim('"').Split(';');
+                if (bits.Length < 2)
+                {
+                    Console.WriteLine("[slot] need PROBE_SLOT=<folder>;<slot>[;<name>]");
+                    this.Shutdown();
+                    return;
+                }
+
+                var which = int.Parse(bits[1]);
+                var shown = bits.Length > 2 ? bits[2] : System.IO.Path.GetFileName(bits[0]);
+
+                try
+                {
+                    var made = Logic.MapSlots.install(bits[0], which, shown);
+
+                    Console.WriteLine($"[slot] {System.IO.Path.GetFileName(made.Path)}, "
+                        + $"{new System.IO.FileInfo(made.Path).Length:N0} bytes");
+
+                    var many = 0;
+                    foreach (var one in Logic.ModPak.read(made.Path))
+                    {
+                        many++;
+                        //The level and the label table are the two that decide whether this
+                        //works; the rest is bulk and is counted rather than listed.
+                        if (one.Path.Contains("/levels/") || one.Path.Contains("/Text/"))
+                        {
+                            Console.WriteLine($"[slot]   {one.Path}  ({one.Data.Length:N0})");
+                        }
+                    }
+
+                    Console.WriteLine($"[slot] {many} file(s) in total");
+
+                    foreach (var one in Logic.MapSlots.installed())
+                    {
+                        Console.WriteLine($"[slot] filled: {one}");
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[slot] refused: {problem.Message}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_TABLE - the Camp map table, installed from the copy inside this exe.
+            //
+            //The same shape as PROBE_INSTALL_LOADER: it proves the three packages are actually
+            //carried by this build and land at the paths the panel and the level refer to each
+            //other by. A payload missing one of its three reads exactly like a loader that never
+            //ran, so it is worth being able to ask.
+            if (_startupArguments.Any(a => a == "PROBE_TABLE"))
+            {
+                try
+                {
+                    //Through sync, which is the only path anything else uses - calling
+                    //installBuiltIn directly here once meant the probe tested an overload
+                    //nothing in the app calls, and reported success for a table with no names
+                    //in it.
+                    Logic.MapSlots.sync();
+
+                    var where = Logic.MapTable.installed();
+                    if (where == null)
+                    {
+                        Console.WriteLine("[table] nothing is in any slot, so there is no table");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    Console.WriteLine($"[table] installed {System.IO.Path.GetFileName(where)}, "
+                        + $"{new System.IO.FileInfo(where).Length:N0} bytes");
+                    Console.WriteLine($"[table] isInstalled = {Logic.MapTable.isInstalled}");
+                    Console.WriteLine($"[table] {Logic.MapTable.SLOTS} slot(s), "
+                        + $"first {Logic.MapTable.slotName(1)}, "
+                        + $"last {Logic.MapTable.slotName(Logic.MapTable.SLOTS)}");
+
+                    //The number that says whether the in-place edit did anything. A table that
+                    //installs cleanly and shows nothing is the failure worth catching here.
+                    Console.WriteLine($"[table] {Logic.MapTable.Shown} slot(s) revealed, "
+                        + $"of {Logic.MapSlots.installed().Count} filled");
+
+                    foreach (var one in Logic.MapSlots.installed())
+                    {
+                        Console.WriteLine($"[table]   slot {one}");
+                    }
+
+                    foreach (var one in Logic.ModPak.read(where))
+                    {
+                        Console.WriteLine($"[table]   holds {one.Path}  ({one.Data.Length:N0})");
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[table] refused: {problem.Message}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_PAKFILE=<pak>;<part of a path> - one file out of a mod, as text.
+            //
+            //For when a pak installs cleanly and the game disagrees with what you think is in it.
+            //Reads the entry rather than the folder it was built from, because those are
+            //different claims and only one of them is what the game will read.
+            var probePakFile = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_PAKFILE="));
+            if (probePakFile != null)
+            {
+                var bits = probePakFile.Substring("PROBE_PAKFILE=".Length).Trim('"').Split(';');
+                if (bits.Length < 2)
+                {
+                    Console.WriteLine("[pakfile] need PROBE_PAKFILE=<pak>;<part of a path>");
+                    this.Shutdown();
+                    return;
+                }
+
+                foreach (var one in Logic.ModPak.read(bits[0]))
+                {
+                    if (one.Path.IndexOf(bits[1], StringComparison.OrdinalIgnoreCase) < 0)
+                    {
+                        continue;
+                    }
+
+                    Console.WriteLine($"[pakfile] {one.Path}  ({one.Data.Length:N0} bytes)");
+
+                    var said = System.Text.Encoding.UTF8.GetString(one.Data);
+                    foreach (var line in said.Split('\n').Take(60))
+                    {
+                        Console.WriteLine($"[pakfile]   {line.TrimEnd()}");
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_CAPTURE=<map folder>;<their csv> - giving a converted map its words back.
+            //
+            //A map converted out of somebody else's mod arrives as a level, its object groups and
+            //its block palette - and none of its WORDING, because that lives in a label table
+            //inside their pak rather than in the level. The objectives then read
+            //`<MISSING STRING TABLE ENTRY>` in game, which is the game saying it found the table
+            //and not the key.
+            //
+            //This copies the rows the level actually names into the map's own `text/` file, where
+            //everything downstream already looks for them: installing over a mission ships them,
+            //and so does installing into a slot.
+            var probeCapture = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_CAPTURE="));
+            if (probeCapture != null)
+            {
+                var bits = probeCapture.Substring("PROBE_CAPTURE=".Length).Trim('"').Split(';');
+                if (bits.Length < 2)
+                {
+                    Console.WriteLine("[capture] need PROBE_CAPTURE=<map folder>;<their csv>");
+                    this.Shutdown();
+                    return;
+                }
+
+                var folder = bits[0];
+                var level = System.IO.Path.Combine(folder, "level.json");
+
+                if (!System.IO.File.Exists(level) || !System.IO.File.Exists(bits[1]))
+                {
+                    Console.WriteLine("[capture] no level.json in that folder, or no such csv");
+                    this.Shutdown();
+                    return;
+                }
+
+                //Which keys the level names. Everything else in their table belongs to whatever
+                //mission it was really for and is not ours to carry.
+                var text = System.IO.File.ReadAllText(level);
+                var rows = 0;
+                var skipped = 0;
+
+                foreach (var line in System.IO.File.ReadAllLines(bits[1]))
+                {
+                    var at = line.IndexOf(',');
+                    if (at <= 0) { continue; }
+
+                    var key = line.Substring(0, at).Trim();
+                    var said = line.Substring(at + 1).Trim();
+
+                    if (key.Length == 0 || said.Length == 0 || key == "Key") { continue; }
+
+                    //Named somewhere in the level, quoted, which is how a key appears in json.
+                    if (!text.Contains("\"" + key + "\"", StringComparison.Ordinal))
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    Logic.MapWords.remember(folder, key, said);
+                    Console.WriteLine($"[capture]   {key} = {said}");
+                    rows++;
+                }
+
+                Console.WriteLine($"[capture] {rows} row(s) kept, {skipped} not named by this level");
+                Console.WriteLine("[capture] written to " + System.IO.Path.Combine(folder, Logic.MapWords.FOLDER, Logic.MapWords.FILE));
+
+
+                this.Shutdown();
+                return;
+            }
+
             //PROBE_MERGECSV=<loctable>;<theirs>;<out> - two missions sharing one label table.
             //
             //A mod that adds objective wording ships a whole Decor/Text/<x>Labels.csv, which

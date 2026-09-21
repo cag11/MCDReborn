@@ -3077,6 +3077,48 @@ Carry on?</value>
     <value>pulls the mission into a folder you can change. Do this once.</value>
     <comment>Beside the export button</comment>
   </data>
+  <data name="MAPS_SLOT_WORKING" xml:space="preserve">
+    <value>A custom map — {0:N0} KB in its working folder. Nothing of the game's is replaced.</value>
+  </data>
+  <data name="MAPS_SLOT_NOTHING" xml:space="preserve">
+    <value>An empty custom slot. Import a map into it, or bring one back from Minecraft.</value>
+  </data>
+  <data name="MAPS_GROUP_SLOTS" xml:space="preserve">
+    <value>Custom maps</value>
+  </data>
+  <data name="MAPS_INSTALL_TABLE" xml:space="preserve">
+    <value>Install table</value>
+  </data>
+  <data name="MAPS_INSTALL_TABLE_WHY" xml:space="preserve">
+    <value>Puts a map table in the Camp, beside the Mystery Merchant. Clicking it lists the custom maps you have installed and starts one at a difficulty and threat level you choose. Install it again after adding or removing a map, so the list matches.</value>
+  </data>
+  <data name="MAPS_INSTALL_SLOT" xml:space="preserve">
+    <value>Install as custom map…</value>
+  </data>
+  <data name="MAPS_INSTALL_SLOT_WHY" xml:space="preserve">
+    <value>Installs a map as its own mission instead of over one of the game's. Nothing the game ships is replaced, and the map is played from the table in the Camp rather than from the mission map. Its name and rewards come from the game's unnamed "random mission", so those screens will not say much.</value>
+  </data>
+  <data name="MAPS_CLEAR_SLOT" xml:space="preserve">
+    <value>Empty slot</value>
+  </data>
+  <data name="MAPS_SLOT_EMPTY" xml:space="preserve">
+    <value>Slot {0:00} — empty</value>
+  </data>
+  <data name="MAPS_SLOT_FILLED" xml:space="preserve">
+    <value>Slot {0:00} — {1}</value>
+  </data>
+  <data name="MAPS_SLOT_INSTALLED" xml:space="preserve">
+    <value>{0} is in slot {1:00}, and the table in the Camp now lists it.</value>
+  </data>
+  <data name="MAPS_SLOT_CLEARED" xml:space="preserve">
+    <value>Slot {0:00} is empty again, and the table in the Camp no longer lists it.</value>
+  </data>
+  <data name="MAPS_TABLE_INSTALLED" xml:space="preserve">
+    <value>The table is in the Camp, listing {0} custom map(s).</value>
+  </data>
+  <data name="MAPS_SLOT_OCCUPIED" xml:space="preserve">
+    <value>Slot {0:00} already holds "{1}". Replace it with this map?</value>
+  </data>
   <data name="MAPS_GROUP_TERRAIN" xml:space="preserve">
     <value>Terrain</value>
     <comment>Heading for the Minecraft round-trip row</comment>

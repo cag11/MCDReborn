@@ -6714,6 +6714,126 @@ namespace MCDSaveEdit.Properties {
         /// <summary>
         ///   Looks up a localized string similar to Terrain.
         /// </summary>
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_GROUP_SLOTS.
+        /// </summary>
+        public static string MAPS_SLOT_WORKING {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_WORKING", resourceCulture);
+            }
+        }
+        
+        public static string MAPS_SLOT_NOTHING {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_NOTHING", resourceCulture);
+            }
+        }
+        
+        public static string MAPS_GROUP_SLOTS {
+            get {
+                return ResourceManager.GetString("MAPS_GROUP_SLOTS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_INSTALL_TABLE.
+        /// </summary>
+        public static string MAPS_INSTALL_TABLE {
+            get {
+                return ResourceManager.GetString("MAPS_INSTALL_TABLE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_INSTALL_TABLE_WHY.
+        /// </summary>
+        public static string MAPS_INSTALL_TABLE_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_INSTALL_TABLE_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_INSTALL_SLOT.
+        /// </summary>
+        public static string MAPS_INSTALL_SLOT {
+            get {
+                return ResourceManager.GetString("MAPS_INSTALL_SLOT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_INSTALL_SLOT_WHY.
+        /// </summary>
+        public static string MAPS_INSTALL_SLOT_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_INSTALL_SLOT_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_CLEAR_SLOT.
+        /// </summary>
+        public static string MAPS_CLEAR_SLOT {
+            get {
+                return ResourceManager.GetString("MAPS_CLEAR_SLOT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_SLOT_EMPTY.
+        /// </summary>
+        public static string MAPS_SLOT_EMPTY {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_EMPTY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_SLOT_FILLED.
+        /// </summary>
+        public static string MAPS_SLOT_FILLED {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_FILLED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_SLOT_INSTALLED.
+        /// </summary>
+        public static string MAPS_SLOT_INSTALLED {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_INSTALLED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_SLOT_CLEARED.
+        /// </summary>
+        public static string MAPS_SLOT_CLEARED {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_CLEARED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_TABLE_INSTALLED.
+        /// </summary>
+        public static string MAPS_TABLE_INSTALLED {
+            get {
+                return ResourceManager.GetString("MAPS_TABLE_INSTALLED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_SLOT_OCCUPIED.
+        /// </summary>
+        public static string MAPS_SLOT_OCCUPIED {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_OCCUPIED", resourceCulture);
+            }
+        }
+        
         public static string MAPS_GROUP_TERRAIN {
             get {
                 return ResourceManager.GetString("MAPS_GROUP_TERRAIN", resourceCulture);
