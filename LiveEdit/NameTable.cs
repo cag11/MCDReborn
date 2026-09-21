@@ -26,12 +26,18 @@ namespace LiveEdit
     {
         private const int ELEMENTS_PER_CHUNK = 16 * 1024;
 
-        //FNameEntry, 4.22:
-        //  0x00 int32        Index      - low bit set means the name is wide
-        //  0x08 FNameEntry*  HashNext
-        //  0x10 char[]       the name itself, ansi or wide
-        private const int ENTRY_NAME = 0x10;
-        private const int ENTRY_INDEX = 0x00;
+        //FNameEntry, 4.22 - and this is NOT the layout most published SDK dumps use, because
+        //most of them target 4.23 and later. The members were swapped in 4.21:
+        //
+        //  0x00 TAtomic<FNameEntry*> HashNext
+        //  0x08 NAME_INDEX           Index      - low bit set means the name is wide
+        //  0x0C char[] or wchar[]    the name itself
+        //
+        //Reading the text at 0x10, which is the 4.19 offset, gives garbage - and garbage that
+        //occasionally spells something, which is how a search for this table came back with 42
+        //confident answers and no right one.
+        private const int ENTRY_NAME = 0x0C;
+        private const int ENTRY_INDEX = 0x08;
 
         private readonly GameProcess _game;
         private readonly Dictionary<int, string> _known = new Dictionary<int, string>();
@@ -238,7 +244,7 @@ namespace LiveEdit
         /// </summary>
         private string? readEntry(IntPtr entry)
         {
-            var header = _game.read(entry, 4);
+            var header = _game.read(new IntPtr(entry.ToInt64() + ENTRY_INDEX), 4);
             if (header == null) { return null; }
 
             var wide = (BitConverter.ToInt32(header, 0) & 1) != 0;

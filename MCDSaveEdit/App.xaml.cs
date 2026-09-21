@@ -3966,20 +3966,26 @@ namespace MCDSaveEdit
                 return;
             }
 
-            //PROBE_GNAMES - the engine's name table.
+            //PROBE_GNAMES - the engine's name table, found by its own code.
             //
-            //Found in the MODULE, not in the heap, and that is the whole trick. The table is a
-            //static: 256 chunk pointers and two counts, living in the executable's own data.
-            //What the chunks POINT AT is heap - the entries are allocated as names are made -
-            //but the table itself never moves.
+            //Not by shape. Shape finds forty-two wrong answers in this game, because a table of
+            //pointers to pointers is not a rare thing to look like. This finds the FUNCTION that
+            //makes the table, and reads the address out of the instruction that touches it:
             //
-            //Scanning all writable memory for it, which is what this did first, reads 1,885 MB
-            //and turns up 42 words that dereference twice onto the one entry every build has
-            //("None"). Every one a coincidence, and it took minutes to be wrong. The module is
-            //a hundredth of that and holds the answer.
+            //  48 83 EC 28        sub  rsp, 28h
+            //  48 8B 05 ?? ?? ?? ??   mov  rax, cs:Names      <- the address wanted
+            //  48 85 C0           test rax, rax
+            //  75 ??              jnz  short already
+            //  B9 08 08 00 00     mov  ecx, 808h              <- sizeof the 4.22 table
             //
-            //Believed only when names 0 and 1 read back as "None" and "ByteProperty", which is
-            //what they are in every Unreal build.
+            //That 0x808 is what pins the engine version: it is
+            //sizeof(TStaticIndirectArrayThreadSafeRead<FNameEntry, 4M, 16384>) - 256 chunk
+            //pointers, a count and a chunk count. The 4.8-era build of the same function says
+            //0x408 instead, and nothing else in fifty megabytes of code says either.
+            //
+            //Scanned in the process, never in the file: this executable is packed, every
+            //section on disk is encrypted, and what is readable is the decrypted image the
+            //game is running from.
             //
             //Read-only.
             if (_startupArguments.Any(a => a == "PROBE_GNAMES"))
@@ -3996,76 +4002,162 @@ namespace MCDSaveEdit
                 {
                     var began = DateTime.UtcNow;
                     var image = game.image(out var imageSize);
+                    var baseAt = image.ToInt64();
 
-                    Console.WriteLine($"[gnames] module at {image.ToInt64():x}, {imageSize / (1024 * 1024)} MB");
+                    Console.WriteLine($"[gnames] module at {baseAt:x}, {imageSize / (1024 * 1024)} MB");
 
-                    var low = image.ToInt64();
-                    var high = low + imageSize;
+                    //The section table is intact even though the names are blanked, so the code
+                    //range is read out of the PE header rather than guessed or looked up by name.
+                    var lowCode = baseAt + 0x1000;
+                    var highCode = baseAt + imageSize;
 
-                    var looked = 0L;
-                    var tried = 0;
-                    var answer = IntPtr.Zero;
-
-                    foreach (var (at, size) in game.writableRegions())
+                    var dos = game.read(image, 0x40);
+                    if (dos != null && dos[0] == 'M' && dos[1] == 'Z')
                     {
-                        var where = at.ToInt64();
-                        if (where < low || where >= high) { continue; }
+                        var peAt = BitConverter.ToInt32(dos, 0x3c);
+                        var pe = game.read(new IntPtr(baseAt + peAt), 0x108);
 
-                        var buffer = new byte[size];
-                        if (!game.tryRead(at, buffer, (int)size)) { continue; }
-
-                        looked += size;
-
-                        for (var i = 0; i + 8 <= buffer.Length; i += 8)
+                        if (pe != null)
                         {
-                            var first = BitConverter.ToInt64(buffer, i);
+                            var sections = BitConverter.ToUInt16(pe, 6);
+                            var optionalSize = BitConverter.ToUInt16(pe, 20);
+                            var firstSection = peAt + 24 + optionalSize;
 
-                            //Chunks[0], which must be a heap pointer.
-                            if (first < 0x10000 || first > 0x7fffffffffff) { continue; }
-
-                            tried++;
-
-                            var names = new LiveEdit.NameTable(game);
-                            names.useChunks(new IntPtr(where + i));
-
-                            if (names.nameOf(0) != "None") { continue; }
-                            if (names.nameOf(1) != "ByteProperty") { continue; }
-
-                            answer = new IntPtr(where + i);
-
-                            Console.WriteLine($"[gnames] FOUND at {answer.ToInt64():x}");
-                            Console.WriteLine("[gnames]   " + string.Join(" | ",
-                                Enumerable.Range(0, 8).Select(one => names.nameOf(one) ?? "(null)")));
-
-                            //Where it stops, so the reach is known rather than assumed.
-                            var far = 0;
-                            for (var step = 1; step < 4_000_000; step *= 2)
+                            for (var i = 0; i < sections; i++)
                             {
-                                if (names.nameOf(step) != null) { far = step; }
-                            }
+                                var row = game.read(new IntPtr(baseAt + firstSection + i * 40), 40);
+                                if (row == null) { continue; }
 
-                            //The two counts sit after the 256 chunk slots.
-                            var counts = game.read(new IntPtr(answer.ToInt64() + 256 * 8), 8);
-                            if (counts != null)
-                            {
-                                Console.WriteLine($"[gnames]   NumElements={BitConverter.ToInt32(counts, 0):N0} "
-                                    + $"NumChunks={BitConverter.ToInt32(counts, 4)}");
-                            }
+                                var flags = BitConverter.ToUInt32(row, 36);
+                                var rva = BitConverter.ToUInt32(row, 12);
+                                var size = BitConverter.ToUInt32(row, 8);
 
-                            Console.WriteLine($"[gnames]   names resolve out to at least {far:N0}");
-                            break;
+                                //IMAGE_SCN_CNT_CODE | MEM_EXECUTE, and the big one is the real
+                                //.text rather than the protector's own stub.
+                                if ((flags & 0x20000000) == 0) { continue; }
+                                if (size < 0x100000) { continue; }
+
+                                lowCode = baseAt + rva;
+                                highCode = lowCode + size;
+
+                                Console.WriteLine($"[gnames] code section at +{rva:x}, "
+                                    + $"{size / (1024 * 1024)} MB");
+                                break;
+                            }
                         }
-
-                        if (answer != IntPtr.Zero) { break; }
                     }
 
-                    Console.WriteLine($"[gnames] {looked / (1024 * 1024)} MB of module scanned, "
-                        + $"{tried:N0} candidate(s) tried, "
-                        + $"{(DateTime.UtcNow - began).TotalSeconds:F1}s");
-
-                    if (answer == IntPtr.Zero)
+                    //48 83 EC 28 48 8B 05 ?? ?? ?? ?? 48 85 C0 75 ?? B9 08 08 00 00
+                    var want = new byte?[]
                     {
-                        Console.WriteLine("[gnames] not in the module - it is somewhere else");
+                        0x48, 0x83, 0xEC, 0x28, 0x48, 0x8B, 0x05, null, null, null, null,
+                        0x48, 0x85, 0xC0, 0x75, null, 0xB9, 0x08, 0x08, 0x00, 0x00,
+                    };
+
+                    var found = new List<long>();
+                    var CHUNK = 4 * 1024 * 1024;
+                    var buffer = new byte[CHUNK + 64];
+
+                    for (var at = lowCode; at < highCode; at += CHUNK)
+                    {
+                        var take = (int)Math.Min(CHUNK + 64, highCode - at);
+                        if (!game.tryRead(new IntPtr(at), buffer, take)) { continue; }
+
+                        for (var i = 0; i + want.Length <= take; i++)
+                        {
+                            if (buffer[i] != 0x48) { continue; }
+
+                            var same = true;
+                            for (var j = 1; j < want.Length; j++)
+                            {
+                                if (want[j] == null) { continue; }
+                                if (buffer[i + j] != want[j]!.Value) { same = false; break; }
+                            }
+
+                            if (same) { found.Add(at + i); }
+                        }
+                    }
+
+                    Console.WriteLine($"[gnames] {found.Count} match(es) for FName::GetNames "
+                        + $"in {(DateTime.UtcNow - began).TotalSeconds:F1}s");
+
+                    foreach (var match in found)
+                    {
+                        //mov rax, [rip+disp32] - the address is relative to the NEXT instruction.
+                        var raw = game.read(new IntPtr(match + 7), 4);
+                        if (raw == null) { continue; }
+
+                        var pointerAt = match + 11 + BitConverter.ToInt32(raw, 0);
+
+                        var held = game.read(new IntPtr(pointerAt), 8);
+                        if (held == null) { continue; }
+
+                        var table = BitConverter.ToInt64(held, 0);
+
+                        Console.WriteLine($"[gnames] match at {match:x} -> &GNames {pointerAt:x} "
+                            + $"-> table {table:x}");
+
+                        if (table < 0x10000) { Console.WriteLine("[gnames]   not made yet"); continue; }
+
+                        var names = new LiveEdit.NameTable(game);
+                        names.useChunks(new IntPtr(table));
+
+                        var zero = names.nameOf(0);
+                        Console.WriteLine($"[gnames]   0..7: " + string.Join(" | ",
+                            Enumerable.Range(0, 8).Select(one => names.nameOf(one) ?? "(null)")));
+
+                        if (zero != "None")
+                        {
+                            Console.WriteLine("[gnames]   name 0 is not \"None\", so this is not it");
+                            continue;
+                        }
+
+                        var counts = game.read(new IntPtr(table + 0x800), 8);
+                        if (counts != null)
+                        {
+                            Console.WriteLine($"[gnames]   NumElements={BitConverter.ToInt32(counts, 0):N0} "
+                                + $"NumChunks={BitConverter.ToInt32(counts, 4)}");
+                        }
+
+                        Console.WriteLine($"[gnames] GNAMES POINTER = {pointerAt:x}  "
+                            + $"(RVA +{pointerAt - baseAt:x})");
+                        Console.WriteLine($"[gnames] TABLE = {table:x}");
+
+                        //And the thing it is all for: can a tile's name be found in it?
+                        var hunting = new[] { "cw_start_a001", "cw_theinn001", "LevelTransform",
+                                              "PackageNameToLoad", "LevelStreaming" };
+
+                        var end = counts == null ? 200000 : BitConverter.ToInt32(counts, 0);
+                        var seen = new Dictionary<string, int>(StringComparer.Ordinal);
+
+                        for (var i = 0; i < end && seen.Count < hunting.Length; i++)
+                        {
+                            var said = names.nameOf(i);
+                            if (said == null) { continue; }
+
+                            foreach (var one in hunting)
+                            {
+                                if (!seen.ContainsKey(one)
+                                    && string.Equals(said, one, StringComparison.Ordinal))
+                                {
+                                    seen[one] = i;
+                                }
+                            }
+                        }
+
+                        foreach (var one in hunting)
+                        {
+                            Console.WriteLine($"[gnames]   \"{one}\": "
+                                + (seen.TryGetValue(one, out var where)
+                                    ? $"name {where}" : "not in the table"));
+                        }
+
+                        break;
+                    }
+
+                    if (found.Count == 0)
+                    {
+                        Console.WriteLine("[gnames] the pattern is not in this build");
                     }
                 }
 
@@ -4073,79 +4165,1010 @@ namespace MCDSaveEdit
                 return;
             }
 
-            //PROBE_OPEN=<mission> - Edit spawns, exactly as the button does it.
+            //PROBE_MERGECSV=<loctable>;<theirs>;<out> - two missions sharing one label table.
             //
-            //Every other window probe builds a SpawnsWindow with no mission, because it only
-            //wanted to look at the map. The button passes one, and a window that has a mission
-            //takes a different path through its own setup - the install side of it exists at
-            //all. A crash there is invisible to a probe that never hands one over.
-            var probeOpen = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_OPEN="));
-            if (probeOpen != null)
+            //A mod that adds objective wording ships a whole Decor/Text/<x>Labels.csv, which
+            //REPLACES the game's - so the mission that table belonged to loses every line it
+            //had. Blossoming Isles takes Cacti Canyon's table for its own use and Cacti Canyon
+            //reads as a cherry garden for as long as it is installed.
+            //
+            //There is no reason for that. The file is a flat list of key,text - so the game's
+            //rows and the mod's rows can sit in the same file and both missions work.
+            //
+            //The game's half is copied BYTE FOR BYTE and the new rows are appended after it.
+            //Rebuilding it from parsed rows is what broke this once before: six of twenty-six
+            //rows lost a trailing comma, and the game crashed on entering the mission rather
+            //than on loading the table.
+            var probeMerge = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_MERGECSV="));
+            if (probeMerge != null)
             {
-                var wanted = probeOpen.Substring("PROBE_OPEN=".Length).Trim('"');
-
-                var mission = Logic.GameMaps.all().FirstOrDefault(one =>
-                    string.Equals(one.Name, wanted, StringComparison.OrdinalIgnoreCase));
-
-                if (mission == null)
+                var bits = probeMerge.Substring("PROBE_MERGECSV=".Length).Trim('"').Split(';');
+                if (bits.Length < 3)
                 {
-                    Console.WriteLine($"[open] no mission called {wanted}");
+                    Console.WriteLine("[merge] need PROBE_MERGECSV=<loctable>;<theirs>;<out>");
                     this.Shutdown();
                     return;
                 }
 
-                var folder = Logic.MapWorkshop.folderFor(mission.Name);
-                Console.WriteLine($"[open] folder {folder}");
-                Console.WriteLine($"[open] looksBuilt {Logic.MapWorkshop.looksBuilt(folder)}");
+                var ours = Logic.MapWords.readRaw(bits[0]);
+                if (ours == null)
+                {
+                    Console.WriteLine($"[merge] the game has no label table called {bits[0]}");
+                    this.Shutdown();
+                    return;
+                }
+
+                var theirs = System.IO.File.ReadAllBytes(bits[1]);
+                Console.WriteLine($"[merge] the game's {bits[0]}Labels.csv is {ours.Length} bytes, "
+                    + $"theirs is {theirs.Length}");
+
+                static string keyOf(string line)
+                {
+                    var at = line.IndexOf(',');
+                    return (at < 0 ? line : line.Substring(0, at)).Trim();
+                }
+
+                var mine = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var line in System.Text.Encoding.UTF8.GetString(ours)
+                    .Split('\n'))
+                {
+                    var key = keyOf(line.TrimEnd('\r'));
+                    if (key.Length > 0) { mine.Add(key); }
+                }
+
+                //Whatever the game's file ends its lines with, so the join is invisible.
+                var crlf = Array.IndexOf(ours, (byte)'\r') >= 0;
+                var added = new List<string>();
+
+                foreach (var raw in System.Text.Encoding.UTF8.GetString(theirs).Split('\n'))
+                {
+                    var line = raw.TrimEnd('\r');
+                    var key = keyOf(line);
+
+                    if (key.Length == 0 || mine.Contains(key)) { continue; }
+
+                    added.Add(line);
+                    mine.Add(key);
+                }
+
+                using (var into = new System.IO.MemoryStream())
+                {
+                    into.Write(ours, 0, ours.Length);
+
+                    //Only if the game's own file does not already end with one - a blank line in
+                    //the middle would be a row with no key.
+                    if (ours.Length > 0 && ours[ours.Length - 1] != (byte)'\n')
+                    {
+                        var end = System.Text.Encoding.UTF8.GetBytes(crlf ? "\r\n" : "\n");
+                        into.Write(end, 0, end.Length);
+                    }
+
+                    foreach (var line in added)
+                    {
+                        var row = System.Text.Encoding.UTF8.GetBytes(line + (crlf ? "\r\n" : "\n"));
+                        into.Write(row, 0, row.Length);
+                    }
+
+                    System.IO.File.WriteAllBytes(bits[2], into.ToArray());
+
+                    Console.WriteLine($"[merge] {added.Count} row(s) appended, "
+                        + $"{into.Length} bytes written to {bits[2]}");
+                }
+
+                foreach (var line in added.Take(8))
+                {
+                    Console.WriteLine($"[merge]   + {line}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_PACKFOLDER=<folder>;<name> - a folder of game files, packed as a mod.
+            //
+            //Everything else here packs one KIND of thing - a skin, a map, a payload - because
+            //each knows what it is shipping and can check it. This packs whatever is in a folder,
+            //laid out the way it will sit in the game, and is for content that came from
+            //somewhere else: a level's json, its object groups, its resource pack, the tiles it
+            //names. The folder must be arranged as it will be installed, beginning with
+            //`Dungeons/Content/`.
+            //
+            //It ships what it is given, including anything the game already has. That is the
+            //point - a mod's whole reason for existing is often a file the game already has -
+            //and it is also why this is a probe rather than a button.
+            var probePack = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_PACKFOLDER="));
+            if (probePack != null)
+            {
+                var bits = probePack.Substring("PROBE_PACKFOLDER=".Length).Trim('"').Split(';');
+                var from = bits[0];
+                var name = bits.Length > 1 ? bits[1] : "Folder";
+
+                if (!System.IO.Directory.Exists(from))
+                {
+                    Console.WriteLine($"[pack] no such folder: {from}");
+                    this.Shutdown();
+                    return;
+                }
+
+                var entries = new List<Logic.PakWriter.Entry>();
+
+                foreach (var file in System.IO.Directory.EnumerateFiles(
+                    from, "*", System.IO.SearchOption.AllDirectories))
+                {
+                    var inside = file.Substring(from.Length)
+                        .Replace(System.IO.Path.DirectorySeparatorChar, '/')
+                        .TrimStart('/');
+
+                    entries.Add(new Logic.PakWriter.Entry(
+                        inside, System.IO.File.ReadAllBytes(file)));
+
+                    if (entries.Count <= 40) { Console.WriteLine($"[pack]   {inside}"); }
+                }
+
+                if (entries.Count == 0)
+                {
+                    Console.WriteLine("[pack] the folder is empty");
+                    this.Shutdown();
+                    return;
+                }
+
+                //Said rather than assumed: a tree that does not begin where the game reads from
+                //packs perfectly and does nothing at all, which is the hardest kind of nothing to
+                //diagnose.
+                var rooted = entries.Count(one =>
+                    one.Path.StartsWith("Dungeons/Content/", StringComparison.OrdinalIgnoreCase));
+
+                Console.WriteLine($"[pack] {entries.Count} file(s), {rooted} of them under "
+                    + "Dungeons/Content/");
+
+                if (rooted != entries.Count)
+                {
+                    Console.WriteLine("[pack] WARNING: the rest will be packed where the game "
+                        + "does not look");
+                }
 
                 try
                 {
-                    var map = Logic.MapSpawns.load(folder);
-                    Console.WriteLine($"[open] loaded: {map.Rooms.Count} room(s)");
-
-                    var window = new UI.SpawnsWindow(map, mission);
-                    window.WindowState = WindowState.Normal;
-                    window.Width = 1280;
-                    window.Height = 800;
-                    window.Left = -20000;
-                    window.Show();
-
-                    Console.WriteLine("[open] the window opened with a mission");
-
-                    var waited = 0;
-                    var timer = new System.Windows.Threading.DispatcherTimer
-                    {
-                        Interval = TimeSpan.FromMilliseconds(250),
-                    };
-
-                    timer.Tick += (_, _) =>
-                    {
-                        waited += 250;
-                        if (!window.mapReady && waited < 20000) { return; }
-                        timer.Stop();
-
-                        try
-                        {
-                            Console.WriteLine($"[open] room: {window.roomChosen}");
-                            Console.WriteLine($"[open] tabs: {string.Join(" | ", window.tabHeaders)}");
-                            Console.WriteLine($"[open] save {window.saveEnabled}, install {window.installEnabled}");
-                            Console.WriteLine($"[open] wording: {window.wordingWhyNow}");
-                            Console.WriteLine("[open] it stayed up");
-                        }
-                        catch (Exception problem)
-                        {
-                            Console.WriteLine($"[open] THREW after opening: {problem}");
-                        }
-
-                        this.Shutdown();
-                    };
-
-                    timer.Start();
-                    return;
+                    var made = Logic.CustomSkins.writeModPak(name, entries);
+                    Console.WriteLine($"[pack] wrote {System.IO.Path.GetFileName(made.Path)}");
                 }
                 catch (Exception problem)
                 {
-                    Console.WriteLine($"[open] THREW: {problem}");
+                    Console.WriteLine($"[pack] refused: {problem.Message}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_FIELD=<class>;<field>[;<field>...] - what a live object's fields actually say.
+            //
+            //The difference between "the graph sets this" and "this is set". A property write by
+            //name that does not match its target fails silently and looks exactly like a write
+            //that never ran, and bitfields make it worse - bEnableClickEvents is one bit of a
+            //shared word, so reading the byte gives whichever neighbours happen to be set.
+            //
+            //Read-only.
+            var probeField = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_FIELD="));
+            if (probeField != null)
+            {
+                var bits = probeField.Substring("PROBE_FIELD=".Length).Trim('"')
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+                if (bits.Length < 2)
+                {
+                    Console.WriteLine("[field] need PROBE_FIELD=<class>;<field>[;<field>...]");
+                    this.Shutdown();
+                    return;
+                }
+
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null)
+                {
+                    Console.WriteLine($"[field] the game is not open: {why}");
+                    this.Shutdown();
+                    return;
+                }
+
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game,
+                        step => Console.WriteLine($"[field] {step}"));
+
+                    if (reflect == null)
+                    {
+                        Console.WriteLine("[field] could not read the reflection data");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    var shown = 0;
+
+                    for (var i = 0; i < reflect.Count && shown < 12; i++)
+                    {
+                        var at = reflect.objectAt(i);
+                        if (at == 0) { continue; }
+
+                        var kind = reflect.kindOf(at);
+                        if (kind == null
+                            || kind.IndexOf(bits[0], StringComparison.OrdinalIgnoreCase) < 0)
+                        {
+                            continue;
+                        }
+
+                        var said = reflect.nameOf(at) ?? "?";
+                        var outer = reflect.outerOf(at) ?? "?";
+
+                        //Skip the class defaults, and skip what lives INSIDE one. An engine
+                        //class's default object owns components of its own, and a dozen of those
+                        //will fill the listing before anything in the world is reached.
+                        if (said.StartsWith("Default__", StringComparison.Ordinal)
+                            || outer.StartsWith("Default__", StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
+
+                        shown++;
+                        Console.WriteLine($"[field] {said}  ({kind}, in {outer})");
+
+                        foreach (var want in bits.Skip(1))
+                        {
+                            Console.WriteLine($"[field]    {want,-28} = "
+                                + (reflect.valueOf(at, want) ?? "NOT A FIELD OF THIS"));
+                        }
+                    }
+
+                    if (shown == 0)
+                    {
+                        Console.WriteLine($"[field] nothing of a class like \"{bits[0]}\" is loaded");
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_WHEREIS=<class name> - where the actors of that class actually are.
+            //
+            //"It is loaded" and "it is where I put it" are different claims, and a prop nobody
+            //can find has usually answered the first and failed the second. Offsets are read off
+            //the classes rather than hardcoded: Actor's RootComponent and SceneComponent's
+            //RelativeLocation both carry UPROPERTYs, so the game says where they live.
+            //
+            //Read-only.
+            var probeWhere2 = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_WHEREIS="));
+            if (probeWhere2 != null)
+            {
+                var wanted = probeWhere2.Substring("PROBE_WHEREIS=".Length).Trim('"')
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null)
+                {
+                    Console.WriteLine($"[whereis] the game is not open: {why}");
+                    this.Shutdown();
+                    return;
+                }
+
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game,
+                        step => Console.WriteLine($"[whereis] {step}"));
+
+                    if (reflect == null)
+                    {
+                        Console.WriteLine("[whereis] could not read the reflection data");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    int? offsetOf(string className, string field)
+                    {
+                        var klass = reflect.find(className, "Class");
+                        if (klass == 0) { return null; }
+
+                        foreach (var one in reflect.fieldsOf(klass))
+                        {
+                            if (one.Name == field) { return one.Offset; }
+                        }
+
+                        return null;
+                    }
+
+                    var rootAt = offsetOf("Actor", "RootComponent");
+                    var placeAt = offsetOf("SceneComponent", "RelativeLocation");
+                    var scaleAt = offsetOf("SceneComponent", "RelativeScale3D");
+
+                    Console.WriteLine($"[whereis] Actor.RootComponent +0x{rootAt:x}, "
+                        + $"SceneComponent.RelativeLocation +0x{placeAt:x}");
+
+                    if (rootAt == null || placeAt == null)
+                    {
+                        Console.WriteLine("[whereis] the engine's own fields are not where it says");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var at = reflect.objectAt(i);
+                        if (at == 0) { continue; }
+
+                        var kind = reflect.kindOf(at);
+                        if (kind == null || !wanted.Any(one =>
+                            kind.IndexOf(one, StringComparison.OrdinalIgnoreCase) >= 0))
+                        {
+                            continue;
+                        }
+
+                        var said = reflect.nameOf(at) ?? "?";
+
+                        //The class default object is not in the world and its transform means
+                        //nothing - saying so beats printing a convincing zero.
+                        if (said.StartsWith("Default__", StringComparison.Ordinal))
+                        {
+                            Console.WriteLine($"[whereis] {said}: the class default, not placed");
+                            continue;
+                        }
+
+                        var rootRaw = game.read(new IntPtr(at + rootAt.Value), 8);
+                        var root = rootRaw == null ? 0 : BitConverter.ToInt64(rootRaw, 0);
+
+                        if (root == 0)
+                        {
+                            Console.WriteLine($"[whereis] {said} (in {reflect.outerOf(at)}): "
+                                + "no root component");
+                            continue;
+                        }
+
+                        var place = game.read(new IntPtr(root + placeAt.Value), 12);
+                        if (place == null) { continue; }
+
+                        var x = BitConverter.ToSingle(place, 0);
+                        var y = BitConverter.ToSingle(place, 4);
+                        var z = BitConverter.ToSingle(place, 8);
+
+                        var scale = scaleAt == null ? null
+                            : game.read(new IntPtr(root + scaleAt.Value), 12);
+
+                        Console.WriteLine($"[whereis] {said} (in {reflect.outerOf(at)})");
+                        Console.WriteLine($"[whereis]    at {x,10:F0} {y,10:F0} {z,10:F0}"
+                            + $"   = block {x / 100.0,7:F1} {z / 100.0,7:F1} {y / 100.0,7:F1}"
+                            + (scale == null ? string.Empty
+                                : $"   scale {BitConverter.ToSingle(scale, 0):F2}"));
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_LOADED=<part of a name> - everything the game is holding whose name contains it.
+            //
+            //PROBE_STRUCT asks by exact name, which is the wrong question when the question is
+            //"did any of my mod load at all". A name that is absent and a name that is spelled
+            //differently look identical to an exact match, and the difference is the whole
+            //answer.
+            //
+            //Read-only.
+            var probeLoaded = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_LOADED="));
+            if (probeLoaded != null)
+            {
+                var wanted = probeLoaded.Substring("PROBE_LOADED=".Length).Trim('"')
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null)
+                {
+                    Console.WriteLine($"[loaded] the game is not open: {why}");
+                    this.Shutdown();
+                    return;
+                }
+
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game,
+                        step => Console.WriteLine($"[loaded] {step}"));
+
+                    if (reflect == null)
+                    {
+                        Console.WriteLine("[loaded] could not read the game's reflection data");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    var hits = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+                    foreach (var one in wanted) { hits[one] = new List<string>(); }
+
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var at = reflect.objectAt(i);
+                        if (at == 0) { continue; }
+
+                        var said = reflect.nameOf(at);
+                        if (said == null) { continue; }
+
+                        foreach (var one in wanted)
+                        {
+                            if (said.IndexOf(one, StringComparison.OrdinalIgnoreCase) < 0)
+                            {
+                                continue;
+                            }
+
+                            //The kind and the package, because "it is loaded" and "it is the
+                            //thing I meant" are different claims.
+                            if (hits[one].Count < 40)
+                            {
+                                hits[one].Add($"{reflect.kindOf(at),-26} {said}"
+                                    + $"   (in {reflect.outerOf(at)})");
+                            }
+                        }
+                    }
+
+                    foreach (var one in wanted)
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine($"[loaded] --- \"{one}\": {hits[one].Count} ---");
+
+                        foreach (var line in hits[one])
+                        {
+                            Console.WriteLine($"[loaded]   {line}");
+                        }
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_STRUCT=<Name>[;<Name>...] - what the game says one of its own types is.
+            //
+            //The tool for calling this game's own code. A modded blueprint can call a native
+            //function - that is how the community's map mods launch a custom mission - but only
+            //if it was compiled against a declaration that matches the real one. Field for field:
+            //a name spelled differently or a type a size out does not fail loudly, it writes into
+            //the wrong place and the game does something inexplicable later.
+            //
+            //Nothing published can settle that. Every offset table for this engine online is
+            //either a different version or an editor build, and the Mod Kit ships headers for
+            //skins and cosmetics and nothing else. The game's own account of itself is the only
+            //source that is about THIS executable, and it is in memory whenever it is running.
+            //
+            //Takes a class, a struct, an enum or a function. For a function the arguments come
+            //out in order and marked, so a call can be matched as well as a layout.
+            //
+            //  MCDReborn.exe PROBE_STRUCT=LevelSettings;DungeonsGameInstance
+            //
+            //Read-only. Nothing is written to the game.
+            var probeStruct = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_STRUCT="));
+            if (probeStruct != null)
+            {
+                var wanted = probeStruct.Substring("PROBE_STRUCT=".Length).Trim('"')
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null)
+                {
+                    Console.WriteLine($"[struct] the game is not open: {why}");
+                    this.Shutdown();
+                    return;
+                }
+
+                using (game)
+                {
+                    var began = DateTime.UtcNow;
+                    var reflect = LiveEdit.Reflect.open(game,
+                        step => Console.WriteLine($"[struct] {step}"));
+
+                    if (reflect == null)
+                    {
+                        Console.WriteLine("[struct] could not read the game's reflection data");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    Console.WriteLine($"[struct] ready in {(DateTime.UtcNow - began).TotalSeconds:F1}s");
+
+                    foreach (var name in wanted)
+                    {
+                        Console.WriteLine();
+
+                        var every = reflect.findAll(name.Trim());
+                        if (every.Count == 0)
+                        {
+                            Console.WriteLine($"[struct] nothing called \"{name}\" in the game");
+                            continue;
+                        }
+
+                        //A name can belong to several things - a class and its default object,
+                        //a struct and a property of that type. The ones worth printing are the
+                        //declarations.
+                        foreach (var (at, kind, outer) in every)
+                        {
+                            //BlueprintGeneratedClass belongs here as much as Class does. Leaving
+                            //it out made every blueprint in the game read as "found but not
+                            //printed", which looks exactly like not being there.
+                            if (kind != "Class" && kind != "BlueprintGeneratedClass"
+                                && kind != "ScriptStruct" && kind != "Function" && kind != "Enum")
+                            {
+                                continue;
+                            }
+
+                            var chain = reflect.chainOf(at);
+
+                            Console.WriteLine($"[struct] === {kind} {name} "
+                                + $"(in {outer}, at {at:x}) ===");
+
+                            if (chain.Count > 1)
+                            {
+                                Console.WriteLine($"[struct] inherits: {string.Join(" -> ", chain)}");
+                            }
+
+                            //An enum has no fields - it has names and numbers, and the number is
+                            //usually the whole question: not what the enum is called but which of
+                            //its values means Creeper Woods.
+                            if (kind == "Enum")
+                            {
+                                var values = reflect.valuesOf(at);
+                                Console.WriteLine($"[struct] {values.Count} value(s)");
+
+                                foreach (var (said2, number) in values)
+                                {
+                                    Console.WriteLine($"[struct]   {number,4}  {said2}");
+                                }
+
+                                continue;
+                            }
+
+                            var fields = reflect.fieldsOf(at);
+                            if (fields.Count == 0)
+                            {
+                                Console.WriteLine("[struct] declares nothing of its own");
+                                continue;
+                            }
+
+                            Console.WriteLine("[struct] offset  size  type"
+                                + new string(' ', 39) + "name");
+
+                            foreach (var field in fields)
+                            {
+                                var mark = field.IsReturn ? "  <- returns"
+                                    : field.IsParameter ? "  <- argument" : string.Empty;
+
+                                Console.WriteLine($"[struct]  {field}{mark}");
+                            }
+
+                            //Written out the way a header would say it, because that is what the
+                            //next step needs and transcribing a table by hand is how a field ends
+                            //up spelled wrong.
+                            if (kind == "ScriptStruct")
+                            {
+                                Console.WriteLine();
+                                Console.WriteLine($"[struct] USTRUCT(BlueprintType)");
+                                Console.WriteLine($"[struct] struct F{name} {{");
+                                Console.WriteLine($"[struct]     GENERATED_BODY()");
+
+                                foreach (var field in fields)
+                                {
+                                    Console.WriteLine("[struct]     UPROPERTY(EditAnywhere, "
+                                        + "BlueprintReadWrite)");
+                                    Console.WriteLine($"[struct]     {field.Cpp} {field.Name};");
+                                }
+
+                                Console.WriteLine("[struct] };");
+                            }
+                        }
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_LAYOUT - the layout the running game built, read out of it.
+            //
+            //The thing all of this was for. Welding has to place a mission's rooms itself and
+            //placing them itself is guesswork; the game already knows, and while a mission is
+            //loaded the answer is sitting in memory.
+            //
+            //Three things are found, in order:
+            //
+            //  GNames        by the code of FName::GetNames (see PROBE_GNAMES)
+            //  GUObjectArray by sweeping the writable image for something shaped like it, which
+            //                works here where it did not for names because the arithmetic in a
+            //                chunked object array is tight enough to have one answer
+            //  the offsets   by asking the binary - find the UClass called LevelStreaming, walk
+            //                its properties, and read where each one lives
+            //
+            //That last part matters more than it sounds. Every published offset table for this
+            //engine is the EDITOR layout, and a shipping build makes UStruct sixteen bytes
+            //bigger by privately inheriting FStructBaseChain - so Children is at 0x48 and not
+            //0x38, and a table that says otherwise reads plausible rubbish rather than failing.
+            //Asking the binary sidesteps the whole question.
+            //
+            //Read-only. Nothing is written to the game.
+            var probeLayout = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_LAYOUT"));
+            if (probeLayout != null)
+            {
+                var forMission = probeLayout.Contains('=')
+                    ? probeLayout.Substring(probeLayout.IndexOf('=') + 1).Trim('"')
+                    : string.Empty;
+
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null)
+                {
+                    Console.WriteLine($"[layout] the game is not open: {why}");
+                    this.Shutdown();
+                    return;
+                }
+
+                using (game)
+                {
+                    var image = game.image(out var imageSize);
+                    var baseAt = image.ToInt64();
+
+                    //--- the sections, out of the header: the names are blanked but the table
+                    //--- is intact, so they are taken by flags and size rather than by name.
+                    long codeAt = baseAt + 0x1000, codeEnd = baseAt + imageSize;
+                    long dataAt = 0, dataEnd = 0;
+
+                    var dos = game.read(image, 0x40);
+                    if (dos != null && dos[0] == 'M' && dos[1] == 'Z')
+                    {
+                        var peAt = BitConverter.ToInt32(dos, 0x3c);
+                        var pe = game.read(new IntPtr(baseAt + peAt), 0x108);
+
+                        if (pe != null)
+                        {
+                            var sections = BitConverter.ToUInt16(pe, 6);
+                            var firstSection = peAt + 24 + BitConverter.ToUInt16(pe, 20);
+
+                            for (var i = 0; i < sections; i++)
+                            {
+                                var row = game.read(new IntPtr(baseAt + firstSection + i * 40), 40);
+                                if (row == null) { continue; }
+
+                                var flags = BitConverter.ToUInt32(row, 36);
+                                var rva = BitConverter.ToUInt32(row, 12);
+                                var size = BitConverter.ToUInt32(row, 8);
+
+                                if ((flags & 0x20000000) != 0 && size > 0x100000 && dataAt == 0)
+                                {
+                                    codeAt = baseAt + rva;
+                                    codeEnd = codeAt + size;
+                                }
+
+                                //Initialised data, writable, not executable: the statics.
+                                if ((flags & 0x80000000) != 0 && (flags & 0x20000000) == 0
+                                    && (flags & 0x40000000) != 0 && size > 0x100000 && dataAt == 0)
+                                {
+                                    dataAt = baseAt + rva;
+                                    dataEnd = dataAt + size;
+                                }
+                            }
+                        }
+                    }
+
+                    Console.WriteLine($"[layout] code +{codeAt - baseAt:x} ({(codeEnd - codeAt) / (1024 * 1024)} MB), "
+                        + $"data +{dataAt - baseAt:x} ({(dataEnd - dataAt) / (1024 * 1024)} MB)");
+
+                    //--- GNames -----------------------------------------------------------
+                    var want = new byte?[]
+                    {
+                        0x48, 0x83, 0xEC, 0x28, 0x48, 0x8B, 0x05, null, null, null, null,
+                        0x48, 0x85, 0xC0, 0x75, null, 0xB9, 0x08, 0x08, 0x00, 0x00,
+                    };
+
+                    long table = 0;
+                    var CHUNK = 4 * 1024 * 1024;
+                    var buffer = new byte[CHUNK + 64];
+
+                    for (var at = codeAt; at < codeEnd && table == 0; at += CHUNK)
+                    {
+                        var take = (int)Math.Min(CHUNK + 64, codeEnd - at);
+                        if (!game.tryRead(new IntPtr(at), buffer, take)) { continue; }
+
+                        for (var i = 0; i + want.Length <= take; i++)
+                        {
+                            if (buffer[i] != 0x48) { continue; }
+
+                            var same = true;
+                            for (var j = 1; j < want.Length; j++)
+                            {
+                                if (want[j] == null) { continue; }
+                                if (buffer[i + j] != want[j]!.Value) { same = false; break; }
+                            }
+
+                            if (!same) { continue; }
+
+                            var pointerAt = at + i + 11 + BitConverter.ToInt32(buffer, i + 7);
+                            var held = game.read(new IntPtr(pointerAt), 8);
+                            if (held == null) { continue; }
+
+                            table = BitConverter.ToInt64(held, 0);
+                            break;
+                        }
+                    }
+
+                    if (table == 0)
+                    {
+                        Console.WriteLine("[layout] could not find the name table");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    var names = new LiveEdit.NameTable(game);
+                    names.useChunks(new IntPtr(table));
+
+                    if (names.nameOf(0) != "None")
+                    {
+                        Console.WriteLine("[layout] the name table does not read back");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    Console.WriteLine($"[layout] names at {table:x}");
+
+                    //--- GUObjectArray ----------------------------------------------------
+                    //
+                    //Swept rather than pattern-matched. A chunked object array has to agree with
+                    //itself about how many chunks its elements need, and that is a stiff enough
+                    //test that rubbish does not pass it.
+                    long objects = 0, objectCount = 0;
+                    var perChunk = 0;
+
+                    var data = new byte[Math.Min(dataEnd - dataAt, 64 * 1024 * 1024)];
+
+                    if (dataAt != 0 && game.tryRead(new IntPtr(dataAt), data, data.Length))
+                    {
+                        for (var i = 0; i + 0x20 <= data.Length; i += 4)
+                        {
+                            var chunks = BitConverter.ToInt64(data, i);
+                            if (chunks < 0x10000 || chunks > 0x7fffffffffff) { continue; }
+
+                            var maxElements = BitConverter.ToInt32(data, i + 0x10);
+                            var numElements = BitConverter.ToInt32(data, i + 0x14);
+                            var maxChunks = BitConverter.ToInt32(data, i + 0x18);
+                            var numChunks = BitConverter.ToInt32(data, i + 0x1C);
+
+                            if (numChunks < 1 || numChunks > 0x14) { continue; }
+                            if (maxChunks < 6 || maxChunks > 0x5FF) { continue; }
+                            if (numElements <= 0x800 || maxElements <= 0x10000) { continue; }
+                            if (numElements > maxElements || numChunks > maxChunks) { continue; }
+                            if (maxElements % 0x10 != 0) { continue; }
+
+                            var each = maxElements / maxChunks;
+                            if (each % 0x10 != 0 || each < 0x8000 || each > 0x80000) { continue; }
+                            if (numElements / each + 1 != numChunks) { continue; }
+                            if (maxElements / each != maxChunks) { continue; }
+
+                            //And the chunk pointers have to be there.
+                            var ok = true;
+                            for (var c = 0; c < numChunks && ok; c++)
+                            {
+                                var one = game.read(new IntPtr(chunks + c * 8), 8);
+                                ok = one != null && BitConverter.ToInt64(one, 0) > 0x10000;
+                            }
+
+                            if (!ok) { continue; }
+
+                            objects = chunks;
+                            objectCount = numElements;
+                            perChunk = each;
+
+                            Console.WriteLine($"[layout] objects at {dataAt + i:x}: "
+                                + $"{numElements:N0} of {maxElements:N0}, "
+                                + $"{numChunks} chunk(s) of {each:N0}");
+                            break;
+                        }
+                    }
+
+                    if (objects == 0)
+                    {
+                        Console.WriteLine("[layout] could not find the object array");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    //--- reading objects --------------------------------------------------
+                    const int ITEM = 0x18;
+                    const int CLASS_AT = 0x10, NAME_AT = 0x18;
+                    const int CHILDREN = 0x48, SUPER = 0x40, NEXT = 0x28, OFFSET_AT = 0x44;
+
+                    IntPtr deref(long address, int offset)
+                    {
+                        var raw = game.read(new IntPtr(address + offset), 8);
+                        return raw == null ? IntPtr.Zero : new IntPtr(BitConverter.ToInt64(raw, 0));
+                    }
+
+                    string? nameAt(long obj)
+                    {
+                        if (obj == 0) { return null; }
+                        var raw = game.read(new IntPtr(obj + NAME_AT), 4);
+                        return raw == null ? null : names.nameOf(BitConverter.ToInt32(raw, 0));
+                    }
+
+                    long objectAt(int index)
+                    {
+                        var chunk = game.read(new IntPtr(objects + (index / perChunk) * 8), 8);
+                        if (chunk == null) { return 0; }
+
+                        var where = BitConverter.ToInt64(chunk, 0);
+                        if (where <= 0x10000) { return 0; }
+
+                        var item = game.read(new IntPtr(where + (index % perChunk) * ITEM), 8);
+                        return item == null ? 0 : BitConverter.ToInt64(item, 0);
+                    }
+
+                    //--- the class, and where its fields live -----------------------------
+                    long theClass = 0;
+                    var began = DateTime.UtcNow;
+
+                    for (var i = 0; i < objectCount; i++)
+                    {
+                        var one = objectAt(i);
+                        if (one == 0) { continue; }
+                        if (nameAt(one) != "LevelStreaming") { continue; }
+
+                        //The class itself, not an instance of it: a UClass is its own class's
+                        //instance, so the one whose name is LevelStreaming and whose class is
+                        //named Class is the one wanted.
+                        if (nameAt(deref(one, CLASS_AT).ToInt64()) != "Class") { continue; }
+
+                        theClass = one;
+                        break;
+                    }
+
+                    if (theClass == 0)
+                    {
+                        Console.WriteLine("[layout] no ULevelStreaming class - is a mission loaded?");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    Console.WriteLine($"[layout] ULevelStreaming class at {theClass:x} "
+                        + $"(found in {(DateTime.UtcNow - began).TotalSeconds:F1}s)");
+
+                    var where = new Dictionary<string, int>(StringComparer.Ordinal);
+
+                    for (var klass = theClass; klass != 0; klass = deref(klass, SUPER).ToInt64())
+                    {
+                        for (var field = deref(klass, CHILDREN).ToInt64(); field != 0;
+                             field = deref(field, NEXT).ToInt64())
+                        {
+                            var said = nameAt(field);
+                            if (said == null || where.ContainsKey(said)) { continue; }
+
+                            var raw = game.read(new IntPtr(field + OFFSET_AT), 4);
+                            if (raw == null) { continue; }
+
+                            where[said] = BitConverter.ToInt32(raw, 0);
+                        }
+                    }
+
+                    foreach (var wanted in new[] { "LevelTransform", "PackageNameToLoad",
+                                                   "WorldAsset", "LoadedLevel" })
+                    {
+                        Console.WriteLine($"[layout]   {wanted,-20} "
+                            + (where.TryGetValue(wanted, out var off)
+                                ? $"+0x{off:x}" : "NOT FOUND"));
+                    }
+
+                    if (!where.TryGetValue("LevelTransform", out var transformAt)
+                        || !where.TryGetValue("PackageNameToLoad", out var packageAt))
+                    {
+                        Console.WriteLine("[layout] the fields are not where the class says - stopping");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    //--- every placed tile ------------------------------------------------
+                    Console.WriteLine();
+                    Console.WriteLine("[layout] --- the mission, as the game built it ---");
+
+                    var placed = 0;
+                    var found2 = new List<(string tile, string theme, float x, float y, float z, double yaw)>();
+
+                    for (var i = 0; i < objectCount; i++)
+                    {
+                        var one = objectAt(i);
+                        if (one == 0) { continue; }
+
+                        //An instance of the class, or of anything derived from it.
+                        var mine = false;
+                        for (var klass = deref(one, CLASS_AT).ToInt64(); klass != 0;
+                             klass = deref(klass, SUPER).ToInt64())
+                        {
+                            if (klass == theClass) { mine = true; break; }
+                        }
+
+                        if (!mine) { continue; }
+
+                        var package = game.read(new IntPtr(one + packageAt), 4);
+                        var tile = package == null ? null : names.nameOf(BitConverter.ToInt32(package, 0));
+
+                        var transform = game.read(new IntPtr(one + transformAt), 0x30);
+                        if (transform == null) { continue; }
+
+                        //Rotation is a quaternion; translation is centimetres.
+                        var qx = BitConverter.ToSingle(transform, 0);
+                        var qy = BitConverter.ToSingle(transform, 4);
+                        var qz = BitConverter.ToSingle(transform, 8);
+                        var qw = BitConverter.ToSingle(transform, 12);
+
+                        var tx = BitConverter.ToSingle(transform, 0x10);
+                        var ty = BitConverter.ToSingle(transform, 0x14);
+                        var tz = BitConverter.ToSingle(transform, 0x18);
+
+                        //Yaw out of the quaternion, which for a tile turned about the up axis is
+                        //the only part that is not zero.
+                        var yaw = Math.Atan2(2.0 * (qw * qz + qx * qy),
+                                             1.0 - 2.0 * (qy * qy + qz * qz)) * 180.0 / Math.PI;
+
+                        placed++;
+
+                        //The package path is /Game/Decor/Maps/<theme>/SubLevels/<tile>, and the
+                        //tile is the part a level file would name.
+                        var said = tile ?? string.Empty;
+                        var cut = said.LastIndexOf('/');
+                        var leaf = cut < 0 ? said : said.Substring(cut + 1);
+
+                        var themeAt = said.IndexOf("/Maps/", StringComparison.OrdinalIgnoreCase);
+                        var theme = themeAt < 0 ? string.Empty
+                            : said.Substring(themeAt + 6).Split('/')[0];
+
+                        if (leaf.Length > 0 && leaf != "None")
+                        {
+                            found2.Add((leaf, theme, tx, ty, tz, yaw));
+                        }
+
+                        if (placed <= 60)
+                        {
+                            Console.WriteLine($"[layout] {tile ?? "(no package)",-34} "
+                                + $"at {tx,9:F0} {ty,9:F0} {tz,8:F0}   yaw {yaw,6:F1}");
+                        }
+                    }
+
+                    Console.WriteLine($"[layout] {placed} streaming level(s) in the world");
+
+                    //Written down, because this is the artifact - the arrangement the game
+                    //chose, in the terms a tile is described in. A hundred units to the block:
+                    //Unreal counts centimetres and a Dungeons block is a metre.
+                    //Into the mission's own folder when one is named, because that is where
+                    //the welder looks. Unreal counts centimetres and is Z-up; a tile is measured
+                    //in blocks of a metre and is Y-up - so the axes swap on the way across.
+                    var into = forMission.Length > 0
+                        ? System.IO.Path.Combine(Logic.MapWorkshop.folderFor(forMission),
+                                                 "live-layout.json")
+                        : System.IO.Path.Combine(System.IO.Path.GetTempPath(),
+                                                 "mcd-live-layout.json");
+
+                    var written = new System.Text.Json.Nodes.JsonArray();
+
+                    foreach (var row in found2)
+                    {
+                        written.Add(new System.Text.Json.Nodes.JsonObject
+                        {
+                            ["id"] = row.tile,
+                            ["theme"] = row.theme,
+                            //Unreal x,y,z -> tile x,y,z: the game's up is z and a tile's is y.
+                            ["pos"] = new System.Text.Json.Nodes.JsonArray(
+                                (int)Math.Round(row.x / 100.0),
+                                (int)Math.Round(row.z / 100.0),
+                                (int)Math.Round(row.y / 100.0)),
+                            ["yaw"] = (int)Math.Round(row.yaw),
+                        });
+                    }
+
+                    System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(into)!);
+
+                    System.IO.File.WriteAllText(into,
+                        written.ToJsonString(new System.Text.Json.JsonSerializerOptions
+                        {
+                            WriteIndented = true,
+                        }));
+
+                    Console.WriteLine($"[layout] written to {into}");
                 }
 
                 this.Shutdown();
