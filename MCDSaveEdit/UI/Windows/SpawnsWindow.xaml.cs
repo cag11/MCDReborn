@@ -345,6 +345,127 @@ namespace MCDSaveEdit.UI
 
         internal void probeInstall() => installButton_Click(this, new RoutedEventArgs());
 
+        internal string[] arenaRows => arenaList.Items.OfType<MapSpawns.Arena>()
+            .Select(one => one.ToString()).ToArray();
+
+        internal string arenaHintNow => arenaHint.Text;
+
+        internal string[] keyRows => keysList.Items.OfType<MapSpawns.Keyed>()
+            .Select(one => one.ToString()).ToArray();
+
+        internal string keysHintNow => keysHint.Text;
+
+        internal int arenaGroupCount => arenaGroupBox.Items.Count;
+
+        internal void probeAddArena(int wording, int count, bool seal, int x, int y, int z)
+        {
+            stepTitleBox.SelectedIndex = wording;
+            arenaCountBox.Text = count.ToString();
+            arenaGateBox.IsChecked = seal;
+            xBox.Text = x.ToString();
+            yBox.Text = y.ToString();
+            zBox.Text = z.ToString();
+            addArenaButton_Click(this, new RoutedEventArgs());
+        }
+
+        internal void probePickArena(int row)
+        {
+            arenaList.SelectedIndex = row;
+            arenaList_SelectionChanged(this, new SelectionChangedEventArgs(
+                System.Windows.Controls.Primitives.Selector.SelectionChangedEvent,
+                new object[0], new object[0]));
+        }
+
+        internal void probeAddWave(int count)
+        {
+            arenaCountBox.Text = count.ToString();
+            waveArenaButton_Click(this, new RoutedEventArgs());
+        }
+
+        internal void probeAddKeyed(int wording, int x, int y, int z)
+        {
+            keyWordingBox.SelectedIndex = wording;
+            xBox.Text = x.ToString();
+            yBox.Text = y.ToString();
+            zBox.Text = z.ToString();
+            addKeyedButton_Click(this, new RoutedEventArgs());
+        }
+
+        internal void probePickKeyed(int row)
+        {
+            keysList.SelectedIndex = row;
+            keysList_SelectionChanged(this, new SelectionChangedEventArgs(
+                System.Windows.Controls.Primitives.Selector.SelectionChangedEvent,
+                new object[0], new object[0]));
+        }
+
+        internal void probeAlsoKey(int x, int y, int z)
+        {
+            xBox.Text = x.ToString();
+            yBox.Text = y.ToString();
+            zBox.Text = z.ToString();
+            alsoKeyButton_Click(this, new RoutedEventArgs());
+        }
+
+        internal void probeSetMusic(int row)
+        {
+            musicBox.SelectedIndex = row;
+            levelSetting_Changed(musicBox, new SelectionChangedEventArgs(
+                System.Windows.Controls.Primitives.Selector.SelectionChangedEvent,
+                new object[0], new object[0]));
+        }
+
+        internal void probeToggleMatchDoors()
+        {
+            matchDoorsBox.IsChecked = matchDoorsBox.IsChecked != true;
+            levelFlag_Changed(matchDoorsBox, new RoutedEventArgs());
+        }
+
+        internal string[] tabHeaders => panelTabs.Items.OfType<System.Windows.Controls.TabItem>()
+            .Select(one => one.Header?.ToString() ?? "?").ToArray();
+
+        /// <summary>
+        /// The headers in the order they are actually DRAWN, top row first.
+        ///
+        /// Not the same question as the order they are declared in, which is the one thing that
+        /// never changed while the strip was rearranging itself. WPF's TabPanel does its
+        /// shuffling at arrange time - the children collection stays put and their positions
+        /// move - so anything short of asking where each one ended up would have passed.
+        /// </summary>
+        internal string[] tabHeadersOnScreen
+        {
+            get
+            {
+                var found = new List<(double y, double x, string said)>();
+
+                foreach (var tab in panelTabs.Items.OfType<System.Windows.Controls.TabItem>())
+                {
+                    if (!tab.IsArrangeValid || tab.ActualWidth <= 0) { continue; }
+
+                    try
+                    {
+                        var at = tab.TransformToAncestor(panelTabs).Transform(new Point(0, 0));
+                        found.Add((Math.Round(at.Y), at.X, tab.Header?.ToString() ?? "?"));
+                    }
+                    catch
+                    {
+                        //A tab that is not in the tree yet has nowhere to be.
+                    }
+                }
+
+                return found
+                    .OrderBy(one => one.y).ThenBy(one => one.x)
+                    .Select(one => one.said)
+                    .ToArray();
+            }
+        }
+
+        internal void probePickTab(int at)
+        {
+            panelTabs.SelectedIndex = at;
+            panelTabs.UpdateLayout();
+        }
+
         internal string[] opensRows => opensBox.Items.OfType<ComboBoxItem>()
             .Select(one => one.Content?.ToString() ?? string.Empty).ToArray();
 
@@ -366,6 +487,17 @@ namespace MCDSaveEdit.UI
             .Select(one => one.Content?.ToString() ?? string.Empty).ToArray();
 
         internal string wordingWhyNow => stepWordingWhy.Text;
+
+        /// <summary>Types wording nobody has a key for, then makes a step of it.</summary>
+        internal void probeSayAndAddStep(string said, int x, int y, int z)
+        {
+            stepSay.Text = said;
+            stepBannerSay.Text = said;
+            xBox.Text = x.ToString();
+            yBox.Text = y.ToString();
+            zBox.Text = z.ToString();
+            addClickStepButton_Click(this, new RoutedEventArgs());
+        }
 
         internal void probeAddClickStep(int wording, int thing, int x, int y, int z)
         {
@@ -553,7 +685,47 @@ namespace MCDSaveEdit.UI
             mobsTab.Header = R.SPAWNS_TAB_MOBS;
             waysTab.Header = R.SPAWNS_TAB_WAYS;
             questTab.Header = R.SPAWNS_TAB_QUEST;
-            gatesLabel.Content = R.SPAWNS_GATES;
+            gatesTab.Header = R.SPAWNS_TAB_GATES;
+            arenaTab.Header = R.SPAWNS_TAB_ARENA;
+            keysTab.Header = R.SPAWNS_TAB_KEYS;
+            levelTab.Header = R.SPAWNS_TAB_LEVEL;
+
+            addArenaButton.Content = R.SPAWNS_ADD_ARENA;
+            waveArenaButton.Content = R.SPAWNS_ARENA_WAVE;
+            removeArenaButton.Content = R.SPAWNS_ARENA_REMOVE;
+            applyArenaButton.Content = R.SPAWNS_ARENA_APPLY;
+            arenaWordingLabel.Text = R.SPAWNS_ARENA_WORDING;
+            arenaGroupLabel.Text = R.SPAWNS_ARENA_GROUP;
+            arenaCountLabel.Text = R.SPAWNS_ARENA_COUNT;
+            arenaRewardLabel.Text = R.SPAWNS_ARENA_REWARD;
+            arenaGateBox.Content = R.SPAWNS_ARENA_GATE;
+
+            arenaRewardBox.Items.Clear();
+            foreach (var pays in MapSpawns.REWARDS)
+            {
+                arenaRewardBox.Items.Add(new ComboBoxItem { Content = pays.name, Tag = pays.id });
+            }
+            arenaRewardBox.SelectedIndex = 0;
+
+            addKeyedButton.Content = R.SPAWNS_ADD_KEYED;
+            alsoKeyButton.Content = R.SPAWNS_KEY_ALSO;
+            removeKeyedButton.Content = R.SPAWNS_KEY_REMOVE;
+            keyWordingLabel.Text = R.SPAWNS_KEY_WORDING;
+            keyDoorLabel.Text = R.SPAWNS_KEY_DOOR;
+
+            keyDoorBox.Items.Clear();
+            foreach (var door in MapSpawns.LOCKED_DOORS)
+            {
+                keyDoorBox.Items.Add(new ComboBoxItem { Content = door.name, Tag = door.path });
+            }
+            keyDoorBox.SelectedIndex = 0;
+
+            levelHint.Text = R.SPAWNS_LEVEL_WHY;
+            ambienceLabel.Text = R.SPAWNS_LEVEL_AMBIENCE;
+            musicLabel.Text = R.SPAWNS_LEVEL_MUSIC;
+            matchDoorsBox.Content = R.SPAWNS_LEVEL_MATCH;
+            matchDoorsWhy.Text = R.SPAWNS_LEVEL_MATCH_WHY;
+            introBox.Content = R.SPAWNS_LEVEL_INTRO;
             gatesHint.Text = R.SPAWNS_GATES_WHY;
             addGateButton.Content = R.SPAWNS_ADD_GATE;
             turnGateButton.Content = R.SPAWNS_TURN_GATE;
@@ -752,6 +924,9 @@ namespace MCDSaveEdit.UI
             fillWording();
             fillSteps();
             fillGates();
+            fillArenas();
+            fillKeys();
+            fillLevel();
         }
 
         /// <summary>
@@ -776,6 +951,412 @@ namespace MCDSaveEdit.UI
             }
 
             mapView.mark(found, Color.FromRgb(255, 120, 60));
+        }
+
+        //--- fights ---------------------------------------------------------------------------------
+
+        private int _arena = -1;
+
+        /// <summary>
+        /// The mission's walled-off fights.
+        ///
+        /// Their own tab because a fight is three things at once - ground for the mobs, a gate
+        /// that shuts, and a step in the chain - and putting those beside the plain steps made a
+        /// panel nobody could read.
+        /// </summary>
+        private void fillArenas()
+        {
+            var fights = MapSpawns.arenasOf(_map);
+
+            _filling = true;
+            var wasAt = _arena;
+            arenaList.ItemsSource = fights;
+            arenaList.SelectedIndex = fights.FindIndex(one => one.At == wasAt);
+            _filling = false;
+
+            //The groups a fight can draw from are the same ones the Mobs tab edits, so the list
+            //is taken from there rather than kept twice.
+            var was = (arenaGroupBox.SelectedItem as ComboBoxItem)?.Tag as string;
+            arenaGroupBox.Items.Clear();
+
+            foreach (var id in MapSpawns.usage(_map.Level).Keys.OrderBy(one => one,
+                StringComparer.OrdinalIgnoreCase))
+            {
+                arenaGroupBox.Items.Add(new ComboBoxItem { Content = id, Tag = id });
+            }
+
+            if (arenaGroupBox.Items.Count > 0)
+            {
+                var back = arenaGroupBox.Items.OfType<ComboBoxItem>().ToList()
+                    .FindIndex(one => (one.Tag as string) == was);
+                arenaGroupBox.SelectedIndex = back >= 0 ? back : 0;
+            }
+
+            var lost = fights.Count(one => one.From.Length == 0);
+
+            arenaHint.Text = fights.Count == 0
+                ? R.SPAWNS_ARENA_NONE
+                : lost > 0
+                    ? string.Format(R.SPAWNS_ARENA_BROKEN, fights.Count, lost)
+                    : string.Format(R.SPAWNS_ARENA_SOME, fights.Count);
+        }
+
+        private void arenaList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+            if (arenaList.SelectedItem is not MapSpawns.Arena fight) { _arena = -1; return; }
+
+            _arena = fight.At;
+
+            //The editors move to what that fight already is, so Apply changes one thing rather
+            //than quietly rewriting the lot.
+            arenaCountBox.Text = fight.Count.ToString();
+            arenaGateBox.IsChecked = fight.Gates.Length > 0;
+
+            pick(arenaGroupBox, fight.Group);
+            pick(arenaRewardBox, fight.Reward);
+
+            _quest = fight.At;
+            selectRow(questList, one => one is MapSpawns.Objective found && found.At == _quest);
+
+            drawWires();
+            statusLabel.Text = fight.ToString();
+            updateUI();
+        }
+
+        /// <summary>Moves a picker to the row carrying a tag, if it has one.</summary>
+        private static void pick(System.Windows.Controls.ComboBox box, string tag)
+        {
+            var at = box.Items.OfType<ComboBoxItem>().ToList()
+                .FindIndex(one => (one.Tag as string) == tag);
+
+            if (at >= 0) { box.SelectedIndex = at; }
+        }
+
+        private int arenaCount()
+            => int.TryParse(arenaCountBox.Text.Trim(), out var many) ? Math.Max(1, many) : 8;
+
+        private void addArenaButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null) { return; }
+
+            var group = (arenaGroupBox.SelectedItem as ComboBoxItem)?.Tag as string;
+            if (string.IsNullOrEmpty(group)) { statusLabel.Text = R.SPAWNS_ARENA_NEEDS_GROUP; return; }
+
+            var asks = wordFor(stepSay, stepTitleBox, "description_");
+            if (asks.Length == 0) { statusLabel.Text = R.SPAWNS_STEP_NEEDS_TITLE; return; }
+
+            var banner = wordFor(stepBannerSay, stepBannerBox, "name_");
+            if (banner.Length == 0) { banner = asks; }
+
+            var x = number(xBox, _room.Size[0] / 2);
+            var y = number(yBox, _room.Size[1] / 2);
+            var z = number(zBox, _room.Size[2] / 2);
+
+            var count = arenaCount();
+
+            var at = MapSpawns.addArena(_map, _room, banner, asks, group!, count,
+                (arenaRewardBox.SelectedItem as ComboBoxItem)?.Tag as string ?? string.Empty,
+                (drawnBox.SelectedItem as ComboBoxItem)?.Tag as string
+                    ?? MapSpawns.GATE_LOOKS[0].path,
+                arenaGateBox.IsChecked == true, x, y, z);
+
+            _map.Changed.Add(_room.File);
+            _map.Changed.Add("level.json");
+
+            _arena = at;
+            statusLabel.Text = string.Format(R.SPAWNS_ARENA_ADDED, count, group, x, y, z);
+
+            redrawAll();
+        }
+
+        /// <summary>
+        /// Another fight on the same ground as the chosen one.
+        ///
+        /// Which is all a "wave" is. The game has no wave list for a kill-group - what makes the
+        /// finale of Blossoming Isles five waves is five kill-groups in a row naming one region,
+        /// and only the last one holding the gate.
+        /// </summary>
+        private void waveArenaButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null) { return; }
+
+            var fight = MapSpawns.arenasOf(_map).FirstOrDefault(one => one.At == _arena);
+            if (fight == null) { statusLabel.Text = R.SPAWNS_ARENA_PICK; return; }
+
+            var group = (arenaGroupBox.SelectedItem as ComboBoxItem)?.Tag as string ?? fight.Group;
+            var count = arenaCount();
+
+            if (!MapSpawns.addWave(_map, fight.At, count, group)) { return; }
+
+            _map.Changed.Add("level.json");
+            statusLabel.Text = string.Format(R.SPAWNS_ARENA_WAVED, count, group);
+
+            redrawAll();
+        }
+
+        private void applyArenaButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_arena < 0) { statusLabel.Text = R.SPAWNS_ARENA_PICK; return; }
+
+            var group = (arenaGroupBox.SelectedItem as ComboBoxItem)?.Tag as string;
+            if (string.IsNullOrEmpty(group)) { statusLabel.Text = R.SPAWNS_ARENA_NEEDS_GROUP; return; }
+
+            var count = arenaCount();
+
+            if (!MapSpawns.reshapeArena(_map, _arena, count, group!,
+                (arenaRewardBox.SelectedItem as ComboBoxItem)?.Tag as string ?? string.Empty))
+            {
+                return;
+            }
+
+            _map.Changed.Add("level.json");
+            statusLabel.Text = string.Format(R.SPAWNS_ARENA_APPLIED, count, group);
+
+            redrawAll();
+        }
+
+        private void removeArenaButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null || _arena < 0) { statusLabel.Text = R.SPAWNS_ARENA_PICK; return; }
+            if (!MapSpawns.removeObjectiveAt(_map, _arena)) { return; }
+
+            _map.Changed.Add("level.json");
+            if (MapSpawns.dropOrphanSteps(_map, _room) > 0) { _map.Changed.Add(_room.File); }
+
+            _arena = -1;
+            _quest = -1;
+
+            statusLabel.Text = string.Format(R.SPAWNS_QUEST_REMOVED,
+                MapSpawns.objectivesOf(_map).Count);
+
+            redrawAll();
+        }
+
+        //--- doors that want a key ------------------------------------------------------------------
+
+        private int _keyed = -1;
+
+        private void fillKeys()
+        {
+            var doors = MapSpawns.keyedOf(_map);
+
+            _filling = true;
+            var wasAt = _keyed;
+            keysList.ItemsSource = doors;
+            keysList.SelectedIndex = doors.FindIndex(one => one.At == wasAt);
+            _filling = false;
+
+            //The same wording list the steps use - a locked door is a step like any other.
+            keyWordingBox.Items.Clear();
+            foreach (var row in stepTitleBox.Items.OfType<ComboBoxItem>())
+            {
+                keyWordingBox.Items.Add(new ComboBoxItem { Content = row.Content, Tag = row.Tag });
+            }
+            if (keyWordingBox.Items.Count > 0) { keyWordingBox.SelectedIndex = 0; }
+
+            var shut = doors.Count(one => one.Keys.Length == 0);
+
+            keysHint.Text = doors.Count == 0
+                ? R.SPAWNS_KEYS_NONE
+                : shut > 0
+                    ? string.Format(R.SPAWNS_KEYS_BROKEN, doors.Count, shut)
+                    : string.Format(R.SPAWNS_KEYS_SOME, doors.Count);
+        }
+
+        private void keysList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+            if (keysList.SelectedItem is not MapSpawns.Keyed door) { _keyed = -1; return; }
+
+            _keyed = door.At;
+            pick(keyDoorBox, door.Door);
+
+            _quest = door.At;
+            selectRow(questList, one => one is MapSpawns.Objective found && found.At == _quest);
+
+            drawWires();
+            statusLabel.Text = door.ToString();
+            updateUI();
+        }
+
+        private void addKeyedButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null) { return; }
+
+            var asks = wordFor(stepSay, stepTitleBox, "description_");
+            if (asks.Length == 0) { statusLabel.Text = R.SPAWNS_STEP_NEEDS_TITLE; return; }
+
+            var banner = wordFor(stepBannerSay, stepBannerBox, "name_");
+            if (banner.Length == 0) { banner = asks; }
+
+            var door = (keyDoorBox.SelectedItem as ComboBoxItem)?.Tag as string
+                       ?? MapSpawns.LOCKED_DOORS[0].path;
+
+            var kind = MapSpawns.LOCKED_DOORS.FirstOrDefault(one => one.path == door).key
+                       ?? MapSpawns.LOCKED_DOORS[0].key;
+
+            var x = number(xBox, _room.Size[0] / 2);
+            var y = number(yBox, _room.Size[1] / 2);
+            var z = number(zBox, _room.Size[2] / 2);
+
+            //The key starts a little way off rather than on top of the door, because two pins in
+            //one cell cannot be told apart, let alone dragged.
+            var away = Math.Max(6, Math.Min(_room.Size[0], _room.Size[2]) / 6);
+
+            var at = MapSpawns.addKeyed(_map, _room, banner, asks, door, kind,
+                x, y, z, Math.Max(0, x - away), y, z);
+
+            _map.Changed.Add(_room.File);
+            _map.Changed.Add("level.json");
+
+            _keyed = at;
+
+            statusLabel.Text = string.Format(R.SPAWNS_KEYED_ADDED,
+                MapSpawns.LOCKED_DOORS.FirstOrDefault(one => one.path == door).name ?? "door",
+                x, y, z);
+
+            redrawAll();
+        }
+
+        private void alsoKeyButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null || _keyed < 0) { statusLabel.Text = R.SPAWNS_KEY_PICK; return; }
+
+            var x = number(xBox, _room.Size[0] / 2);
+            var y = number(yBox, _room.Size[1] / 2);
+            var z = number(zBox, _room.Size[2] / 2);
+
+            if (MapSpawns.alsoKeyAt(_map, _room, _keyed, x, y, z).Length == 0) { return; }
+
+            _map.Changed.Add(_room.File);
+            _map.Changed.Add("level.json");
+
+            statusLabel.Text = string.Format(R.SPAWNS_KEY_ALSO_ADDED, x, y, z);
+
+            redrawAll();
+        }
+
+        private void removeKeyedButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_room == null || _keyed < 0) { statusLabel.Text = R.SPAWNS_KEY_PICK; return; }
+            if (!MapSpawns.removeObjectiveAt(_map, _keyed)) { return; }
+
+            _map.Changed.Add("level.json");
+            if (MapSpawns.dropOrphanSteps(_map, _room) > 0) { _map.Changed.Add(_room.File); }
+
+            _keyed = -1;
+            _quest = -1;
+
+            statusLabel.Text = string.Format(R.SPAWNS_QUEST_REMOVED,
+                MapSpawns.objectivesOf(_map).Count);
+
+            redrawAll();
+        }
+
+        //--- the level itself -----------------------------------------------------------------------
+
+        /// <summary>
+        /// The mission's own settings.
+        ///
+        /// Each is one line in the level file and each is something the game's own missions set,
+        /// so the dropdowns offer real values rather than free text - the same reason the
+        /// objective wording is a list.
+        /// </summary>
+        private void fillLevel()
+        {
+            _filling = true;
+
+            void fillWith(System.Windows.Controls.ComboBox box, string? none, string? now)
+            {
+                box.Items.Clear();
+
+                if (none != null) { box.Items.Add(new ComboBoxItem { Content = none, Tag = "" }); }
+
+                foreach (var mission in GameMaps.all())
+                {
+                    box.Items.Add(new ComboBoxItem { Content = mission.Label, Tag = mission.Name });
+                }
+
+                var at = box.Items.OfType<ComboBoxItem>().ToList().FindIndex(one =>
+                    string.Equals(one.Tag as string, now ?? string.Empty,
+                        StringComparison.OrdinalIgnoreCase));
+
+                box.SelectedIndex = at >= 0 ? at : 0;
+            }
+
+            //Ambience borrows another mission's whole look, so the list is the missions. None
+            //of the game's own levels sets this - the only working examples are mods, and they
+            //all name a mission.
+            fillWith(ambienceBox, null, MapSpawns.levelText(_map, "ambience-level-id"));
+
+            //Music is NOT a mission, and is its own short list. See MapSpawns.MUSIC.
+            musicBox.Items.Clear();
+            foreach (var track in MapSpawns.MUSIC)
+            {
+                musicBox.Items.Add(new ComboBoxItem { Content = track.name, Tag = track.id });
+            }
+
+            var now = MapSpawns.levelText(_map, "music-override") ?? string.Empty;
+            var row = musicBox.Items.OfType<ComboBoxItem>().ToList().FindIndex(one =>
+                string.Equals(one.Tag as string, now, StringComparison.OrdinalIgnoreCase));
+
+            musicBox.SelectedIndex = row >= 0 ? row : 0;
+
+            //Both default to ON in the game, so a level that says nothing is a level that does
+            //both - which is what the boxes have to show for an unset field.
+            matchDoorsBox.IsChecked = MapSpawns.levelFlag(_map, "require-matching-doors") ?? true;
+            introBox.IsChecked = MapSpawns.levelFlag(_map, "play-intro") ?? true;
+
+            _filling = false;
+        }
+
+        private void levelSetting_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            var which = ReferenceEquals(sender, ambienceBox) ? "ambience-level-id" : "music-override";
+            var said = ((sender as System.Windows.Controls.ComboBox)?.SelectedItem
+                        as ComboBoxItem)?.Tag as string ?? string.Empty;
+
+            MapSpawns.setLevelText(_map, which, said);
+            _map.Changed.Add("level.json");
+
+            statusLabel.Text = string.Format(R.SPAWNS_LEVEL_SET, which,
+                said.Length == 0 ? R.SPAWNS_LEVEL_MUSIC_SAME : said);
+
+            updateUI();
+        }
+
+        private void levelFlag_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            var which = ReferenceEquals(sender, matchDoorsBox)
+                ? "require-matching-doors"
+                : "play-intro";
+
+            var now = (sender as System.Windows.Controls.CheckBox)?.IsChecked == true;
+
+            //Written even when it matches the default, because "unset" and "set to the default"
+            //read the same to the game but not to the next person opening the file.
+            MapSpawns.setLevelFlag(_map, which, now);
+            _map.Changed.Add("level.json");
+
+            statusLabel.Text = string.Format(R.SPAWNS_LEVEL_SET, which, now);
+            updateUI();
+        }
+
+        /// <summary>Everything the chain touches, after a change that could touch all of it.</summary>
+        private void redrawAll()
+        {
+            fillQuest();
+            fillSteps();
+            fillGates();
+            fillArenas();
+            fillKeys();
+            drawWires();
+            updateUI();
         }
 
         //--- steps you can add ----------------------------------------------------------------------
@@ -852,30 +1433,96 @@ namespace MCDSaveEdit.UI
         {
             var table = MapSpawns.loctableOf(_map);
 
+            //Everything the mission can already say - the game's own rows, plus whatever this
+            //map has invented for itself. Both come out of the CSV table rather than the
+            //compiled string table; see MapWords for why that is the part that matters.
+            var known = MapWords.all(_map.Folder, table);
+
             void fill(System.Windows.Controls.ComboBox box, string stem)
             {
                 box.Items.Clear();
 
-                foreach (var (key, said) in R.wordingFor(table, stem))
+                foreach (var word in known
+                    .Where(one => one.Key.StartsWith(stem, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(one => one.Said, StringComparer.CurrentCultureIgnoreCase))
                 {
-                    box.Items.Add(new ComboBoxItem { Content = said, Tag = key });
+                    box.Items.Add(new ComboBoxItem { Content = word.Said, Tag = word.Key });
                 }
 
                 if (box.Items.Count > 0) { box.SelectedIndex = 0; }
             }
 
+            _filling = true;
             fill(stepBannerBox, "name_");
             fill(stepTitleBox, "description_");
+            _filling = false;
 
-            stepWordingWhy.Text = stepTitleBox.Items.Count == 0
-                ? string.Format(R.SPAWNS_STEP_NO_WORDS, table)
-                : string.Format(R.SPAWNS_STEP_WORDS_FROM,
-                    stepTitleBox.Items.Count + stepBannerBox.Items.Count, table);
+            if (stepSay.Text.Trim().Length == 0 && stepTitleBox.Items.Count > 0)
+            {
+                stepSay.Text = (stepTitleBox.Items[0] as ComboBoxItem)?.Content?.ToString() ?? "";
+            }
+
+            if (stepBannerSay.Text.Trim().Length == 0 && stepBannerBox.Items.Count > 0)
+            {
+                stepBannerSay.Text = (stepBannerBox.Items[0] as ComboBoxItem)?.Content?.ToString() ?? "";
+            }
+
+            stepWordingWhy.Text = string.Format(R.SPAWNS_STEP_WORDS_FROM, known.Count, table);
         }
 
         /// <summary>The key a wording picker is on, or empty when it has nothing.</summary>
         private static string keyOf(System.Windows.Controls.ComboBox box)
             => (box.SelectedItem as ComboBoxItem)?.Tag as string ?? string.Empty;
+
+        /// <summary>Puts a borrowed phrase into the box beside it, to be kept or edited.</summary>
+        private void borrowWording_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+
+            var said = ((sender as System.Windows.Controls.ComboBox)?.SelectedItem
+                        as ComboBoxItem)?.Content?.ToString();
+
+            if (string.IsNullOrEmpty(said)) { return; }
+
+            if (ReferenceEquals(sender, stepBannerBox)) { stepBannerSay.Text = said; }
+            else { stepSay.Text = said; }
+        }
+
+        /// <summary>
+        /// The key for whatever wording has been typed, making one if it is new.
+        ///
+        /// Wording that matches a row the mission already has reuses that row's key - there is
+        /// no sense in two keys saying the same thing. Anything else is minted and written into
+        /// the map's own table, which travels with it and is merged into the mission's at
+        /// install. That is the whole of what makes free wording work.
+        /// </summary>
+        private string wordFor(System.Windows.Controls.TextBox box,
+                               System.Windows.Controls.ComboBox borrow, string stem)
+        {
+            var said = box.Text.Trim();
+            if (said.Length == 0) { return string.Empty; }
+
+            foreach (var row in borrow.Items.OfType<ComboBoxItem>())
+            {
+                if (!string.Equals(row.Content?.ToString(), said, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                return row.Tag as string ?? string.Empty;
+            }
+
+            var known = MapWords.all(_map.Folder, MapSpawns.loctableOf(_map));
+            var key = MapWords.mint(said, known, stem);
+
+            MapWords.remember(_map.Folder, key, said);
+
+            //The table lives beside the level rather than in it, so saying the level changed is
+            //not enough - the folder is what has to be written.
+            _map.Changed.Add(MapWords.FOLDER + "/" + MapWords.FILE);
+
+            return key;
+        }
 
         /// <summary>The prefab the picker is on, whatever the list looks like.</summary>
         private string chosenThing()
@@ -892,16 +1539,15 @@ namespace MCDSaveEdit.UI
         {
             if (_room == null) { return; }
 
-            var asks = keyOf(stepTitleBox);
+            var asks = wordFor(stepSay, stepTitleBox, "description_");
             if (asks.Length == 0) { statusLabel.Text = R.SPAWNS_STEP_NEEDS_TITLE; return; }
 
-            //The banner's smaller line. Not every table has a name_ key going spare, and an
-            //objective without one still draws - so this is allowed to be empty, where the
-            //description is not.
-            var banner = keyOf(stepBannerBox);
+            //The banner's smaller line. An objective without one still draws, so this is
+            //allowed to fall back to the same wording where the description is not.
+            var banner = wordFor(stepBannerSay, stepBannerBox, "name_");
             if (banner.Length == 0) { banner = asks; }
 
-            var title = (stepTitleBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? asks;
+            var title = stepSay.Text.Trim();
 
             var x = number(xBox, _room.Size[0] / 2);
             var y = number(yBox, _room.Size[1] / 2);
@@ -2081,6 +2727,8 @@ namespace MCDSaveEdit.UI
             _quest = -1;
             _gate = -1;
             _step = -1;
+            _arena = -1;
+            _keyed = -1;
             _selected = -1;
 
             if (_room != null)
@@ -2596,6 +3244,15 @@ namespace MCDSaveEdit.UI
 
             addClickStepButton.IsEnabled = has;
             addReachStepButton.IsEnabled = has;
+
+            addArenaButton.IsEnabled = has && arenaGroupBox.Items.Count > 0;
+            waveArenaButton.IsEnabled = has && _arena >= 0;
+            applyArenaButton.IsEnabled = has && _arena >= 0;
+            removeArenaButton.IsEnabled = has && _arena >= 0;
+
+            addKeyedButton.IsEnabled = has;
+            alsoKeyButton.IsEnabled = has && _keyed >= 0;
+            removeKeyedButton.IsEnabled = has && _keyed >= 0;
 
             addExitButton.IsEnabled = has;
             removeExitButton.IsEnabled = has && _exit >= 0;

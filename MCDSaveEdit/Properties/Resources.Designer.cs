@@ -5293,6 +5293,384 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Gates.
+        /// </summary>
+        public static string SPAWNS_TAB_GATES {
+            get {
+                return ResourceManager.GetString("SPAWNS_TAB_GATES", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Fights.
+        /// </summary>
+        public static string SPAWNS_TAB_ARENA {
+            get {
+                return ResourceManager.GetString("SPAWNS_TAB_ARENA", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Keys.
+        /// </summary>
+        public static string SPAWNS_TAB_KEYS {
+            get {
+                return ResourceManager.GetString("SPAWNS_TAB_KEYS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Level.
+        /// </summary>
+        public static string SPAWNS_TAB_LEVEL {
+            get {
+                return ResourceManager.GetString("SPAWNS_TAB_LEVEL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A fight walls off a piece of the map, fills it with mobs, and opens again when they are all dead. Chain several on the same ground and you have waves..
+        /// </summary>
+        public static string SPAWNS_ARENA_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No fights yet..
+        /// </summary>
+        public static string SPAWNS_ARENA_NONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_NONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} fight(s)..
+        /// </summary>
+        public static string SPAWNS_ARENA_SOME {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_SOME", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} fight(s), and {1} of them has nowhere for its mobs to come from - nothing will appear and the step can never finish, which stops every step behind it..
+        /// </summary>
+        public static string SPAWNS_ARENA_BROKEN {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_BROKEN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Put a fight here.
+        /// </summary>
+        public static string SPAWNS_ADD_ARENA {
+            get {
+                return ResourceManager.GetString("SPAWNS_ADD_ARENA", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Add a wave.
+        /// </summary>
+        public static string SPAWNS_ARENA_WAVE {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_WAVE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove.
+        /// </summary>
+        public static string SPAWNS_ARENA_REMOVE {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_REMOVE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Apply to the chosen fight.
+        /// </summary>
+        public static string SPAWNS_ARENA_APPLY {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_APPLY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to What it asks you to do:.
+        /// </summary>
+        public static string SPAWNS_ARENA_WORDING {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_WORDING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Which mobs:.
+        /// </summary>
+        public static string SPAWNS_ARENA_GROUP {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_GROUP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to How many:.
+        /// </summary>
+        public static string SPAWNS_ARENA_COUNT {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_COUNT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to It pays out:.
+        /// </summary>
+        public static string SPAWNS_ARENA_REWARD {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_REWARD", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Seal it while the fight is on.
+        /// </summary>
+        public static string SPAWNS_ARENA_GATE {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_GATE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Added a fight: {0} × {1} at {2}, {3}, {4}..
+        /// </summary>
+        public static string SPAWNS_ARENA_ADDED {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_ADDED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Added another wave on the same ground - {0} × {1}. It runs BEFORE the one you picked, so whichever wave holds the gate stays last..
+        /// </summary>
+        public static string SPAWNS_ARENA_WAVED {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_WAVED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to That fight now asks for {0} × {1}..
+        /// </summary>
+        public static string SPAWNS_ARENA_APPLIED {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_APPLIED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to There are no mob groups to draw from. Make one on the Mobs tab first..
+        /// </summary>
+        public static string SPAWNS_ARENA_NEEDS_GROUP {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_NEEDS_GROUP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Pick a fight in the list first..
+        /// </summary>
+        public static string SPAWNS_ARENA_PICK {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_PICK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A locked door stands in the way until somebody finds its key. Give the key more than one possible spot and the game picks between them, so the route changes each run..
+        /// </summary>
+        public static string SPAWNS_KEYS_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEYS_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No locked doors yet..
+        /// </summary>
+        public static string SPAWNS_KEYS_NONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEYS_NONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} locked door(s)..
+        /// </summary>
+        public static string SPAWNS_KEYS_SOME {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEYS_SOME", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} locked door(s), and {1} of them has no key anywhere - that door can never open..
+        /// </summary>
+        public static string SPAWNS_KEYS_BROKEN {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEYS_BROKEN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Put a locked door here.
+        /// </summary>
+        public static string SPAWNS_ADD_KEYED {
+            get {
+                return ResourceManager.GetString("SPAWNS_ADD_KEYED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The key could also be here.
+        /// </summary>
+        public static string SPAWNS_KEY_ALSO {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEY_ALSO", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove.
+        /// </summary>
+        public static string SPAWNS_KEY_REMOVE {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEY_REMOVE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to What it asks you to do:.
+        /// </summary>
+        public static string SPAWNS_KEY_WORDING {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEY_WORDING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Which door:.
+        /// </summary>
+        public static string SPAWNS_KEY_DOOR {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEY_DOOR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Added a {0} at {1}, {2}, {3}, with its key a little way off. Drag either amber pin to move it..
+        /// </summary>
+        public static string SPAWNS_KEYED_ADDED {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEYED_ADDED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The key can now also turn up at {0}, {1}, {2} - the game picks between the spots..
+        /// </summary>
+        public static string SPAWNS_KEY_ALSO_ADDED {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEY_ALSO_ADDED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Pick a locked door in the list first..
+        /// </summary>
+        public static string SPAWNS_KEY_PICK {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEY_PICK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Settings for the mission as a whole rather than for anything in it. All of them are one line in the level file, and all of them are things the game's own missions set..
+        /// </summary>
+        public static string SPAWNS_LEVEL_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_LEVEL_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Light, fog and weather borrowed from:.
+        /// </summary>
+        public static string SPAWNS_LEVEL_AMBIENCE {
+            get {
+                return ResourceManager.GetString("SPAWNS_LEVEL_AMBIENCE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Music:.
+        /// </summary>
+        public static string SPAWNS_LEVEL_MUSIC {
+            get {
+                return ResourceManager.GetString("SPAWNS_LEVEL_MUSIC", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to whatever the borrowed mission plays.
+        /// </summary>
+        public static string SPAWNS_LEVEL_MUSIC_SAME {
+            get {
+                return ResourceManager.GetString("SPAWNS_LEVEL_MUSIC_SAME", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Joined tiles must have matching doors.
+        /// </summary>
+        public static string SPAWNS_LEVEL_MATCH {
+            get {
+                return ResourceManager.GetString("SPAWNS_LEVEL_MATCH", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to On by default in the game. Turning it off lets tiles join whose doorways do not line up, which is what you want when the tiles are your own and the generator is being fussy..
+        /// </summary>
+        public static string SPAWNS_LEVEL_MATCH_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_LEVEL_MATCH_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Play the mission intro.
+        /// </summary>
+        public static string SPAWNS_LEVEL_INTRO {
+            get {
+                return ResourceManager.GetString("SPAWNS_LEVEL_INTRO", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} is now “{1}”..
+        /// </summary>
+        public static string SPAWNS_LEVEL_SET {
+            get {
+                return ResourceManager.GetString("SPAWNS_LEVEL_SET", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Opened by:.
         /// </summary>
         public static string SPAWNS_GATE_OPENS {

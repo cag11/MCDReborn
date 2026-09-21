@@ -605,7 +605,19 @@
                                 Background="{DynamicResource Brush.Menu}"
                                 BorderBrush="{DynamicResource Brush.Border}"
                                 BorderThickness="0,0,0,1">
-                            <TabPanel IsItemsHost="True" Margin="8,6,8,0" KeyboardNavigation.TabIndex="1"/>
+                            <!-- A WrapPanel rather than a TabPanel, which is WPF's own and does
+                                 one thing too many: when the headers need more than one row it
+                                 re-orders the ROWS so that whichever holds the selected tab sits
+                                 against the content. With seven tabs on three rows that means
+                                 the whole strip rearranges itself on every click and no tab is
+                                 ever twice in the same place.
+
+                                 This is the template every TabControl in the app uses, so
+                                 setting ItemsPanel on one of them does nothing - the template
+                                 names its own items host and the property is ignored. Single-row
+                                 tab strips are unaffected: with room for everything, a WrapPanel
+                                 and a TabPanel lay out the same. -->
+                            <WrapPanel IsItemsHost="True" Margin="8,6,8,0" KeyboardNavigation.TabIndex="1"/>
                         </Border>
                         <Border Background="{TemplateBinding Background}">
                             <ContentPresenter x:Name="PART_SelectedContentHost" ContentSource="SelectedContent"/>

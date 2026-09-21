@@ -225,6 +225,19 @@ namespace MCDSaveEdit.Logic
                     claim(File.ReadAllBytes(level), over)),
             };
 
+            //Wording the map invented, as a table extending whichever mission it is being
+            //installed over. Built here rather than kept on disk for the same reason the level
+            //id is set here: which mission this becomes is not known until now, and the table
+            //has to be the right one's or the game reads none of it.
+            //
+            //See MapWords for why a CSV works where the compiled string table would not.
+            var said = MapWords.tableFor(folder, over.Name);
+            if (said != null)
+            {
+                entries.Add(new PakWriter.Entry(MapWords.pakPathFor(over.Name), said));
+                Console.WriteLine($"[map] shipping {said.Length} bytes of wording for {over.Name}");
+            }
+
             var groups = Path.Combine(folder, GROUPS_FOLDER);
             if (Directory.Exists(groups))
             {
@@ -260,6 +273,13 @@ namespace MCDSaveEdit.Logic
                     "That folder has a level but no object groups. A mission with no tiles cannot "
                     + $"be generated. Expected them under \"{GROUPS_FOLDER}\".");
             }
+
+            //A folder that came out of somebody else's mod carries far more than a map: fonts,
+            //widgets, sub-levels, its own string table. ModPak wrote all of it down when it took
+            //the pak apart, so it goes back at the paths it came from and the installed mod is
+            //the mod, not a third of it. A folder this app exported has no manifest and nothing
+            //changes for it.
+            entries.AddRange(ModPak.extras(folder, entries));
 
             return CustomSkins.writeModPak(PREFIX + safe(over.Name), entries);
         }

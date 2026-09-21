@@ -2056,6 +2056,13 @@ namespace MCDSaveEdit
                 check("travel doors", Logic.MapSpawns.TRAVEL_DOORS);
                 check("the way out", new[] { (Logic.MapSpawns.EXIT_DOOR, "Exit gate") });
 
+                //The one Blossoming Isles uses for every gate it has. Checked because "BPI"
+                //looks like a mod's own prefix and a mod-only prefab must not be offered.
+                check("seen in mods", new[]
+                {
+                    ("Decor/Prefabs/Door/BPI_ObjectiveDoor", "Objective door"),
+                });
+
                 //Where the ones that did not resolve actually live. The game's own levels
                 //reference these by paths whose casing is not the pak's, and the reader is
                 //literal about it.
@@ -2168,9 +2175,18 @@ namespace MCDSaveEdit
                 //own name table, so the raw bytes are enough to see what a blueprint refers to
                 //without an Unreal editor in the room.
                 var wrote = 0;
+                //A fourth argument opts the data tree back in, for the times the question is
+                //about the pictures a resource pack ships rather than about the level.
+                var gutData = gutBits.Length > 3 ? gutBits[3].Trim() : null;
+
                 foreach (var one in gutAll)
                 {
-                    if (one.IndexOf("/data/", StringComparison.OrdinalIgnoreCase) >= 0) { continue; }
+                    if (one.IndexOf("/data/", StringComparison.OrdinalIgnoreCase) >= 0
+                        && (gutData == null
+                            || one.IndexOf(gutData, StringComparison.OrdinalIgnoreCase) < 0))
+                    {
+                        continue;
+                    }
 
                     var raw = bytesOf(one);
                     if (raw == null) { Console.WriteLine($"[guts] unreadable: {one}"); continue; }
@@ -2290,6 +2306,40 @@ namespace MCDSaveEdit
                     if (raw == null) { continue; }
                     var named = pack.Split('/');
                     Console.WriteLine($"[guts] pack {named[named.Length - 2],-20} {raw.Length:N0} bytes");
+                }
+
+                //And the same paths out of the GAME, so "the mod ships its own" can be told from
+                //"the mod ships the only one". A third argument names what to pull across.
+                if (gutBits.Length > 2 && Logic.CustomSkins.index != null)
+                {
+                    var wanted = gutBits[2].Trim();
+                    var mine = System.IO.Path.Combine(gutInto, "_game");
+                    System.IO.Directory.CreateDirectory(mine);
+
+                    foreach (var one in Logic.CustomSkins.index)
+                    {
+                        if (one == null) { continue; }
+                        if (one.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) < 0) { continue; }
+
+                        byte[]? raw = null;
+                        foreach (var spelling in spellingsOf(one))
+                        {
+                            try
+                            {
+                                var got = Logic.CustomSkins.index.GetFile(spelling);
+                                if (got != null) { raw = got.Value.ToArray(); break; }
+                            }
+                            catch { }
+                        }
+
+                        Console.WriteLine($"[guts] game: {(raw == null ? -1 : raw.Length),9:N0}  {one}");
+                        if (raw == null) { continue; }
+
+                        var full = System.IO.Path.Combine(mine,
+                            one.TrimStart('/').Replace('/', System.IO.Path.DirectorySeparatorChar) + ".bin");
+                        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(full)!);
+                        System.IO.File.WriteAllBytes(full, raw);
+                    }
                 }
 
                 this.Shutdown();
@@ -2490,6 +2540,896 @@ namespace MCDSaveEdit
 
                     Console.WriteLine($"[unpak] {name}: {had}/{groups.Count} group(s), "
                         + $"{packed}/{packs.Count} pack(s)  ->  {folder}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_READ=<map folder name> - what the editor makes of somebody else's mission.
+            //
+            //Read-only. Written after a mod built entirely out of kill-groups showed up in the
+            //editor as blank rows and invisible gates - both of which were the editor's fault,
+            //not the mod's.
+            var probeRead = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_READ="));
+            if (probeRead != null)
+            {
+                var wanted = probeRead.Substring("PROBE_READ=".Length).Trim('"');
+                var folder = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MCDReborn", "maps", wanted);
+
+                try
+                {
+                    var map = Logic.MapSpawns.load(folder);
+
+                    Console.WriteLine($"[read] {wanted}: {map.Rooms.Count} room(s), "
+                        + $"loctable \"{Logic.MapSpawns.loctableOf(map)}\"");
+
+                    foreach (var step in Logic.MapSpawns.objectivesOf(map))
+                    {
+                        Console.WriteLine($"[read]   {step}");
+                    }
+
+                    var gates = 0;
+                    var blind = 0;
+
+                    foreach (var room in map.Rooms)
+                    {
+                        foreach (var gate in Logic.MapSpawns.gatesOf(map, room))
+                        {
+                            gates++;
+                            if (gate.OpenedBy.Length > 0 && gate.Drawn.Length == 0) { blind++; }
+                            if (gates <= 12) { Console.WriteLine($"[read]   gate {room.Id}: {gate}"); }
+                        }
+                    }
+
+                    Console.WriteLine($"[read] {gates} gate(s) the editor can see, "
+                        + $"{blind} of them with nothing drawn");
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[read] refused: {problem.Message}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_LEVELBITS - the level-wide settings, and what values are actually legal.
+            //
+            //The Level tab offers these as dropdowns rather than text, for the same reason the
+            //objective wording is a list: a value the game does not know is a mission that
+            //looks wrong or does not load, with nothing said anywhere. So the lists are read
+            //off the game's own 56 missions instead of guessed at.
+            if (_startupArguments.Any(a => a == "PROBE_LEVELBITS"))
+            {
+                var seen = new SortedDictionary<string, SortedDictionary<string, int>>(
+                    StringComparer.Ordinal);
+
+                void note(string field, string value)
+                {
+                    if (!seen.TryGetValue(field, out var values))
+                    {
+                        values = new SortedDictionary<string, int>(StringComparer.Ordinal);
+                        seen[field] = values;
+                    }
+
+                    values[value] = values.TryGetValue(value, out var was) ? was + 1 : 1;
+                }
+
+                foreach (var mission in Logic.GameMaps.all())
+                {
+                    var raw = Logic.GameMaps.read(mission.PakPath);
+                    if (raw == null) { continue; }
+
+                    System.Text.Json.Nodes.JsonObject? level;
+                    try
+                    {
+                        level = System.Text.Json.Nodes.JsonNode.Parse(
+                            Logic.GameMaps.stripComments(
+                                new System.Text.UTF8Encoding(false).GetString(raw).TrimStart('\uFEFF')),
+                            documentOptions: new System.Text.Json.JsonDocumentOptions
+                            {
+                                AllowTrailingCommas = true,
+                                CommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                            }) as System.Text.Json.Nodes.JsonObject;
+                    }
+                    catch { continue; }
+
+                    if (level == null) { continue; }
+
+                    foreach (var field in new[]
+                    {
+                        "music-override", "ambience-level-id", "loctable-id",
+                        "play-intro", "require-matching-doors",
+                    })
+                    {
+                        var said = level[field];
+                        if (said == null) { continue; }
+                        note(field, said.ToJsonString());
+                    }
+
+                    //Where a level names its own theme, which is the better-attested field.
+                    foreach (var one in level["dungeons"] as System.Text.Json.Nodes.JsonArray
+                        ?? new System.Text.Json.Nodes.JsonArray())
+                    {
+                        if (one is not System.Text.Json.Nodes.JsonObject dungeon) { continue; }
+
+                        foreach (var field in new[] { "ambience", "audio-ambience" })
+                        {
+                            var said = dungeon[field];
+                            if (said != null) { note("dungeons[]." + field, said.ToJsonString()); }
+                        }
+                    }
+
+                    void walk(System.Text.Json.Nodes.JsonNode? node)
+                    {
+                        if (node is System.Text.Json.Nodes.JsonArray list)
+                        {
+                            foreach (var one in list) { walk(one); }
+                            return;
+                        }
+
+                        if (node is not System.Text.Json.Nodes.JsonObject body) { return; }
+
+                        foreach (var field in new[]
+                        {
+                            "audio-ambience", "push-ambience", "visual-theme", "sound-theme",
+                        })
+                        {
+                            var said = body[field];
+                            if (said != null) { note("stretches[]." + field, said.ToJsonString()); }
+                        }
+
+                        foreach (var one in body) { walk(one.Value); }
+                    }
+
+                    walk(level["stretches"]);
+                    walk(level["dungeons"]);
+                }
+
+                foreach (var field in seen)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine($"[bits] {field.Key}  ({field.Value.Count} distinct)");
+                    foreach (var value in field.Value.OrderByDescending(one => one.Value))
+                    {
+                        Console.WriteLine($"[bits]   {value.Value,4}  {value.Key}");
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_TABS=<mission> - the three new tabs, through their own buttons.
+            //
+            //Fights, keyed doors and the level's own settings. All three make several things at
+            //once - a fight is ground, a gate and a step - and the failure they share is making
+            //some but not all of them, which in game is a step nobody can finish and a chain
+            //that stops dead behind it.
+            //
+            //On a COPY.
+            var probeTabs = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_TABS="));
+            if (probeTabs != null)
+            {
+                var wanted = probeTabs.Substring("PROBE_TABS=".Length).Trim('"');
+
+                var live = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MCDReborn", "maps", wanted);
+
+                var folder = System.IO.Path.Combine(
+                    System.IO.Path.GetTempPath(), "mcd-tabs-probe", wanted);
+
+                try
+                {
+                    if (System.IO.Directory.Exists(folder)) { System.IO.Directory.Delete(folder, true); }
+
+                    foreach (var from in System.IO.Directory.GetFiles(
+                        live, "*", System.IO.SearchOption.AllDirectories))
+                    {
+                        var to = System.IO.Path.Combine(folder, from.Substring(live.Length + 1));
+                        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(to)!);
+                        System.IO.File.Copy(from, to, true);
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[tabs] could not copy: {problem.Message}");
+                    this.Shutdown();
+                    return;
+                }
+
+                var map = Logic.MapSpawns.load(folder);
+                var window = new UI.SpawnsWindow(map);
+
+                window.WindowState = WindowState.Normal;
+                window.Width = 1280;
+                window.Height = 800;
+                window.Left = -20000;
+                window.Show();
+
+                var waited = 0;
+                var timer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(250),
+                };
+
+                timer.Tick += (_, _) =>
+                {
+                    waited += 250;
+                    if (!window.mapReady && waited < 20000) { return; }
+                    timer.Stop();
+
+                    try
+                    {
+                        Console.WriteLine($"[tabs] tabs: {string.Join(" | ", window.tabHeaders)}");
+                        Console.WriteLine(window.tabHeaders.Length == 7
+                            ? "[tabs] seven of them, one job each"
+                            : $"[tabs] WRONG - {window.tabHeaders.Length} tabs");
+
+                        //Where they are DRAWN, after clicking each one in turn. Seven headers
+                        //do not fit one row, and WPF's own tab panel answers that by moving
+                        //whole rows about so the selected one sits against the content - so the
+                        //strip rearranged itself on every click.
+                        window.probePickTab(0);
+                        var laidOut = window.tabHeadersOnScreen;
+                        Console.WriteLine($"[tabs] drawn: {string.Join(" | ", laidOut)}");
+
+                        var wandered = 0;
+
+                        for (var which = 0; which < window.tabHeaders.Length; which++)
+                        {
+                            window.probePickTab(which);
+                            var now = window.tabHeadersOnScreen;
+
+                            if (now.SequenceEqual(laidOut)) { continue; }
+
+                            wandered++;
+                            Console.WriteLine($"[tabs] after picking {window.tabHeaders[which]}: "
+                                + string.Join(" | ", now));
+                        }
+
+                        Console.WriteLine(wandered == 0
+                            ? "[tabs] every header stays where it was, whichever is picked"
+                            : $"[tabs] WRONG - the strip rearranged itself on {wandered} of them");
+
+                        window.probePickTab(0);
+
+                        window.probeOnlyExit();
+
+                        var across = Math.Max(8, window.roomAcross / 4);
+
+                        //--- fights -------------------------------------------------------
+                        Console.WriteLine($"[tabs] {window.arenaHintNow}");
+                        Console.WriteLine($"[tabs] mob groups to draw from: {window.arenaGroupCount}");
+
+                        window.probeAddArena(0, 8, true, across, 20, across);
+                        Console.WriteLine($"[tabs] {window.probeStatus}");
+
+                        foreach (var row in window.arenaRows) { Console.WriteLine($"[tabs]   {row}"); }
+
+                        Console.WriteLine(window.arenaRows.Length == 1
+                            ? "[tabs] the fight is there"
+                            : $"[tabs] WRONG - {window.arenaRows.Length} fights after adding one");
+
+                        Console.WriteLine(window.arenaRows.Any(one => one.Contains("seals"))
+                            ? "[tabs] and it seals something"
+                            : "[tabs] WRONG - the fight seals nothing although it was asked to");
+
+                        Console.WriteLine(!window.arenaRows.Any(one => one.Contains("NO SPAWN"))
+                            ? "[tabs] and its mobs have somewhere to come from"
+                            : "[tabs] WRONG - the fight has no spawn region");
+
+                        //A wave is another fight on the same ground, ahead of this one.
+                        window.probePickArena(0);
+                        window.probeAddWave(12);
+                        Console.WriteLine($"[tabs] {window.probeStatus}");
+
+                        foreach (var row in window.arenaRows) { Console.WriteLine($"[tabs]   {row}"); }
+
+                        Console.WriteLine(window.arenaRows.Length == 2
+                            ? "[tabs] two waves now"
+                            : $"[tabs] WRONG - {window.arenaRows.Length} fights after a wave");
+
+                        var sealing = window.arenaRows.Count(one => one.Contains("seals"));
+                        Console.WriteLine(sealing == 1
+                            ? "[tabs] only the last wave holds the gate, so it opens at the end"
+                            : $"[tabs] WRONG - {sealing} waves hold the gate");
+
+                        //--- keyed doors ---------------------------------------------------
+                        window.probeAddKeyed(0, across * 2, 20, across);
+                        Console.WriteLine($"[tabs] {window.probeStatus}");
+
+                        foreach (var row in window.keyRows) { Console.WriteLine($"[tabs]   {row}"); }
+
+                        Console.WriteLine(window.keyRows.Length == 1
+                            && !window.keyRows[0].Contains("NO KEY")
+                            ? "[tabs] the locked door has a key somewhere"
+                            : "[tabs] WRONG - the door cannot be opened");
+
+                        window.probePickKeyed(0);
+                        window.probeAlsoKey(across, 20, across * 2);
+                        Console.WriteLine($"[tabs] {window.probeStatus}");
+
+                        Console.WriteLine(window.keyRows.Any(one => one.Contains(" or "))
+                            ? "[tabs] and it can now turn up in either of two places"
+                            : "[tabs] WRONG - the second key spot did not take");
+
+                        //--- the level itself ------------------------------------------------
+                        window.probeSetMusic(1);
+                        Console.WriteLine($"[tabs] {window.probeStatus}");
+
+                        window.probeToggleMatchDoors();
+                        Console.WriteLine($"[tabs] {window.probeStatus}");
+
+                        //--- and all of it reaches the file ----------------------------------
+                        Logic.MapSpawns.save(map);
+
+                        var written = System.Text.Json.Nodes.JsonNode.Parse(
+                            Logic.GameMaps.stripComments(System.IO.File.ReadAllText(
+                                System.IO.Path.Combine(folder, "level.json"))),
+                            documentOptions: new System.Text.Json.JsonDocumentOptions
+                            {
+                                AllowTrailingCommas = true,
+                                CommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                            }) as System.Text.Json.Nodes.JsonObject;
+
+                        var steps = written?["objectives"] as System.Text.Json.Nodes.JsonArray
+                            ?? new System.Text.Json.Nodes.JsonArray();
+
+                        var fights = 0;
+                        var keyed = 0;
+
+                        foreach (var each in steps)
+                        {
+                            if (each is not System.Text.Json.Nodes.JsonObject step) { continue; }
+                            if (step["killgroup"] != null) { fights++; }
+                            if (step["click"]?["key-type"] != null) { keyed++; }
+                        }
+
+                        Console.WriteLine($"[tabs] the file holds {steps.Count} step(s): "
+                            + $"{fights} fight(s), {keyed} keyed door(s)");
+
+                        Console.WriteLine(fights == 2 && keyed == 1
+                            ? "[tabs] everything made it to the file"
+                            : "[tabs] WRONG - something did not get written");
+
+                        Console.WriteLine($"[tabs] music-override: "
+                            + $"{written?["music-override"]?.ToJsonString() ?? "(unset)"}");
+                        Console.WriteLine($"[tabs] require-matching-doors: "
+                            + $"{written?["require-matching-doors"]?.ToJsonString() ?? "(unset)"}");
+                    }
+                    catch (Exception problem)
+                    {
+                        Console.WriteLine($"[tabs] threw: {problem}");
+                    }
+
+                    this.Shutdown();
+                };
+
+                timer.Start();
+                return;
+            }
+
+            //PROBE_CSV=<mission> - where an objective's wording really comes from.
+            //
+            //Not the string table. The game ships one CSV per mission under Decor/Text, two
+            //columns, and a key that is in the CSV but not in the table falls back to the CSV's
+            //own text. That is how a mod adds wording the game has never heard of - and it
+            //means this editor can too, by appending a row rather than authoring a .locres.
+            var probeCsv = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_CSV="));
+            if (probeCsv != null)
+            {
+                var wanted = probeCsv.Substring("PROBE_CSV=".Length).Trim('"');
+
+                //Found by looking rather than by guessing the spelling - the paks are not
+                //consistent about case and the reader is literal.
+                var pak = Logic.CustomSkins.index;
+                var found = new List<string>();
+
+                if (pak != null)
+                {
+                    foreach (var item in pak)
+                    {
+                        if (item == null) { continue; }
+                        if (item.IndexOf("/Text/", StringComparison.OrdinalIgnoreCase) < 0) { continue; }
+                        found.Add(item);
+                    }
+                }
+
+                Console.WriteLine($"[csv] {found.Count} file(s) under a Text folder");
+                foreach (var one in found.Take(8)) { Console.WriteLine($"[csv]   {one}"); }
+
+                //Every one of them, with its size and first real row, so what each CSV is FOR
+                //is a matter of record rather than of the name.
+                if (string.Equals(wanted, "all", StringComparison.OrdinalIgnoreCase))
+                {
+                    foreach (var one in found.OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+                    {
+                        var at = one.IndexOf("//", StringComparison.Ordinal);
+                        var raw = Logic.GameMaps.read(at < 0 ? one : one.Substring(at + 1));
+                        if (raw == null) { Console.WriteLine($"[csv] ?????  {one}"); continue; }
+
+                        var text = new System.Text.UTF8Encoding(false).GetString(raw)
+                            .Replace("\r\n", "\n");
+                        var rows = text.Split('\n').Where(r => r.Trim().Length > 0).ToList();
+
+                        Console.WriteLine($"[csv] {rows.Count - 1,4} rows  "
+                            + $"{System.IO.Path.GetFileName(one),-40} "
+                            + (rows.Count > 1 ? rows[1] : ""));
+                    }
+
+                    this.Shutdown();
+                    return;
+                }
+
+                var mine = found.Where(one =>
+                    one.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+
+                Console.WriteLine($"[csv] {mine.Count} of them mention \"{wanted}\"");
+
+                foreach (var spelling in mine.Select(one =>
+                {
+                    var at = one.IndexOf("//", StringComparison.Ordinal);
+                    return at < 0 ? one : one.Substring(at + 1);
+                }))
+                {
+                    var raw = Logic.GameMaps.read(spelling);
+                    Console.WriteLine($"[csv] {spelling}: {(raw == null ? "not there" : raw.Length + " bytes")}");
+
+                    if (raw == null) { continue; }
+
+                    var text = new System.Text.UTF8Encoding(false).GetString(raw);
+                    var rows = text.Replace("\r\n", "\n").Split('\n');
+
+                    Console.WriteLine($"[csv] {rows.Length} row(s)");
+                    foreach (var row in rows.Take(14)) { Console.WriteLine($"[csv]   {row}"); }
+                    break;
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_WORDS2=<mission> - wording somebody typed, all the way to the pak.
+            //
+            //The thing that could not be done until it turned out the game reads a plain CSV
+            //beside its compiled string table. Three links in the chain, and every one of them
+            //fails silently: the key has to be minted and remembered, the objective has to
+            //carry the key rather than the words, and the table has to be built for whichever
+            //mission it is installed over and put in the pak at the game's own path.
+            //
+            //On a COPY, and it installs nothing.
+            var probeWords = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_WORDS2="));
+            if (probeWords != null)
+            {
+                var wanted = probeWords.Substring("PROBE_WORDS2=".Length).Trim('"');
+
+                var live = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "MCDReborn", "maps", wanted);
+
+                var folder = System.IO.Path.Combine(
+                    System.IO.Path.GetTempPath(), "mcd-words-probe", wanted);
+
+                try
+                {
+                    if (System.IO.Directory.Exists(folder)) { System.IO.Directory.Delete(folder, true); }
+
+                    foreach (var from in System.IO.Directory.GetFiles(
+                        live, "*", System.IO.SearchOption.AllDirectories))
+                    {
+                        var to = System.IO.Path.Combine(folder, from.Substring(live.Length + 1));
+                        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(to)!);
+                        System.IO.File.Copy(from, to, true);
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[words] could not copy: {problem.Message}");
+                    this.Shutdown();
+                    return;
+                }
+
+                var map = Logic.MapSpawns.load(folder);
+                var table = Logic.MapSpawns.loctableOf(map);
+
+                Console.WriteLine($"[words] the mission reads \"{table}\"");
+                Console.WriteLine($"[words] its table is at {Logic.MapWords.pathFor(table) ?? "(not found)"}");
+
+                var had = Logic.MapWords.fromGame(table);
+                Console.WriteLine($"[words] the game gives it {had.Count} row(s)");
+
+                var window = new UI.SpawnsWindow(map);
+                window.WindowState = WindowState.Normal;
+                window.Width = 1280;
+                window.Height = 800;
+                window.Left = -20000;
+                window.Show();
+
+                var waited = 0;
+                var timer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(250),
+                };
+
+                timer.Tick += (_, _) =>
+                {
+                    waited += 250;
+                    if (!window.mapReady && waited < 20000) { return; }
+                    timer.Stop();
+
+                    try
+                    {
+                        window.probeOnlyExit();
+
+                        //Wording nothing in the game has ever said, including the punctuation
+                        //and comma that a two-column CSV has to survive.
+                        const string mine = "Ring the bell, then run";
+                        window.probeSayAndAddStep(mine, Math.Max(8, window.roomAcross / 4), 20, 8);
+
+                        Console.WriteLine($"[words] {window.probeStatus}");
+                        Console.WriteLine($"[words] chain: {string.Join(" | ", window.questRows)}");
+
+                        var shown = window.questRows.Any(one => one.Contains(mine));
+                        Console.WriteLine(shown
+                            ? "[words] the editor shows the words back"
+                            : "[words] WRONG - the step does not read as what was typed");
+
+                        Console.WriteLine(!window.questRows.Any(one => one.Contains("NO SUCH WORDING"))
+                            ? "[words] and nothing is flagged as missing"
+                            : "[words] WRONG - still flagged as missing wording");
+
+                        //The map's own table, on disk beside the level.
+                        Logic.MapSpawns.save(map);
+
+                        var mineOnly = Logic.MapWords.fromFolder(folder);
+                        Console.WriteLine($"[words] the map keeps {mineOnly.Count} row(s) of its own:");
+                        foreach (var row in mineOnly)
+                        {
+                            Console.WriteLine($"[words]   {row.Key} = {row.Said}");
+                        }
+
+                        Console.WriteLine(mineOnly.Any(one => one.Said == mine)
+                            ? "[words] written, comma and all"
+                            : "[words] WRONG - the CSV lost the wording");
+
+                        //And what a pak built from this folder would carry.
+                        foreach (var over in new[] { table, "pumpkinpastures" })
+                        {
+                            var built = Logic.MapWords.tableFor(folder, over);
+
+                            if (built == null)
+                            {
+                                Console.WriteLine($"[words] WRONG - nothing to ship for {over}");
+                                continue;
+                            }
+
+                            var rows = Logic.MapWords.parse(
+                                new System.Text.UTF8Encoding(false).GetString(built));
+
+                            var theirs = Logic.MapWords.fromGame(over).Count;
+
+                            Console.WriteLine($"[words] installed over {over}: "
+                                + $"{Logic.MapWords.pakPathFor(over)}, "
+                                + $"{rows.Count} row(s) = {theirs} theirs + {mineOnly.Count} mine");
+
+                            Console.WriteLine(rows.Count == theirs + mineOnly.Count
+                                && rows.Any(one => one.Said == mine)
+                                ? "[words] the mission keeps its own wording and gains ours"
+                                : "[words] WRONG - the merged table is not right");
+                        }
+                    }
+                    catch (Exception problem)
+                    {
+                        Console.WriteLine($"[words] threw: {problem}");
+                    }
+
+                    this.Shutdown();
+                };
+
+                timer.Start();
+                return;
+            }
+
+            //PROBE_WHOLEMOD=<pak>;<folder> - somebody else's mod, taken apart and put back whole.
+            //
+            //PROBE_UNPAK pulls out the three things this app understands - the level, its object
+            //groups, its block table - and drops everything else, which for a mod like
+            //Blossoming Isles is a thousand textures, its fonts, its widgets, its sub-levels
+            //and its string table. Installing what came back out was installing a third of a
+            //mod, and the missing two thirds fail quietly.
+            //
+            //This writes every entry down instead, with a manifest saying where each came from,
+            //so install can put them back at the paths they were found at.
+            var probeWhole = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_WHOLEMOD="));
+            if (probeWhole != null)
+            {
+                var bits = probeWhole.Substring("PROBE_WHOLEMOD=".Length).Trim('"').Split(';');
+                if (bits.Length < 2)
+                {
+                    Console.WriteLine("[whole] PROBE_WHOLEMOD=<pak file>;<folder>");
+                    this.Shutdown();
+                    return;
+                }
+
+                var pakFile = bits[0].Trim();
+                var into = bits[1].Trim();
+
+                try
+                {
+                    var items = Logic.ModPak.read(pakFile);
+                    Console.WriteLine($"[whole] {System.IO.Path.GetFileName(pakFile)}: "
+                        + Logic.ModPak.describe(items));
+
+                    var manifest = Logic.ModPak.unpak(pakFile, into,
+                        bits.Length > 2 && bits[2].Trim().Length > 0 ? bits[2].Trim() : null);
+                    Console.WriteLine($"[whole] unpacked to {into}");
+
+                    //What a pak built from that folder would carry, and whether it is all of it.
+                    var notes = new List<string>();
+                    var entries = Logic.ModPak.entriesFor(into, notes);
+
+                    foreach (var note in notes.Take(6)) { Console.WriteLine($"[whole] {note}"); }
+
+                    Console.WriteLine($"[whole] {items.Count} in, {entries.Count} out");
+                    Console.WriteLine(entries.Count == items.Count
+                        ? "[whole] nothing was lost taking it apart"
+                        : "[whole] WRONG - the round trip does not carry every entry");
+
+                    //And how much of it the map tab alone would have shipped.
+                    var mapOnly = entries.Count(one =>
+                        one.Path.IndexOf("/data/lovika/", StringComparison.OrdinalIgnoreCase) >= 0
+                        || one.Path.IndexOf("/data/resourcepacks/", StringComparison.OrdinalIgnoreCase) >= 0);
+
+                    Console.WriteLine($"[whole] the map itself is {mapOnly} of those; "
+                        + $"{entries.Count - mapOnly} would have been dropped before this");
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[whole] refused: {problem.Message}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_CSVBYTES=<mission> - what the game's label table really is, byte for byte,
+            //and what we would put in its place.
+            //
+            //Written after a map with its own wording crashed the game on load. The wording
+            //mechanism was read off a working mod, but "a CSV goes at this path" is not the
+            //same claim as "THIS file is a CSV and ours is shaped like it", and a shipping
+            //build's crash log says only "Unhandled exception".
+            var probeBytes = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_CSVBYTES="));
+            if (probeBytes != null)
+            {
+                var wanted = probeBytes.Substring("PROBE_CSVBYTES=".Length).Trim('"');
+
+                var path = Logic.MapWords.pathFor(wanted);
+                Console.WriteLine($"[bytes] the game keeps it at {path ?? "(nowhere)"}");
+
+                var raw = path == null ? null : Logic.GameMaps.read(path);
+
+                if (raw == null)
+                {
+                    Console.WriteLine("[bytes] could not read it");
+                    this.Shutdown();
+                    return;
+                }
+
+                void dump(string what, byte[] data)
+                {
+                    Console.WriteLine($"[bytes] {what}: {data.Length} bytes");
+
+                    var head = string.Join(" ", data.Take(24).Select(b => b.ToString("x2")));
+                    var tail = string.Join(" ", data.Skip(Math.Max(0, data.Length - 12))
+                        .Select(b => b.ToString("x2")));
+
+                    Console.WriteLine($"[bytes]   head {head}");
+                    Console.WriteLine($"[bytes]   tail {tail}");
+
+                    var text = new System.Text.UTF8Encoding(false).GetString(data);
+                    var lines = text.Replace("\r\n", "\u00b6\n").Split('\n');
+
+                    Console.WriteLine($"[bytes]   first line: {lines.FirstOrDefault()}");
+                    Console.WriteLine($"[bytes]   last  line: "
+                        + lines.Where(one => one.Length > 0).LastOrDefault());
+
+                    var commas = lines.Where(one => one.Trim().Length > 0)
+                        .Select(one => one.Count(c => c == ','))
+                        .GroupBy(one => one)
+                        .OrderByDescending(one => one.Count());
+
+                    Console.WriteLine("[bytes]   commas per row: "
+                        + string.Join(", ", commas.Select(one => $"{one.Key}x{one.Count()}")));
+
+                    Console.WriteLine($"[bytes]   CRLF: {text.Contains("\r\n")}, "
+                        + $"bare LF: {text.Replace("\r\n", "").Contains("\n")}, "
+                        + $"BOM: {data.Length > 2 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF}");
+                }
+
+                dump("the game's", raw);
+
+                //Every row it actually has, so a row this editor would mangle is visible
+                //rather than inferred from a comma count.
+                foreach (var line in new System.Text.UTF8Encoding(false).GetString(raw)
+                    .Replace("\r\n", "\n").Split('\n'))
+                {
+                    if (line.Count(c => c == ',') == 1) { continue; }
+                    Console.WriteLine($"[bytes]   odd row ({line.Count(c => c == ',')} commas): {line}");
+                }
+
+                //And ours, built the way install builds it.
+                var folder = System.IO.Path.Combine(
+                    System.IO.Path.GetTempPath(), "mcd-csvbytes");
+
+                System.IO.Directory.CreateDirectory(folder);
+                Logic.MapWords.forget(folder);
+                Logic.MapWords.remember(folder, "description_mcd_reborn", "MCD Reborn 2");
+
+                var mine = Logic.MapWords.tableFor(folder, wanted);
+
+                if (mine == null) { Console.WriteLine("[bytes] we would ship nothing"); }
+                else
+                {
+                    dump("ours", mine);
+
+                    //The whole point of the change: what we ship must BEGIN with the game's
+                    //own file, byte for byte, and only then say anything of its own.
+                    var same = mine.Length >= raw.Length
+                        && !raw.Where((b, i) => mine[i] != b).Any();
+
+                    Console.WriteLine(same
+                        ? "[bytes] ours starts with the game's file, byte for byte"
+                        : "[bytes] WRONG - we are rewriting rows the game shipped");
+                    Console.WriteLine($"[bytes] we would put it at {Logic.MapWords.pakPathFor(wanted)}");
+
+                    //The one thing that matters most: does the game's own path end in .csv at
+                    //all? The index strips extensions, so the only way to know is to ask a
+                    //reader that does not.
+                    try
+                    {
+                        foreach (var pak in System.IO.Directory.GetFiles(
+                            System.IO.Path.GetDirectoryName(Logic.GameMaps.resolve(path) ?? "") ?? "",
+                            "*.pak"))
+                        {
+                            Console.WriteLine($"[bytes] (pak on disk: {System.IO.Path.GetFileName(pak)})");
+                            break;
+                        }
+                    }
+                    catch { }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_CLICKSPOT - what a clickable thing stands on, and where each one is used.
+            //
+            //A map crashed on entering it, with one thing added: a click objective on a town
+            //bell. Two halves could be wrong and both are guesses until counted - the REGION
+            //this editor writes for it, and whether a prefab out of one mission can be spawned
+            //in another at all.
+            if (_startupArguments.Any(a => a == "PROBE_CLICKSPOT"))
+            {
+                var shapes = new SortedDictionary<string, int>(StringComparer.Ordinal);
+                var byMission = new SortedDictionary<string, SortedSet<string>>(StringComparer.Ordinal);
+
+                foreach (var mission in Logic.GameMaps.all())
+                {
+                    var raw = Logic.GameMaps.read(mission.PakPath);
+                    if (raw == null) { continue; }
+
+                    System.Text.Json.Nodes.JsonObject? level;
+                    try
+                    {
+                        level = System.Text.Json.Nodes.JsonNode.Parse(
+                            Logic.GameMaps.stripComments(
+                                new System.Text.UTF8Encoding(false).GetString(raw).TrimStart('\uFEFF')),
+                            documentOptions: new System.Text.Json.JsonDocumentOptions
+                            {
+                                AllowTrailingCommas = true,
+                                CommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                            }) as System.Text.Json.Nodes.JsonObject;
+                    }
+                    catch { continue; }
+
+                    if (level?["objectives"] is not System.Text.Json.Nodes.JsonArray all) { continue; }
+
+                    //Which regions this mission clicks, and what it draws at each.
+                    var wanted = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var one in all)
+                    {
+                        if (one is not System.Text.Json.Nodes.JsonObject step) { continue; }
+                        if (step["click"] is not System.Text.Json.Nodes.JsonObject body) { continue; }
+
+                        var what = body["object"]?.GetValue<string>();
+                        if (what == null) { continue; }
+
+                        if (!byMission.TryGetValue(what, out var who))
+                        {
+                            who = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+                            byMission[what] = who;
+                        }
+                        who.Add(mission.Name);
+
+                        foreach (var said in body["locations"] as System.Text.Json.Nodes.JsonArray
+                            ?? new System.Text.Json.Nodes.JsonArray())
+                        {
+                            var name = said?.GetValue<string>();
+                            if (name == null) { continue; }
+                            var at = name.LastIndexOf('.');
+                            wanted[at < 0 ? name : name.Substring(at + 1)] = what;
+                        }
+                    }
+
+                    if (wanted.Count == 0) { continue; }
+
+                    var (groups, _) = Logic.GameMaps.referencedBy(raw);
+
+                    foreach (var group in groups)
+                    {
+                        var body = Logic.GameMaps.read("/Dungeons/Content/" + Logic.GameMaps.GROUPS + group);
+                        if (body == null) { continue; }
+
+                        System.Text.Json.Nodes.JsonObject? sheet;
+                        try
+                        {
+                            sheet = System.Text.Json.Nodes.JsonNode.Parse(
+                                Logic.GameMaps.stripComments(
+                                    new System.Text.UTF8Encoding(false).GetString(body).TrimStart('\uFEFF')),
+                                documentOptions: new System.Text.Json.JsonDocumentOptions
+                                {
+                                    AllowTrailingCommas = true,
+                                    CommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                                }) as System.Text.Json.Nodes.JsonObject;
+                        }
+                        catch { continue; }
+
+                        foreach (var one in sheet?["objects"] as System.Text.Json.Nodes.JsonArray
+                            ?? new System.Text.Json.Nodes.JsonArray())
+                        {
+                            if (one is not System.Text.Json.Nodes.JsonObject tile) { continue; }
+
+                            foreach (var each in tile["regions"] as System.Text.Json.Nodes.JsonArray
+                                ?? new System.Text.Json.Nodes.JsonArray())
+                            {
+                                if (each is not System.Text.Json.Nodes.JsonObject region) { continue; }
+
+                                var name = region["name"]?.GetValue<string>();
+                                if (name == null || !wanted.ContainsKey(name)) { continue; }
+
+                                var size = region["size"] as System.Text.Json.Nodes.JsonArray;
+                                var row = $"type {region["type"]?.GetValue<string>() ?? "(none)"}"
+                                    + $"  size [{size?[0]},{size?[1]},{size?[2]}]"
+                                    + $"  tags \"{region["tags"]?.GetValue<string>() ?? ""}\"";
+
+                                shapes[row] = shapes.TryGetValue(row, out var was) ? was + 1 : 1;
+                            }
+                        }
+                    }
+                }
+
+                Console.WriteLine("what a clickable thing's region looks like:");
+                foreach (var shape in shapes.OrderByDescending(one => one.Value))
+                {
+                    Console.WriteLine($"[click] {shape.Value,4}  {shape.Key}");
+                }
+
+                Console.WriteLine();
+                Console.WriteLine("and which missions use each prefab:");
+                foreach (var one in byMission)
+                {
+                    var offered = Logic.MapSpawns.CLICKABLES.Any(c => c.path == one.Key);
+
+                    Console.WriteLine($"[click] {(offered ? "OFFERED" : "       ")}  "
+                        + $"{one.Key}");
+                    Console.WriteLine($"[click]            used by: {string.Join(", ", one.Value)}");
                 }
 
                 this.Shutdown();

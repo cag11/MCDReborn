@@ -50,6 +50,10 @@
             <TabControl x:Name="panelTabs" Background="Transparent"
                         BorderThickness="0" Padding="0">
 
+                <!-- Where the headers are laid out is decided by the app's TabControl template
+                     in Theme/Controls.xaml, not here: a template that names its own items host
+                     ignores ItemsPanel entirely, which is why setting it here did nothing. -->
+
                 <TabItem x:Name="mobsTab">
                     <ScrollViewer x:Name="mobsTabScroll" VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
@@ -247,12 +251,19 @@
                                    Foreground="{DynamicResource Brush.TextMuted}"/>
                         <TextBlock x:Name="stepBannerLabel" FontSize="11" Margin="0,2,0,4"
                                    Foreground="{DynamicResource Brush.TextMuted}"/>
-                        <ComboBox x:Name="stepBannerBox" Margin="0,0,0,6" Height="26"
-                                  VerticalContentAlignment="Center"/>
+                        <TextBox x:Name="stepBannerSay" Margin="0,0,0,4" Height="26"
+                                 VerticalContentAlignment="Center"/>
+                        <ComboBox x:Name="stepBannerBox" Margin="0,0,0,8" Height="24"
+                                  VerticalContentAlignment="Center"
+                                  SelectionChanged="borrowWording_Changed"/>
+
                         <TextBlock x:Name="stepWordingLabel" FontSize="11" Margin="0,2,0,4"
                                    Foreground="{DynamicResource Brush.TextMuted}"/>
-                        <ComboBox x:Name="stepTitleBox" Margin="0,0,0,6" Height="26"
-                                  VerticalContentAlignment="Center"/>
+                        <TextBox x:Name="stepSay" Margin="0,0,0,4" Height="26"
+                                 VerticalContentAlignment="Center"/>
+                        <ComboBox x:Name="stepTitleBox" Margin="0,0,0,8" Height="24"
+                                  VerticalContentAlignment="Center"
+                                  SelectionChanged="borrowWording_Changed"/>
                         <TextBlock x:Name="stepThingLabel" FontSize="11" Margin="0,2,0,4"
                                    Foreground="{DynamicResource Brush.TextMuted}"/>
                         <ComboBox x:Name="stepThingBox" Margin="0,0,0,6" Height="26"
@@ -271,13 +282,18 @@
                         <ListBox x:Name="stepsList" MaxHeight="110" Margin="0,0,0,12"
                                  SelectionChanged="stepsList_SelectionChanged"/>
 
-                            <Separator Margin="0,4,0,10"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
 
-                        <Label x:Name="gatesLabel" Content="*Gates*"
-                               Style="{StaticResource SectionHeading}" Padding="0,0,0,4"/>
+                <TabItem x:Name="gatesTab">
+                    <ScrollViewer x:Name="gatesTabScroll" VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Padding="0,8,6,0">
+                        <StackPanel>
                         <TextBlock x:Name="gatesHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
                                    Foreground="{DynamicResource Brush.TextMuted}"/>
-                        <ListBox x:Name="gatesList" MaxHeight="110" Margin="0,0,0,6"
+                        <ListBox x:Name="gatesList" MaxHeight="150" Margin="0,0,0,6"
                                  SelectionChanged="gatesList_SelectionChanged"/>
                         <WrapPanel Margin="0,0,0,6">
                             <Button x:Name="addGateButton" Content="*Put a gate here*" Padding="10,4"
@@ -291,6 +307,9 @@
                             <Button x:Name="removeGateRegionButton" Content="*Remove*" Padding="10,4"
                                     Margin="0,0,0,6" Click="removeGateRegionButton_Click"/>
                         </WrapPanel>
+
+                        <Separator Margin="0,4,0,10"/>
+
                         <TextBlock x:Name="opensLabel" FontSize="11" Margin="0,2,0,4"
                                    Foreground="{DynamicResource Brush.TextMuted}"/>
                         <ComboBox x:Name="opensBox" Margin="0,0,0,6" Height="26"
@@ -308,6 +327,128 @@
                             <Button x:Name="unlockGateButton" Content="*Nothing opens it*" Padding="10,4"
                                     Click="unlockGateButton_Click"/>
                         </WrapPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <TabItem x:Name="arenaTab">
+                    <ScrollViewer x:Name="arenaTabScroll" VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Padding="0,8,6,0">
+                        <StackPanel>
+                        <TextBlock x:Name="arenaHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ListBox x:Name="arenaList" MaxHeight="150" Margin="0,0,0,6"
+                                 SelectionChanged="arenaList_SelectionChanged"/>
+                        <WrapPanel Margin="0,0,0,12">
+                            <Button x:Name="addArenaButton" Content="*Put a fight here*" Padding="10,4"
+                                    Margin="0,0,6,6" Click="addArenaButton_Click"/>
+                            <Button x:Name="waveArenaButton" Content="*Add a wave*" Padding="10,4"
+                                    Margin="0,0,6,6" Click="waveArenaButton_Click"/>
+                            <Button x:Name="removeArenaButton" Content="*Remove*" Padding="10,4"
+                                    Margin="0,0,0,6" Click="removeArenaButton_Click"/>
+                        </WrapPanel>
+
+                        <Separator Margin="0,4,0,10"/>
+
+                        <TextBlock x:Name="arenaWordingLabel" FontSize="11" Margin="0,2,0,4"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ComboBox x:Name="arenaWordingBox" Margin="0,0,0,6" Height="26"
+                                  VerticalContentAlignment="Center"/>
+                        <TextBlock x:Name="arenaGroupLabel" FontSize="11" Margin="0,2,0,4"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ComboBox x:Name="arenaGroupBox" Margin="0,0,0,6" Height="26"
+                                  VerticalContentAlignment="Center"/>
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="arenaCountLabel" FontSize="11" Margin="0,0,0,4"
+                                           Foreground="{DynamicResource Brush.TextMuted}"/>
+                                <TextBox x:Name="arenaCountBox" Height="26" Text="8"
+                                         VerticalContentAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock x:Name="arenaRewardLabel" FontSize="11" Margin="0,0,0,4"
+                                           Foreground="{DynamicResource Brush.TextMuted}"/>
+                                <ComboBox x:Name="arenaRewardBox" Height="26"
+                                          VerticalContentAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                        <CheckBox x:Name="arenaGateBox" Margin="0,4,0,10" IsChecked="True"
+                                  Content="*Seal it while the fight is on*"/>
+                        <Button x:Name="applyArenaButton" Content="*Apply to the chosen fight*"
+                                Padding="10,4" Margin="0,0,0,12" HorizontalAlignment="Left"
+                                Click="applyArenaButton_Click"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <TabItem x:Name="keysTab">
+                    <ScrollViewer x:Name="keysTabScroll" VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Padding="0,8,6,0">
+                        <StackPanel>
+                        <TextBlock x:Name="keysHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ListBox x:Name="keysList" MaxHeight="150" Margin="0,0,0,6"
+                                 SelectionChanged="keysList_SelectionChanged"/>
+                        <WrapPanel Margin="0,0,0,12">
+                            <Button x:Name="addKeyedButton" Content="*Put a locked door here*" Padding="10,4"
+                                    Margin="0,0,6,6" Click="addKeyedButton_Click"/>
+                            <Button x:Name="alsoKeyButton" Content="*The key could also be here*" Padding="10,4"
+                                    Margin="0,0,6,6" Click="alsoKeyButton_Click"/>
+                            <Button x:Name="removeKeyedButton" Content="*Remove*" Padding="10,4"
+                                    Margin="0,0,0,6" Click="removeKeyedButton_Click"/>
+                        </WrapPanel>
+
+                        <Separator Margin="0,4,0,10"/>
+
+                        <TextBlock x:Name="keyWordingLabel" FontSize="11" Margin="0,2,0,4"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ComboBox x:Name="keyWordingBox" Margin="0,0,0,6" Height="26"
+                                  VerticalContentAlignment="Center"/>
+                        <TextBlock x:Name="keyDoorLabel" FontSize="11" Margin="0,2,0,4"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ComboBox x:Name="keyDoorBox" Margin="0,0,0,12" Height="26"
+                                  VerticalContentAlignment="Center"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <TabItem x:Name="levelTab">
+                    <ScrollViewer x:Name="levelTabScroll" VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Padding="0,8,6,0">
+                        <StackPanel>
+                        <TextBlock x:Name="levelHint" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,10"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+
+                        <TextBlock x:Name="ambienceLabel" FontSize="11" Margin="0,2,0,4"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ComboBox x:Name="ambienceBox" Margin="0,0,0,8" Height="26"
+                                  VerticalContentAlignment="Center"
+                                  SelectionChanged="levelSetting_Changed"/>
+
+                        <TextBlock x:Name="musicLabel" FontSize="11" Margin="0,2,0,4"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ComboBox x:Name="musicBox" Margin="0,0,0,8" Height="26"
+                                  VerticalContentAlignment="Center"
+                                  SelectionChanged="levelSetting_Changed"/>
+
+                        <CheckBox x:Name="matchDoorsBox" Margin="0,6,0,8"
+                                  Content="*Joined tiles must have matching doors*"
+                                  Click="levelFlag_Changed"/>
+                        <TextBlock x:Name="matchDoorsWhy" TextWrapping="Wrap" FontSize="11"
+                                   Margin="0,0,0,10"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+
+                        <CheckBox x:Name="introBox" Margin="0,0,0,12"
+                                  Content="*Play the mission intro*"
+                                  Click="levelFlag_Changed"/>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
