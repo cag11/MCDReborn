@@ -171,6 +171,24 @@ namespace MCDSaveEdit.Logic
                 var was = level["id"]?.GetValue<string>();
                 if (string.Equals(was, over.Name, StringComparison.Ordinal)) { return raw; }
 
+                //An id the game HAS is left exactly where it is. This only exists to rescue a
+                //level whose id names nothing - "baseline" - and rewriting a good one does real
+                //damage, because the id is not only the theme: the game looks for a tile's
+                //companion sub-level at Decor/Maps/<id>/SubLevels/<tile>. Blossoming Isles keeps
+                //its chests and its beacon script there under "lowertemple", so an install that
+                //helpfully renamed the id to whichever mission it was going over sent the game
+                //looking in a folder that does not exist, and it crashed on entering the level.
+                //
+                //A level's id need not match the file it is loaded as. That mod is the proof:
+                //its files are SakuraGarden, SakuraPagoda and SakuraUndercroft, all three
+                //declare "lowertemple", and all three load.
+                if (was != null && GameMaps.all().Any(one =>
+                        string.Equals(one.Name, was, StringComparison.OrdinalIgnoreCase)))
+                {
+                    Console.WriteLine($"[map] level id \"{was}\" is a mission the game has, left alone");
+                    return raw;
+                }
+
                 level["id"] = over.Name;
 
                 //These two are separate lookups into the same table. They come along when they
@@ -202,7 +220,54 @@ namespace MCDSaveEdit.Logic
             }
         }
 
+        /// <summary>
+        /// Everything installing would put in the pak, without writing one.
+        ///
+        /// So that what goes into the game can be examined before it goes there. A crash on
+        /// entering a level says nothing about which of a thousand files was wrong.
+        /// </summary>
+        public static IReadOnlyList<PakWriter.Entry> wouldShip(string folder, GameMaps.Mission over)
+            => gather(folder, over);
+
         public static CustomSkins.InstalledMod install(string folder, GameMaps.Mission over)
+        {
+            return CustomSkins.writeModPak(PREFIX + safe(over.Name), gather(folder, over));
+        }
+
+        /// <summary>
+        /// Which string table a level will read once it is installed.
+        ///
+        /// Its own "loctable-id" if it names one, then its id, and the mission only as a last
+        /// resort. Read back off the level AFTER claim has had its say, so what is measured is
+        /// what the game will see rather than what the folder happened to hold.
+        /// </summary>
+        private static string loctableIn(byte[] claimed, GameMaps.Mission over)
+        {
+            try
+            {
+                var text = GameMaps.stripComments(
+                    new UTF8Encoding(false).GetString(claimed).TrimStart('﻿'));
+
+                if (JsonNode.Parse(text, documentOptions: new JsonDocumentOptions
+                {
+                    AllowTrailingCommas = true,
+                    CommentHandling = JsonCommentHandling.Skip,
+                }) is JsonObject level)
+                {
+                    return level["loctable-id"]?.GetValue<string>()
+                        ?? level["id"]?.GetValue<string>()
+                        ?? over.Name;
+                }
+            }
+            catch
+            {
+                //A level that cannot be read here is one install is about to ship unchanged.
+            }
+
+            return over.Name;
+        }
+
+        private static List<PakWriter.Entry> gather(string folder, GameMaps.Mission over)
         {
             var level = Path.Combine(folder, LEVEL_FILE);
 
@@ -216,25 +281,34 @@ namespace MCDSaveEdit.Logic
                     + "exported by this tab.");
             }
 
+            var claimed = claim(File.ReadAllBytes(level), over);
+
             var entries = new List<PakWriter.Entry>
             {
                 //No leading slash inside a pak, and the game's own spelling of the path - this is
                 //what makes the game read our file instead of its own.
                 new PakWriter.Entry(
                     "Dungeons/Content/data/lovika/levels/" + over.Name + ".json",
-                    claim(File.ReadAllBytes(level), over)),
+                    claimed),
             };
 
-            //Wording the map invented, as a table extending whichever mission it is being
-            //installed over. Built here rather than kept on disk for the same reason the level
-            //id is set here: which mission this becomes is not known until now, and the table
-            //has to be the right one's or the game reads none of it.
+            //Wording the map invented, as a table extending the one the level ACTUALLY READS.
+            //
+            //Which is not necessarily the mission being installed over. A level is free to name
+            //another mission's table - Blossoming Isles' three all read Cacti Canyon's while
+            //declaring the id of Lower Temple - and claim() leaves an id the game already has
+            //alone. Choosing the table by the mission instead would write rows into a file the
+            //level never opens, and the wording would come out blank with nothing said anywhere.
             //
             //See MapWords for why a CSV works where the compiled string table would not.
-            var said = MapWords.tableFor(folder, over.Name);
+            var reads = loctableIn(claimed, over);
+
+            var said = MapWords.tableFor(folder, reads);
             if (said != null)
             {
-                entries.Add(new PakWriter.Entry(MapWords.pakPathFor(over.Name), said));
+                //The same name for the contents and for the path, or the table is built out of
+                //one mission's rows and filed under another's, and both are wrong at once.
+                entries.Add(new PakWriter.Entry(MapWords.pakPathFor(reads), said));
                 Console.WriteLine($"[map] shipping {said.Length} bytes of wording for {over.Name}");
             }
 
@@ -281,7 +355,7 @@ namespace MCDSaveEdit.Logic
             //changes for it.
             entries.AddRange(ModPak.extras(folder, entries));
 
-            return CustomSkins.writeModPak(PREFIX + safe(over.Name), entries);
+            return entries;
         }
 
         /// <summary>Every map mod installed.</summary>

@@ -3436,6 +3436,143 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_MISSIONS - the rows the Maps tab shows, by the name it shows them under.
+            if (_startupArguments.Any(a => a == "PROBE_MISSIONS"))
+            {
+                foreach (var one in Logic.GameMaps.all())
+                {
+                    Console.WriteLine($"[missions] {one.Name,-22} {one.Label}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_CLAIM2=<folder>;<mission> - what installing a folder over a mission does to
+            //the level's id, without installing anything.
+            //
+            //Written after a mod imported over the wrong mission crashed on entering it. The id
+            //had been rewritten to the mission being replaced, which is right for a map this
+            //app built out of nothing and wrong for one that came from somewhere else: the game
+            //finds a tile's sub-level at Decor/Maps/<id>/SubLevels/<tile>, so renaming the id
+            //moves that lookup to a folder with nothing in it.
+            var probeClaim2 = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_CLAIM2="));
+            if (probeClaim2 != null)
+            {
+                var bits = probeClaim2.Substring("PROBE_CLAIM2=".Length).Trim('"').Split(';');
+                if (bits.Length < 2)
+                {
+                    Console.WriteLine("[claim] PROBE_CLAIM2=<map folder>;<mission>");
+                    this.Shutdown();
+                    return;
+                }
+
+                var folder = bits[0].Trim();
+                var wanted = bits[1].Trim();
+
+                var mission = Logic.GameMaps.all().FirstOrDefault(one =>
+                    string.Equals(one.Name, wanted, StringComparison.OrdinalIgnoreCase));
+
+                if (mission == null)
+                {
+                    Console.WriteLine($"[claim] no mission called {wanted}");
+                    this.Shutdown();
+                    return;
+                }
+
+                var level = System.IO.Path.Combine(folder, "level.json");
+                if (!System.IO.File.Exists(level))
+                {
+                    Console.WriteLine($"[claim] no level.json in {folder}");
+                    this.Shutdown();
+                    return;
+                }
+
+                System.Text.Json.Nodes.JsonObject? read(byte[] raw)
+                    => System.Text.Json.Nodes.JsonNode.Parse(
+                        Logic.GameMaps.stripComments(
+                            new System.Text.UTF8Encoding(false).GetString(raw).TrimStart('\uFEFF')),
+                        documentOptions: new System.Text.Json.JsonDocumentOptions
+                        {
+                            AllowTrailingCommas = true,
+                            CommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                        }) as System.Text.Json.Nodes.JsonObject;
+
+                var before = read(System.IO.File.ReadAllBytes(level));
+
+                //Through install itself, so what is measured is what would be shipped.
+                var entries = Logic.MapMod.wouldShip(folder, mission);
+
+                var after = entries
+                    .Where(one => one.Path.EndsWith("/" + mission.Name + ".json",
+                        StringComparison.OrdinalIgnoreCase))
+                    .Select(one => read(one.Data))
+                    .FirstOrDefault();
+
+                foreach (var field in new[] { "id", "loctable-id", "ambience-level-id" })
+                {
+                    Console.WriteLine($"[claim] {field,-20} "
+                        + $"{before?[field]?.GetValue<string>() ?? "(unset)",-16} -> "
+                        + $"{after?[field]?.GetValue<string>() ?? "(unset)"}");
+                }
+
+                //And whether the sub-levels it ships still line up with the id it will load as.
+                var id = after?["id"]?.GetValue<string>() ?? "";
+                var subs = entries.Where(one =>
+                    one.Path.IndexOf("/SubLevels/", StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+
+                Console.WriteLine($"[claim] it ships {subs.Count} sub-level file(s)");
+
+                //And the wording table, which has to be the one the level reads rather than
+                //the one the mission is called.
+                var reads = after?["loctable-id"]?.GetValue<string>()
+                    ?? after?["id"]?.GetValue<string>() ?? "?";
+
+                var tables = entries.Where(one =>
+                    one.Path.IndexOf("/Decor/Text/", StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+
+                Console.WriteLine($"[claim] the level reads the \"{reads}\" table");
+
+                foreach (var one in tables)
+                {
+                    var leaf = one.Path.Substring(one.Path.LastIndexOf('/') + 1);
+
+                    Console.WriteLine($"[claim]   ships {leaf}  "
+                        + (leaf.StartsWith(reads, StringComparison.OrdinalIgnoreCase)
+                            ? "<- the one it reads"
+                            : "WRONG - it will never open this"));
+                }
+
+                var owners = new SortedDictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var sub in subs)
+                {
+                    var under = sub.Path.Replace('\\', '/');
+                    var at = under.IndexOf("/Maps/", StringComparison.OrdinalIgnoreCase);
+                    if (at < 0) { continue; }
+
+                    var owner = under.Substring(at + 6).Split('/')[0];
+                    owners[owner] = owners.TryGetValue(owner, out var was) ? was + 1 : 1;
+                }
+
+                foreach (var owner in owners)
+                {
+                    //"Lobby" is the camp and belongs to no level - a mod that dresses the camp
+                    //puts its sub-levels there on purpose, and they are found by the camp's own
+                    //id rather than by this one's.
+                    var mine = string.Equals(owner.Key, id, StringComparison.OrdinalIgnoreCase);
+                    var camp = string.Equals(owner.Key, "Lobby", StringComparison.OrdinalIgnoreCase);
+
+                    Console.WriteLine($"[claim]   {owner.Value} under \"{owner.Key}\"  "
+                        + (mine ? "<- found by this level's id"
+                           : camp ? "(the camp, not this level)"
+                           : "WRONG - nothing will look there"));
+                }
+
+                this.Shutdown();
+                return;
+            }
+
             //PROBE_QUESTS - every kind of objective the game's own missions ask for.
             //
             //The editor can only offer steps it knows the shape of, and a step whose shape is
