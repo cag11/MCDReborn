@@ -46,6 +46,14 @@ namespace MCDSaveEdit.Logic
         {
             try
             {
+                //A folder that came out of somebody else's pak is finished work by definition,
+                //however many stretches it has. Welding one is not an improvement but a loss:
+                //Blossoming Isles' Hidden Garden is eleven stretches with five sets of branching
+                //side paths and per-stretch mob lists, and welding replaced all of that with a
+                //single fixed tile - no side paths, and no roaming mobs at all, because what
+                //spawned them lived on the stretches that were merged away.
+                if (File.Exists(Path.Combine(folder, ModPak.MANIFEST))) { return true; }
+
                 var path = Path.Combine(folder, "level.json");
                 if (!File.Exists(path)) { path = Path.Combine(folder, "level"); }
                 if (!File.Exists(path)) { return false; }

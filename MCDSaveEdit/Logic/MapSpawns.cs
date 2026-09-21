@@ -2872,7 +2872,7 @@ namespace MCDSaveEdit.Logic
                 {
                     if (one is not JsonObject port) { continue; }
 
-                    var door = port["door"]?.GetValue<string>() ?? string.Empty;
+                    var door = text(port["door"]) ?? string.Empty;
                     if (!doors.TryGetValue(door, out var at))
                     {
                         //A teleport whose door is gone. Worth keeping in the list - it is exactly
@@ -2881,15 +2881,39 @@ namespace MCDSaveEdit.Logic
                     }
 
                     var into = string.Join(", ", (port["dungeons"] as JsonArray ?? new JsonArray())
-                        .Select(two => two?.GetValue<string>())
+                        .Select(named)
                         .Where(two => !string.IsNullOrEmpty(two)));
 
-                    made.Add(new Teleport(door, port["exit"]?.GetValue<string>(), into, at, port));
+                    made.Add(new Teleport(door, text(port["exit"]), into, at, port));
                 }
             }
 
             return made;
         }
+
+        /// <summary>
+        /// A node's text, or null if it is not text at all.
+        ///
+        /// GetValue&lt;string&gt;() throws on anything that is not a JsonValue, and a level file is
+        /// full of fields that are a string in one place and an object in another. Asking
+        /// politely costs nothing and turns a crash into a blank.
+        /// </summary>
+        private static string? text(JsonNode? node)
+            => node is JsonValue value && value.TryGetValue<string>(out var said) ? said : null;
+
+        /// <summary>
+        /// What one entry of a list of things-by-name is called.
+        ///
+        /// Either a bare name or an object carrying one beside a weight - the same shape
+        /// "default-mobs" uses for its groups. Creeper Woods' travel doors are full of the
+        /// second form: {"id": "cryptsmall003", "weight": 0.4} says which side room that door
+        /// might lead to and how often.
+        ///
+        /// Reading only the bare form threw the moment a welded level actually played the tile
+        /// these sat on, which is to say the moment the teleports started counting.
+        /// </summary>
+        private static string? named(JsonNode? node)
+            => node is JsonObject body ? text(body["id"]) : text(node);
 
         /// <summary>
         /// Adds a mob group, and makes it one the mission actually uses.

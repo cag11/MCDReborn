@@ -3573,6 +3573,585 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_FRESH=<mission>;<folder> - the game's own mission, straight out of the paks.
+            //
+            //So that welding can be measured against what the game actually plays rather than
+            //against a folder somebody has been editing.
+            var probeFresh = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_FRESH="));
+            if (probeFresh != null)
+            {
+                var bits = probeFresh.Substring("PROBE_FRESH=".Length).Trim('"').Split(';');
+                if (bits.Length < 2)
+                {
+                    Console.WriteLine("[fresh] PROBE_FRESH=<mission>;<folder>");
+                    this.Shutdown();
+                    return;
+                }
+
+                var mission = Logic.GameMaps.all().FirstOrDefault(one =>
+                    string.Equals(one.Name, bits[0].Trim(), StringComparison.OrdinalIgnoreCase));
+
+                if (mission == null)
+                {
+                    Console.WriteLine($"[fresh] no mission called {bits[0]}");
+                    this.Shutdown();
+                    return;
+                }
+
+                try
+                {
+                    var made = Logic.MapMod.export(mission, bits[1].Trim());
+                    Console.WriteLine($"[fresh] {made.Files} file(s), {made.Bytes:N0} bytes -> {made.Folder}");
+                    foreach (var note in made.Notes) { Console.WriteLine($"[fresh]   {note}"); }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[fresh] refused: {problem.Message}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_LIVETILES=<mission> - the layout the running game actually built.
+            //
+            //Welding has to place the rooms itself, and placing them itself is guesswork: the
+            //game assembles a mission at run time from rules and a seed nobody outside it has,
+            //so the best an offline guess manages is A layout rather than THE layout. Creeper
+            //Woods welded offline leaves two rooms short of their doorways.
+            //
+            //But the game has already done it. While a mission is loaded its answer is sitting
+            //in memory, so this goes and reads it rather than imitating it.
+            //
+            //Read-only: nothing is written to the game.
+            var probeLive = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_LIVETILES="));
+            if (probeLive != null)
+            {
+                var wanted = probeLive.Substring("PROBE_LIVETILES=".Length).Trim('"');
+
+                //The tile ids this mission is made of, so a name in the game can be recognised
+                //as one. Taken from the folder rather than guessed at.
+                var known = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                try
+                {
+                    var folder = System.IO.Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "MCDReborn", "maps", wanted);
+
+                    if (!System.IO.Directory.Exists(folder)) { folder = wanted; }
+
+                    foreach (var file in System.IO.Directory.GetFiles(
+                        System.IO.Path.Combine(folder, "objectgroups"), "objectgroup.json",
+                        System.IO.SearchOption.AllDirectories))
+                    {
+                        var sheet = System.Text.Json.Nodes.JsonNode.Parse(
+                            Logic.GameMaps.stripComments(System.IO.File.ReadAllText(file)),
+                            documentOptions: new System.Text.Json.JsonDocumentOptions
+                            {
+                                AllowTrailingCommas = true,
+                                CommentHandling = System.Text.Json.JsonCommentHandling.Skip,
+                            }) as System.Text.Json.Nodes.JsonObject;
+
+                        foreach (var one in sheet?["objects"] as System.Text.Json.Nodes.JsonArray
+                            ?? new System.Text.Json.Nodes.JsonArray())
+                        {
+                            var id = (one as System.Text.Json.Nodes.JsonObject)?["id"]
+                                ?.GetValue<string>();
+
+                            if (!string.IsNullOrEmpty(id)) { known.Add(id!); }
+                        }
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[live] could not read the tile ids: {problem.Message}");
+                }
+
+                Console.WriteLine($"[live] looking for {known.Count} tile id(s) of {wanted}");
+
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null)
+                {
+                    Console.WriteLine($"[live] the game is not open: {why}");
+                    this.Shutdown();
+                    return;
+                }
+
+                using (game)
+                {
+                    var names = new LiveEdit.NameTable(game);
+                    if (!names.find(one => Console.WriteLine($"[live] names: {one}")))
+                    {
+                        Console.WriteLine("[live] could not find the name table");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    Console.WriteLine($"[live] name table: {names.Count:N0} names");
+
+                    var tables = new LiveEdit.ObjectTables(game);
+                    var found = tables.search();
+
+                    if (found.Count == 0)
+                    {
+                        Console.WriteLine("[live] could not find the object array");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    var array = found.OrderByDescending(one => one.NumElements).First();
+                    Console.WriteLine($"[live] object array: {array.NumElements:N0} objects");
+
+                    //UObject, 4.22: vtable, flags, index, class, name, outer.
+                    const int CLASS_AT = 0x10;
+                    const int NAME_AT = 0x18;
+                    const int OUTER_AT = 0x20;
+
+                    string? nameOf(IntPtr obj)
+                    {
+                        if (obj == IntPtr.Zero) { return null; }
+                        var raw = game.read(new IntPtr(obj.ToInt64() + NAME_AT), 4);
+                        return raw == null ? null : names.nameOf(BitConverter.ToInt32(raw, 0));
+                    }
+
+                    IntPtr pointerAt(IntPtr obj, int offset)
+                    {
+                        var raw = game.read(new IntPtr(obj.ToInt64() + offset), 8);
+                        return raw == null ? IntPtr.Zero : new IntPtr(BitConverter.ToInt64(raw, 0));
+                    }
+
+                    var hits = new List<(string name, string cls, IntPtr at)>();
+                    var byClass = new SortedDictionary<string, int>(StringComparer.Ordinal);
+                    var looked = 0;
+
+                    for (var i = 0; i < array.NumElements; i++)
+                    {
+                        var obj = tables.objectAt(array, i);
+                        if (obj == IntPtr.Zero) { continue; }
+
+                        looked++;
+
+                        var name = nameOf(obj);
+                        if (name == null || name.Length < 3) { continue; }
+
+                        //A tile's name may carry the engine's _NN suffix on a duplicate.
+                        var bare = name;
+                        var under = bare.LastIndexOf('_');
+                        if (under > 0 && int.TryParse(bare.Substring(under + 1), out _)
+                            && !known.Contains(bare))
+                        {
+                            bare = bare.Substring(0, under);
+                        }
+
+                        if (!known.Contains(bare)) { continue; }
+
+                        var cls = nameOf(pointerAt(obj, CLASS_AT)) ?? "?";
+                        byClass[cls] = byClass.TryGetValue(cls, out var was) ? was + 1 : 1;
+
+                        if (hits.Count < 400) { hits.Add((name, cls, obj)); }
+                    }
+
+                    Console.WriteLine($"[live] walked {looked:N0} objects, "
+                        + $"{hits.Count} of them named after a tile of this mission");
+
+                    foreach (var one in byClass.OrderByDescending(one => one.Value))
+                    {
+                        Console.WriteLine($"[live]   {one.Value,5}  class {one.Key}");
+                    }
+
+                    foreach (var one in hits.Take(12))
+                    {
+                        var outer = nameOf(pointerAt(one.at, OUTER_AT)) ?? "?";
+                        Console.WriteLine($"[live]   {one.name,-30} {one.cls,-28} outer={outer}");
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_FINDSTR=<text> - where a piece of text sits in the running game.
+            //
+            //Before building anything on top of the name table, the cheap question: is a tile's
+            //name in the game's memory as text at all? If it is, the entry that holds it can be
+            //found directly and carries its own index - which is all that is needed to match
+            //objects, and does not require finding the name table at all.
+            //
+            //Read-only.
+            var probeStr = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_FINDSTR="));
+            if (probeStr != null)
+            {
+                var wanted = probeStr.Substring("PROBE_FINDSTR=".Length).Trim('"');
+
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null)
+                {
+                    Console.WriteLine($"[str] the game is not open: {why}");
+                    this.Shutdown();
+                    return;
+                }
+
+                using (game)
+                {
+                    var needleA = System.Text.Encoding.ASCII.GetBytes(wanted + "\0");
+                    var needleW = System.Text.Encoding.Unicode.GetBytes(wanted + "\0");
+
+                    var hitsA = new List<long>();
+                    var hitsW = new List<long>();
+                    var regions = 0;
+                    long bytes = 0;
+
+                    foreach (var (at, size) in game.writableRegions())
+                    {
+                        var buffer = new byte[size];
+                        if (!game.tryRead(at, buffer, (int)size)) { continue; }
+
+                        regions++;
+                        bytes += size;
+
+                        void hunt(byte[] needle, List<long> into)
+                        {
+                            if (into.Count >= 8) { return; }
+
+                            for (var i = 0; i + needle.Length <= buffer.Length; i++)
+                            {
+                                if (buffer[i] != needle[0]) { continue; }
+
+                                var same = true;
+                                for (var j = 1; j < needle.Length; j++)
+                                {
+                                    if (buffer[i + j] != needle[j]) { same = false; break; }
+                                }
+
+                                if (!same) { continue; }
+
+                                into.Add(at.ToInt64() + i);
+                                if (into.Count >= 8) { return; }
+                            }
+                        }
+
+                        hunt(needleA, hitsA);
+                        hunt(needleW, hitsW);
+
+                        if (hitsA.Count >= 8 && hitsW.Count >= 8) { break; }
+                    }
+
+                    Console.WriteLine($"[str] \"{wanted}\": {hitsA.Count} ansi, {hitsW.Count} wide "
+                        + $"(scanned {regions} region(s), {bytes / (1024 * 1024)} MB)");
+
+                    //The bytes just before it. An FNameEntry in this engine is an int32 index, a
+                    //pointer, then the text at 0x10 - so a hit that IS a name entry has its own
+                    //index sixteen bytes back, and that index is what an object's name field
+                    //holds.
+                    //Who points AT the text. A layout does not store a tile's name inline, it
+                    //stores a pointer to it - so the interesting structure is whatever holds
+                    //this address, and what sits beside it there.
+                    //What sits in front of each copy. Nothing points AT the wide ones, which
+                    //is what an inline buffer looks like - and a name entry keeps its text
+                    //inline at 0x10, with an index and a hash pointer in front. If these are
+                    //entries then the tile names are engine names after all, and each one
+                    //carries the number an object would be holding.
+                    foreach (var hit in hitsW.Concat(hitsA))
+                    {
+                        var before = game.read(new IntPtr(hit - 0x10), 0x10);
+                        if (before == null) { continue; }
+
+                        var index = BitConverter.ToInt32(before, 0);
+                        var next = BitConverter.ToInt64(before, 8);
+
+                        var entryish = (index & 1) == 1 && (index >> 1) > 0 && (index >> 1) < 4_000_000
+                            && (next == 0 || (next > 0x10000 && next < 0x7fffffffffff));
+
+                        Console.WriteLine($"[str] {hit:x} -0x10: "
+                            + string.Join(" ", before.Take(16).Select(b => b.ToString("x2"))));
+                        Console.WriteLine($"[str]     index={index >> 1} wide={(index & 1) != 0} "
+                            + $"hashNext={next:x}  {(entryish ? "<- looks like a name entry" : "")}");
+                    }
+
+                    foreach (var hit in new List<long>())
+                    {
+                        var target = BitConverter.GetBytes(hit);
+                        var pointers = new List<long>();
+
+                        foreach (var (at, size) in game.writableRegions())
+                        {
+                            if (pointers.Count >= 6) { break; }
+
+                            var buffer = new byte[size];
+                            if (!game.tryRead(at, buffer, (int)size)) { continue; }
+
+                            for (var i = 0; i + 8 <= buffer.Length; i += 8)
+                            {
+                                var same = true;
+                                for (var j = 0; j < 8; j++)
+                                {
+                                    if (buffer[i + j] != target[j]) { same = false; break; }
+                                }
+
+                                if (!same) { continue; }
+
+                                pointers.Add(at.ToInt64() + i);
+                                if (pointers.Count >= 6) { break; }
+                            }
+                        }
+
+                        Console.WriteLine($"[str] {hit:x} is pointed at from {pointers.Count} place(s)");
+
+                        foreach (var from in pointers)
+                        {
+                            var around = game.read(new IntPtr(from - 0x80), 0x180);
+                            if (around == null) { continue; }
+
+                            var ints = new List<string>();
+                            var floats = new List<string>();
+
+                            for (var i = 0; i + 4 <= around.Length; i += 4)
+                            {
+                                var whole = BitConverter.ToInt32(around, i);
+                                var real = BitConverter.ToSingle(around, i);
+
+                                ints.Add(Math.Abs(whole) < 100000 ? whole.ToString() : "-");
+                                floats.Add(Math.Abs(real) > 0.01 && Math.Abs(real) < 100000
+                                    ? real.ToString("0.#") : "-");
+                            }
+
+                            //Anything that looks like a place: three smallish numbers in a
+                            //row, which is what a tile position is. Printed with their offset
+                            //from the name pointer so a repeating stride shows up.
+                            Console.WriteLine($"[str]   from {from:x} (name pointer at +0x80 of this window)");
+
+                            for (var i = 0; i + 12 <= around.Length; i += 4)
+                            {
+                                var a = BitConverter.ToInt32(around, i);
+                                var b = BitConverter.ToInt32(around, i + 4);
+                                var c = BitConverter.ToInt32(around, i + 8);
+
+                                var placeish = Math.Abs(a) < 4000 && Math.Abs(b) < 4000
+                                    && Math.Abs(c) < 4000 && (a != 0 || b != 0 || c != 0);
+
+                                var fa = BitConverter.ToSingle(around, i);
+                                var fb = BitConverter.ToSingle(around, i + 4);
+                                var fc = BitConverter.ToSingle(around, i + 8);
+
+                                var floatish = new[] { fa, fb, fc }.All(one =>
+                                    one == 0 || (Math.Abs(one) > 0.5 && Math.Abs(one) < 500000));
+
+                                if (placeish)
+                                {
+                                    Console.WriteLine($"[str]     +{i - 0x80,4}  ints   {a} {b} {c}");
+                                }
+                                else if (floatish && (fa != 0 || fb != 0 || fc != 0))
+                                {
+                                    Console.WriteLine($"[str]     +{i - 0x80,4}  floats {fa:0.#} {fb:0.#} {fc:0.#}");
+                                }
+                            }
+                        }
+                    }
+
+                    foreach (var hit in hitsA.Take(0))
+                    {
+                        var head = game.read(new IntPtr(hit - 0x10), 0x10);
+                        if (head == null) { continue; }
+
+                        var index = BitConverter.ToInt32(head, 0);
+
+                        Console.WriteLine($"[str]   {hit:x}  header={string.Join(" ", head.Take(16).Select(b => b.ToString("x2")))}");
+                        Console.WriteLine($"[str]        if this is a name entry, index={index >> 1}"
+                            + $" wide={(index & 1) != 0}");
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_GNAMES - the engine's name table.
+            //
+            //Found in the MODULE, not in the heap, and that is the whole trick. The table is a
+            //static: 256 chunk pointers and two counts, living in the executable's own data.
+            //What the chunks POINT AT is heap - the entries are allocated as names are made -
+            //but the table itself never moves.
+            //
+            //Scanning all writable memory for it, which is what this did first, reads 1,885 MB
+            //and turns up 42 words that dereference twice onto the one entry every build has
+            //("None"). Every one a coincidence, and it took minutes to be wrong. The module is
+            //a hundredth of that and holds the answer.
+            //
+            //Believed only when names 0 and 1 read back as "None" and "ByteProperty", which is
+            //what they are in every Unreal build.
+            //
+            //Read-only.
+            if (_startupArguments.Any(a => a == "PROBE_GNAMES"))
+            {
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null)
+                {
+                    Console.WriteLine($"[gnames] the game is not open: {why}");
+                    this.Shutdown();
+                    return;
+                }
+
+                using (game)
+                {
+                    var began = DateTime.UtcNow;
+                    var image = game.image(out var imageSize);
+
+                    Console.WriteLine($"[gnames] module at {image.ToInt64():x}, {imageSize / (1024 * 1024)} MB");
+
+                    var low = image.ToInt64();
+                    var high = low + imageSize;
+
+                    var looked = 0L;
+                    var tried = 0;
+                    var answer = IntPtr.Zero;
+
+                    foreach (var (at, size) in game.writableRegions())
+                    {
+                        var where = at.ToInt64();
+                        if (where < low || where >= high) { continue; }
+
+                        var buffer = new byte[size];
+                        if (!game.tryRead(at, buffer, (int)size)) { continue; }
+
+                        looked += size;
+
+                        for (var i = 0; i + 8 <= buffer.Length; i += 8)
+                        {
+                            var first = BitConverter.ToInt64(buffer, i);
+
+                            //Chunks[0], which must be a heap pointer.
+                            if (first < 0x10000 || first > 0x7fffffffffff) { continue; }
+
+                            tried++;
+
+                            var names = new LiveEdit.NameTable(game);
+                            names.useChunks(new IntPtr(where + i));
+
+                            if (names.nameOf(0) != "None") { continue; }
+                            if (names.nameOf(1) != "ByteProperty") { continue; }
+
+                            answer = new IntPtr(where + i);
+
+                            Console.WriteLine($"[gnames] FOUND at {answer.ToInt64():x}");
+                            Console.WriteLine("[gnames]   " + string.Join(" | ",
+                                Enumerable.Range(0, 8).Select(one => names.nameOf(one) ?? "(null)")));
+
+                            //Where it stops, so the reach is known rather than assumed.
+                            var far = 0;
+                            for (var step = 1; step < 4_000_000; step *= 2)
+                            {
+                                if (names.nameOf(step) != null) { far = step; }
+                            }
+
+                            //The two counts sit after the 256 chunk slots.
+                            var counts = game.read(new IntPtr(answer.ToInt64() + 256 * 8), 8);
+                            if (counts != null)
+                            {
+                                Console.WriteLine($"[gnames]   NumElements={BitConverter.ToInt32(counts, 0):N0} "
+                                    + $"NumChunks={BitConverter.ToInt32(counts, 4)}");
+                            }
+
+                            Console.WriteLine($"[gnames]   names resolve out to at least {far:N0}");
+                            break;
+                        }
+
+                        if (answer != IntPtr.Zero) { break; }
+                    }
+
+                    Console.WriteLine($"[gnames] {looked / (1024 * 1024)} MB of module scanned, "
+                        + $"{tried:N0} candidate(s) tried, "
+                        + $"{(DateTime.UtcNow - began).TotalSeconds:F1}s");
+
+                    if (answer == IntPtr.Zero)
+                    {
+                        Console.WriteLine("[gnames] not in the module - it is somewhere else");
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_OPEN=<mission> - Edit spawns, exactly as the button does it.
+            //
+            //Every other window probe builds a SpawnsWindow with no mission, because it only
+            //wanted to look at the map. The button passes one, and a window that has a mission
+            //takes a different path through its own setup - the install side of it exists at
+            //all. A crash there is invisible to a probe that never hands one over.
+            var probeOpen = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_OPEN="));
+            if (probeOpen != null)
+            {
+                var wanted = probeOpen.Substring("PROBE_OPEN=".Length).Trim('"');
+
+                var mission = Logic.GameMaps.all().FirstOrDefault(one =>
+                    string.Equals(one.Name, wanted, StringComparison.OrdinalIgnoreCase));
+
+                if (mission == null)
+                {
+                    Console.WriteLine($"[open] no mission called {wanted}");
+                    this.Shutdown();
+                    return;
+                }
+
+                var folder = Logic.MapWorkshop.folderFor(mission.Name);
+                Console.WriteLine($"[open] folder {folder}");
+                Console.WriteLine($"[open] looksBuilt {Logic.MapWorkshop.looksBuilt(folder)}");
+
+                try
+                {
+                    var map = Logic.MapSpawns.load(folder);
+                    Console.WriteLine($"[open] loaded: {map.Rooms.Count} room(s)");
+
+                    var window = new UI.SpawnsWindow(map, mission);
+                    window.WindowState = WindowState.Normal;
+                    window.Width = 1280;
+                    window.Height = 800;
+                    window.Left = -20000;
+                    window.Show();
+
+                    Console.WriteLine("[open] the window opened with a mission");
+
+                    var waited = 0;
+                    var timer = new System.Windows.Threading.DispatcherTimer
+                    {
+                        Interval = TimeSpan.FromMilliseconds(250),
+                    };
+
+                    timer.Tick += (_, _) =>
+                    {
+                        waited += 250;
+                        if (!window.mapReady && waited < 20000) { return; }
+                        timer.Stop();
+
+                        try
+                        {
+                            Console.WriteLine($"[open] room: {window.roomChosen}");
+                            Console.WriteLine($"[open] tabs: {string.Join(" | ", window.tabHeaders)}");
+                            Console.WriteLine($"[open] save {window.saveEnabled}, install {window.installEnabled}");
+                            Console.WriteLine($"[open] wording: {window.wordingWhyNow}");
+                            Console.WriteLine("[open] it stayed up");
+                        }
+                        catch (Exception problem)
+                        {
+                            Console.WriteLine($"[open] THREW after opening: {problem}");
+                        }
+
+                        this.Shutdown();
+                    };
+
+                    timer.Start();
+                    return;
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[open] THREW: {problem}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
             //PROBE_QUESTS - every kind of objective the game's own missions ask for.
             //
             //The editor can only offer steps it knows the shape of, and a step whose shape is
