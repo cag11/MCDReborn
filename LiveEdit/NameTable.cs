@@ -26,12 +26,18 @@ namespace LiveEdit
     {
         private const int ELEMENTS_PER_CHUNK = 16 * 1024;
 
-        //FNameEntry, 4.22:
-        //  0x00 int32        Index      - low bit set means the name is wide
-        //  0x08 FNameEntry*  HashNext
-        //  0x10 char[]       the name itself, ansi or wide
-        private const int ENTRY_NAME = 0x10;
-        private const int ENTRY_INDEX = 0x00;
+        //FNameEntry, 4.22 - and this is NOT the layout most published SDK dumps use, because
+        //most of them target 4.23 and later. The members were swapped in 4.21:
+        //
+        //  0x00 TAtomic<FNameEntry*> HashNext
+        //  0x08 NAME_INDEX           Index      - low bit set means the name is wide
+        //  0x0C char[] or wchar[]    the name itself
+        //
+        //Reading the text at 0x10, which is the 4.19 offset, gives garbage - and garbage that
+        //occasionally spells something, which is how a search for this table came back with 42
+        //confident answers and no right one.
+        private const int ENTRY_NAME = 0x0C;
+        private const int ENTRY_INDEX = 0x08;
 
         private readonly GameProcess _game;
         private readonly Dictionary<int, string> _known = new Dictionary<int, string>();
@@ -44,6 +50,20 @@ namespace LiveEdit
         /// <summary>Where the table is, once it has been found.</summary>
         public IntPtr Chunks { get; private set; }
 
+        /// <summary>
+        /// Points the reader at a table somebody else found.
+        ///
+        /// The search in here looks for the table's SHAPE, and shape is not enough in a game
+        /// this size - it turns up dozens of words that dereference twice onto the one entry
+        /// every build has. Following a known name back to the table instead is exact, and this
+        /// is how the answer gets handed over.
+        /// </summary>
+        public void useChunks(IntPtr chunks)
+        {
+            Chunks = chunks;
+            _known.Clear();
+        }
+
         public int Count { get; private set; }
 
         /// <summary>
@@ -53,10 +73,29 @@ namespace LiveEdit
         /// and is not: the first dereference throws away everything that is not a plausible
         /// pointer, and almost nothing survives to the second.
         /// </summary>
-        public bool find()
+        public bool find() => find(null);
+
+        /// <summary>
+        /// The same search, saying what it saw.
+        ///
+        /// Worth having because "not found" is three different failures wearing one coat: no
+        /// region to look in, nothing shaped like a pointer, or a table found and then rejected
+        /// for not leading anywhere. Only the last one means the shape is right and the reader
+        /// is wrong, and there is no way to tell them apart from the outside.
+        /// </summary>
+        public bool find(Action<string>? say)
         {
+            var regions = 0;
+            long bytes = 0;
+            var plausibles = 0;
+            var nones = 0;
+            var rejected = 0;
+
             foreach (var (at, size) in _game.writableRegions())
             {
+                regions++;
+                bytes += size;
+
                 var buffer = new byte[size];
                 if (!_game.tryRead(at, buffer, (int)size)) { continue; }
 
@@ -64,6 +103,8 @@ namespace LiveEdit
                 {
                     var firstChunk = BitConverter.ToInt64(buffer, i);
                     if (!plausible(firstChunk)) { continue; }
+
+                    plausibles++;
 
                     //Chunks[0] is an array of entry pointers; its first entry is name zero.
                     var entryPointer = _game.read(new IntPtr(firstChunk), 8);
@@ -73,6 +114,8 @@ namespace LiveEdit
                     if (!plausible(entry)) { continue; }
 
                     if (!string.Equals(readEntry(new IntPtr(entry)), "None", StringComparison.Ordinal)) { continue; }
+
+                    nones++;
 
                     //"None" alone is not enough. Any stray pointer that happens to reach the one
                     //FNameEntry every game has will pass that test, and then every other lookup
@@ -84,12 +127,42 @@ namespace LiveEdit
                     Chunks = new IntPtr(at.ToInt64() + i);
                     _known.Clear();
 
-                    if (!leadsSomewhere()) { continue; }
+                    if (!leadsSomewhere())
+                    {
+                        rejected++;
+
+                        //The first few rejections, spelled out. A table found and then thrown
+                        //away is the one failure worth seeing: it means the shape is right and
+                        //the way names are read out of it is not.
+                        if (rejected <= 3 && say != null)
+                        {
+                            var saw = new List<string>();
+                            for (var index = 0; index <= 6; index++)
+                            {
+                                var one = nameOf(index);
+                                saw.Add(one == null ? "(null)"
+                                    : one.Length == 0 ? "(empty)"
+                                    : one.Length > 24 ? one.Substring(0, 24) + "..."
+                                    : one);
+                            }
+
+                            say($"candidate at {Chunks.ToInt64():x} read: "
+                                + string.Join(" | ", saw));
+                        }
+
+                        continue;
+                    }
 
                     Count = countFrom(buffer, i);
+                    say?.Invoke($"found after {regions} region(s), {bytes / (1024 * 1024)} MB, "
+                        + $"{plausibles:N0} pointer-shaped words, {nones} reaching \"None\"");
                     return true;
                 }
             }
+
+            say?.Invoke($"not found: {regions} region(s), {bytes / (1024 * 1024)} MB scanned, "
+                + $"{plausibles:N0} pointer-shaped words, {nones} reached \"None\", "
+                + $"{rejected} rejected for leading nowhere");
             return false;
         }
 
@@ -171,7 +244,7 @@ namespace LiveEdit
         /// </summary>
         private string? readEntry(IntPtr entry)
         {
-            var header = _game.read(entry, 4);
+            var header = _game.read(new IntPtr(entry.ToInt64() + ENTRY_INDEX), 4);
             if (header == null) { return null; }
 
             var wide = (BitConverter.ToInt32(header, 0) & 1) != 0;

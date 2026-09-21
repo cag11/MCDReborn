@@ -39,12 +39,31 @@ namespace MCDSaveEdit.Logic
 
         public sealed class Mission
         {
-            public Mission(string name, string pakPath, long bytes)
+            public Mission(string name, string pakPath, long bytes, int slot = 0,
+                string? shownAs = null)
             {
                 Name = name;
                 PakPath = pakPath;
                 Bytes = bytes;
+                Slot = slot;
+                ShownAs = shownAs;
             }
+
+            /// <summary>
+            /// Which custom slot this is, or 0 for one of the game's own missions.
+            ///
+            /// A slot is a mission in every way that matters to the Maps tab: it has a level file
+            /// with a name, a folder to work in, spawns to edit and terrain to take to Minecraft
+            /// and back. Making it the same TYPE is what lets every one of those tools work on it
+            /// without being told about slots - only the handful of places that install or remove
+            /// have to know the difference.
+            /// </summary>
+            public int Slot { get; }
+
+            public bool IsSlot => Slot > 0;
+
+            /// <summary>What the map in this slot was called, when there is one.</summary>
+            public string? ShownAs { get; }
 
             /// <summary>The file name, which is the mission's identity - "creeperwoods".</summary>
             public string Name { get; }
@@ -59,6 +78,20 @@ namespace MCDSaveEdit.Logic
             {
                 get
                 {
+                    if (IsSlot)
+                    {
+                        if (ShownAs != null) { return $"{ShownAs}  (custom {Slot:00})"; }
+
+                        //Three states, not two. A slot can hold a map that is not in the game
+                        //yet - New empty map makes one, and so does bringing a world back before
+                        //it is installed - and calling that "(empty)" contradicts the line right
+                        //underneath it saying how big the working folder is. Somebody who has
+                        //just made a map should not be told they have nothing.
+                        return Bytes > 0
+                            ? $"Custom {Slot:00}  (not installed)"
+                            : $"Custom {Slot:00}  (empty)";
+                    }
+
                     var pretty = prettyName(Name);
                     return pretty == Name ? Name : $"{pretty}  ({Name})";
                 }

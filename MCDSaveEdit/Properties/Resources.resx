@@ -2359,6 +2359,274 @@ The save file is not changed until you save it.</value>
     <value>Remove</value>
     <comment>Button</comment>
   </data>
+  <data name="SPAWNS_STEP_ADD" xml:space="preserve">
+    <value>Add a step</value>
+    <comment>Heading over the step builder</comment>
+  </data>
+  <data name="SPAWNS_STEP_WORDING" xml:space="preserve">
+    <value>What it asks you to do:</value>
+    <comment>Label over the wording box</comment>
+  </data>
+  <data name="SPAWNS_STEP_THING" xml:space="preserve">
+    <value>The thing you click:</value>
+    <comment>Label over the prefab picker</comment>
+  </data>
+  <data name="SPAWNS_STEP_DEFAULT_TITLE" xml:space="preserve">
+    <value>Ring the bell</value>
+    <comment>The wording a new step starts with</comment>
+  </data>
+  <data name="SPAWNS_ADD_CLICK_STEP" xml:space="preserve">
+    <value>Click a thing</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_ADD_REACH_STEP" xml:space="preserve">
+    <value>Reach a spot</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_STEPS" xml:space="preserve">
+    <value>The spots those steps use</value>
+    <comment>Heading over the step region list</comment>
+  </data>
+  <data name="SPAWNS_STEPS_WHY" xml:space="preserve">
+    <value>Every step stands on a spot in the map. Pick one to find it, or drag its amber pin to move it. A step whose spot is missing can never finish - and nothing behind it in the list can either, including the way out.</value>
+    <comment>Why the step region list exists</comment>
+  </data>
+  <data name="SPAWNS_STEPS_NONE" xml:space="preserve">
+    <value>Nothing but the way out. Add a step above to give a gate something to open it.</value>
+    <comment>Hint when there are no steps</comment>
+  </data>
+  <data name="SPAWNS_STEPS_SOME" xml:space="preserve">
+    <value>{0} spot(s).</value>
+    <comment>Hint with a count</comment>
+  </data>
+  <data name="SPAWNS_STEPS_BROKEN" xml:space="preserve">
+    <value>{0} spot(s), and {1} of them names a region this room has not got - that step can never finish, and neither can anything after it.</value>
+    <comment>Hint when a step points at nothing</comment>
+  </data>
+  <data name="SPAWNS_STEP_ADDED" xml:space="preserve">
+    <value>Added step {0}: {1}. Its spot is at {2}, {3}, {4}.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="SPAWNS_STEP_AT" xml:space="preserve">
+    <value>{0} is at {1}, {2}, {3}.</value>
+    <comment>Status when a step spot is picked</comment>
+  </data>
+  <data name="SPAWNS_STEP_NEEDS_TITLE" xml:space="preserve">
+    <value>Give the step some wording first.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="SPAWNS_GATE_NEEDS_CLICK" xml:space="preserve">
+    <value>Only a step that asks you to click something can open a gate. Add one above.</value>
+    <comment>Hint when no objective can hold a gate</comment>
+  </data>
+  <data name="SPAWNS_GATE_NOT_CLICK" xml:space="preserve">
+    <value>{0} cannot open a gate - only clicking something can.</value>
+    <comment>Status when the chosen step is the wrong kind</comment>
+  </data>
+  <data name="SPAWNS_STEP_BANNER" xml:space="preserve">
+    <value>The name on the banner:</value>
+    <comment>Label over the name_ picker</comment>
+  </data>
+  <data name="SPAWNS_STEP_WORDS_FROM" xml:space="preserve">
+    <value>{0} pieces of wording, read out of the game's own "{1}" table. An objective's text is a key into that table, not free text - anything else draws as MISSING STRING TABLE ENTRY. Install this map over a different mission and the table changes with it.</value>
+    <comment>Why the wording is a list</comment>
+  </data>
+  <data name="SPAWNS_STEP_NO_WORDS" xml:space="preserve">
+    <value>The game has no string table called "{0}", so there is no wording a step could use. Install this map over one of the game's own missions first.</value>
+    <comment>When the loctable is unknown</comment>
+  </data>
+  <data name="SPAWNS_QUEST_MISSING" xml:space="preserve">
+    <value>{0} step(s), and {1} of them uses wording the game has not got - those draw as MISSING STRING TABLE ENTRY across the banner. Remove one and add it again to fix it.</value>
+    <comment>Hint when an objective key is not in the table</comment>
+  </data>
+  <data name="SPAWNS_GATE_DRAWN" xml:space="preserve">
+    <value>Drawn as:</value>
+    <comment>Label over the gate look picker</comment>
+  </data>
+  <data name="SPAWNS_GATE_DRAWN_WHY" xml:space="preserve">
+    <value>One look for every gate the chosen step opens - the game keeps it on the step, not on the gate. Without one the gate still blocks you, invisibly, which in game looks like the map being broken.</value>
+    <comment>Why the look is per step</comment>
+  </data>
+  <data name="SPAWNS_GATE_ADDED_WIRED" xml:space="preserve">
+    <value>Added {0}, opened by “{1}” and drawn as {2}.</value>
+    <comment>Status when a new gate is wired up for you</comment>
+  </data>
+  <data name="SPAWNS_GATE_ADDED_LOOSE" xml:space="preserve">
+    <value>Added {0}. Nothing opens it yet, so in game it is a wall you cannot see - the thing that draws a gate lives on the step that opens it. Add a step above, then pick this gate and press “{1}”.</value>
+    <comment>Status when a new gate cannot be wired</comment>
+  </data>
+  <data name="SPAWNS_NOTHING_TO_INSTALL" xml:space="preserve">
+    <value>nothing changed, and the game already has this one</value>
+    <comment>Status when neither save nor install would do anything</comment>
+  </data>
+  <data name="SPAWNS_TAB_GATES" xml:space="preserve">
+    <value>Gates</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="SPAWNS_TAB_ARENA" xml:space="preserve">
+    <value>Fights</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="SPAWNS_TAB_KEYS" xml:space="preserve">
+    <value>Keys</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="SPAWNS_TAB_LEVEL" xml:space="preserve">
+    <value>Level</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="SPAWNS_ARENA_WHY" xml:space="preserve">
+    <value>A fight walls off a piece of the map, fills it with mobs, and opens again when they are all dead. Chain several on the same ground and you have waves.</value>
+    <comment>Why the fights tab exists</comment>
+  </data>
+  <data name="SPAWNS_ARENA_NONE" xml:space="preserve">
+    <value>No fights yet.</value>
+    <comment>Hint</comment>
+  </data>
+  <data name="SPAWNS_ARENA_SOME" xml:space="preserve">
+    <value>{0} fight(s).</value>
+    <comment>Hint</comment>
+  </data>
+  <data name="SPAWNS_ARENA_BROKEN" xml:space="preserve">
+    <value>{0} fight(s), and {1} of them has nowhere for its mobs to come from - nothing will appear and the step can never finish, which stops every step behind it.</value>
+    <comment>Hint when a fight has no spawn region</comment>
+  </data>
+  <data name="SPAWNS_ADD_ARENA" xml:space="preserve">
+    <value>Put a fight here</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_ARENA_WAVE" xml:space="preserve">
+    <value>Add a wave</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_ARENA_REMOVE" xml:space="preserve">
+    <value>Remove</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_ARENA_APPLY" xml:space="preserve">
+    <value>Apply to the chosen fight</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_ARENA_WORDING" xml:space="preserve">
+    <value>What it asks you to do:</value>
+    <comment>Label</comment>
+  </data>
+  <data name="SPAWNS_ARENA_GROUP" xml:space="preserve">
+    <value>Which mobs:</value>
+    <comment>Label</comment>
+  </data>
+  <data name="SPAWNS_ARENA_COUNT" xml:space="preserve">
+    <value>How many:</value>
+    <comment>Label</comment>
+  </data>
+  <data name="SPAWNS_ARENA_REWARD" xml:space="preserve">
+    <value>It pays out:</value>
+    <comment>Label</comment>
+  </data>
+  <data name="SPAWNS_ARENA_GATE" xml:space="preserve">
+    <value>Seal it while the fight is on</value>
+    <comment>Checkbox</comment>
+  </data>
+  <data name="SPAWNS_ARENA_ADDED" xml:space="preserve">
+    <value>Added a fight: {0} × {1} at {2}, {3}, {4}.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="SPAWNS_ARENA_WAVED" xml:space="preserve">
+    <value>Added another wave on the same ground - {0} × {1}. It runs BEFORE the one you picked, so whichever wave holds the gate stays last.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="SPAWNS_ARENA_APPLIED" xml:space="preserve">
+    <value>That fight now asks for {0} × {1}.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="SPAWNS_ARENA_NEEDS_GROUP" xml:space="preserve">
+    <value>There are no mob groups to draw from. Make one on the Mobs tab first.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="SPAWNS_ARENA_PICK" xml:space="preserve">
+    <value>Pick a fight in the list first.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="SPAWNS_KEYS_WHY" xml:space="preserve">
+    <value>A locked door stands in the way until somebody finds its key. Give the key more than one possible spot and the game picks between them, so the route changes each run.</value>
+    <comment>Why the keys tab exists</comment>
+  </data>
+  <data name="SPAWNS_KEYS_NONE" xml:space="preserve">
+    <value>No locked doors yet.</value>
+    <comment>Hint</comment>
+  </data>
+  <data name="SPAWNS_KEYS_SOME" xml:space="preserve">
+    <value>{0} locked door(s).</value>
+    <comment>Hint</comment>
+  </data>
+  <data name="SPAWNS_KEYS_BROKEN" xml:space="preserve">
+    <value>{0} locked door(s), and {1} of them has no key anywhere - that door can never open.</value>
+    <comment>Hint when a keyed door has no key</comment>
+  </data>
+  <data name="SPAWNS_ADD_KEYED" xml:space="preserve">
+    <value>Put a locked door here</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_KEY_ALSO" xml:space="preserve">
+    <value>The key could also be here</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_KEY_REMOVE" xml:space="preserve">
+    <value>Remove</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_KEY_WORDING" xml:space="preserve">
+    <value>What it asks you to do:</value>
+    <comment>Label</comment>
+  </data>
+  <data name="SPAWNS_KEY_DOOR" xml:space="preserve">
+    <value>Which door:</value>
+    <comment>Label</comment>
+  </data>
+  <data name="SPAWNS_KEYED_ADDED" xml:space="preserve">
+    <value>Added a {0} at {1}, {2}, {3}, with its key a little way off. Drag either amber pin to move it.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="SPAWNS_KEY_ALSO_ADDED" xml:space="preserve">
+    <value>The key can now also turn up at {0}, {1}, {2} - the game picks between the spots.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="SPAWNS_KEY_PICK" xml:space="preserve">
+    <value>Pick a locked door in the list first.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="SPAWNS_LEVEL_WHY" xml:space="preserve">
+    <value>Settings for the mission as a whole rather than for anything in it. All of them are one line in the level file, and all of them are things the game's own missions set.</value>
+    <comment>Why the level tab exists</comment>
+  </data>
+  <data name="SPAWNS_LEVEL_AMBIENCE" xml:space="preserve">
+    <value>Light, fog and weather borrowed from:</value>
+    <comment>Label</comment>
+  </data>
+  <data name="SPAWNS_LEVEL_MUSIC" xml:space="preserve">
+    <value>Music:</value>
+    <comment>Label</comment>
+  </data>
+  <data name="SPAWNS_LEVEL_MUSIC_SAME" xml:space="preserve">
+    <value>whatever the borrowed mission plays</value>
+    <comment>Combo row</comment>
+  </data>
+  <data name="SPAWNS_LEVEL_MATCH" xml:space="preserve">
+    <value>Joined tiles must have matching doors</value>
+    <comment>Checkbox</comment>
+  </data>
+  <data name="SPAWNS_LEVEL_MATCH_WHY" xml:space="preserve">
+    <value>On by default in the game. Turning it off lets tiles join whose doorways do not line up, which is what you want when the tiles are your own and the generator is being fussy.</value>
+    <comment>Why matching doors matters</comment>
+  </data>
+  <data name="SPAWNS_LEVEL_INTRO" xml:space="preserve">
+    <value>Play the mission intro</value>
+    <comment>Checkbox</comment>
+  </data>
+  <data name="SPAWNS_LEVEL_SET" xml:space="preserve">
+    <value>{0} is now “{1}”.</value>
+    <comment>Status</comment>
+  </data>
   <data name="SPAWNS_GATE_OPENS" xml:space="preserve">
     <value>Opened by:</value>
     <comment>Label above the objective picker</comment>
@@ -2809,6 +3077,48 @@ Carry on?</value>
     <value>pulls the mission into a folder you can change. Do this once.</value>
     <comment>Beside the export button</comment>
   </data>
+  <data name="MAPS_SLOT_WORKING" xml:space="preserve">
+    <value>A custom map — {0:N0} KB in its working folder. Nothing of the game's is replaced.</value>
+  </data>
+  <data name="MAPS_SLOT_NOTHING" xml:space="preserve">
+    <value>An empty custom slot. Import a map into it, or bring one back from Minecraft.</value>
+  </data>
+  <data name="MAPS_GROUP_SLOTS" xml:space="preserve">
+    <value>Custom maps</value>
+  </data>
+  <data name="MAPS_INSTALL_TABLE" xml:space="preserve">
+    <value>Install table</value>
+  </data>
+  <data name="MAPS_INSTALL_TABLE_WHY" xml:space="preserve">
+    <value>Puts a map table in the Camp, beside the Mystery Merchant. Clicking it lists the custom maps you have installed and starts one at a difficulty and threat level you choose. Install it again after adding or removing a map, so the list matches.</value>
+  </data>
+  <data name="MAPS_INSTALL_SLOT" xml:space="preserve">
+    <value>Install as custom map…</value>
+  </data>
+  <data name="MAPS_INSTALL_SLOT_WHY" xml:space="preserve">
+    <value>Installs a map as its own mission instead of over one of the game's. Nothing the game ships is replaced, and the map is played from the table in the Camp rather than from the mission map. Its name and rewards come from the game's unnamed "random mission", so those screens will not say much.</value>
+  </data>
+  <data name="MAPS_CLEAR_SLOT" xml:space="preserve">
+    <value>Empty slot</value>
+  </data>
+  <data name="MAPS_SLOT_EMPTY" xml:space="preserve">
+    <value>Slot {0:00} — empty</value>
+  </data>
+  <data name="MAPS_SLOT_FILLED" xml:space="preserve">
+    <value>Slot {0:00} — {1}</value>
+  </data>
+  <data name="MAPS_SLOT_INSTALLED" xml:space="preserve">
+    <value>{0} is in slot {1:00}, and the table in the Camp now lists it.</value>
+  </data>
+  <data name="MAPS_SLOT_CLEARED" xml:space="preserve">
+    <value>Slot {0:00} is empty again, and the table in the Camp no longer lists it.</value>
+  </data>
+  <data name="MAPS_TABLE_INSTALLED" xml:space="preserve">
+    <value>The table is in the Camp, listing {0} custom map(s).</value>
+  </data>
+  <data name="MAPS_SLOT_OCCUPIED" xml:space="preserve">
+    <value>Slot {0:00} already holds "{1}". Replace it with this map?</value>
+  </data>
   <data name="MAPS_GROUP_TERRAIN" xml:space="preserve">
     <value>Terrain</value>
     <comment>Heading for the Minecraft round-trip row</comment>
@@ -2820,6 +3130,102 @@ Carry on?</value>
   <data name="MAPS_GROUP_SPAWNS_WHY" xml:space="preserve">
     <value>never leaves the app — it saves and installs itself.</value>
     <comment>Beside the spawns button</comment>
+  </data>
+  <data name="MAPS_RENAME" xml:space="preserve">
+    <value>Rename…</value>
+  </data>
+  <data name="MAPS_RENAME_WHAT" xml:space="preserve">
+    <value>What should this custom map be called in the Camp?</value>
+  </data>
+  <data name="MAPS_RENAMED" xml:space="preserve">
+    <value>Renamed to {0}.</value>
+  </data>
+  <data name="MAPS_RENAME_ONLY_CUSTOM" xml:space="preserve">
+    <value>Only a custom map can be renamed. A mission keeps the game's own name wherever it is used.</value>
+  </data>
+  <data name="MAPS_ZIP_ONLY_CUSTOM" xml:space="preserve">
+    <value>Zips are for custom maps. Pick one of the custom slots.</value>
+  </data>
+  <data name="MAPS_ZIP_OUT" xml:space="preserve">
+    <value>Save this custom map as a zip</value>
+  </data>
+  <data name="MAPS_ZIP_IN" xml:space="preserve">
+    <value>Open a map zip</value>
+  </data>
+  <data name="MAPS_ZIPPED" xml:space="preserve">
+    <value>Saved {0}.</value>
+  </data>
+  <data name="MAPS_ZIP_OPENED" xml:space="preserve">
+    <value>{0} is now custom {1:00}.</value>
+  </data>
+  <data name="MAPS_ZIP_REPLACE" xml:space="preserve">
+    <value>Custom {1:00} already holds {0}. Replace it?</value>
+  </data>
+  <data name="MAPS_ZIP_SAVE" xml:space="preserve">
+    <value>Save as zip…</value>
+  </data>
+  <data name="MAPS_ZIP_OPEN" xml:space="preserve">
+    <value>Open a zip…</value>
+  </data>
+  <data name="MAPS_RENAME_WHY" xml:space="preserve">
+    <value>Change what this custom map is called in the Camp. The map itself is not touched.</value>
+  </data>
+  <data name="MAPS_ZIP_SAVE_WHY" xml:space="preserve">
+    <value>Write this custom map out as one zip, in the editable form - level, object groups, block packs and wording - so somebody else can open it here.</value>
+  </data>
+  <data name="MAPS_ZIP_OPEN_WHY" xml:space="preserve">
+    <value>Read a map zip into the selected custom slot.</value>
+  </data>
+  <data name="MAPS_SLOT_NOTHING_YET" xml:space="preserve">
+    <value>Custom {0:00} is empty, so there is nothing to work on yet. Use Import map… or Open a zip… to put a map in it.</value>
+  </data>
+  <data name="MAPS_SLOT_NEEDS_BASE" xml:space="preserve">
+    <value>Custom {0:00} is empty, and bringing a world back needs a map to write into. Use New empty map…, Import map… or Open a zip… first, then bring your world back over it.</value>
+  </data>
+  <data name="MAPS_KIND_CUSTOM" xml:space="preserve">
+    <value>Custom maps</value>
+  </data>
+  <data name="MAPS_KIND_GAME" xml:space="preserve">
+    <value>Game missions</value>
+  </data>
+  <data name="MAPS_WORLD_ELSEWHERE" xml:space="preserve">
+    <value>That world was exported from {0}, so bringing it back writes to {0} - not to {1}. To put it in {1}: select {0} and bring the world back there first, then use Import map… here and pick {2}</value>
+  </data>
+  <data name="MAPS_THEME" xml:space="preserve">
+    <value>Block theme</value>
+  </data>
+  <data name="MAPS_THEME_NONE" xml:space="preserve">
+    <value>No map, no theme</value>
+  </data>
+  <data name="MAPS_THEME_SET" xml:space="preserve">
+    <value>{1} is now drawn with {0}.</value>
+  </data>
+  <data name="MAPS_THEME_FAILED" xml:space="preserve">
+    <value>{0} has no level file to set a theme on.</value>
+  </data>
+  <data name="MAPS_THEME_REINSTALLED" xml:space="preserve">
+    <value>Reinstalled.</value>
+  </data>
+  <data name="MAPS_WORLD_SOURCE_GONE" xml:space="preserve">
+    <value>That world came from {0}, but {0}'s folder is no longer there - so there is no map to bring across. Export {0} to Minecraft again first.</value>
+  </data>
+  <data name="MAPS_WORLD_OVERWRITE" xml:space="preserve">
+    <value>This world was exported from {0}. Copy {0} into {1} and write the world into it? Anything already in {1} is replaced.</value>
+  </data>
+  <data name="MAPS_WORLD_NOT_AIMED" xml:space="preserve">
+    <value>That world could not be aimed at this slot, so nothing was changed.</value>
+  </data>
+  <data name="MAPS_CONVERT_NOTHING" xml:space="preserve">
+    <value>The converter finished without writing anything into this map's folder, so nothing was installed. The world may not be one this app exported.</value>
+  </data>
+  <data name="MAPS_WORLD_REBUILDING" xml:space="preserve">
+    <value>Rebuilding {0}'s folder from the game…</value>
+  </data>
+  <data name="MAPS_IN_GAME" xml:space="preserve">
+    <value>Offer custom maps in the Camp</value>
+  </data>
+  <data name="MAPS_IN_GAME_WHY" xml:space="preserve">
+    <value>Installs the two small mods that put the custom maps prop in the Camp. On by default. Turn it off if another mod stops working - most Blueprint-loader mods replace the same game actor, and only one of them can win.</value>
   </data>
   <data name="MAPS_GROUP_UNDO" xml:space="preserve">
     <value>Undo</value>

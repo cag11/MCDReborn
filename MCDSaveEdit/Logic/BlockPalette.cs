@@ -1,4 +1,4 @@
-using SkiaSharp;
+﻿using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -121,6 +121,50 @@ namespace MCDSaveEdit.Logic
 
         /// <summary>What went wrong, or how much was found, for a probe to print.</summary>
         public static List<string> Notes { get; } = new List<string>();
+
+        /// <summary>
+        /// Every block theme the game ships, by name.
+        ///
+        /// A theme is a resource pack: it maps a block NAME to the textures that draw it, so
+        /// swapping one for another re-skins a map without touching a single block. Creeper
+        /// Woods' grass becomes Desert Temple's grass; nothing becomes something else. That is
+        /// only true because a mission stores its blocks by name - see the note at the top of
+        /// this class about the numeric ids, which look usable and are not.
+        ///
+        /// Read from the pak index rather than listed here, because the set grows with every
+        /// DLC and a hardcoded list would silently offer six of the twenty.
+        /// </summary>
+        public static IReadOnlyList<string> themes()
+        {
+            if (_themes != null) { return _themes; }
+
+            var paks = CustomSkins.index;
+            if (paks == null) { return Array.Empty<string>(); }
+
+            var found = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var entry in paks)
+            {
+                var path = CustomSkins.assetPath(entry).Replace('\\', '/');
+
+                var at = path.IndexOf("/data/resourcepacks/", StringComparison.OrdinalIgnoreCase);
+                if (at < 0) { continue; }
+
+                var rest = path.Substring(at + "/data/resourcepacks/".Length);
+                var cut = rest.IndexOf('/');
+
+                //Only the folder directly under resourcepacks. Anything without a slash after it
+                //is a loose file rather than a pack, and taking it would put "blocks" in the list
+                //of themes.
+                if (cut <= 0) { continue; }
+
+                found.Add(rest.Substring(0, cut));
+            }
+
+            return _themes = found.ToList();
+        }
+
+        private static IReadOnlyList<string>? _themes;
 
         /// <summary>
         /// The table a mission paints with.

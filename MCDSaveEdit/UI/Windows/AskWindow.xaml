@@ -1,0 +1,26 @@
+<Window x:Class="MCDSaveEdit.UI.Windows.AskWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        SizeToContent="Height" Width="420" ShowInTaskbar="False"
+        Background="{DynamicResource Brush.Ground}"
+        Foreground="{DynamicResource Brush.Text}"
+        Title="?">
+    <!--
+         One line of text, asked for. There is no such thing in WPF, and every place that needs
+         one either grows its own or reaches for the VisualBasic InputBox - so this is here to be
+         reused rather than repeated.
+    -->
+    <StackPanel Margin="14">
+        <TextBlock x:Name="whatLabel" TextWrapping="Wrap" Margin="0,0,0,8"/>
+        <TextBox x:Name="answerBox" Padding="4,3" FontSize="13"/>
+        <TextBlock x:Name="hintLabel" FontSize="11" Margin="0,6,0,0"
+                   Foreground="{DynamicResource Brush.TextMuted}" TextWrapping="Wrap"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button x:Name="okButton" Content="OK" Padding="16,5" Margin="0,0,8,0"
+                    IsDefault="True" Click="okButton_Click"/>
+            <Button x:Name="cancelButton" Content="Cancel" Padding="16,5"
+                    IsCancel="True"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

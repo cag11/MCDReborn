@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 #nullable enable
@@ -296,6 +297,117 @@ namespace MCDSaveEdit.Logic
             public string Mission { get; }
             public string Group { get; }
             public string ObjectGroup { get; }
+        }
+
+        /// <summary>
+        /// Which map a WHOLE-LEVEL world was exported from, by the note left inside it.
+        ///
+        /// <see cref="originOf"/> cannot answer this: it insists on an `objectgroup` field,
+        /// which a single-tile export has and a whole level does not - a whole level lists its
+        /// tiles instead. So a whole level always came back "not ours", and the one caller that
+        /// mattered skipped the question entirely.
+        ///
+        /// That question matters because the converter writes a world back to the map named
+        /// HERE, not to whichever row happens to be selected. Bringing Creeper Woods' world back
+        /// while a custom slot is chosen writes to Creeper Woods and installs the slot's own
+        /// untouched contents, reporting success the whole way.
+        /// </summary>
+        public static string? mapOf(string world)
+        {
+            //LEVEL_MARKER, not MARKER. There are two notes and they are different files: a
+            //single-tile export leaves `mcdreborn.json`, a whole level leaves
+            //`mcdreborn-origin.json`. This reads the whole-level one because whole levels are
+            //the only thing that calls it - and reading the other meant it answered "no note"
+            //for every world it was ever given, which is what let a mismatched world through
+            //the check written to catch it.
+            var marker = Path.Combine(world, LEVEL_MARKER);
+            if (!File.Exists(marker)) { return null; }
+
+            try
+            {
+                using var document = JsonDocument.Parse(File.ReadAllText(marker));
+
+                return document.RootElement.TryGetProperty("map", out var value)
+                    ? value.GetString()
+                    : null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Points a whole-level world at a different map, and hands back what it said before.
+        ///
+        /// The converter writes a world back to the map named INSIDE it, so a world exported
+        /// from Creeper Woods always returns to Creeper Woods however the app is asked. That is
+        /// right when somebody is editing Creeper Woods and wrong when they are building a
+        /// custom map out of it - which is the more common of the two, because a mission is the
+        /// only interesting thing to start from.
+        ///
+        /// The note is this app's own file, so aiming it somewhere else is allowed. The caller
+        /// puts the original back afterwards: a world that quietly forgot where it came from
+        /// would send the NEXT bring-back to a slot, and nothing would say why.
+        ///
+        /// Every tile path is rebased, not just the map. The tiles are absolute paths into the
+        /// old folder, and leaving them would write the rooms into the map being copied FROM
+        /// while the level file went to the copy - the same split that made this necessary.
+        /// </summary>
+        public static string? retarget(string world, string toFolder)
+        {
+            //The whole-level note, same as mapOf reads. originOf keeps the single-tile one.
+            var marker = Path.Combine(world, LEVEL_MARKER);
+            if (!File.Exists(marker)) { return null; }
+
+            var was = File.ReadAllText(marker);
+
+            try
+            {
+                if (JsonNode.Parse(was) is not JsonObject root) { return null; }
+
+                var from = root["map"]?.GetValue<string>();
+                if (string.IsNullOrEmpty(from)) { return null; }
+
+                root["map"] = toFolder;
+
+                if (root["tiles"] is JsonObject tiles)
+                {
+                    foreach (var tile in tiles.ToList())
+                    {
+                        var path = tile.Value?.GetValue<string>();
+                        if (path == null) { continue; }
+
+                        //Rebased by PREFIX rather than rebuilt from the tile name, because the
+                        //layout under a map folder is the converter's business and guessing it
+                        //here would be a second copy of a rule that already exists.
+                        if (path.StartsWith(from!, StringComparison.OrdinalIgnoreCase))
+                        {
+                            tiles[tile.Key] = toFolder + path.Substring(from!.Length);
+                        }
+                    }
+                }
+
+                File.WriteAllText(marker, root.ToJsonString(
+                    new JsonSerializerOptions { WriteIndented = true }));
+
+                return was;
+            }
+            catch (Exception)
+            {
+                //Put back whatever was there, so a half-rewritten note cannot outlive the failure.
+                try { File.WriteAllText(marker, was); } catch (Exception) { }
+                return null;
+            }
+        }
+
+        /// <summary>Puts a note back the way <see cref="retarget"/> found it.</summary>
+        public static void restore(string world, string? was)
+        {
+            if (was == null) { return; }
+
+            try { File.WriteAllText(Path.Combine(world, LEVEL_MARKER), was); }
+            catch (Exception) { }
         }
 
         public static Origin? originOf(string world)

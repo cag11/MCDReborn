@@ -202,12 +202,84 @@ namespace MCDSaveEdit.Logic
 
                 foreach (var extension in new[] { ".uasset", ".uexp" })
                 {
-                    entries.Add(new PakWriter.Entry(inside + extension, carried(file + extension)));
+                    var bytes = carried(file + extension);
+
+                    if (string.Equals(extension, ".uexp", StringComparison.Ordinal))
+                    {
+                        hush(bytes);
+                    }
+
+                    entries.Add(new PakWriter.Entry(inside + extension, bytes));
                 }
             }
 
             HeldBack = new List<string>();
             return CustomSkins.writeModPak(PREFIX, entries);
+        }
+
+        /// <summary>
+        /// The loader's debug readout, made invisible on the way into the pak.
+        ///
+        /// The widget prints the current game mode in the corner of the screen - the thing that
+        /// proved the loader runs at all, and that has no business being on a stranger's title
+        /// screen. It is still built and still updated; it is simply drawn at zero alpha, which
+        /// keeps the diagnostic for anybody reading the asset and takes it off the screen for
+        /// everybody else.
+        ///
+        /// FADED rather than hidden, and hidden is what you would reach for first. A widget
+        /// authored Visible has NO Visibility property in the cooked asset at all - Unreal writes
+        /// down only what differs from the class default - so there is nothing to flip, which is
+        /// the same wall the map table's slots hit. The colour, by contrast, was set explicitly
+        /// by the generator, so it IS written down, and an FLinearColor is four floats of fixed
+        /// width. Sixteen bytes for sixteen, and no offset in the package moves.
+        ///
+        /// BOTH copies are changed, because a cooked widget serialises its tree more than once -
+        /// under the generated class and again under the archetype - and writing one leaves the
+        /// two disagreeing, with the winner decided by whichever loads second.
+        ///
+        /// Refuses rather than guesses when it does not find exactly the two it expects. The
+        /// colour is matched by VALUE, which is only safe while that value belongs to this one
+        /// label; a loader that grew a second gold thing would make this ambiguous, and a silent
+        /// partial edit is worse than a visible debug line.
+        /// </summary>
+        private static void hush(byte[] data)
+        {
+            //The gold the generator gives the status line: (1.0, 0.85, 0.3, 1.0).
+            var gold = new List<byte>();
+
+            foreach (var one in new[] { 1.0f, 0.85f, 0.3f, 1.0f })
+            {
+                gold.AddRange(BitConverter.GetBytes(one));
+            }
+
+            var found = new List<int>();
+
+            for (var at = 0; at + gold.Count <= data.Length; at++)
+            {
+                var same = true;
+
+                for (var i = 0; i < gold.Count && same; i++)
+                {
+                    same = data[at + i] == gold[i];
+                }
+
+                if (same) { found.Add(at); }
+            }
+
+            if (found.Count != 2)
+            {
+                Console.WriteLine("[loader] expected two copies of the status colour, found "
+                    + $"{found.Count} - leaving the debug line on screen rather than writing "
+                    + "into something else");
+                return;
+            }
+
+            //Only the alpha. Leaving the colour alone means the asset still records what it was
+            //meant to look like, and one float is the smallest change that does the job.
+            foreach (var at in found)
+            {
+                BitConverter.GetBytes(0f).CopyTo(data, at + 12);
+            }
         }
 
         /// <summary>One of the files built into this exe.</summary>

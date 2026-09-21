@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using MCDSaveEdit.Services;
 #nullable enable
 
 namespace MCDSaveEdit.Logic
@@ -827,13 +828,14 @@ namespace MCDSaveEdit.Logic
         /// </summary>
         public sealed class Gate
         {
-            public Gate(int at, string name, int[] pos, int[] size, string openedBy)
+            public Gate(int at, string name, int[] pos, int[] size, string openedBy, string drawn)
             {
                 At = at;
                 Name = name;
                 Pos = pos;
                 Size = size;
                 OpenedBy = openedBy;
+                Drawn = drawn;
             }
 
             public int At { get; }
@@ -844,32 +846,114 @@ namespace MCDSaveEdit.Logic
             /// <summary>The objective that opens it, or empty when nothing does.</summary>
             public string OpenedBy { get; }
 
+            /// <summary>The prefab drawn over it, or empty when there is none to see.</summary>
+            public string Drawn { get; }
+
             public bool Across => Size[0] >= Size[2];
 
             public override string ToString()
             {
                 var wide = Math.Max(Size[0], Size[2]);
                 var lie = Across ? "across x" : "across z";
+                //A gate with no objective is not half-finished, it is the worst of both:
+                //the prefab that draws it lives on the objective, so nothing opens it AND there
+                //is nothing to see. Walking into thin air is what that looks like in game.
                 var note = OpenedBy.Length > 0
                     ? $"   \u2190  opens: {OpenedBy}"
-                    : "   \u00b7  nothing opens it - it stays shut";
+                    : "   \u00b7  NOTHING OPENS IT - shut for good, and invisible";
 
-                return $"{Name}   \u2014   {Pos[0]}, {Pos[1]}, {Pos[2]}   \u00b7  {wide} wide, {lie}{note}";
+                //Worth its own words rather than a missing field: a gate nobody can see is one
+                //people walk into, and it looks exactly like the map being broken.
+                var look = OpenedBy.Length == 0
+                    ? string.Empty
+                    : Drawn.Length == 0
+                        ? "   \u00b7  INVISIBLE"
+                        : "   \u00b7  " + (GATE_LOOKS.FirstOrDefault(one => one.path == Drawn).name
+                                          ?? "a prefab");
+
+                return $"{Name}   \u2014   {Pos[0]}, {Pos[1]}, {Pos[2]}   \u00b7  {wide} wide, {lie}{note}{look}";
             }
+        }
+
+        /// <summary>
+        /// What a held gate is drawn as, which is the difference between a wall and an ambush.
+        ///
+        /// Counted off all 374 gate regions the game holds shut: 187 of them name no prefab at
+        /// all. Those are not broken - they are doorways whose tile already has a door built out
+        /// of blocks, and the region only decides when you may walk through it. A gate carved
+        /// into a hand-built map has no such blocks, so it needs one of these or it is an
+        /// invisible wall.
+        ///
+        /// These stretch to whatever region they are given rather than coming in fixed widths:
+        /// the kitchen gate is used at 5, 6, 7, 9 and 11 cells and along both axes, and the
+        /// bamboo one at 5 and 9. So there is no sizing to get right - only a look to pick.
+        ///
+        /// Base game only. A prefab out of a download somebody has not bought is a mission that
+        /// will not start for them.
+        /// </summary>
+        public static readonly (string path, string name)[] GATE_LOOKS =
+        {
+            //The one Blossoming Isles uses for every gate in all three of its levels, and a
+            //base-game asset despite the "BPI" - checked against the paks by PROBE_PREFABS.
+            ("Decor/Prefabs/Door/BPI_ObjectiveDoor", "Objective door"),
+            ("Decor/Prefabs/Platforms/BP_KitchenGateHH", "Iron portcullis"),
+            ("Decor/Prefabs/DingyJungle/Jungle_DesignAssets/BP_Gate_BB_Bamboo_x5", "Bamboo gate"),
+            ("Decor/Prefabs/Door/BP_RedstoneToggle_Gate", "Redstone gate"),
+            ("Decor/Prefabs/DingyJungle/Jungle_DesignAssets/Overgrown_Temple/BP_OT_Door_9x", "Temple door"),
+
+            //Capital S in "Structures". The game's own levels spell it lower case and the pak
+            //reader is literal, so the path out of a level file is not necessarily a path that
+            //resolves - every one of these is checked against the paks by PROBE_PREFABS.
+            ("Decor/Prefabs/_Creepingwinter_Structures/Ice_DesignAssets/BP_DoorWinter_5", "Frozen door"),
+
+            //Not offered although the game's own missions use them: "BP_Platform" and
+            //"BP_PlatformObsidian" are not assets. What exists is BP_Platform_1, BP_Platform_9
+            //and BP_PlatformObsidian_9 - fixed widths, and floor rather than doorway.
+            ("", "Nothing - the map's own blocks are the door"),
+        };
+
+        /// <summary>
+        /// The prefab an objective draws over the gates it holds, if any.
+        ///
+        /// Two fields, because the two gate shapes keep it in different places: a click has
+        /// "door-path" beside its "locked-doors", and a kill-group or arena has "object" inside
+        /// its "gate". Reading only the first reports every kill-group gate as invisible, which
+        /// is a false alarm on any mission built that way - Blossoming Isles builds six.
+        /// </summary>
+        public static string drawnBy(Map map, int objective)
+        {
+            var body = bodyOf(map, objective);
+            if (body == null) { return string.Empty; }
+
+            return body["door-path"]?.GetValue<string>()
+                ?? (body["gate"] as JsonObject)?["object"]?.GetValue<string>()
+                ?? string.Empty;
         }
 
         /// <summary>The gate regions an objective can name, and what names each one.</summary>
         public static List<Gate> gatesOf(Map map, Room room)
         {
-            //Which gate each objective holds shut, by region name.
+            //Which gate each objective holds shut, by region name, and what it draws there.
             var held = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            var looks = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            //And which regions are something ELSE an objective points at - a place to reach, a
+            //thing to click, ground for mobs to come out of. Those are wall-shaped often enough
+            //to look like gates from here, and calling one an invisible gate is a false alarm
+            //about a region that is doing exactly its job.
+            var spoken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var step in objectivesOf(map))
             {
                 foreach (var name in lockedBy(map, step.At))
                 {
-                    if (!held.ContainsKey(name)) { held[name] = step.Title; }
+                    if (held.ContainsKey(name)) { continue; }
+
+                    held[name] = step.Title;
+                    looks[name] = drawnBy(map, step.At);
                 }
+
+                foreach (var name in step.Needs) { spoken.Add(name); }
             }
 
             var made = new List<Gate>();
@@ -878,7 +962,7 @@ namespace MCDSaveEdit.Logic
             for (var at = 0; at < regions.Count; at++)
             {
                 if (regions[at] is not JsonObject region) { continue; }
-                if (region["type"]?.GetValue<string>() != "trigger") { continue; }
+                if (!isTrigger(region)) { continue; }
 
                 var name = region["name"]?.GetValue<string>() ?? string.Empty;
 
@@ -886,13 +970,18 @@ namespace MCDSaveEdit.Logic
                 //listing it twice would invite somebody to lock the exit behind itself.
                 if (name.Length == 0 || isStart(region) || isExit(region)) { continue; }
 
+                //Something an objective already asks of you is not a gate, however it is
+                //shaped - unless an objective also holds it shut, which some do.
+                if (spoken.Contains(name) && !held.ContainsKey(name)) { continue; }
+
                 //A gate is a wall: longer than one cell along exactly one of the two floor axes.
                 var size = ints(region["size"], 3);
                 if (size[1] != 1) { continue; }
                 if ((size[0] > 1) == (size[2] > 1)) { continue; }
 
                 made.Add(new Gate(at, name, ints(region["pos"], 3), size,
-                    held.TryGetValue(name, out var by) ? by : string.Empty));
+                    held.TryGetValue(name, out var by) ? by : string.Empty,
+                    looks.TryGetValue(name, out var look) ? look : string.Empty));
             }
 
             return made;
@@ -954,7 +1043,7 @@ namespace MCDSaveEdit.Logic
             });
 
             return new Gate(room.Regions.Count - 1, name, new[] { x, y, z },
-                across ? new[] { 5, 1, 1 } : new[] { 1, 1, 5 }, string.Empty);
+                across ? new[] { 5, 1, 1 } : new[] { 1, 1, 5 }, string.Empty, string.Empty);
         }
 
         /// <summary>A name no gate in this room is using yet.</summary>
@@ -970,8 +1059,22 @@ namespace MCDSaveEdit.Logic
             }
         }
 
+        /// <summary>
+        /// Whether a region is one you walk into rather than one that spawns or holds something.
+        ///
+        /// A MISSING "type" counts. The game's own files leave it off constantly and the game
+        /// treats those as triggers - across Blossoming Isles' three tile sets, 27 of 60 regions
+        /// have no type key at all, including every one of its gates and arena spawn markers.
+        /// Requiring the word "trigger" hid half of that mod from this editor.
+        /// </summary>
+        private static bool isTrigger(JsonObject region)
+        {
+            var said = region["type"]?.GetValue<string>();
+            return said == null || string.Equals(said, "trigger", StringComparison.Ordinal);
+        }
+
         private static bool isGateRegion(JsonObject region)
-            => region["type"]?.GetValue<string>() == "trigger"
+            => isTrigger(region)
             && !isStart(region) && !isExit(region)
             && (region["name"]?.GetValue<string>() ?? string.Empty).Length > 0;
 
@@ -1058,10 +1161,15 @@ namespace MCDSaveEdit.Logic
         }
 
         /// <summary>Makes an objective hold a gate shut until it is finished.</summary>
-        public static bool lockTo(Map map, int objective, string gate)
+        public static bool lockTo(Map map, int objective, string gate, string look)
         {
             var body = bodyOf(map, objective);
             if (body == null || gate.Length == 0) { return false; }
+
+            //Refused rather than written, for the reason on Objective.CanHoldGates: the game
+            //reads "locked-doors" out of a click and out of nowhere else.
+            var holder = objectivesOf(map).FirstOrDefault(one => one.At == objective);
+            if (holder == null || !holder.CanHoldGates) { return false; }
 
             if (body["locked-doors"] is not JsonArray doors)
             {
@@ -1081,6 +1189,13 @@ namespace MCDSaveEdit.Logic
             }
 
             doors.Add(reference);
+
+            //ONE field for the whole objective, so every gate this step opens is drawn the same
+            //way. That is the game's shape, not a simplification: "door-path" sits beside
+            //"locked-doors" on the body, not on any one of them.
+            if (look.Length > 0) { body["door-path"] = look; }
+            else { body.Remove("door-path"); }
+
             return true;
         }
 
@@ -1104,8 +1219,13 @@ namespace MCDSaveEdit.Logic
                 gone = true;
             }
 
-            //An empty list left behind is noise in a file people read.
-            if (doors.Count == 0) { body.Remove("locked-doors"); }
+            //An empty list left behind is noise in a file people read, and a door-path with
+            //nothing to draw over is worse than noise - it is a prefab the game goes looking for.
+            if (doors.Count == 0)
+            {
+                body.Remove("locked-doors");
+                body.Remove("door-path");
+            }
 
             return gone;
         }
@@ -1128,10 +1248,11 @@ namespace MCDSaveEdit.Logic
         public sealed class Objective
         {
             public Objective(int at, string description, string kind, int count,
-                             string[] needs, bool isExit)
+                             string[] needs, bool isExit, string? says)
             {
                 At = at;
                 Description = description;
+                Says = says;
                 Kind = kind;
                 Count = count;
                 Needs = needs;
@@ -1139,7 +1260,20 @@ namespace MCDSaveEdit.Logic
             }
 
             public int At { get; }
+
+            /// <summary>The KEY the level stores, which is not what anybody reads.</summary>
             public string Description { get; }
+
+            /// <summary>
+            /// What that key reads as in game, or null when the level's table has not got it.
+            ///
+            /// Null is the interesting case: it is exactly what draws as
+            /// &lt;MISSING STRING TABLE ENTRY&gt; across the mission banner, and there is no
+            /// other warning of it anywhere - not in a log, not on load, not in the game.
+            /// </summary>
+            public string? Says { get; }
+
+            public bool Missing => Says == null;
 
             /// <summary>"click" something, or "reach" somewhere.</summary>
             public string Kind { get; }
@@ -1152,8 +1286,22 @@ namespace MCDSaveEdit.Logic
             /// <summary>Whether this is the one that clicks the exit gate.</summary>
             public bool IsExit { get; }
 
+            /// <summary>
+            /// Whether a gate can be hung off this step.
+            ///
+            /// Only a "click" can hold one. Read off all fifty-six of the game's own missions:
+            /// eighty-five objectives hold a gate shut, and every single one is a click with
+            /// "locked-doors", an arena with "gate", or a kill-group with "gate". Not one
+            /// gauntlet holds anything, and "locked-doors" appears under no other body.
+            ///
+            /// So writing the field onto a gauntlet does not half-work - the game never looks
+            /// for it there, and what you get is a gate that is drawn, and solid, and opens for
+            /// nobody, with no error anywhere. Offering it would be the cruellest kind of bug.
+            /// </summary>
+            public bool CanHoldGates => string.Equals(Kind, "click", StringComparison.Ordinal);
+
             /// <summary>The description with the game's key noise taken off.</summary>
-            public string Title => tidy(Description);
+            public string Title => Says ?? tidy(Description);
 
             public override string ToString()
             {
@@ -1161,7 +1309,11 @@ namespace MCDSaveEdit.Logic
                 var where = Needs.Length > 0 ? "  \u2192  " + string.Join(", ", Needs) : string.Empty;
                 var note = IsExit ? "   \u2190  the way out" : string.Empty;
 
-                return $"{At + 1}. {tidy(Description)}   \u00b7  {what}{where}{note}";
+                var said = Missing
+                    ? $"{tidy(Description)}   \u00b7  NO SUCH WORDING - draws as missing in game"
+                    : Says;
+
+                return $"{At + 1}. {said}   \u00b7  {what}{where}{note}";
             }
 
             /// <summary>The game's own string keys, made readable.</summary>
@@ -1182,11 +1334,40 @@ namespace MCDSaveEdit.Logic
             return at < 0 ? reference : reference.Substring(at + 1);
         }
 
+        /// <summary>
+        /// Everything one map can say, by key.
+        ///
+        /// The CSV first and the compiled table second. That order matters: a map's own wording
+        /// only exists in the CSV, and the compiled table is what the game falls back TO rather
+        /// than the other way round - so reading the compiled table alone reports every word
+        /// somebody wrote themselves as missing, which is what it did.
+        /// </summary>
+        private static Dictionary<string, string> wordsIn(Map map, string table)
+        {
+            var made = new Dictionary<string, string>(StringComparer.Ordinal);
+
+            try
+            {
+                foreach (var word in MapWords.all(map.Folder, table)) { made[word.Key] = word.Said; }
+            }
+            catch
+            {
+                //A table that cannot be read leaves the compiled one to answer, which is what
+                //happened before there was a CSV at all.
+            }
+
+            return made;
+        }
+
         /// <summary>The mission's objective chain, in the order it is asked of you.</summary>
         public static List<Objective> objectivesOf(Map map)
         {
             var made = new List<Objective>();
             var all = map.Level["objectives"] as JsonArray ?? new JsonArray();
+
+            //Looked up once rather than per step - it is a scan over 36 tables.
+            var table = loctableOf(map);
+            var says = wordsIn(map, table);
 
             for (var at = 0; at < all.Count; at++)
             {
@@ -1194,7 +1375,12 @@ namespace MCDSaveEdit.Logic
 
                 var click = objective["click"] as JsonObject;
                 var gauntlet = objective["gauntlet"] as JsonObject;
-                var body = click ?? gauntlet;
+
+                //A fight is a kill-group. Read as a first-class kind rather than falling through
+                //to "?", because a mission can be made almost entirely of them - Blossoming
+                //Isles is 11 of 25 - and every one of those showed here as a blank row.
+                var fight = objective["killgroup"] as JsonObject;
+                var body = click ?? gauntlet ?? fight;
 
                 var needs = new List<string>();
 
@@ -1210,16 +1396,806 @@ namespace MCDSaveEdit.Logic
                 var region = body?["end-region"]?.GetValue<string>();
                 if (region != null) { needs.Add(lastPart(region)); }
 
+                //A fight names its ground differently: where the mobs come from, and where the
+                //marker points. Neither is "locations", which is why they read as needing
+                //nothing at all.
+                if (fight != null)
+                {
+                    foreach (var one in fight["spawn-regions"] as JsonArray ?? new JsonArray())
+                    {
+                        var said = one?.GetValue<string>();
+                        if (said != null) { needs.Add(lastPart(said)); }
+                    }
+
+                    var marker = fight["marker-region"]?.GetValue<string>();
+                    if (marker != null && !needs.Contains(lastPart(marker)))
+                    {
+                        needs.Add(lastPart(marker));
+                    }
+                }
+
+                var key = objective["description"]?.GetValue<string>() ?? "(no description)";
+
+                //A fight's count is how many mobs it asks for, which lives in mobs[0].
+                var howMany = fight != null
+                    ? ((fight["mobs"] as JsonArray)?.Count > 0
+                        ? fight["mobs"]![0]!.GetValue<int>()
+                        : 1)
+                    : body?["count"]?.GetValue<int>() ?? 1;
+
                 made.Add(new Objective(at,
-                    objective["description"]?.GetValue<string>() ?? "(no description)",
-                    click != null ? "click" : gauntlet != null ? "reach" : "?",
-                    body?["count"]?.GetValue<int>() ?? 1,
+                    key,
+                    click != null ? "click" : gauntlet != null ? "reach" : fight != null ? "fight" : "?",
+                    howMany,
                     needs.ToArray(),
                     click != null && string.Equals(click["object"]?.GetValue<string>(), EXIT_DOOR,
-                        StringComparison.OrdinalIgnoreCase)));
+                        StringComparison.OrdinalIgnoreCase),
+                    says.TryGetValue(key, out var reads) ? reads : R.wordFor(table, key)));
             }
 
             return made;
+        }
+
+        /// <summary>
+        /// Things the game lets you walk up to and click, with a gate on the other end.
+        ///
+        /// Fifty of the game's objectives hold a gate shut and every one of them is a click on
+        /// something like these. The list is the base game's own - nothing out of a DLC, because
+        /// a prefab that is not loaded is a mission that does not start, and a hand-built map
+        /// has no way of knowing which downloads somebody owns.
+        ///
+        /// Ordered by how obvious the thing is to walk up to rather than by how often the game
+        /// uses it. A bell and a lever read as "press me" to anybody; a magic book does not.
+        /// </summary>
+        public static readonly (string path, string name)[] CLICKABLES =
+        {
+            ("Decor/Prefabs/TownBell/BP_Townbell", "Town bell"),
+            ("Decor/Prefabs/GuideBeacon/BP_DoorLever", "Lever"),
+            ("Decor/Prefabs/GuideBeacon/BP_GuideBeacon", "Beacon"),
+            ("Decor/Prefabs/DrawBridge_Switch/BP_Switch_Drawbridge", "Drawbridge switch"),
+            ("Decor/Prefabs/RedstoneMachine/BP_RedstoneMachine", "Redstone machine"),
+            ("Decor/Prefabs/CapturedVillager/BP_CapturedVillager", "Captured villager"),
+            ("Decor/Prefabs/_Interactables/MagicBook/BP_MagicBook", "Magic book"),
+        };
+
+        /// <summary>
+        /// Which of the game's string tables this level's wording comes out of.
+        ///
+        /// "loctable-id" when it says one, its own id otherwise - the same fallback the game
+        /// makes. It matters because an objective's description is a key into exactly one of
+        /// thirty-six tables, and they share almost nothing.
+        /// </summary>
+        public static string loctableOf(Map map)
+            => map.Level["loctable-id"]?.GetValue<string>()
+               ?? map.Level["id"]?.GetValue<string>()
+               ?? string.Empty;
+
+        /// <summary>Where a step's own region stands, so it can be drawn and dragged.</summary>
+        public sealed class Step
+        {
+            public Step(int objective, int region, string name, int[] pos, string title, bool click)
+            {
+                Objective = objective;
+                Region = region;
+                Name = name;
+                Pos = pos;
+                Title = title;
+                Click = click;
+            }
+
+            /// <summary>Which objective it belongs to.</summary>
+            public int Objective { get; }
+
+            /// <summary>Where its region sits in the room, or -1 when the region is missing.</summary>
+            public int Region { get; }
+
+            public string Name { get; }
+            public int[] Pos { get; }
+            public string Title { get; }
+
+            /// <summary>Whether it is a thing to click rather than a place to reach.</summary>
+            public bool Click { get; }
+
+            public bool Broken => Region < 0;
+
+            public override string ToString()
+            {
+                var what = Click ? "click" : "reach";
+                var note = Broken
+                    ? "   \u00b7  NO region called that - this step can never finish"
+                    : $"   \u00b7  {Pos[0]}, {Pos[1]}, {Pos[2]}";
+
+                return $"{Objective + 1}. {Title}   \u00b7  {what}  {Name}{note}";
+            }
+        }
+
+        /// <summary>
+        /// The regions the mission's own steps stand on, other than the way out.
+        ///
+        /// The exit has its own panel and its own red pin, so it is left out of this one - it
+        /// would otherwise be drawn twice, in two colours, at one spot.
+        /// </summary>
+        public static List<Step> stepsOf(Map map, Room room)
+        {
+            var made = new List<Step>();
+
+            var where = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (var at = 0; at < room.Regions.Count; at++)
+            {
+                if (room.Regions[at] is not JsonObject region) { continue; }
+                var name = region["name"]?.GetValue<string>();
+                if (!string.IsNullOrEmpty(name) && !where.ContainsKey(name!)) { where[name!] = at; }
+            }
+
+            foreach (var step in objectivesOf(map))
+            {
+                if (step.IsExit) { continue; }
+
+                foreach (var name in step.Needs)
+                {
+                    //A step can name a region that is not in this room at all - every mission
+                    //the app inherited names regions from tiles that are no longer there. Those
+                    //are worth listing precisely because they are the reason a chain stalls.
+                    var at = where.TryGetValue(name, out var found) ? found : -1;
+
+                    made.Add(new Step(step.At, at, name,
+                        at < 0
+                            ? new[] { -1, -1, -1 }
+                            : ints((room.Regions[at] as JsonObject)?["pos"], 3),
+                        step.Title, step.CanHoldGates));
+                }
+            }
+
+            return made;
+        }
+
+        /// <summary>A region name nothing in this room is using yet.</summary>
+        public static string freeStepName(Room room, string stem)
+        {
+            var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var one in room.Regions)
+            {
+                var name = (one as JsonObject)?["name"]?.GetValue<string>();
+                if (!string.IsNullOrEmpty(name)) { taken.Add(name!); }
+            }
+
+            for (var n = 1; ; n++)
+            {
+                var tried = stem + n.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                if (!taken.Contains(tried)) { return tried; }
+            }
+        }
+
+        /// <summary>
+        /// Puts a new step in the chain, ahead of the way out.
+        ///
+        /// Ahead of it, always. The chain is a SEQUENCE - a step behind the exit is a step
+        /// nobody reaches, because clicking the exit ends the mission - so one added after it
+        /// would never be asked for and every gate hung off it would stay shut.
+        /// </summary>
+        private static int insert(Map map, JsonObject step)
+        {
+            if (map.Level["objectives"] is not JsonArray all)
+            {
+                all = new JsonArray();
+                map.Level["objectives"] = all;
+            }
+
+            var before = all.Count;
+
+            for (var at = 0; at < all.Count; at++)
+            {
+                if (all[at] is JsonObject one
+                    && one["click"] is JsonObject click
+                    && string.Equals(click["object"]?.GetValue<string>(), EXIT_DOOR,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    before = at;
+                    break;
+                }
+            }
+
+            all.Insert(before, step);
+            return before;
+        }
+
+        /// <summary>
+        /// A step that asks you to click something, which is the only kind a gate can hang off.
+        ///
+        /// The pair is the same shape as the way out: a REGION saying where the thing stands,
+        /// and an OBJECTIVE naming both the region and the prefab to draw there. Either alone
+        /// does nothing at all.
+        /// </summary>
+        public static int addClickStep(Map map, Room room, string title, string asks,
+                                       string prefab, int x, int y, int z)
+        {
+            var name = freeStepName(room, "button");
+
+            room.Regions.Add(new JsonObject
+            {
+                ["locked"] = false,
+                ["name"] = name,
+                ["pos"] = new JsonArray(x, y, z),
+                ["size"] = new JsonArray(1, 1, 1),
+                ["tags"] = string.Empty,
+                ["type"] = "trigger",
+            });
+
+            //Both of these are KEYS into the level's string table, never sentences. Typing
+            //wording straight in is what put <MISSING STRING TABLE ENTRY> on the banner.
+            return insert(map, new JsonObject
+            {
+                ["name"] = title,
+                ["description"] = asks,
+                ["displayMode"] = "MainObjective",
+                ["click"] = new JsonObject
+                {
+                    ["object"] = prefab,
+                    ["count"] = 1,
+                    ["locations"] = new JsonArray("*.*." + name),
+                },
+            });
+        }
+
+        /// <summary>
+        /// A step that asks you to get somewhere.
+        ///
+        /// One field, and the game's own missions use it forty-four times over - walk into the
+        /// region and the step is done. It cannot hold a gate, which is the whole reason the
+        /// other kind exists.
+        /// </summary>
+        public static int addReachStep(Map map, Room room, string title, string asks,
+                                       int x, int y, int z)
+        {
+            var name = freeStepName(room, "goal");
+
+            room.Regions.Add(new JsonObject
+            {
+                ["locked"] = false,
+                ["name"] = name,
+                ["pos"] = new JsonArray(x, y, z),
+                ["size"] = new JsonArray(5, 1, 5),
+                ["tags"] = string.Empty,
+                ["type"] = "trigger",
+            });
+
+            return insert(map, new JsonObject
+            {
+                ["name"] = title,
+                ["description"] = asks,
+                ["displayMode"] = "MainObjective",
+                ["gauntlet"] = new JsonObject
+                {
+                    ["end-region"] = "*.*." + name,
+                },
+            });
+        }
+
+        /// <summary>
+        /// Clears away the spots of steps that are no longer asked for.
+        ///
+        /// Only the ones this editor made - "button3", "goal1" - and only when no objective
+        /// names them any more. A region somebody placed by hand, or one that came with the
+        /// mission, is theirs: a tidy-up that deletes those is a tidy-up that quietly breaks a
+        /// map, and the space a stray trigger region costs is nothing.
+        /// </summary>
+        public static int dropOrphanSteps(Map map, Room room)
+        {
+            var wanted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var step in objectivesOf(map))
+            {
+                foreach (var name in step.Needs) { wanted.Add(name); }
+                foreach (var name in lockedBy(map, step.At)) { wanted.Add(name); }
+            }
+
+            var gone = 0;
+
+            for (var at = room.Regions.Count - 1; at >= 0; at--)
+            {
+                if (room.Regions[at] is not JsonObject region) { continue; }
+                if (region["type"]?.GetValue<string>() != "trigger") { continue; }
+
+                var name = region["name"]?.GetValue<string>() ?? string.Empty;
+                if (!ours(name) || wanted.Contains(name)) { continue; }
+
+                room.Regions.RemoveAt(at);
+                gone++;
+            }
+
+            return gone;
+        }
+
+        /// <summary>Whether a region name is one addClickStep or addReachStep made.</summary>
+        private static bool ours(string name)
+        {
+            foreach (var stem in new[] { "button", "goal" })
+            {
+                if (!name.StartsWith(stem, StringComparison.OrdinalIgnoreCase)) { continue; }
+
+                var tail = name.Substring(stem.Length);
+                if (tail.Length > 0 && tail.All(char.IsDigit)) { return true; }
+            }
+
+            return false;
+        }
+
+        /// <summary>Puts a step's region somewhere else.</summary>
+        public static bool moveStep(Room room, int at, int x, int y, int z)
+        {
+            if (at < 0 || at >= room.Regions.Count) { return false; }
+            if (room.Regions[at] is not JsonObject region) { return false; }
+
+            region["pos"] = new JsonArray(x, y, z);
+            return true;
+        }
+
+        //--- fights ---------------------------------------------------------------------------------
+
+        /// <summary>
+        /// What a fight can pay out when it is cleared.
+        ///
+        /// Two values across the whole of Blossoming Isles and the game's own kill-groups, which
+        /// is the entire vocabulary anybody has been seen to use.
+        /// </summary>
+        public static readonly (string id, string name)[] REWARDS =
+        {
+            ("", "Nothing"),
+            ("emerald", "Emeralds"),
+            ("arrow", "Arrows"),
+        };
+
+        /// <summary>
+        /// A fight in a walled-off piece of the map.
+        ///
+        /// The game's other fight body is "arena", which takes a stretch and a list of timed
+        /// waves. This is the simpler one and the one custom missions actually use: a count of
+        /// mobs, a group to draw them from, the regions they come out of, and a gate that shuts
+        /// while it is going on. Chain several on the same regions and you have waves.
+        /// </summary>
+        public sealed class Arena
+        {
+            public Arena(int at, string title, int count, string group, string reward,
+                         string[] from, string[] gates, string drawn, bool openAtFirst)
+            {
+                At = at;
+                Title = title;
+                Count = count;
+                Group = group;
+                Reward = reward;
+                From = from;
+                Gates = gates;
+                Drawn = drawn;
+                OpenAtFirst = openAtFirst;
+            }
+
+            /// <summary>Which objective in the chain it is.</summary>
+            public int At { get; }
+
+            public string Title { get; }
+
+            /// <summary>How many mobs, and which mob-group they come from.</summary>
+            public int Count { get; }
+            public string Group { get; }
+
+            /// <summary>What it pays out, or empty for nothing.</summary>
+            public string Reward { get; }
+
+            /// <summary>The regions the mobs appear in.</summary>
+            public string[] From { get; }
+
+            /// <summary>The regions it seals while the fight is on.</summary>
+            public string[] Gates { get; }
+
+            /// <summary>The prefab those gates are drawn as.</summary>
+            public string Drawn { get; }
+
+            /// <summary>Whether the gates start open rather than shut.</summary>
+            public bool OpenAtFirst { get; }
+
+            public override string ToString()
+            {
+                var pays = Reward.Length == 0
+                    ? string.Empty
+                    : "  \u00b7  pays " + (REWARDS.FirstOrDefault(one => one.id == Reward).name
+                                          ?? Reward);
+
+                var walls = Gates.Length == 0
+                    ? "  \u00b7  nothing is sealed"
+                    : "  \u00b7  seals " + string.Join(", ", Gates);
+
+                var where = From.Length == 0
+                    ? "  \u00b7  NO SPAWN REGION - nothing will appear"
+                    : "  \u00b7  from " + string.Join(", ", From);
+
+                return $"{At + 1}. {Title}   \u00b7  {Count} \u00d7 {Group}{where}{walls}{pays}";
+            }
+        }
+
+        private static string[] namesIn(JsonObject? body, string field)
+        {
+            var found = new List<string>();
+
+            foreach (var one in body?[field] as JsonArray ?? new JsonArray())
+            {
+                var said = one?.GetValue<string>();
+                if (said != null) { found.Add(lastPart(said)); }
+            }
+
+            return found.ToArray();
+        }
+
+        /// <summary>Every fight in the mission.</summary>
+        public static List<Arena> arenasOf(Map map)
+        {
+            var made = new List<Arena>();
+            var all = map.Level["objectives"] as JsonArray ?? new JsonArray();
+            var table = loctableOf(map);
+            var says = wordsIn(map, table);
+
+            for (var at = 0; at < all.Count; at++)
+            {
+                if (all[at] is not JsonObject objective) { continue; }
+                if (objective["killgroup"] is not JsonObject fight) { continue; }
+
+                var mobs = fight["mobs"] as JsonArray;
+                var reward = fight["reward"] as JsonArray;
+                var gate = fight["gate"] as JsonObject;
+
+                var key = objective["description"]?.GetValue<string>() ?? string.Empty;
+
+                made.Add(new Arena(at,
+                    says.TryGetValue(key, out var reads) ? reads
+                        : R.wordFor(table, key) ?? Objective.tidy(key),
+                    mobs?.Count > 0 ? mobs[0]!.GetValue<int>() : 0,
+                    mobs?.Count > 1 ? mobs[1]!.GetValue<string>() : string.Empty,
+                    reward?.Count > 1 ? reward[1]!.GetValue<string>() : string.Empty,
+                    namesIn(fight, "spawn-regions"),
+                    namesIn(gate, "regions"),
+                    gate?["object"]?.GetValue<string>() ?? string.Empty,
+                    gate?["start-unlocked"]?.GetValue<bool>() ?? false));
+            }
+
+            return made;
+        }
+
+        /// <summary>
+        /// Puts a fight in the chain, with the ground it happens on.
+        ///
+        /// Makes three things at once because a fight needs all three and any one alone does
+        /// nothing: a region the mobs come out of, a region across the way that seals while it
+        /// runs, and the objective naming both. The gate is optional - a fight in the open is a
+        /// perfectly ordinary thing to want.
+        /// </summary>
+        public static int addArena(Map map, Room room, string title, string asks, string group,
+                                   int count, string reward, string look, bool withGate,
+                                   int x, int y, int z)
+        {
+            var from = freeStepName(room, "arena");
+
+            room.Regions.Add(new JsonObject
+            {
+                ["locked"] = false,
+                ["name"] = from,
+                ["pos"] = new JsonArray(x, y, z),
+                ["size"] = new JsonArray(9, 1, 9),
+                ["tags"] = string.Empty,
+                ["type"] = "spawn",
+            });
+
+            var fight = new JsonObject
+            {
+                ["mobs"] = new JsonArray(count, group),
+                ["spawn-regions"] = new JsonArray("*.*." + from),
+            };
+
+            if (reward.Length > 0) { fight["reward"] = new JsonArray(count, reward); }
+
+            if (withGate)
+            {
+                var wall = freeGateName(map, room);
+
+                room.Regions.Add(new JsonObject
+                {
+                    ["locked"] = false,
+                    ["name"] = wall,
+                    ["pos"] = new JsonArray(x, y, z + 6),
+                    ["size"] = new JsonArray(5, 1, 1),
+                    ["tags"] = GATE,
+                    ["type"] = "trigger",
+                });
+
+                fight["gate"] = new JsonObject
+                {
+                    ["regions"] = new JsonArray("*.*." + wall),
+                    ["object"] = look,
+                    ["start-unlocked"] = false,
+                };
+
+                //What the marker points at while the fight runs. The game's own kill-groups
+                //aim it at the gate rather than the spawn, so you are shown the way out.
+                fight["marker-region"] = "*.*." + wall;
+            }
+            else
+            {
+                fight["marker-region"] = "*.*." + from;
+            }
+
+            return insert(map, new JsonObject
+            {
+                ["name"] = title,
+                ["description"] = asks,
+                ["displayMode"] = "MainObjective",
+                ["killgroup"] = fight,
+            });
+        }
+
+        /// <summary>
+        /// Another fight on the same ground, running before the one picked.
+        ///
+        /// Which is all a wave is. The game has no wave list for a kill-group: what makes a
+        /// five-wave finale is five kill-groups in a row naming one spawn region. The new one
+        /// goes BEFORE the chosen fight and carries no gate, so whichever fight was holding the
+        /// arena shut stays the one that opens it - at the end, which is the point.
+        /// </summary>
+        public static bool addWave(Map map, int at, int count, string group)
+        {
+            if (map.Level["objectives"] is not JsonArray all) { return false; }
+            if (at < 0 || at >= all.Count) { return false; }
+            if (all[at] is not JsonObject objective) { return false; }
+            if (objective["killgroup"] is not JsonObject fight) { return false; }
+
+            var made = new JsonObject
+            {
+                ["mobs"] = new JsonArray(Math.Max(1, count), group),
+            };
+
+            //The same ground, named the same way. Copied rather than shared, because two
+            //objectives pointing at one JsonArray is one edit away from a surprise.
+            var ground = new JsonArray();
+            foreach (var one in fight["spawn-regions"] as JsonArray ?? new JsonArray())
+            {
+                var said = one?.GetValue<string>();
+                if (said != null) { ground.Add(said); }
+            }
+
+            made["spawn-regions"] = ground;
+            made["marker-region"] = fight["marker-region"]?.GetValue<string>()
+                ?? (ground.Count > 0 ? ground[0]!.GetValue<string>() : "*.*.arena1");
+
+            all.Insert(at, new JsonObject
+            {
+                ["name"] = objective["name"]?.GetValue<string>() ?? string.Empty,
+                ["description"] = objective["description"]?.GetValue<string>() ?? string.Empty,
+                ["displayMode"] = "MainObjective",
+                ["killgroup"] = made,
+            });
+
+            return true;
+        }
+
+        /// <summary>Changes how many mobs a fight asks for, and from which group.</summary>
+        public static bool reshapeArena(Map map, int at, int count, string group, string reward)
+        {
+            if (map.Level["objectives"] is not JsonArray all) { return false; }
+            if (at < 0 || at >= all.Count) { return false; }
+            if (all[at] is not JsonObject objective) { return false; }
+            if (objective["killgroup"] is not JsonObject fight) { return false; }
+
+            fight["mobs"] = new JsonArray(Math.Max(1, count), group);
+
+            if (reward.Length > 0) { fight["reward"] = new JsonArray(Math.Max(1, count), reward); }
+            else { fight.Remove("reward"); }
+
+            return true;
+        }
+
+        //--- doors that want a key ---------------------------------------------------------------
+
+        /// <summary>
+        /// The locked doors the game ships, and the key each one wants.
+        ///
+        /// The key type has to match the door: a gold door opens for a gold key and for nothing
+        /// else, and the pairing is by name rather than by anything the data checks - so getting
+        /// it wrong is a door that never opens, silently.
+        /// </summary>
+        public static readonly (string path, string key, string name)[] LOCKED_DOORS =
+        {
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Gold_HighblockHalls", "gold", "Gold door"),
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Silver_HighblockHalls", "silver", "Silver door"),
+        };
+
+        /// <summary>
+        /// A door that wants a key somebody has to go and find.
+        ///
+        /// A whole mission beat in one objective: the door stands at one region, and the key can
+        /// be at any of several others. Blossoming Isles gives its key TWO candidate regions on
+        /// different tiles, so it lands in the main room or out on a side path - which is why
+        /// the key regions are a list rather than a spot.
+        /// </summary>
+        public sealed class Keyed
+        {
+            public Keyed(int at, string title, string door, string kind, string[] doors, string[] keys)
+            {
+                At = at;
+                Title = title;
+                Door = door;
+                Kind = kind;
+                Doors = doors;
+                Keys = keys;
+            }
+
+            public int At { get; }
+            public string Title { get; }
+
+            /// <summary>The door prefab, and the key it wants.</summary>
+            public string Door { get; }
+            public string Kind { get; }
+
+            /// <summary>Where the door stands, and where the key may be.</summary>
+            public string[] Doors { get; }
+            public string[] Keys { get; }
+
+            public override string ToString()
+            {
+                var look = LOCKED_DOORS.FirstOrDefault(one => one.path == Door).name ?? "a door";
+
+                var where = Keys.Length == 0
+                    ? "  \u00b7  NO KEY ANYWHERE - it can never open"
+                    : $"  \u00b7  {Kind} key at " + string.Join(" or ", Keys);
+
+                return $"{At + 1}. {Title}   \u00b7  {look} at "
+                       + string.Join(", ", Doors) + where;
+            }
+        }
+
+        /// <summary>Every keyed door in the mission.</summary>
+        public static List<Keyed> keyedOf(Map map)
+        {
+            var made = new List<Keyed>();
+            var all = map.Level["objectives"] as JsonArray ?? new JsonArray();
+            var table = loctableOf(map);
+            var says = wordsIn(map, table);
+
+            for (var at = 0; at < all.Count; at++)
+            {
+                if (all[at] is not JsonObject objective) { continue; }
+                if (objective["click"] is not JsonObject body) { continue; }
+                if (body["key-type"] == null && body["key-locations"] == null) { continue; }
+
+                var key = objective["description"]?.GetValue<string>() ?? string.Empty;
+
+                made.Add(new Keyed(at,
+                    says.TryGetValue(key, out var reads) ? reads
+                        : R.wordFor(table, key) ?? Objective.tidy(key),
+                    body["object"]?.GetValue<string>() ?? string.Empty,
+                    body["key-type"]?.GetValue<string>() ?? string.Empty,
+                    namesIn(body, "locations"),
+                    namesIn(body, "key-locations")));
+            }
+
+            return made;
+        }
+
+        /// <summary>
+        /// Puts a locked door and its key in the map.
+        ///
+        /// Both regions at once, for the same reason a fight makes all of its own: a door with
+        /// no key is a wall, and a key with no door is a pickup that does nothing.
+        /// </summary>
+        public static int addKeyed(Map map, Room room, string title, string asks, string door,
+                                   string kind, int x, int y, int z, int keyX, int keyY, int keyZ)
+        {
+            var at = freeStepName(room, "lockeddoor");
+            var where = freeStepName(room, "keyspot");
+
+            room.Regions.Add(new JsonObject
+            {
+                ["locked"] = false,
+                ["name"] = at,
+                ["pos"] = new JsonArray(x, y, z),
+                ["size"] = new JsonArray(1, 1, 1),
+                ["tags"] = string.Empty,
+                ["type"] = "trigger",
+            });
+
+            room.Regions.Add(new JsonObject
+            {
+                ["locked"] = false,
+                ["name"] = where,
+                ["pos"] = new JsonArray(keyX, keyY, keyZ),
+                ["size"] = new JsonArray(1, 1, 1),
+                ["tags"] = string.Empty,
+                ["type"] = "trigger",
+            });
+
+            return insert(map, new JsonObject
+            {
+                ["name"] = title,
+                ["description"] = asks,
+                ["displayMode"] = "MainObjective",
+                ["click"] = new JsonObject
+                {
+                    ["object"] = door,
+                    ["count"] = 1,
+                    ["locations"] = new JsonArray("*.*." + at),
+                    ["key-locations"] = new JsonArray("*.*." + where),
+                    ["key-type"] = kind,
+                },
+            });
+        }
+
+        /// <summary>Gives a keyed door another place its key might be.</summary>
+        public static string alsoKeyAt(Map map, Room room, int at, int x, int y, int z)
+        {
+            if (map.Level["objectives"] is not JsonArray all) { return string.Empty; }
+            if (at < 0 || at >= all.Count) { return string.Empty; }
+            if (all[at] is not JsonObject objective) { return string.Empty; }
+            if (objective["click"] is not JsonObject body) { return string.Empty; }
+
+            var where = freeStepName(room, "keyspot");
+
+            room.Regions.Add(new JsonObject
+            {
+                ["locked"] = false,
+                ["name"] = where,
+                ["pos"] = new JsonArray(x, y, z),
+                ["size"] = new JsonArray(1, 1, 1),
+                ["tags"] = string.Empty,
+                ["type"] = "trigger",
+            });
+
+            if (body["key-locations"] is not JsonArray spots)
+            {
+                spots = new JsonArray();
+                body["key-locations"] = spots;
+            }
+
+            spots.Add("*.*." + where);
+            return where;
+        }
+
+        //--- what the level itself is ------------------------------------------------------------
+
+        /// <summary>
+        /// The music a level can ask for instead of its own.
+        ///
+        /// Three, in the whole game. Counted rather than assumed: of 56 missions exactly three
+        /// set "music-override", and they name a SUB-AREA - Creepy Crypt, Soggy Cave, Underhalls
+        /// - not a mission. Offering the mission list here, which is what this first did, would
+        /// have been fifty-odd values none of which the game has a track for.
+        ///
+        /// The real vocabulary is probably larger, since only three levels ever use the field.
+        /// Offering only what is attested is the honest half of that: a wrong value here is
+        /// silence, or the wrong music, with nothing said anywhere.
+        /// </summary>
+        public static readonly (string id, string name)[] MUSIC =
+        {
+            ("", "whatever the borrowed mission plays"),
+            ("CreepyCrypt", "Creepy Crypt"),
+            ("SoggyCave", "Soggy Cave"),
+            ("Underhalls", "Underhalls"),
+        };
+
+        /// <summary>One of the level's own switches, read and written by name.</summary>
+        public static string? levelText(Map map, string field)
+            => map.Level[field]?.GetValue<string>();
+
+        public static void setLevelText(Map map, string field, string value)
+        {
+            if (value.Length == 0) { map.Level.Remove(field); }
+            else { map.Level[field] = value; }
+        }
+
+        public static bool? levelFlag(Map map, string field)
+            => map.Level[field] is JsonValue value && value.TryGetValue<bool>(out var said)
+                ? said
+                : null;
+
+        public static void setLevelFlag(Map map, string field, bool? value)
+        {
+            if (value == null) { map.Level.Remove(field); }
+            else { map.Level[field] = value.Value; }
         }
 
         /// <summary>Takes one step out of the chain.</summary>
@@ -1310,7 +2286,7 @@ namespace MCDSaveEdit.Logic
         }
 
         private static bool isExit(JsonObject region)
-            => region["type"]?.GetValue<string>() == "trigger"
+            => isTrigger(region)
             && string.Equals(region["name"]?.GetValue<string>(), EXIT,
                    StringComparison.OrdinalIgnoreCase);
 
@@ -1469,7 +2445,7 @@ namespace MCDSaveEdit.Logic
         /// <summary>Whether a region is the player's arrival area.</summary>
         private static bool isStart(JsonObject region)
         {
-            if (region["type"]?.GetValue<string>() != "trigger") { return false; }
+            if (!isTrigger(region)) { return false; }
 
             //Matched on either, because the game's own data sets both and a region carrying only
             //one of them is still plainly meant to be the same thing.
@@ -1896,7 +2872,7 @@ namespace MCDSaveEdit.Logic
                 {
                     if (one is not JsonObject port) { continue; }
 
-                    var door = port["door"]?.GetValue<string>() ?? string.Empty;
+                    var door = text(port["door"]) ?? string.Empty;
                     if (!doors.TryGetValue(door, out var at))
                     {
                         //A teleport whose door is gone. Worth keeping in the list - it is exactly
@@ -1905,15 +2881,39 @@ namespace MCDSaveEdit.Logic
                     }
 
                     var into = string.Join(", ", (port["dungeons"] as JsonArray ?? new JsonArray())
-                        .Select(two => two?.GetValue<string>())
+                        .Select(named)
                         .Where(two => !string.IsNullOrEmpty(two)));
 
-                    made.Add(new Teleport(door, port["exit"]?.GetValue<string>(), into, at, port));
+                    made.Add(new Teleport(door, text(port["exit"]), into, at, port));
                 }
             }
 
             return made;
         }
+
+        /// <summary>
+        /// A node's text, or null if it is not text at all.
+        ///
+        /// GetValue&lt;string&gt;() throws on anything that is not a JsonValue, and a level file is
+        /// full of fields that are a string in one place and an object in another. Asking
+        /// politely costs nothing and turns a crash into a blank.
+        /// </summary>
+        private static string? text(JsonNode? node)
+            => node is JsonValue value && value.TryGetValue<string>(out var said) ? said : null;
+
+        /// <summary>
+        /// What one entry of a list of things-by-name is called.
+        ///
+        /// Either a bare name or an object carrying one beside a weight - the same shape
+        /// "default-mobs" uses for its groups. Creeper Woods' travel doors are full of the
+        /// second form: {"id": "cryptsmall003", "weight": 0.4} says which side room that door
+        /// might lead to and how often.
+        ///
+        /// Reading only the bare form threw the moment a welded level actually played the tile
+        /// these sat on, which is to say the moment the teleports started counting.
+        /// </summary>
+        private static string? named(JsonNode? node)
+            => node is JsonObject body ? text(body["id"]) : text(node);
 
         /// <summary>
         /// Adds a mob group, and makes it one the mission actually uses.
@@ -2090,6 +3090,195 @@ namespace MCDSaveEdit.Logic
         /// In place, because the whole point of doing this here rather than in a browser is that
         /// the app already owns these files - no downloads, no putting things back by hand.
         /// </summary>
+        /// <summary>
+        /// Puts a tile's player start, exit and doors back on the ground after the tile grows.
+        ///
+        /// Bringing a world back from Minecraft replaces a tile's BLOCKS and leaves everything
+        /// else where it was. That is right for a map whose shape has not changed and wrong the
+        /// moment it has: a 30x30 baseline built out into a 192x160 island keeps its player start
+        /// at x=7, y=8 - which in the new map is underground, or in the sea, or in mid-air. The
+        /// game is handed a level whose spawn is inside solid rock, and it does not survive it.
+        ///
+        /// The tile already knows where its surface is. A height plane is one byte per column -
+        /// exactly a top-down picture - so each marker is looked up rather than searched for, and
+        /// dropped on top of whatever is under it.
+        ///
+        /// What this deliberately does NOT do is decide where the interesting part of the map is.
+        /// It keeps every marker at the x and z somebody placed it at and only corrects the
+        /// height. Moving them sideways would be guessing at which corner of a map six times
+        /// bigger the player is meant to begin in, and a wrong guess there is a spawn in the
+        /// ocean - which looks exactly like this bug and would be harder to explain.
+        /// </summary>
+        /// <returns>How many markers were lifted.</returns>
+        public static int settle(Map map)
+        {
+            var moved = 0;
+
+            foreach (var room in map.Rooms)
+            {
+                var heights = heightsOf(room);
+                if (heights == null) { continue; }
+
+                var wide = room.Size[0];
+                var deep = room.Size[2];
+
+                int? groundAt(int x, int z)
+                {
+                    if (x < 0 || z < 0 || x >= wide || z >= deep) { return null; }
+
+                    var height = heights[z * wide + x];
+
+                    //Zero is the gap between rooms rather than a floor at sea level, so a marker
+                    //over one is left alone: there is nothing there to stand on and inventing a
+                    //height would put it in the air.
+                    return height == 0 ? null : height;
+                }
+
+                //The nearest column that HAS ground, when the marker's own column has none.
+                //
+                //Lifting alone is not enough and the reason is worth stating: a height of zero is
+                //not "sea level", it is "nothing here". An island built inside a bigger tile
+                //leaves most columns empty, and the baseline's markers sit in a corner that is
+                //now open air - so raising them puts the spawn in the sky instead of in rock.
+                //
+                //Moving sideways IS a guess, which is why it is the second choice and why it is
+                //reported. Nearest is the least surprising guess available: it keeps the marker
+                //as close as possible to where somebody put it, and the alternative - the middle
+                //of the map, or the biggest landmass - would move it further for no better
+                //reason.
+                //Where the LAND is, rather than where the old marker was.
+                //
+                //"Nearest ground to where it used to be" sounded like the least surprising rule
+                //and is the wrong one. A small baseline built out into a big island leaves the
+                //old corner empty, and the nearest ground to an empty corner is the map's outer
+                //EDGE - so the spawn ends up in the far corner of somewhere six times bigger,
+                //which reads in game as being dumped outside the map.
+                //
+                //The middle of the land is a better guess for the same reason a person would
+                //make it: it is where the map is. The centre of mass is taken over every column
+                //that has ground, then snapped to a column that really has some - a centroid can
+                //easily land in a lake, or in the gap between two arms of an island.
+                (int x, int z)? middleOfTheLand()
+                {
+                    long sumX = 0;
+                    long sumZ = 0;
+                    long count = 0;
+
+                    for (var z = 0; z < deep; z++)
+                    {
+                        for (var x = 0; x < wide; x++)
+                        {
+                            if (heights[z * wide + x] == 0) { continue; }
+
+                            sumX += x;
+                            sumZ += z;
+                            count++;
+                        }
+                    }
+
+                    if (count == 0) { return null; }
+
+                    var midX = (int)(sumX / count);
+                    var midZ = (int)(sumZ / count);
+
+                    var best = ((int x, int z)?)null;
+                    var bestAway = long.MaxValue;
+
+                    for (var z = 0; z < deep; z++)
+                    {
+                        for (var x = 0; x < wide; x++)
+                        {
+                            if (heights[z * wide + x] == 0) { continue; }
+
+                            long dx = x - midX;
+                            long dz = z - midZ;
+                            var away = dx * dx + dz * dz;
+
+                            if (away >= bestAway) { continue; }
+
+                            bestAway = away;
+                            best = (x, z);
+                        }
+                    }
+
+                    return best;
+                }
+
+                bool lift(JsonNode? node, string what)
+                {
+                    if (node?["pos"] is not JsonArray at || at.Count < 3) { return false; }
+
+                    var x = at[0]?.GetValue<int>() ?? 0;
+                    var y = at[1]?.GetValue<int>() ?? 0;
+                    var z = at[2]?.GetValue<int>() ?? 0;
+
+                    var ground = groundAt(x, z);
+
+                    if (ground == null)
+                    {
+                        var found = middleOfTheLand();
+                        if (found == null) { return false; }
+
+                        ground = groundAt(found.Value.x, found.Value.z);
+                        if (ground == null) { return false; }
+
+                        at[0] = JsonValue.Create(found.Value.x);
+                        at[2] = JsonValue.Create(found.Value.z);
+                        at[1] = JsonValue.Create(ground.Value);
+
+                        map.Notes.Add($"{what} had no ground under it at {x},{z} - moved to "
+                            + $"the middle of the land at {found.Value.x},{found.Value.z}, "
+                            + $"height {ground.Value}");
+
+                        return true;
+                    }
+
+                    if (ground.Value == y) { return false; }
+
+                    at[1] = JsonValue.Create(ground.Value);
+                    map.Notes.Add($"{what} lifted from {y} to {ground.Value}");
+                    return true;
+                }
+
+                //Only the things somebody stands on or walks through. Everything else in a tile
+                //is placed relative to the blocks around it and moving it would be vandalism.
+                foreach (var region in room.Tile["regions"] as JsonArray ?? new JsonArray())
+                {
+                    var tags = region?["tags"]?.GetValue<string>() ?? string.Empty;
+                    var name = region?["name"]?.GetValue<string>() ?? string.Empty;
+
+                    if (tags.IndexOf("playerstart", StringComparison.OrdinalIgnoreCase) < 0
+                        && !string.Equals(name, "playerstart", StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(name, "exit", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    if (lift(region, name.Length > 0 ? name : "a region"))
+                    {
+                        moved++;
+
+                        //save() writes only what is listed here. Mutating the JSON and not
+                        //saying so means the edit lives in memory, gets reported as done, and
+                        //never reaches the file - which is exactly what happened the first time.
+                        map.Changed.Add(room.File);
+                    }
+                }
+
+                foreach (var door in room.Tile["doors"] as JsonArray ?? new JsonArray())
+                {
+                    var named = door?["name"]?.GetValue<string>() ?? "a door";
+                    if (lift(door, $"door \"{named}\""))
+                    {
+                        moved++;
+                        map.Changed.Add(room.File);
+                    }
+                }
+            }
+
+            return moved;
+        }
+
         public static int save(Map map)
         {
             var written = 0;

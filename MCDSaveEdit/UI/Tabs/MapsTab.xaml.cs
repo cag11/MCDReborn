@@ -62,10 +62,63 @@ namespace MCDSaveEdit.UI
             spawnsWhyLabel.Text = R.MAPS_GROUP_SPAWNS_WHY;
             undoWhyLabel.Text = R.MAPS_GROUP_UNDO_WHY;
             undoLabel.Text = R.MAPS_GROUP_UNDO;
+            //Built here rather than in XAML so the three labels are localised like everything
+            //else. SelectedIndex is set last, and _showing guards the handler it raises.
+            if (kindBox.Items.Count == 0)
+            {
+                _showing = true;
+                kindBox.Items.Add(R.MAPS_KIND_CUSTOM);
+                kindBox.Items.Add(R.MAPS_KIND_GAME);
+                kindBox.SelectedIndex = 0;
+                _showing = false;
+            }
+
+            inGameBox.Content = R.MAPS_IN_GAME;
+            inGameBox.ToolTip = R.MAPS_IN_GAME_WHY;
+
+            //These three were added without being registered here, and the asterisks in the
+            //XAML are exactly what that looks like: a *Caption* is the placeholder convention,
+            //left visible on purpose so a control nobody localised cannot ship looking finished.
+            renameButton.Content = R.MAPS_RENAME;
+            renameButton.ToolTip = R.MAPS_RENAME_WHY;
+            zipOutButton.Content = R.MAPS_ZIP_SAVE;
+            zipOutButton.ToolTip = R.MAPS_ZIP_SAVE_WHY;
+            zipInButton.Content = R.MAPS_ZIP_OPEN;
+            zipInButton.ToolTip = R.MAPS_ZIP_OPEN_WHY;
+        }
+
+        /// <summary>
+        /// Turns the Camp's custom-map prop on or off.
+        ///
+        /// Guarded against its own refresh: setting IsChecked in code raises Checked, which would
+        /// come straight back in here and reinstall - so a tick the person did and a tick the app
+        /// did would be indistinguishable, and opening the tab would quietly rewrite two paks.
+        /// </summary>
+        private bool _settingTheBox;
+
+        private void inGameBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_settingTheBox) { return; }
+
+            try
+            {
+                MapSlots.inGame = inGameBox.IsChecked == true;
+            }
+            catch (Exception problem)
+            {
+                MessageBox.Show(problem.Message, R.ERROR, MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+
+            fillList();
         }
 
         public void refresh()
         {
+            _settingTheBox = true;
+            try { inGameBox.IsChecked = MapSlots.inGame; }
+            finally { _settingTheBox = false; }
+
             if (_missions.Count == 0 && CustomSkins.ready)
             {
                 _missions = GameMaps.all();
@@ -73,7 +126,99 @@ namespace MCDSaveEdit.UI
 
             fillList();
             fillInstalled();
+
             updateUI();
+        }
+
+        /// <summary>
+        /// Shows the chosen map's block theme, and changes it.
+        ///
+        /// A theme is a resource pack: it says what a block NAME looks like, and a map stores
+        /// its blocks by name. So this is a re-skin - no geometry moves, nothing is rebuilt, and
+        /// switching back is the same edit in reverse. That is the only reason it can be a
+        /// dropdown that applies the moment it is used.
+        ///
+        /// The edit lands in the working folder. Installing is what puts it in the game, and a
+        /// map that is already installed is reinstalled here so the two do not disagree - a
+        /// theme shown in the app and not in the game would be worse than no dropdown at all.
+        /// </summary>
+        private void themeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_showing || _chosen == null) { return; }
+
+            var wanted = themeBox.SelectedItem as string;
+            if (wanted == null) { return; }
+
+            var folder = workshopFor(_chosen);
+
+            if (!MapMod.setTheme(folder, wanted))
+            {
+                statusLabel.Text = string.Format(R.MAPS_THEME_FAILED, _chosen.Label);
+                showTheme();
+                return;
+            }
+
+            statusLabel.Text = string.Format(R.MAPS_THEME_SET, wanted, _chosen.Label);
+
+            //Only when it is already in the game. Re-installing a map nobody has installed would
+            //put it there, which is not what changing how it looks asked for.
+            try
+            {
+                if (_chosen.IsSlot && MapSlots.inSlot(_chosen.Slot) != null)
+                {
+                    MapSlots.install(folder, _chosen.Slot,
+                        MapSlots.inSlot(_chosen.Slot)!.Name);
+
+                    statusLabel.Text += "   " + R.MAPS_THEME_REINSTALLED;
+                }
+                else if (!_chosen.IsSlot && MapMod.installedFor(_chosen) != null)
+                {
+                    installFrom(_chosen, folder);
+                    statusLabel.Text += "   " + R.MAPS_THEME_REINSTALLED;
+                }
+            }
+            catch (Exception problem)
+            {
+                statusLabel.Text += "   " + problem.Message;
+            }
+
+            fillList();
+        }
+
+        /// <summary>Puts the chosen map's theme in the box without setting it off.</summary>
+        private void showTheme()
+        {
+            var themes = BlockPalette.themes();
+
+            _showing = true;
+            try
+            {
+                if (themeBox.Items.Count == 0)
+                {
+                    foreach (var one in themes) { themeBox.Items.Add(one); }
+                }
+
+                var folder = _chosen == null ? null : workshopFor(_chosen);
+                var now = folder == null ? null : MapMod.themeOf(folder);
+
+                themeBox.SelectedItem = now;
+
+                //Said when there is no map to have a theme, rather than left showing the last
+                //one looked at - which reads as this map being drawn that way.
+                themeLabel.Text = now == null ? R.MAPS_THEME_NONE : R.MAPS_THEME;
+                themeBox.IsEnabled = now != null;
+            }
+            finally { _showing = false; }
+        }
+
+        /// <summary>Guards the dropdown's own handler while the list is being built.</summary>
+        private bool _showing;
+
+        private void kindBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_showing) { return; }
+
+            fillList();
         }
 
         private void fillList()
@@ -83,7 +228,17 @@ namespace MCDSaveEdit.UI
 
             //Matched against the readable label as well as the file name, so "creeper" finds
             //creeperwoods - which is the reason the names are spelled out at all.
-            var shown = _missions
+            //The game's own, then the custom slots. Read fresh rather than cached, because a
+            //slot's contents change from this very tab and a stale list would have somebody
+            //overwrite a map they meant to keep.
+            //One kind or the other, never both. Index rather than text, because the labels are
+            //translated and comparing against an English string would quietly show the wrong
+            //list in every other language.
+            var all = new List<GameMaps.Mission>(kindBox.SelectedIndex == 1
+                ? _missions
+                : MapSlots.missions());
+
+            var shown = all
                 .Where(one => wanted.Length == 0
                     || one.Label.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) >= 0)
                 .ToList();
@@ -91,8 +246,12 @@ namespace MCDSaveEdit.UI
             missionList.ItemsSource = shown.Select(one => new
             {
                 Mission = one,
-                Text = $"{one.Label}   —   {one.Bytes / 1024:N0} KB"
-                     + (MapMod.installedFor(one) != null ? "   ·   replaced" : string.Empty),
+                Text = one.IsSlot
+                    ? $"{one.Label}"
+                        + (one.Bytes > 0 ? $"   —   {one.Bytes / 1024:N0} KB" : string.Empty)
+                        + (MapSlots.inSlot(one.Slot) != null ? "   ·   installed" : string.Empty)
+                    : $"{one.Label}   —   {one.Bytes / 1024:N0} KB"
+                        + (MapMod.installedFor(one) != null ? "   ·   replaced" : string.Empty),
             }).ToList();
             missionList.DisplayMemberPath = "Text";
         }
@@ -134,6 +293,8 @@ namespace MCDSaveEdit.UI
 
         private void updateUI()
         {
+            showTheme();
+
             var ready = CustomSkins.ready && !_busy;
             var tools = MapTools.available;
 
@@ -144,7 +305,9 @@ namespace MCDSaveEdit.UI
             //Needs a mission chosen, because an empty map is not a thing on its own - it is
             //something that gets installed OVER a mission, same as any other custom map.
             baselineButton.IsEnabled = ready && _chosen != null && !_busy && MapTools.available;
-            removeButton.IsEnabled = ready && _chosen != null && MapMod.installedFor(_chosen) != null;
+            removeButton.IsEnabled = ready && _chosen != null && (_chosen.IsSlot
+                ? MapSlots.inSlot(_chosen.Slot) != null
+                : MapMod.installedFor(_chosen) != null);
 
             fixedToMinecraftButton.IsEnabled = ready && tools && _chosen != null;
 
@@ -158,7 +321,11 @@ namespace MCDSaveEdit.UI
                 : string.Format(R.MAPS_NO_TOOLS, MapTools.wanted);
 
             chosenLabel.Text = _chosen?.Label ?? R.MAPS_NONE_CHOSEN;
-            chosenDetail.Text = _chosen == null
+            chosenDetail.Text = _chosen is { IsSlot: true } slotted
+                ? (slotted.Bytes > 0
+                    ? string.Format(R.MAPS_SLOT_WORKING, slotted.Bytes / 1024)
+                    : R.MAPS_SLOT_NOTHING)
+                : _chosen == null
                 ? string.Empty
                 : $"{_chosen.PakPath}   —   {_chosen.Bytes / 1024:N0} KB";
 
@@ -268,11 +435,170 @@ namespace MCDSaveEdit.UI
         /// </summary>
         private const int BASELINE_SIDE = 30;
 
+        /// <summary>
+        /// Whether the chosen row has a map behind it, said plainly when it does not.
+        ///
+        /// An empty custom slot is a row like any other - that is the point of listing all
+        /// hundred - but nothing downstream can work on one, and what came out instead was the
+        /// raw failure from whichever file happened to be opened first: a FileNotFoundError
+        /// naming an internal path. That blames a missing file and reads like the app being
+        /// broken rather than like the slot being empty.
+        ///
+        /// Only custom slots are ever asked about. The game's own missions are always there.
+        /// </summary>
+        private bool hasMap(GameMaps.Mission chosen)
+        {
+            if (!chosen.IsSlot || hasSomething(chosen)) { return true; }
+
+            statusLabel.Text = string.Format(R.MAPS_SLOT_NOTHING_YET, chosen.Slot);
+            return false;
+        }
+
+        /// <summary>
+        /// Whether a slot has a map at all - installed in the game, or merely in its folder.
+        ///
+        /// Those are different things and only one of them was being checked. New empty map
+        /// writes a folder and installs nothing, so a slot could hold a real map, say so in the
+        /// line under the list, and still be refused by everything on the grounds of being
+        /// empty. The pak is how a map gets INTO the game; the folder is where a map lives while
+        /// it is being made.
+        /// </summary>
+        private bool hasSomething(GameMaps.Mission chosen)
+            => MapSlots.inSlot(chosen.Slot) != null
+                || File.Exists(Path.Combine(workshopFor(chosen), "level.json"));
+
+        /// <summary>
+        /// Renames a custom map.
+        ///
+        /// Only a custom one. A mission's name belongs to the game, and a map installed over
+        /// Creeper Woods is still Creeper Woods as far as everything else is concerned - the save,
+        /// the mission select screen, the objective banner. Offering to rename that would be
+        /// offering something this app cannot deliver.
+        /// </summary>
+        private void renameButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_chosen == null) { return; }
+
+            if (!_chosen.IsSlot)
+            {
+                statusLabel.Text = R.MAPS_RENAME_ONLY_CUSTOM;
+                return;
+            }
+
+            var already = MapSlots.inSlot(_chosen.Slot);
+            if (already == null)
+            {
+                statusLabel.Text = string.Format(R.MAPS_SLOT_EMPTY, _chosen.Slot);
+                return;
+            }
+
+            var asked = new Windows.AskWindow(R.MAPS_RENAME, R.MAPS_RENAME_WHAT, already.Name)
+            {
+                Owner = Window.GetWindow(this),
+            };
+
+            if (asked.ShowDialog() != true) { return; }
+
+            try
+            {
+                MapSlots.rename(_chosen.Slot, asked.Answer);
+                statusLabel.Text = string.Format(R.MAPS_RENAMED, asked.Answer);
+                fillList();
+            }
+            catch (Exception problem) { statusLabel.Text = problem.Message; }
+        }
+
+        /// <summary>A custom map, written out as one file somebody else can open.</summary>
+        private void zipOutButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_chosen == null) { return; }
+
+            if (!_chosen.IsSlot)
+            {
+                statusLabel.Text = R.MAPS_ZIP_ONLY_CUSTOM;
+                return;
+            }
+
+            var already = MapSlots.inSlot(_chosen.Slot);
+            if (already == null)
+            {
+                statusLabel.Text = string.Format(R.MAPS_SLOT_EMPTY, _chosen.Slot);
+                return;
+            }
+
+            var picker = new SaveFileDialog
+            {
+                Title = R.MAPS_ZIP_OUT,
+                Filter = "Zip archive|*.zip",
+                FileName = already.Name + ".zip",
+            };
+
+            if (picker.ShowDialog() != true) { return; }
+
+            try
+            {
+                MapSlots.zipTo(_chosen.Slot, picker.FileName);
+                statusLabel.Text = string.Format(R.MAPS_ZIPPED,
+                    System.IO.Path.GetFileName(picker.FileName));
+            }
+            catch (Exception problem) { statusLabel.Text = problem.Message; }
+        }
+
+        /// <summary>Somebody else's zip, into the chosen slot.</summary>
+        private void zipInButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_chosen == null) { return; }
+
+            if (!_chosen.IsSlot)
+            {
+                statusLabel.Text = R.MAPS_ZIP_ONLY_CUSTOM;
+                return;
+            }
+
+            var picker = new OpenFileDialog
+            {
+                Title = R.MAPS_ZIP_IN,
+                Filter = "Zip archive|*.zip|All files|*.*",
+            };
+
+            if (picker.ShowDialog() != true) { return; }
+
+            //Asked before it is written, not after. A slot with a map in it is somebody's work,
+            //and there is no undo for having quietly replaced it.
+            if (MapSlots.inSlot(_chosen.Slot) is MapSlots.Filled standing)
+            {
+                var answer = MessageBox.Show(
+                    string.Format(R.MAPS_ZIP_REPLACE, standing.Name, _chosen.Slot),
+                    R.MAPS_ZIP_IN, MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                if (answer != MessageBoxResult.Yes) { return; }
+            }
+
+            try
+            {
+                //Named after the file, because the name inside a zip is not recorded anywhere -
+                //a slot is called whatever its pak is called, and the archive's own name is the
+                //closest thing to what the person who made it called the map.
+                var called = System.IO.Path.GetFileNameWithoutExtension(picker.FileName);
+
+                MapSlots.zipFrom(picker.FileName, _chosen.Slot, called);
+
+                statusLabel.Text = string.Format(R.MAPS_ZIP_OPENED, called, _chosen.Slot);
+                fillList();
+            }
+            catch (Exception problem) { statusLabel.Text = problem.Message; }
+        }
+
         private void importButton_Click(object sender, RoutedEventArgs e)
         {
             if (_chosen == null) { return; }
 
+            //Opened where the working folders are. Importing one map into another slot is the
+            //normal way to move a map around this app, and the folders it would be picked from
+            //are all in one place - so starting the dialog anywhere else makes the common case
+            //a navigation exercise.
             var picker = new OpenFolderDialog { Title = R.MAPS_IMPORT_PICK };
+            if (Directory.Exists(MapWorkshop.root)) { picker.InitialDirectory = MapWorkshop.root; }
             if (picker.ShowDialog() != true) { return; }
 
             try
@@ -281,17 +607,39 @@ namespace MCDSaveEdit.UI
                 //than the one it came from is a real thing to want, but doing it by accident -
                 //because the wrong row was selected - is not, and afterwards it looks like the
                 //export was broken rather than like it went somewhere else.
-                var from = MapMod.cameFrom(picker.FolderName);
-                if (from != null && !string.Equals(from, _chosen.Name, StringComparison.OrdinalIgnoreCase))
+                //Only worth asking about when installing OVER a mission. A slot has no mission
+                //of its own to be the wrong one, so the question would be noise.
+                if (!_chosen.IsSlot)
+                {
+                    //Said plainly before anything is written. Installing a map over a mission
+                    //other than the one it came from is a real thing to want, but doing it by
+                    //accident - because the wrong row was selected - is not, and afterwards it
+                    //looks like the export was broken rather than like it went somewhere else.
+                    var from = MapMod.cameFrom(picker.FolderName);
+                    if (from != null
+                        && !string.Equals(from, _chosen.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var answer = MessageBox.Show(
+                            string.Format(R.MAPS_DIFFERENT_MISSION,
+                                GameMaps.prettyName(from), _chosen.Label),
+                            R.MAPS_IMPORT, MessageBoxButton.OKCancel, MessageBoxImage.Question);
+
+                        if (answer != MessageBoxResult.OK) { return; }
+                    }
+                }
+                else if (MapSlots.inSlot(_chosen.Slot) is MapSlots.Filled already)
                 {
                     var answer = MessageBox.Show(
-                        string.Format(R.MAPS_DIFFERENT_MISSION, GameMaps.prettyName(from), _chosen.Label),
+                        string.Format(R.MAPS_SLOT_OCCUPIED, _chosen.Slot, already.Name),
                         R.MAPS_IMPORT, MessageBoxButton.OKCancel, MessageBoxImage.Question);
 
                     if (answer != MessageBoxResult.OK) { return; }
                 }
 
-                var mod = MapMod.install(picker.FolderName, _chosen);
+                var mod = _chosen.IsSlot
+                    ? MapSlots.install(picker.FolderName, _chosen.Slot,
+                        System.IO.Path.GetFileName(picker.FolderName))
+                    : MapMod.install(picker.FolderName, _chosen);
                 _folder = picker.FolderName;
 
                 //Importing from somewhere says where this mission lives just as plainly as
@@ -325,6 +673,46 @@ namespace MCDSaveEdit.UI
         /// Wherever the last export put them, which is not necessarily under AppData - Export map
         /// asks, and answering "Desktop" used to leave every other button looking somewhere else.
         /// </summary>
+        /// <summary>
+        /// Puts a folder back into the game, as whatever the selected map IS.
+        ///
+        /// The counterpart of <see cref="exportTo"/>, and the reason the round trip works for a
+        /// custom slot at all: bringing terrain back from Minecraft, or editing spawns, changes
+        /// the FOLDER - and a folder is not in the game until something packs it. For a mission
+        /// that means writing over the mission; for a slot it means rebuilding the slot's pak and
+        /// the Camp's table with it.
+        /// </summary>
+        private static CustomSkins.InstalledMod installFrom(GameMaps.Mission mission, string folder)
+            => mission.IsSlot
+                ? MapSlots.install(folder, mission.Slot,
+                    mission.ShownAs ?? System.IO.Path.GetFileName(folder))
+                : MapMod.install(folder, mission);
+
+        /// <summary>
+        /// Writes a map out to a folder to work on, wherever it actually lives.
+        ///
+        /// One of the game's missions comes out of the game's own paks. A custom slot does not -
+        /// mod paks are not in the index - so it comes back out of the pak this app wrote for it.
+        /// Every tool downstream reads the folder and neither knows nor cares which it was.
+        ///
+        /// An empty slot throws rather than writing an empty folder, because "there is nothing
+        /// here yet" is a useful thing to be told and a bare folder is not.
+        /// </summary>
+        private static MapMod.Exported exportTo(GameMaps.Mission mission, string folder)
+        {
+            if (!mission.IsSlot) { return MapMod.export(mission, folder); }
+
+            var files = MapSlots.export(mission.Slot, folder);
+
+            var bytes = 0L;
+            foreach (var file in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
+            {
+                bytes += new FileInfo(file).Length;
+            }
+
+            return new MapMod.Exported(folder, files, bytes, new List<string>());
+        }
+
         private static string workshopFor(GameMaps.Mission mission)
             => MapWorkshop.folderFor(mission.Name);
 
@@ -337,6 +725,7 @@ namespace MCDSaveEdit.UI
         private async void fixedToMinecraftButton_Click(object sender, RoutedEventArgs e)
         {
             if (_chosen == null) { return; }
+            if (!hasMap(_chosen)) { return; }
 
             var mission = _chosen;
             var folder = workshopFor(mission);
@@ -362,7 +751,7 @@ namespace MCDSaveEdit.UI
 
             try
             {
-                var made = await Task.Run(() => MapMod.export(mission, folder));
+                var made = await Task.Run(() => exportTo(mission, folder));
                 _folder = made.Folder;
 
                 //This route exports too, so it settles where the mission lives just as much as
@@ -406,15 +795,187 @@ namespace MCDSaveEdit.UI
         {
             if (_chosen == null) { return; }
 
+            //Not "the slot is empty" but WHY that stops this one. Bringing a world back writes
+            //its blocks into a map that already exists - the converter opens the level file
+            //before it writes anything - so an empty slot has nothing to write into. Importing a
+            //folder or a zip does not, because those carry a whole map with them.
+            if (_chosen.IsSlot && !hasSomething(_chosen))
+            {
+                statusLabel.Text = string.Format(R.MAPS_SLOT_NEEDS_BASE, _chosen.Slot);
+                return;
+            }
+
             var picker = new OpenFolderDialog { Title = R.MAPS_PICK_WORLD };
             if (MapTools.saves != null) { picker.InitialDirectory = MapTools.saves; }
             if (picker.ShowDialog() != true) { return; }
 
             //A whole-level world holds rooms from several object groups and carries its own note
             //saying which file each belongs to, so it comes back a different way.
+            //Recorded before any decision is taken on it.
+            //
+            //Every import so far has ended with an empty map in the game and every line of this
+            //reporting success, and each time the only way to find out what happened was to read
+            //the folders afterwards and guess backwards. The decisions are cheap to write down
+            //and the guessing is not.
+            Services.Journal.note($"bring back: world \"{picker.FolderName}\", whole level "
+                + $"{MapTools.isWholeLevel(picker.FolderName)}, came from "
+                + $"\"{MapTools.mapOf(picker.FolderName) ?? "(no note)"}\", into "
+                + $"\"{workshopFor(_chosen)}\"");
+
             if (MapTools.isWholeLevel(picker.FolderName))
             {
-                await bringBackLevel(picker.FolderName, _chosen);
+                //Which map this world came from, checked BEFORE anything is converted.
+                //
+                //The converter writes a world back to the map recorded inside it, not to the row
+                //selected here. Those were never compared, so picking a world exported from one
+                //map while another is selected wrote the blocks somewhere else entirely and then
+                //installed the selected map's own untouched contents - announcing success, with
+                //an empty map arriving in the game.
+                var was = MapTools.mapOf(picker.FolderName);
+                var here = workshopFor(_chosen);
+
+                var elsewhere = was != null && !string.Equals(
+                    Path.GetFullPath(was).TrimEnd(Path.DirectorySeparatorChar),
+                    Path.GetFullPath(here).TrimEnd(Path.DirectorySeparatorChar),
+                    StringComparison.OrdinalIgnoreCase);
+
+                if (!elsewhere)
+                {
+                    await bringBackLevel(picker.FolderName, _chosen);
+                    return;
+                }
+
+                //Starting a custom map from one of the game's, which is the ordinary way to make
+                //one - a mission is the only interesting thing to begin with. The world knows it
+                //came from that mission and the converter obeys the world, so this brings the
+                //MAP across first and then points the world at the copy.
+                //
+                //Copying is not optional. The rooms alone are not a map: the level file says
+                //which stretches exist and which tiles they draw, the object groups hold the
+                //rooms, and the pack says what the blocks look like. Writing rooms into a folder
+                //that has none of that is what produced an empty 30x30 and a cheerful success
+                //message.
+                //If the slot ALREADY holds a map, nothing is copied into it.
+                //
+                //A world remembers the folder it was exported from, and that folder is often a
+                //blank level - New empty map writes one, and exporting it leaves a note naming
+                //whichever mission was selected at the time. So "came from creeperwoods" does
+                //not mean the world contains Creeper Woods; it can mean somebody made an empty
+                //map while Creeper Woods happened to be highlighted.
+                //
+                //Copying the source across in that case is destructive twice over: it replaces
+                //the slot's own map, and it hands the converter a real mission to write an
+                //island into - which is how a custom island came back as Creeper Woods. The
+                //converter only needs the object groups its note names, and a slot with a map in
+                //it already has them.
+                if (File.Exists(Path.Combine(here, "level.json")))
+                {
+                    Services.Journal.note($"bring back: \"{here}\" already holds a map, so "
+                        + "nothing was copied into it");
+
+                    string? kept = null;
+
+                    try
+                    {
+                        kept = MapTools.retarget(picker.FolderName, here);
+                        if (kept == null)
+                        {
+                            statusLabel.Text = R.MAPS_WORLD_NOT_AIMED;
+                            return;
+                        }
+
+                        await bringBackLevel(picker.FolderName, _chosen);
+                    }
+                    finally
+                    {
+                        MapTools.restore(picker.FolderName, kept);
+                    }
+
+                    return;
+                }
+
+                if (!Directory.Exists(was!) || !File.Exists(Path.Combine(was!, "level.json")))
+                {
+                    //Rebuilt from the game rather than demanded from the person.
+                    //
+                    //The folder a world points at can be gone - cleared, tidied, never there on
+                    //this machine - and telling somebody to export the mission to Minecraft
+                    //again to repair it is asking them to perform a round trip whose only
+                    //purpose is a side effect. The app has the game's own files; the folder is
+                    //something it can simply make.
+                    var name = Path.GetFileName(was!.TrimEnd(Path.DirectorySeparatorChar));
+
+                    var source = _missions.FirstOrDefault(one => !one.IsSlot
+                        && string.Equals(one.Name, name, StringComparison.OrdinalIgnoreCase));
+
+                    if (source == null)
+                    {
+                        //Not one of the game's, so there is nothing to rebuild it from.
+                        statusLabel.Text = string.Format(R.MAPS_WORLD_SOURCE_GONE, name);
+                        return;
+                    }
+
+                    statusLabel.Text = string.Format(R.MAPS_WORLD_REBUILDING, name);
+                    _busy = true;
+                    updateUI();
+
+                    try
+                    {
+                        await Task.Run(() => MapMod.export(source, was!));
+                        Services.Journal.note($"bring back: rebuilt \"{was}\" from the game");
+                    }
+                    catch (Exception problem)
+                    {
+                        statusLabel.Text = problem.Message;
+                        _busy = false;
+                        updateUI();
+                        return;
+                    }
+
+                    _busy = false;
+                    updateUI();
+
+                    if (!File.Exists(Path.Combine(was!, "level.json")))
+                    {
+                        statusLabel.Text = string.Format(R.MAPS_WORLD_SOURCE_GONE, name);
+                        return;
+                    }
+                }
+
+                if (MapSlots.inSlot(_chosen.Slot) != null || Directory.Exists(here))
+                {
+                    var answer = MessageBox.Show(
+                        string.Format(R.MAPS_WORLD_OVERWRITE,
+                            Path.GetFileName(was!.TrimEnd(Path.DirectorySeparatorChar)),
+                            _chosen.Label),
+                        R.MAPS_FROM_MINECRAFT, MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                    if (answer != MessageBoxResult.Yes) { return; }
+                }
+
+                string? note = null;
+
+                try
+                {
+                    copyInto(was!, here);
+                    Services.Journal.note($"bring back: copied \"{was}\" into \"{here}\"");
+
+                    note = MapTools.retarget(picker.FolderName, here);
+                    if (note == null)
+                    {
+                        statusLabel.Text = R.MAPS_WORLD_NOT_AIMED;
+                        return;
+                    }
+
+                    await bringBackLevel(picker.FolderName, _chosen);
+                }
+                finally
+                {
+                    //Always, even when the conversion failed. A world left pointing at a slot
+                    //would send the NEXT bring-back there too, and nothing would say why.
+                    MapTools.restore(picker.FolderName, note);
+                }
+
                 return;
             }
 
@@ -453,7 +1014,7 @@ namespace MCDSaveEdit.UI
                 }
                 else
                 {
-                    var mod = await Task.Run(() => MapMod.install(origin.Map, mission));
+                    var mod = await Task.Run(() => installFrom(mission, origin.Map));
                     _folder = origin.Map;
 
                     statusLabel.Text = string.Format(R.MAPS_IMPORTED,
@@ -496,7 +1057,36 @@ namespace MCDSaveEdit.UI
                     }
                 }
 
+                //What the map looked like before, so "the converter changed nothing" can be told
+                //from "the converter worked". An exit code cannot tell them apart, and that is
+                //the whole failure: a clean exit, an untouched folder, and an empty map installed
+                //over the top announcing success.
+                var before = stamp(workshopFor(mission));
+
                 var run = await MapTools.fromMinecraftLevel(world);
+
+                //The converter's own words, kept whether it succeeded or not. They were being
+                //thrown away on success, which is where the useful sentence lived.
+                Services.Journal.note($"bring back: converter ok={run.Ok}, said: "
+                    + (run.Last.Length == 0 ? "(nothing)" : run.Last.Trim()));
+
+                if (run.Ok && stamp(workshopFor(mission)) == before)
+                {
+                    //Nothing was written. Installing now would pack whatever the folder already
+                    //held - for a fresh slot, an empty baseline - and hand somebody a map that
+                    //crashes the game, having told them it worked.
+                    statusLabel.Text = run.Last.Trim().Length > 0
+                        ? run.Last.Trim()
+                        : R.MAPS_CONVERT_NOTHING;
+
+                    Services.Journal.note("bring back: the folder is unchanged, so nothing was "
+                        + "installed");
+
+                    _busy = false;
+                    updateUI();
+                    return;
+                }
+
                 if (!run.Ok)
                 {
                     statusLabel.Text = run.Last.Length > 0 ? run.Last : R.MAPS_CONVERT_FAILED;
@@ -511,7 +1101,7 @@ namespace MCDSaveEdit.UI
                     {
                         statusLabel.Text = string.Format(R.MAPS_NOT_WELDABLE, whyNot);
 
-                        var straight = await Task.Run(() => MapMod.install(folder, mission));
+                        var straight = await Task.Run(() => installFrom(mission, folder));
                         _folder = folder;
 
                         statusLabel.Text += "   " + string.Format(R.MAPS_IMPORTED,
@@ -529,6 +1119,49 @@ namespace MCDSaveEdit.UI
                     //arrives as a crash on the loading screen, not an error. One tile has nothing
                     //to connect.
                     var weld = await MapTools.weld(folder);
+
+                    //Welding merges every room into one tile, and that tile inherits every
+                    //side-path door the originals declared. The generator allows one travel
+                    //entry per tile and refuses the level otherwise - and the doors point at
+                    //crypts and inns that welding has just removed, so they are dead anyway.
+                    //Markers back onto the ground before anything else looks at the level.
+                    //
+                    //A tile that has grown keeps its player start, exit and doors at the heights
+                    //the old, smaller tile had - which in a bigger map is underground or in the
+                    //air, and the game does not survive a spawn inside rock.
+                    try
+                    {
+                        //Loaded ONCE. settle mutates the map it is given, so loading a second
+                        //time to save would write a copy that was never changed - the edit would
+                        //vanish silently and the spawn would still be underground.
+                        var plan = MapSpawns.load(folder);
+                        var settled = MapSpawns.settle(plan);
+
+                        if (settled > 0)
+                        {
+                            MapSpawns.save(plan);
+                            Services.Journal.note($"bring back: settled {settled} marker(s) onto "
+                                + "the ground");
+
+                            //Each one said out loud. Moving a player start sideways is a guess,
+                            //and somebody who ends up spawning somewhere unexpected should be
+                            //able to find out that it happened rather than wonder.
+                            foreach (var said in plan.Notes) { Services.Journal.note("  " + said); }
+                        }
+                    }
+                    catch (Exception problem)
+                    {
+                        Services.Journal.note($"bring back: could not settle the markers: "
+                            + problem.Message);
+                    }
+
+                    var stripped = MapMod.dropSidePaths(folder);
+                    if (stripped > 0)
+                    {
+                        Services.Journal.note($"bring back: dropped the side-paths from "
+                            + $"{stripped} welded tile(s)");
+                    }
+
                     if (!weld.Ok)
                     {
                         statusLabel.Text = weld.Last.Length > 0 ? weld.Last : R.MAPS_CONVERT_FAILED;
@@ -537,7 +1170,7 @@ namespace MCDSaveEdit.UI
                         return;
                     }
 
-                    var mod = await Task.Run(() => MapMod.install(folder, mission));
+                    var mod = await Task.Run(() => installFrom(mission, folder));
                     _folder = folder;
 
                     statusLabel.Text = string.Format(R.MAPS_IMPORTED,
@@ -576,6 +1209,8 @@ namespace MCDSaveEdit.UI
         /// </summary>
         internal async Task openSpawns()
         {
+            if (_chosen != null && !hasMap(_chosen)) { return; }
+
             if (_chosen == null) { return; }
 
             var mission = _chosen;
@@ -605,7 +1240,7 @@ namespace MCDSaveEdit.UI
 
                 try
                 {
-                    var made = await Task.Run(() => MapMod.export(mission, folder));
+                    var made = await Task.Run(() => exportTo(mission, folder));
                     MapWorkshop.remember(mission.Name, made.Folder);
                     _folder = made.Folder;
                     folder = made.Folder;
@@ -770,6 +1405,13 @@ namespace MCDSaveEdit.UI
                 statusLabel.Text = problem.Message;
             }
 
+            //The row has to be rebuilt, not just the buttons. A slot's size and its "(empty)" /
+            //"(not installed)" wording are read off the folder that was just deleted, so leaving
+            //the list alone shows a map that is no longer there - which reads as Clear having
+            //quietly failed. Every other destructive handler here already does this; this one
+            //was the exception.
+            fillInstalled();
+            fillList();
             updateUI();
         }
 
@@ -788,6 +1430,59 @@ namespace MCDSaveEdit.UI
             {
                 System.Threading.Thread.Sleep(60);
                 try { Directory.Delete(folder, true); } catch (Exception) { }
+            }
+        }
+
+        /// <summary>
+        /// Everything in one map folder, into another.
+        ///
+        /// Overwrites rather than merges. A map is a level file plus the object groups it names,
+        /// and a folder holding half of one map and half of another is not a map - it is a level
+        /// naming tiles that are not there, which fails at load with nothing to point at.
+        /// </summary>
+        /// <summary>
+        /// A cheap fingerprint of a map folder: how many files, how big, how recently written.
+        ///
+        /// Enough to answer "did anything actually happen", which an exit code cannot.
+        /// </summary>
+        private static string stamp(string folder)
+        {
+            try
+            {
+                if (!Directory.Exists(folder)) { return "none"; }
+
+                long bytes = 0;
+                long newest = 0;
+                var count = 0;
+
+                foreach (var file in Directory.GetFiles(folder, "*", SearchOption.AllDirectories))
+                {
+                    var about = new FileInfo(file);
+                    bytes += about.Length;
+                    newest = Math.Max(newest, about.LastWriteTimeUtc.Ticks);
+                    count++;
+                }
+
+                return $"{count}/{bytes}/{newest}";
+            }
+            catch (Exception)
+            {
+                //Unreadable is its own fingerprint, and it will not match a readable one.
+                return Guid.NewGuid().ToString("N");
+            }
+        }
+
+        private static void copyInto(string from, string to)
+        {
+            Directory.CreateDirectory(to);
+
+            foreach (var file in Directory.GetFiles(from, "*", SearchOption.AllDirectories))
+            {
+                var landing = Path.Combine(to, file.Substring(from.Length).TrimStart(
+                    Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+
+                Directory.CreateDirectory(Path.GetDirectoryName(landing)!);
+                File.Copy(file, landing, true);
             }
         }
 
@@ -816,9 +1511,19 @@ namespace MCDSaveEdit.UI
 
             try
             {
-                statusLabel.Text = MapMod.remove(_chosen)
-                    ? string.Format(R.MAPS_PUT_BACK, _chosen.Label)
-                    : string.Format(R.MAPS_NOT_REPLACED, _chosen.Label);
+                if (_chosen.IsSlot)
+                {
+                    //Nothing to put back - a slot replaced nothing. It empties, the Camp stops
+                    //listing it, and it can be filled again from a folder or a zip.
+                    MapSlots.clear(_chosen.Slot);
+                    statusLabel.Text = string.Format(R.MAPS_SLOT_CLEARED, _chosen.Slot);
+                }
+                else
+                {
+                    statusLabel.Text = MapMod.remove(_chosen)
+                        ? string.Format(R.MAPS_PUT_BACK, _chosen.Label)
+                        : string.Format(R.MAPS_NOT_REPLACED, _chosen.Label);
+                }
 
                 fillInstalled();
                 fillList();

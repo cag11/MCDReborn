@@ -5068,6 +5068,609 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Add a step.
+        /// </summary>
+        public static string SPAWNS_STEP_ADD {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_ADD", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to What it asks you to do:.
+        /// </summary>
+        public static string SPAWNS_STEP_WORDING {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_WORDING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The thing you click:.
+        /// </summary>
+        public static string SPAWNS_STEP_THING {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_THING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Ring the bell.
+        /// </summary>
+        public static string SPAWNS_STEP_DEFAULT_TITLE {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_DEFAULT_TITLE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Click a thing.
+        /// </summary>
+        public static string SPAWNS_ADD_CLICK_STEP {
+            get {
+                return ResourceManager.GetString("SPAWNS_ADD_CLICK_STEP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Reach a spot.
+        /// </summary>
+        public static string SPAWNS_ADD_REACH_STEP {
+            get {
+                return ResourceManager.GetString("SPAWNS_ADD_REACH_STEP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The spots those steps use.
+        /// </summary>
+        public static string SPAWNS_STEPS {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEPS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Every step stands on a spot in the map. Pick one to find it, or drag its amber pin to move it. A step whose spot is missing can never finish - and nothing behind it in the list can either, including the way out..
+        /// </summary>
+        public static string SPAWNS_STEPS_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEPS_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing but the way out. Add a step above to give a gate something to open it..
+        /// </summary>
+        public static string SPAWNS_STEPS_NONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEPS_NONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} spot(s)..
+        /// </summary>
+        public static string SPAWNS_STEPS_SOME {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEPS_SOME", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} spot(s), and {1} of them names a region this room has not got - that step can never finish, and neither can anything after it..
+        /// </summary>
+        public static string SPAWNS_STEPS_BROKEN {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEPS_BROKEN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Added step {0}: {1}. Its spot is at {2}, {3}, {4}..
+        /// </summary>
+        public static string SPAWNS_STEP_ADDED {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_ADDED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} is at {1}, {2}, {3}..
+        /// </summary>
+        public static string SPAWNS_STEP_AT {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_AT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Give the step some wording first..
+        /// </summary>
+        public static string SPAWNS_STEP_NEEDS_TITLE {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_NEEDS_TITLE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Only a step that asks you to click something can open a gate. Add one above..
+        /// </summary>
+        public static string SPAWNS_GATE_NEEDS_CLICK {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_NEEDS_CLICK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} cannot open a gate - only clicking something can..
+        /// </summary>
+        public static string SPAWNS_GATE_NOT_CLICK {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_NOT_CLICK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The name on the banner:.
+        /// </summary>
+        public static string SPAWNS_STEP_BANNER {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_BANNER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} pieces of wording, read out of the game's own "{1}" table. An objective's text is a key into that table, not free text - anything else draws as MISSING STRING TABLE ENTRY. Install this map over a different mission and the table changes with it..
+        /// </summary>
+        public static string SPAWNS_STEP_WORDS_FROM {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_WORDS_FROM", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The game has no string table called "{0}", so there is no wording a step could use. Install this map over one of the game's own missions first..
+        /// </summary>
+        public static string SPAWNS_STEP_NO_WORDS {
+            get {
+                return ResourceManager.GetString("SPAWNS_STEP_NO_WORDS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} step(s), and {1} of them uses wording the game has not got - those draw as MISSING STRING TABLE ENTRY across the banner. Remove one and add it again to fix it..
+        /// </summary>
+        public static string SPAWNS_QUEST_MISSING {
+            get {
+                return ResourceManager.GetString("SPAWNS_QUEST_MISSING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Drawn as:.
+        /// </summary>
+        public static string SPAWNS_GATE_DRAWN {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_DRAWN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to One look for every gate the chosen step opens - the game keeps it on the step, not on the gate. Without one the gate still blocks you, invisibly, which in game looks like the map being broken..
+        /// </summary>
+        public static string SPAWNS_GATE_DRAWN_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_DRAWN_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Added {0}, opened by “{1}” and drawn as {2}..
+        /// </summary>
+        public static string SPAWNS_GATE_ADDED_WIRED {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_ADDED_WIRED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Added {0}. Nothing opens it yet, so in game it is a wall you cannot see - the thing that draws a gate lives on the step that opens it. Add a step above, then pick this gate and press “{1}”..
+        /// </summary>
+        public static string SPAWNS_GATE_ADDED_LOOSE {
+            get {
+                return ResourceManager.GetString("SPAWNS_GATE_ADDED_LOOSE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to nothing changed, and the game already has this one.
+        /// </summary>
+        public static string SPAWNS_NOTHING_TO_INSTALL {
+            get {
+                return ResourceManager.GetString("SPAWNS_NOTHING_TO_INSTALL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Gates.
+        /// </summary>
+        public static string SPAWNS_TAB_GATES {
+            get {
+                return ResourceManager.GetString("SPAWNS_TAB_GATES", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Fights.
+        /// </summary>
+        public static string SPAWNS_TAB_ARENA {
+            get {
+                return ResourceManager.GetString("SPAWNS_TAB_ARENA", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Keys.
+        /// </summary>
+        public static string SPAWNS_TAB_KEYS {
+            get {
+                return ResourceManager.GetString("SPAWNS_TAB_KEYS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Level.
+        /// </summary>
+        public static string SPAWNS_TAB_LEVEL {
+            get {
+                return ResourceManager.GetString("SPAWNS_TAB_LEVEL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A fight walls off a piece of the map, fills it with mobs, and opens again when they are all dead. Chain several on the same ground and you have waves..
+        /// </summary>
+        public static string SPAWNS_ARENA_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No fights yet..
+        /// </summary>
+        public static string SPAWNS_ARENA_NONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_NONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} fight(s)..
+        /// </summary>
+        public static string SPAWNS_ARENA_SOME {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_SOME", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} fight(s), and {1} of them has nowhere for its mobs to come from - nothing will appear and the step can never finish, which stops every step behind it..
+        /// </summary>
+        public static string SPAWNS_ARENA_BROKEN {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_BROKEN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Put a fight here.
+        /// </summary>
+        public static string SPAWNS_ADD_ARENA {
+            get {
+                return ResourceManager.GetString("SPAWNS_ADD_ARENA", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Add a wave.
+        /// </summary>
+        public static string SPAWNS_ARENA_WAVE {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_WAVE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove.
+        /// </summary>
+        public static string SPAWNS_ARENA_REMOVE {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_REMOVE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Apply to the chosen fight.
+        /// </summary>
+        public static string SPAWNS_ARENA_APPLY {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_APPLY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to What it asks you to do:.
+        /// </summary>
+        public static string SPAWNS_ARENA_WORDING {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_WORDING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Which mobs:.
+        /// </summary>
+        public static string SPAWNS_ARENA_GROUP {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_GROUP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to How many:.
+        /// </summary>
+        public static string SPAWNS_ARENA_COUNT {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_COUNT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to It pays out:.
+        /// </summary>
+        public static string SPAWNS_ARENA_REWARD {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_REWARD", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Seal it while the fight is on.
+        /// </summary>
+        public static string SPAWNS_ARENA_GATE {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_GATE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Added a fight: {0} × {1} at {2}, {3}, {4}..
+        /// </summary>
+        public static string SPAWNS_ARENA_ADDED {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_ADDED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Added another wave on the same ground - {0} × {1}. It runs BEFORE the one you picked, so whichever wave holds the gate stays last..
+        /// </summary>
+        public static string SPAWNS_ARENA_WAVED {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_WAVED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to That fight now asks for {0} × {1}..
+        /// </summary>
+        public static string SPAWNS_ARENA_APPLIED {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_APPLIED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to There are no mob groups to draw from. Make one on the Mobs tab first..
+        /// </summary>
+        public static string SPAWNS_ARENA_NEEDS_GROUP {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_NEEDS_GROUP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Pick a fight in the list first..
+        /// </summary>
+        public static string SPAWNS_ARENA_PICK {
+            get {
+                return ResourceManager.GetString("SPAWNS_ARENA_PICK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A locked door stands in the way until somebody finds its key. Give the key more than one possible spot and the game picks between them, so the route changes each run..
+        /// </summary>
+        public static string SPAWNS_KEYS_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEYS_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No locked doors yet..
+        /// </summary>
+        public static string SPAWNS_KEYS_NONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEYS_NONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} locked door(s)..
+        /// </summary>
+        public static string SPAWNS_KEYS_SOME {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEYS_SOME", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} locked door(s), and {1} of them has no key anywhere - that door can never open..
+        /// </summary>
+        public static string SPAWNS_KEYS_BROKEN {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEYS_BROKEN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Put a locked door here.
+        /// </summary>
+        public static string SPAWNS_ADD_KEYED {
+            get {
+                return ResourceManager.GetString("SPAWNS_ADD_KEYED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The key could also be here.
+        /// </summary>
+        public static string SPAWNS_KEY_ALSO {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEY_ALSO", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove.
+        /// </summary>
+        public static string SPAWNS_KEY_REMOVE {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEY_REMOVE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to What it asks you to do:.
+        /// </summary>
+        public static string SPAWNS_KEY_WORDING {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEY_WORDING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Which door:.
+        /// </summary>
+        public static string SPAWNS_KEY_DOOR {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEY_DOOR", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Added a {0} at {1}, {2}, {3}, with its key a little way off. Drag either amber pin to move it..
+        /// </summary>
+        public static string SPAWNS_KEYED_ADDED {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEYED_ADDED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The key can now also turn up at {0}, {1}, {2} - the game picks between the spots..
+        /// </summary>
+        public static string SPAWNS_KEY_ALSO_ADDED {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEY_ALSO_ADDED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Pick a locked door in the list first..
+        /// </summary>
+        public static string SPAWNS_KEY_PICK {
+            get {
+                return ResourceManager.GetString("SPAWNS_KEY_PICK", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Settings for the mission as a whole rather than for anything in it. All of them are one line in the level file, and all of them are things the game's own missions set..
+        /// </summary>
+        public static string SPAWNS_LEVEL_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_LEVEL_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Light, fog and weather borrowed from:.
+        /// </summary>
+        public static string SPAWNS_LEVEL_AMBIENCE {
+            get {
+                return ResourceManager.GetString("SPAWNS_LEVEL_AMBIENCE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Music:.
+        /// </summary>
+        public static string SPAWNS_LEVEL_MUSIC {
+            get {
+                return ResourceManager.GetString("SPAWNS_LEVEL_MUSIC", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to whatever the borrowed mission plays.
+        /// </summary>
+        public static string SPAWNS_LEVEL_MUSIC_SAME {
+            get {
+                return ResourceManager.GetString("SPAWNS_LEVEL_MUSIC_SAME", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Joined tiles must have matching doors.
+        /// </summary>
+        public static string SPAWNS_LEVEL_MATCH {
+            get {
+                return ResourceManager.GetString("SPAWNS_LEVEL_MATCH", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to On by default in the game. Turning it off lets tiles join whose doorways do not line up, which is what you want when the tiles are your own and the generator is being fussy..
+        /// </summary>
+        public static string SPAWNS_LEVEL_MATCH_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_LEVEL_MATCH_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Play the mission intro.
+        /// </summary>
+        public static string SPAWNS_LEVEL_INTRO {
+            get {
+                return ResourceManager.GetString("SPAWNS_LEVEL_INTRO", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} is now “{1}”..
+        /// </summary>
+        public static string SPAWNS_LEVEL_SET {
+            get {
+                return ResourceManager.GetString("SPAWNS_LEVEL_SET", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Opened by:.
         /// </summary>
         public static string SPAWNS_GATE_OPENS {
@@ -6111,6 +6714,126 @@ namespace MCDSaveEdit.Properties {
         /// <summary>
         ///   Looks up a localized string similar to Terrain.
         /// </summary>
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_GROUP_SLOTS.
+        /// </summary>
+        public static string MAPS_SLOT_WORKING {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_WORKING", resourceCulture);
+            }
+        }
+        
+        public static string MAPS_SLOT_NOTHING {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_NOTHING", resourceCulture);
+            }
+        }
+        
+        public static string MAPS_GROUP_SLOTS {
+            get {
+                return ResourceManager.GetString("MAPS_GROUP_SLOTS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_INSTALL_TABLE.
+        /// </summary>
+        public static string MAPS_INSTALL_TABLE {
+            get {
+                return ResourceManager.GetString("MAPS_INSTALL_TABLE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_INSTALL_TABLE_WHY.
+        /// </summary>
+        public static string MAPS_INSTALL_TABLE_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_INSTALL_TABLE_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_INSTALL_SLOT.
+        /// </summary>
+        public static string MAPS_INSTALL_SLOT {
+            get {
+                return ResourceManager.GetString("MAPS_INSTALL_SLOT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_INSTALL_SLOT_WHY.
+        /// </summary>
+        public static string MAPS_INSTALL_SLOT_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_INSTALL_SLOT_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_CLEAR_SLOT.
+        /// </summary>
+        public static string MAPS_CLEAR_SLOT {
+            get {
+                return ResourceManager.GetString("MAPS_CLEAR_SLOT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_SLOT_EMPTY.
+        /// </summary>
+        public static string MAPS_SLOT_EMPTY {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_EMPTY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_SLOT_FILLED.
+        /// </summary>
+        public static string MAPS_SLOT_FILLED {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_FILLED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_SLOT_INSTALLED.
+        /// </summary>
+        public static string MAPS_SLOT_INSTALLED {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_INSTALLED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_SLOT_CLEARED.
+        /// </summary>
+        public static string MAPS_SLOT_CLEARED {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_CLEARED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_TABLE_INSTALLED.
+        /// </summary>
+        public static string MAPS_TABLE_INSTALLED {
+            get {
+                return ResourceManager.GetString("MAPS_TABLE_INSTALLED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to MAPS_SLOT_OCCUPIED.
+        /// </summary>
+        public static string MAPS_SLOT_OCCUPIED {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_OCCUPIED", resourceCulture);
+            }
+        }
+        
         public static string MAPS_GROUP_TERRAIN {
             get {
                 return ResourceManager.GetString("MAPS_GROUP_TERRAIN", resourceCulture);
@@ -6141,6 +6864,295 @@ namespace MCDSaveEdit.Properties {
         public static string MAPS_GROUP_UNDO {
             get {
                 return ResourceManager.GetString("MAPS_GROUP_UNDO", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Offer custom maps in the Camp.
+        /// </summary>
+        public static string MAPS_IN_GAME {
+            get {
+                return ResourceManager.GetString("MAPS_IN_GAME", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Rebuilding {0}'s folder from the game….
+        /// </summary>
+        public static string MAPS_WORLD_REBUILDING {
+            get {
+                return ResourceManager.GetString("MAPS_WORLD_REBUILDING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The converter finished without writing anything into this map's folder, so nothing was installed. The world may not be one this app exported..
+        /// </summary>
+        public static string MAPS_CONVERT_NOTHING {
+            get {
+                return ResourceManager.GetString("MAPS_CONVERT_NOTHING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to That world came from {0}, but {0}'s folder is no longer there - so there is no map to bring across. Export {0} to Minecraft again first..
+        /// </summary>
+        public static string MAPS_WORLD_SOURCE_GONE {
+            get {
+                return ResourceManager.GetString("MAPS_WORLD_SOURCE_GONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to This world was exported from {0}. Copy {0} into {1} and write the world into it? Anything already in {1} is replaced..
+        /// </summary>
+        public static string MAPS_WORLD_OVERWRITE {
+            get {
+                return ResourceManager.GetString("MAPS_WORLD_OVERWRITE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to That world could not be aimed at this slot, so nothing was changed..
+        /// </summary>
+        public static string MAPS_WORLD_NOT_AIMED {
+            get {
+                return ResourceManager.GetString("MAPS_WORLD_NOT_AIMED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Block theme.
+        /// </summary>
+        public static string MAPS_THEME {
+            get {
+                return ResourceManager.GetString("MAPS_THEME", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No map, no theme.
+        /// </summary>
+        public static string MAPS_THEME_NONE {
+            get {
+                return ResourceManager.GetString("MAPS_THEME_NONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {1} is now drawn with {0}..
+        /// </summary>
+        public static string MAPS_THEME_SET {
+            get {
+                return ResourceManager.GetString("MAPS_THEME_SET", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} has no level file to set a theme on..
+        /// </summary>
+        public static string MAPS_THEME_FAILED {
+            get {
+                return ResourceManager.GetString("MAPS_THEME_FAILED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Reinstalled..
+        /// </summary>
+        public static string MAPS_THEME_REINSTALLED {
+            get {
+                return ResourceManager.GetString("MAPS_THEME_REINSTALLED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to That world was exported from {0}, so bringing it back writes to {0} - not to {1}. Select {0} and bring it back there, or use Save as zip… on {0} and Open a zip… here..
+        /// </summary>
+        public static string MAPS_WORLD_ELSEWHERE {
+            get {
+                return ResourceManager.GetString("MAPS_WORLD_ELSEWHERE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Custom maps.
+        /// </summary>
+        public static string MAPS_KIND_CUSTOM {
+            get {
+                return ResourceManager.GetString("MAPS_KIND_CUSTOM", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Game missions.
+        /// </summary>
+        public static string MAPS_KIND_GAME {
+            get {
+                return ResourceManager.GetString("MAPS_KIND_GAME", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Custom {0:00} is empty, and bringing a world back needs a map to write into. Use New empty map…, Import map… or Open a zip… first, then bring your world back over it..
+        /// </summary>
+        public static string MAPS_SLOT_NEEDS_BASE {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_NEEDS_BASE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Custom {0:00} is empty, so there is nothing to work on yet. Use Import map… or Open a zip… to put a map in it..
+        /// </summary>
+        public static string MAPS_SLOT_NOTHING_YET {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_NOTHING_YET", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Save as zip….
+        /// </summary>
+        public static string MAPS_ZIP_SAVE {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_SAVE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Open a zip….
+        /// </summary>
+        public static string MAPS_ZIP_OPEN {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_OPEN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Change what this custom map is called in the Camp. The map itself is not touched..
+        /// </summary>
+        public static string MAPS_RENAME_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_RENAME_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Write this custom map out as one zip, in the editable form - level, object groups, block packs and wording - so somebody else can open it here..
+        /// </summary>
+        public static string MAPS_ZIP_SAVE_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_SAVE_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Read a map zip into the selected custom slot..
+        /// </summary>
+        public static string MAPS_ZIP_OPEN_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_OPEN_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Rename….
+        /// </summary>
+        public static string MAPS_RENAME {
+            get {
+                return ResourceManager.GetString("MAPS_RENAME", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to What should this custom map be called in the Camp?.
+        /// </summary>
+        public static string MAPS_RENAME_WHAT {
+            get {
+                return ResourceManager.GetString("MAPS_RENAME_WHAT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Renamed to {0}..
+        /// </summary>
+        public static string MAPS_RENAMED {
+            get {
+                return ResourceManager.GetString("MAPS_RENAMED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Only a custom map can be renamed. A mission keeps the game's own name wherever it is used..
+        /// </summary>
+        public static string MAPS_RENAME_ONLY_CUSTOM {
+            get {
+                return ResourceManager.GetString("MAPS_RENAME_ONLY_CUSTOM", resourceCulture);
+            }
+        }
+
+
+        /// <summary>
+        ///   Looks up a localized string similar to Zips are for custom maps. Pick one of the custom slots..
+        /// </summary>
+        public static string MAPS_ZIP_ONLY_CUSTOM {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_ONLY_CUSTOM", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Save this custom map as a zip.
+        /// </summary>
+        public static string MAPS_ZIP_OUT {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_OUT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Open a map zip.
+        /// </summary>
+        public static string MAPS_ZIP_IN {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_IN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Saved {0}..
+        /// </summary>
+        public static string MAPS_ZIPPED {
+            get {
+                return ResourceManager.GetString("MAPS_ZIPPED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} is now custom {1:00}..
+        /// </summary>
+        public static string MAPS_ZIP_OPENED {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_OPENED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Custom {1:00} already holds {0}. Replace it?.
+        /// </summary>
+        public static string MAPS_ZIP_REPLACE {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_REPLACE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Installs the two small mods that put the custom maps prop in the Camp..
+        /// </summary>
+        public static string MAPS_IN_GAME_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_IN_GAME_WHY", resourceCulture);
             }
         }
         

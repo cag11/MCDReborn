@@ -200,6 +200,77 @@ Spawn points go to `objectgroups\<Name>\objectgroup.json`; mob groups go to `lev
 `level.json.multitile` beside it when that exists, so the next weld does not throw them away. The
 first time a file is touched the original is kept as `<name>.before`.
 
+## Objectives, and gates that open
+
+The **Objectives** tab in Edit spawns holds the mission's chain: what it asks of you, in order.
+A new map has one step in it - *exit through the gate* - and that is the whole mission.
+
+The chain is a **sequence**, not a set. A step nobody can finish blocks every step behind it,
+including the way out, and the symptom is a gate that draws, lights up and does nothing with no
+error anywhere. That is also why every new step goes in **ahead** of the exit: clicking the exit
+ends the mission, so a step behind it would never be asked for.
+
+### Adding a step
+
+**Add a step** makes one of two kinds where the map is aimed. Two dropdowns above them choose
+what it says - and they are dropdowns rather than boxes you type in, because **an objective's
+text is not text**. It is a key into one of the game's 36 mission string tables, picked by your
+level's `loctable-id`. Type your own sentence in there and the mission banner reads
+`<MISSING STRING TABLE ENTRY>`, with nothing in any log to say why.
+
+So the editor offers that table's real wording, read straight out of the game - 26 entries for a
+map installed over Creeper Woods, things like *Escape Creeper Woods*, *Find the Gold Key*,
+*Free the Villagers*, *Survive The Fight*. The chain marks any step whose wording the table has
+not got, which is how you spot one made before this existed; remove it and add it again.
+
+The tables share almost nothing - the single most widely held key in the game is in five of the
+36 - so installing the same folder over a different mission changes which wording is available.
+The hint above the pickers always names the table in use.
+
+The two kinds:
+
+* **Click a thing** - a bell, a lever, a beacon. The game draws it there and you walk up and use
+  it. Pick which from the dropdown; they are all base-game prefabs, so nobody needs any DLC.
+* **Reach a spot** - a 5x5 patch of floor. Walk into it and the step is done.
+
+Each one leaves an **amber pin** on the map, listed under *The spots those steps use*. Drag the
+pin to move it, exactly like the other five kinds. A step whose spot is missing says so in that
+list - that is the one thing that silently kills a mission.
+
+### Gates
+
+A **gate** is a wall that stays shut until some step is finished. Put one down with **Put a gate
+here**, then **Turn** it so it lies *across* the way through rather than along it, and **Wider** /
+**Narrower** to fit the gap. The taller post marks the end it is anchored at, which is the cell a
+drag moves.
+
+Then pick the gate, choose a step under **Opened by**, choose a look under **Drawn as**, and press
+**This opens it**. **Nothing opens it** takes the wire off again. Picking either a gate or a step
+draws a line between them, so you can find the other end on a map where they are nowhere near each
+other.
+
+**Drawn as** is not decoration. A gate with no look still blocks you - invisibly - which in game
+is indistinguishable from the map being broken. The list stretches to whatever size the gate is, so
+there is nothing to match up: 187 of the game's own 374 held gates name no prefab either, but those
+are doorways whose tile already has a door built out of blocks, and a gate you carved into your own
+map has none.
+
+The look belongs to the **step**, not the gate - that is the game's shape, not a shortcut - so every
+gate the same step opens is drawn the same way. The list marks any held gate with no look as
+`INVISIBLE`.
+
+**Only a step that asks you to click something can open a gate.** This is the game's rule, not the
+editor's: across all fifty-six of its own missions, eighty-five objectives hold a gate shut, and
+every one of them is a click. Not one is a *reach*. So *reach* steps are not offered in that
+dropdown - if they were, the field would be written, ignored, and you would have a solid gate that
+opens for nobody.
+
+The way out is not offered either, although it *is* a click. A gate held shut by the exit opens at
+the moment the mission ends.
+
+So the smallest working lock is: **add a click step, put a gate somewhere else, and wire the two
+together.** If the dropdown is empty, that is the missing half - there is no click step yet.
+
 ## Seams, and why the level is welded
 
 The game assembles a mission from tiles at run time and picks its own doors. So a structure built

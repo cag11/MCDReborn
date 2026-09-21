@@ -8,7 +8,7 @@ namespace MCDSaveEdit.Data
     {
         //Continuing upstream's numbering rather than restarting at 1.0 - this is a
         //fork, not a new product. AssemblyInfo.cs derives AssemblyVersion from this.
-        public const string CURRENT_VERSION_NUMBER = "1.8.2.0";
+        public const string CURRENT_VERSION_NUMBER = "1.9.0.0";
         //This fork's releases. Config.downloadAsync() follows the redirect and takes
         //the version from the last path segment, so the tag must parse as a Version.
         public const string LATEST_RELEASE_GITHUB_URL = "https://github.com/cag11/MCDReborn/releases/latest";
