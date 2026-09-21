@@ -20,11 +20,28 @@
         <TextBlock x:Name="missionsHint" DockPanel.Dock="Top" Foreground="Gray" TextWrapping="Wrap"
                    FontSize="11" Margin="2,0,2,8"/>
 
+        <!--
+             Custom maps first, and selected by default. A hundred slots listed above the game's
+             fifty-odd missions buries the thing most people opened this tab for, and somebody
+             here to play somebody else's map should not have to scroll past every mission in the
+             game to find the one they just installed.
+        -->
         <Grid DockPanel.Dock="Top" Margin="2,0,2,8">
-            <TextBox x:Name="searchBox" Height="26" VerticalContentAlignment="Center"
-                     TextChanged="searchBox_TextChanged"/>
-            <TextBlock x:Name="searchHint" Text="Search…" Margin="9,0,0,0" Foreground="Gray"
-                       IsHitTestVisible="False" VerticalAlignment="Center"/>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="170"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <ComboBox x:Name="kindBox" Grid.Column="0" Height="26" Margin="0,0,6,0"
+                      VerticalContentAlignment="Center"
+                      SelectionChanged="kindBox_SelectionChanged"/>
+
+            <Grid Grid.Column="1">
+                <TextBox x:Name="searchBox" Height="26" VerticalContentAlignment="Center"
+                         TextChanged="searchBox_TextChanged"/>
+                <TextBlock x:Name="searchHint" Text="Search…" Margin="9,0,0,0" Foreground="Gray"
+                           IsHitTestVisible="False" VerticalAlignment="Center"/>
+            </Grid>
         </Grid>
 
         <TextBlock x:Name="statusLabel" DockPanel.Dock="Bottom" TextWrapping="NoWrap"
@@ -50,12 +67,34 @@
                        FontSize="11" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
             <TextBlock x:Name="importedLabel" VerticalAlignment="Center" Margin="12,0,0,0"
                        FontSize="11" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
+
+            <!--
+                 The one thing in this tab that touches the GAME rather than a map.
+
+                 On by default and rarely worth thinking about - but it is the only way out of a
+                 conflict the app cannot detect. The loader replaces the actor every Blueprint-
+                 loader mod replaces, so two of them installed means one silently never runs.
+                 Unticking this takes ours out without deleting a single custom map.
+            -->
+            <CheckBox x:Name="inGameBox" VerticalAlignment="Center" Margin="18,0,0,0"
+                      Content="*Offer custom maps in the Camp*"
+                      Checked="inGameBox_Changed" Unchecked="inGameBox_Changed"/>
         </StackPanel>
 
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="2,8,2,0">
             <TextBlock x:Name="spawnsGroupLabel" VerticalAlignment="Center" Width="110"
                        FontWeight="SemiBold" FontSize="11"
                        Foreground="{DynamicResource Brush.TextMuted}"/>
+            <TextBlock x:Name="themeLabel" VerticalAlignment="Center" Margin="0,0,6,0"
+                       FontSize="11" Foreground="{DynamicResource Brush.TextMuted}"/>
+            <!--
+                 A theme is a resource pack, and swapping one is a re-skin rather than a rebuild:
+                 a map stores its blocks by NAME, and the pack only says what those names look
+                 like. So this can be a dropdown that takes effect immediately.
+            -->
+            <ComboBox x:Name="themeBox" Width="190" Height="26" Margin="0,0,14,0"
+                      VerticalContentAlignment="Center"
+                      SelectionChanged="themeBox_SelectionChanged"/>
             <Button x:Name="spawnsButton" Content="*Edit spawns…*" Padding="10,5"
                     Click="spawnsButton_Click"/>
             <TextBlock x:Name="spawnsWhyLabel" VerticalAlignment="Center" Margin="12,0,0,0"
@@ -74,6 +113,12 @@
                     Click="baselineButton_Click"/>
             <Button x:Name="importButton" Content="*Import map…*" Padding="10,5"
                     Click="importButton_Click"/>
+            <Button x:Name="renameButton" Content="*Rename…*" Padding="10,5" Margin="6,0,0,0"
+                    Click="renameButton_Click"/>
+            <Button x:Name="zipOutButton" Content="*Save as zip…*" Padding="10,5" Margin="6,0,0,0"
+                    Click="zipOutButton_Click"/>
+            <Button x:Name="zipInButton" Content="*Open a zip…*" Padding="10,5" Margin="6,0,0,0"
+                    Click="zipInButton_Click"/>
             <TextBlock x:Name="toolsLabel" VerticalAlignment="Center" Margin="12,0,0,0"
                        FontSize="11" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
         </StackPanel>

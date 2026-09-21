@@ -3131,6 +3131,102 @@ Carry on?</value>
     <value>never leaves the app — it saves and installs itself.</value>
     <comment>Beside the spawns button</comment>
   </data>
+  <data name="MAPS_RENAME" xml:space="preserve">
+    <value>Rename…</value>
+  </data>
+  <data name="MAPS_RENAME_WHAT" xml:space="preserve">
+    <value>What should this custom map be called in the Camp?</value>
+  </data>
+  <data name="MAPS_RENAMED" xml:space="preserve">
+    <value>Renamed to {0}.</value>
+  </data>
+  <data name="MAPS_RENAME_ONLY_CUSTOM" xml:space="preserve">
+    <value>Only a custom map can be renamed. A mission keeps the game's own name wherever it is used.</value>
+  </data>
+  <data name="MAPS_ZIP_ONLY_CUSTOM" xml:space="preserve">
+    <value>Zips are for custom maps. Pick one of the custom slots.</value>
+  </data>
+  <data name="MAPS_ZIP_OUT" xml:space="preserve">
+    <value>Save this custom map as a zip</value>
+  </data>
+  <data name="MAPS_ZIP_IN" xml:space="preserve">
+    <value>Open a map zip</value>
+  </data>
+  <data name="MAPS_ZIPPED" xml:space="preserve">
+    <value>Saved {0}.</value>
+  </data>
+  <data name="MAPS_ZIP_OPENED" xml:space="preserve">
+    <value>{0} is now custom {1:00}.</value>
+  </data>
+  <data name="MAPS_ZIP_REPLACE" xml:space="preserve">
+    <value>Custom {1:00} already holds {0}. Replace it?</value>
+  </data>
+  <data name="MAPS_ZIP_SAVE" xml:space="preserve">
+    <value>Save as zip…</value>
+  </data>
+  <data name="MAPS_ZIP_OPEN" xml:space="preserve">
+    <value>Open a zip…</value>
+  </data>
+  <data name="MAPS_RENAME_WHY" xml:space="preserve">
+    <value>Change what this custom map is called in the Camp. The map itself is not touched.</value>
+  </data>
+  <data name="MAPS_ZIP_SAVE_WHY" xml:space="preserve">
+    <value>Write this custom map out as one zip, in the editable form - level, object groups, block packs and wording - so somebody else can open it here.</value>
+  </data>
+  <data name="MAPS_ZIP_OPEN_WHY" xml:space="preserve">
+    <value>Read a map zip into the selected custom slot.</value>
+  </data>
+  <data name="MAPS_SLOT_NOTHING_YET" xml:space="preserve">
+    <value>Custom {0:00} is empty, so there is nothing to work on yet. Use Import map… or Open a zip… to put a map in it.</value>
+  </data>
+  <data name="MAPS_SLOT_NEEDS_BASE" xml:space="preserve">
+    <value>Custom {0:00} is empty, and bringing a world back needs a map to write into. Use New empty map…, Import map… or Open a zip… first, then bring your world back over it.</value>
+  </data>
+  <data name="MAPS_KIND_CUSTOM" xml:space="preserve">
+    <value>Custom maps</value>
+  </data>
+  <data name="MAPS_KIND_GAME" xml:space="preserve">
+    <value>Game missions</value>
+  </data>
+  <data name="MAPS_WORLD_ELSEWHERE" xml:space="preserve">
+    <value>That world was exported from {0}, so bringing it back writes to {0} - not to {1}. To put it in {1}: select {0} and bring the world back there first, then use Import map… here and pick {2}</value>
+  </data>
+  <data name="MAPS_THEME" xml:space="preserve">
+    <value>Block theme</value>
+  </data>
+  <data name="MAPS_THEME_NONE" xml:space="preserve">
+    <value>No map, no theme</value>
+  </data>
+  <data name="MAPS_THEME_SET" xml:space="preserve">
+    <value>{1} is now drawn with {0}.</value>
+  </data>
+  <data name="MAPS_THEME_FAILED" xml:space="preserve">
+    <value>{0} has no level file to set a theme on.</value>
+  </data>
+  <data name="MAPS_THEME_REINSTALLED" xml:space="preserve">
+    <value>Reinstalled.</value>
+  </data>
+  <data name="MAPS_WORLD_SOURCE_GONE" xml:space="preserve">
+    <value>That world came from {0}, but {0}'s folder is no longer there - so there is no map to bring across. Export {0} to Minecraft again first.</value>
+  </data>
+  <data name="MAPS_WORLD_OVERWRITE" xml:space="preserve">
+    <value>This world was exported from {0}. Copy {0} into {1} and write the world into it? Anything already in {1} is replaced.</value>
+  </data>
+  <data name="MAPS_WORLD_NOT_AIMED" xml:space="preserve">
+    <value>That world could not be aimed at this slot, so nothing was changed.</value>
+  </data>
+  <data name="MAPS_CONVERT_NOTHING" xml:space="preserve">
+    <value>The converter finished without writing anything into this map's folder, so nothing was installed. The world may not be one this app exported.</value>
+  </data>
+  <data name="MAPS_WORLD_REBUILDING" xml:space="preserve">
+    <value>Rebuilding {0}'s folder from the game…</value>
+  </data>
+  <data name="MAPS_IN_GAME" xml:space="preserve">
+    <value>Offer custom maps in the Camp</value>
+  </data>
+  <data name="MAPS_IN_GAME_WHY" xml:space="preserve">
+    <value>Installs the two small mods that put the custom maps prop in the Camp. On by default. Turn it off if another mod stops working - most Blueprint-loader mods replace the same game actor, and only one of them can win.</value>
+  </data>
   <data name="MAPS_GROUP_UNDO" xml:space="preserve">
     <value>Undo</value>
     <comment>Heading for the remove row</comment>

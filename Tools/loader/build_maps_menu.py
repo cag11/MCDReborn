@@ -221,7 +221,7 @@ def build_tree(widget, list_of):
     stretch(root, switcher)
 
     made = {'switcher': switcher, 'missions': [], 'difficulty': [], 'threat': [],
-            'endless': []}
+            'endless': [], 'said': {}}
 
     #--- page one: which mission ---------------------------------------------------------------
     picking = CanvasPanel('Picking', tree)
@@ -313,20 +313,41 @@ def build_tree(widget, list_of):
     place(playing, label(tree, 'DiffLabel', 'Difficulty', mcd_ui.DIM, body_face,
                        typeface=mcd_ui.BODY_FACE), 60, 150, 400, 30)
 
+    #What is currently chosen, beside the heading that names the row.
+    #
+    #Three rows of buttons that light up in no way whatsoever, and a Play that reads variables
+    #nothing on screen reports - so the only way to know what was about to be launched was to
+    #remember which buttons had been pressed. Nobody does that, and the one setting where it
+    #mattered most was the one nobody ever pressed: see the note in `variables` about difficulty
+    #zero and the map with no mobs in it.
+    #
+    #Its starting caption is the value the variable starts at, not a placeholder. A row reading
+    #"Difficulty -" would be honest about being unset and would still leave the player with no
+    #idea what pressing Play now does.
+    made['said']['Difficulty'] = {}
+    place(playing, label(tree, 'DifficultyValue', 'Default', mcd_ui.GOLD, body_face,
+                       typeface=mcd_ui.BODY_FACE, variable=True), 470, 150, 600, 30)
+
     for at, said in enumerate(['Default', 'Adventure', 'Apocalypse']):
         one = button(tree, 'Diff%d' % (at + 1), said, body_face,
                      typeface=mcd_ui.BODY_FACE)
         place(playing, one, 60 + at * 330, 190, 310, 80)
         made['difficulty'].append((at + 1, one))
+        made['said']['Difficulty'][at + 1] = said
 
     place(playing, label(tree, 'ThreatLabel', 'Threat level', mcd_ui.DIM, body_face,
                        typeface=mcd_ui.BODY_FACE), 60, 300, 400, 30)
+
+    made['said']['Threat'] = {}
+    place(playing, label(tree, 'ThreatValue', '1', mcd_ui.GOLD, body_face,
+                       typeface=mcd_ui.BODY_FACE, variable=True), 470, 300, 600, 30)
 
     for at in range(1, 8):
         one = button(tree, 'Threat%d' % at, str(at), body_face,
                      typeface=mcd_ui.BODY_FACE)
         place(playing, one, 60 + (at - 1) * 145, 340, 130, 80)
         made['threat'].append((at, one))
+        made['said']['Threat'][at] = str(at)
 
     #--- Apocalypse+ ----------------------------------------------------------------------------
     #
@@ -338,11 +359,16 @@ def build_tree(widget, list_of):
                        typeface=mcd_ui.BODY_FACE),
         60, 450, 600, 30)
 
+    made['said']['Endless'] = {}
+    place(playing, label(tree, 'EndlessValue', '0', mcd_ui.GOLD, body_face,
+                       typeface=mcd_ui.BODY_FACE, variable=True), 670, 450, 400, 30)
+
     for at in range(0, 26):
         one = button(tree, 'Endless%d' % at, str(at), body_face, mcd_ui.BODY_SIZE,
                      typeface=mcd_ui.BODY_FACE)
         place(playing, one, 60 + (at % 13) * 105, 490 + (at // 13) * 80, 95, 70)
         made['endless'].append((at, one))
+        made['said']['Endless'][at] = str(at)
 
     made['play'] = button(tree, 'Play', 'Play', title_face, 40, mcd_ui.GOLD,
                             typeface=mcd_ui.TITLE_FACE)
@@ -367,13 +393,47 @@ def variables(widget):
     Compiled straight after adding them, because a variable that has only been ADDED has no entry
     in the skeleton class yet, and a getter made before that resolves to nothing at all - silently.
     """
+    #Difficulty and Threat start at 1 rather than at nothing.
+    #
+    #An int variable added with no default is zero, and zero is not one of the values this panel
+    #offers: the difficulty buttons are 1 to 3 and the threat buttons are 1 to 7. So a player who
+    #pressed Play without first choosing how hard sent difficulty 0, threat 0 - which the game
+    #accepts, loads, and plays as a level with NO MOBS IN IT. Nothing about that reads as an
+    #unset field. It reads as a broken map, and it was diagnosed as one for most of a day: the
+    #same level installed over a real mission spawned mobs perfectly, because a real mission is
+    #launched by the game's own screen and that screen never sends zero.
+    #
+    #One is the right floor rather than a guess. Difficulty 1 is Default and threat level 1 is
+    #the lowest the game has, so both are unlocked on a brand new save - which the player's OWN
+    #furthest unlock is not, and a panel compiled into the exe cannot read a save anyway.
+    starts_at = {'Difficulty': '1', 'Threat': '1'}
+
     for name, kind in [('Chosen', 'string'), ('Mission', 'int'), ('Difficulty', 'int'),
                        ('Threat', 'int'), ('Endless', 'int'), ('Busy', 'int')]:
-        ue.blueprint_add_member_variable(widget, name, kind)
+        ue.blueprint_add_member_variable(widget, name, kind, False, starts_at.get(name, ''))
 
     ue.blueprint_mark_as_structurally_modified(widget)
     ue.compile_blueprint(widget)
     say('variables added')
+
+
+def says(node, words):
+    """
+    Puts a literal caption on a SetText node.
+
+    `InText` is an FText pin, and an FText literal is NOT kept in a pin's DefaultValue - that
+    field is for the string-ish pins. Assigning it there is accepted silently and leaves the pin
+    holding an empty text, so the call still fires and the label is blanked instead of rewritten.
+    Which is exactly what it looked like: the readouts showed their built-in captions until the
+    first press and went empty from then on.
+
+    Both are set because the two fields are not alternatives - Slate reads the text one and the
+    editor shows the other, and a pin carrying only one of them reads as changed-but-empty in
+    whichever half was missed.
+    """
+    pin = node.node_find_pin('InText')
+    pin.default_value = words
+    pin.default_text_value = words
 
 
 def pressed(page, widget, name, y):
@@ -452,7 +512,7 @@ def build_graph(widget, made):
         shown = page.graph_add_node_call_function(TextBlock.SetText, 1500, y)
         link(page.graph_add_node_variable_get('ChosenLabel', None, 1300, y + 140),
              'ChosenLabel', shown, 'self')
-        shown.node_find_pin('InText').default_value = said
+        says(shown, said)
         link(numbered, 'then', shown, 'execute')
 
         turn = page.graph_add_node_call_function(WidgetSwitcher.SetActiveWidgetIndex, 1900, y)
@@ -477,8 +537,17 @@ def build_graph(widget, made):
             remember.node_find_pin(store).default_value = str(value)
             link(gate, 'then', remember, 'execute')
 
+            #The caption is a literal rather than the number formatted at run time. Every one of
+            #these presses knows its own value at build time, and "Adventure" is not something
+            #the int 2 could be turned into on screen anyway.
+            shown = page.graph_add_node_call_function(TextBlock.SetText, 1500, y)
+            link(page.graph_add_node_variable_get(store + 'Value', None, 1300, y + 140),
+                 store + 'Value', shown, 'self')
+            says(shown, made['said'][store][value])
+            link(remember, 'then', shown, 'execute')
+
             held = hold(page, y)
-            link(remember, 'then', held, 'execute')
+            link(shown, 'then', held, 'execute')
 
             y += 340
 

@@ -6866,6 +6866,295 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("MAPS_GROUP_UNDO", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Offer custom maps in the Camp.
+        /// </summary>
+        public static string MAPS_IN_GAME {
+            get {
+                return ResourceManager.GetString("MAPS_IN_GAME", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Rebuilding {0}'s folder from the game….
+        /// </summary>
+        public static string MAPS_WORLD_REBUILDING {
+            get {
+                return ResourceManager.GetString("MAPS_WORLD_REBUILDING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The converter finished without writing anything into this map's folder, so nothing was installed. The world may not be one this app exported..
+        /// </summary>
+        public static string MAPS_CONVERT_NOTHING {
+            get {
+                return ResourceManager.GetString("MAPS_CONVERT_NOTHING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to That world came from {0}, but {0}'s folder is no longer there - so there is no map to bring across. Export {0} to Minecraft again first..
+        /// </summary>
+        public static string MAPS_WORLD_SOURCE_GONE {
+            get {
+                return ResourceManager.GetString("MAPS_WORLD_SOURCE_GONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to This world was exported from {0}. Copy {0} into {1} and write the world into it? Anything already in {1} is replaced..
+        /// </summary>
+        public static string MAPS_WORLD_OVERWRITE {
+            get {
+                return ResourceManager.GetString("MAPS_WORLD_OVERWRITE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to That world could not be aimed at this slot, so nothing was changed..
+        /// </summary>
+        public static string MAPS_WORLD_NOT_AIMED {
+            get {
+                return ResourceManager.GetString("MAPS_WORLD_NOT_AIMED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Block theme.
+        /// </summary>
+        public static string MAPS_THEME {
+            get {
+                return ResourceManager.GetString("MAPS_THEME", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No map, no theme.
+        /// </summary>
+        public static string MAPS_THEME_NONE {
+            get {
+                return ResourceManager.GetString("MAPS_THEME_NONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {1} is now drawn with {0}..
+        /// </summary>
+        public static string MAPS_THEME_SET {
+            get {
+                return ResourceManager.GetString("MAPS_THEME_SET", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} has no level file to set a theme on..
+        /// </summary>
+        public static string MAPS_THEME_FAILED {
+            get {
+                return ResourceManager.GetString("MAPS_THEME_FAILED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Reinstalled..
+        /// </summary>
+        public static string MAPS_THEME_REINSTALLED {
+            get {
+                return ResourceManager.GetString("MAPS_THEME_REINSTALLED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to That world was exported from {0}, so bringing it back writes to {0} - not to {1}. Select {0} and bring it back there, or use Save as zip… on {0} and Open a zip… here..
+        /// </summary>
+        public static string MAPS_WORLD_ELSEWHERE {
+            get {
+                return ResourceManager.GetString("MAPS_WORLD_ELSEWHERE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Custom maps.
+        /// </summary>
+        public static string MAPS_KIND_CUSTOM {
+            get {
+                return ResourceManager.GetString("MAPS_KIND_CUSTOM", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Game missions.
+        /// </summary>
+        public static string MAPS_KIND_GAME {
+            get {
+                return ResourceManager.GetString("MAPS_KIND_GAME", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Custom {0:00} is empty, and bringing a world back needs a map to write into. Use New empty map…, Import map… or Open a zip… first, then bring your world back over it..
+        /// </summary>
+        public static string MAPS_SLOT_NEEDS_BASE {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_NEEDS_BASE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Custom {0:00} is empty, so there is nothing to work on yet. Use Import map… or Open a zip… to put a map in it..
+        /// </summary>
+        public static string MAPS_SLOT_NOTHING_YET {
+            get {
+                return ResourceManager.GetString("MAPS_SLOT_NOTHING_YET", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Save as zip….
+        /// </summary>
+        public static string MAPS_ZIP_SAVE {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_SAVE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Open a zip….
+        /// </summary>
+        public static string MAPS_ZIP_OPEN {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_OPEN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Change what this custom map is called in the Camp. The map itself is not touched..
+        /// </summary>
+        public static string MAPS_RENAME_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_RENAME_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Write this custom map out as one zip, in the editable form - level, object groups, block packs and wording - so somebody else can open it here..
+        /// </summary>
+        public static string MAPS_ZIP_SAVE_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_SAVE_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Read a map zip into the selected custom slot..
+        /// </summary>
+        public static string MAPS_ZIP_OPEN_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_OPEN_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Rename….
+        /// </summary>
+        public static string MAPS_RENAME {
+            get {
+                return ResourceManager.GetString("MAPS_RENAME", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to What should this custom map be called in the Camp?.
+        /// </summary>
+        public static string MAPS_RENAME_WHAT {
+            get {
+                return ResourceManager.GetString("MAPS_RENAME_WHAT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Renamed to {0}..
+        /// </summary>
+        public static string MAPS_RENAMED {
+            get {
+                return ResourceManager.GetString("MAPS_RENAMED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Only a custom map can be renamed. A mission keeps the game's own name wherever it is used..
+        /// </summary>
+        public static string MAPS_RENAME_ONLY_CUSTOM {
+            get {
+                return ResourceManager.GetString("MAPS_RENAME_ONLY_CUSTOM", resourceCulture);
+            }
+        }
+
+
+        /// <summary>
+        ///   Looks up a localized string similar to Zips are for custom maps. Pick one of the custom slots..
+        /// </summary>
+        public static string MAPS_ZIP_ONLY_CUSTOM {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_ONLY_CUSTOM", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Save this custom map as a zip.
+        /// </summary>
+        public static string MAPS_ZIP_OUT {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_OUT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Open a map zip.
+        /// </summary>
+        public static string MAPS_ZIP_IN {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_IN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Saved {0}..
+        /// </summary>
+        public static string MAPS_ZIPPED {
+            get {
+                return ResourceManager.GetString("MAPS_ZIPPED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} is now custom {1:00}..
+        /// </summary>
+        public static string MAPS_ZIP_OPENED {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_OPENED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Custom {1:00} already holds {0}. Replace it?.
+        /// </summary>
+        public static string MAPS_ZIP_REPLACE {
+            get {
+                return ResourceManager.GetString("MAPS_ZIP_REPLACE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Installs the two small mods that put the custom maps prop in the Camp..
+        /// </summary>
+        public static string MAPS_IN_GAME_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_IN_GAME_WHY", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized string similar to out to Minecraft, back again, then into the game..

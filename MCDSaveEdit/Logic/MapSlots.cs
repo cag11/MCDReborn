@@ -1,4 +1,4 @@
-using MCDSaveEdit.Services;
+﻿using MCDSaveEdit.Services;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -183,6 +183,11 @@ namespace MCDSaveEdit.Logic
             var name = MapTable.slotName(slot);
             var written = 0;
 
+            //Kept rather than skipped, so the map's WORDING can come out with it. See the note
+            //where it is unpacked below.
+            byte[]? said = null;
+            byte[]? levelRaw = null;
+
             foreach (var one in ModPak.read(found.Path))
             {
                 //Back to the shape the Maps tab expects, which is not the shape a pak has: the
@@ -204,10 +209,27 @@ namespace MCDSaveEdit.Logic
                     into = "resourcepacks/" + packs;
                 }
 
-                //The label table is deliberately left behind. It is the game's file with this
-                //map's rows appended, and writing it into the folder would have the next install
-                //append them all over again.
-                if (into == null) { continue; }
+                //The label table is not written out AS IT IS, and that part was always right:
+                //it is the game's whole file with this map's rows appended, so putting it in the
+                //folder would have the next install append them a second time.
+                //
+                //But leaving it behind entirely is what made an exported map lose its objectives
+                //the moment it went to somebody else. It is kept here and mined below for the
+                //rows that belong to this map alone.
+                if (into == null)
+                {
+                    if (path.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
+                    {
+                        said = one.Data;
+                    }
+
+                    continue;
+                }
+
+                if (string.Equals(into, "level.json", StringComparison.Ordinal))
+                {
+                    levelRaw = one.Data;
+                }
 
                 var full = Path.Combine(folder, into.Replace('/', Path.DirectorySeparatorChar));
                 Directory.CreateDirectory(Path.GetDirectoryName(full)!);
@@ -215,7 +237,79 @@ namespace MCDSaveEdit.Logic
                 written++;
             }
 
+            written += wordsOut(folder, levelRaw, said);
+
             return written;
+        }
+
+        /// <summary>
+        /// Puts the map's own wording into the exported folder.
+        ///
+        /// Without this a zip is a map with no objectives for anybody but the person who made it.
+        /// The wording lives in the borrowed label table, which on THIS machine already holds the
+        /// rows - so a round trip here looks perfect while the same file opened by somebody else
+        /// shows `&lt;MISSING STRING TABLE ENTRY&gt;` on every objective.
+        ///
+        /// Only the rows this map actually uses, and only the ones the game does not already
+        /// have. The packed table is Creeper Woods' own file with these appended; writing all of
+        /// it back would re-append the game's rows on the next install, and writing none of it is
+        /// what was happening before.
+        ///
+        /// The keys are read from the LEVEL rather than guessed from the table, because the table
+        /// is shared and the level is the only thing that says which rows are its own.
+        /// </summary>
+        private static int wordsOut(string folder, byte[]? levelRaw, byte[]? said)
+        {
+            if (levelRaw == null || said == null) { return 0; }
+
+            try
+            {
+                var text = GameMaps.stripComments(
+                    new UTF8Encoding(false).GetString(levelRaw).TrimStart('\uFEFF'));
+
+                if (JsonNode.Parse(text, documentOptions: new JsonDocumentOptions
+                {
+                    AllowTrailingCommas = true,
+                    CommentHandling = JsonCommentHandling.Skip,
+                }) is not JsonObject level)
+                {
+                    return 0;
+                }
+
+                var wanted = new HashSet<string>(StringComparer.Ordinal);
+                keysIn(level, wanted);
+
+                if (wanted.Count == 0) { return 0; }
+
+                //What the game ships already. Anything of its own is not this map's to carry,
+                //and exporting it would mean the receiving install appends Creeper Woods' rows
+                //to Creeper Woods' table.
+                var theirs = new HashSet<string>(
+                    MapWords.fromGame(BORROWED).Select(one => one.Key), StringComparer.Ordinal);
+
+                var mine = MapWords.parse(new UTF8Encoding(false).GetString(said))
+                    .Where(one => wanted.Contains(one.Key) && !theirs.Contains(one.Key))
+                    .ToList();
+
+                if (mine.Count == 0) { return 0; }
+
+                MapWords.forget(folder);
+
+                foreach (var word in mine)
+                {
+                    MapWords.remember(folder, word.Key, word.Said);
+                }
+
+                Console.WriteLine($"[slot] wrote {mine.Count} row(s) of wording into the folder");
+                return 1;
+            }
+            catch (Exception problem)
+            {
+                //A map that travels without its words is worse than one that does, and better
+                //than an export that failed - so this is said and not thrown.
+                Console.WriteLine($"[slot] the wording could not be exported: {problem.Message}");
+                return 0;
+            }
         }
 
         private static string? cut(string path, string after)
@@ -224,9 +318,206 @@ namespace MCDSaveEdit.Logic
             return at < 0 ? null : path.Substring(at + after.Length);
         }
 
-        /// <summary>Whatever is in that slot, or null.</summary>
+        /// <summary>
+        /// Whether custom maps are offered in the game at all.
+        ///
+        /// On by default, because somebody who has just imported a custom map wants to play it,
+        /// and a map installed correctly with no way to reach it is indistinguishable from one
+        /// that failed to install.
+        ///
+        /// It exists as an OFF switch, and there is one case that makes it necessary rather than
+        /// tidy. The loader works by replacing `/Game/Decor/Prefabs/Tent/BP_Tent`, which is the
+        /// anchor the whole modding community uses - Blossoming Isles replaces the same actor.
+        /// Only one pak can win a file, so installing both means one loader never runs, and the
+        /// symptom is that the other mod silently stops working with nothing said anywhere about
+        /// why. Being able to take ours out without deleting every custom map is the difference
+        /// between a conflict somebody can resolve and one they can only suffer.
+        ///
+        /// Remembered outside the paks, like the table's position, because the answer has to
+        /// survive the reinstall that every slot change performs.
+        /// </summary>
+        public static bool inGame
+        {
+            get
+            {
+                try { return !File.Exists(refusedAt()); }
+                catch (Exception) { return true; }
+            }
+
+            set
+            {
+                var file = refusedAt();
+
+                try
+                {
+                    if (value)
+                    {
+                        if (File.Exists(file)) { File.Delete(file); }
+                    }
+                    else
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+                        File.WriteAllText(file, "custom maps are not offered in the Camp");
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[slot] the choice could not be saved: {problem.Message}");
+                }
+
+                sync();
+            }
+        }
+
+        /// <summary>
+        /// Where the refusal is kept.
+        ///
+        /// Written as the ABSENCE of a file rather than a "true" in one, so that the default for
+        /// somebody who has never touched it - and for anybody whose settings are lost - is on.
+        /// A missing preference file and a preference file that cannot be read both mean yes,
+        /// which is the answer that leaves the feature working.
+        /// </summary>
+        private static string refusedAt()
+            => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "MCDReborn", "no-custom-maps-in-game.txt");
+
+        /// <summary>Whatever is in that slot, or null.</summary>        /// <summary>Whatever is in that slot, or null.</summary>
         public static Filled? inSlot(int slot)
             => installed().FirstOrDefault(one => one.Slot == slot);
+
+        /// <summary>
+        /// Renames what a slot is CALLED, without touching the map in it.
+        ///
+        /// Cheap because the name was never stored anywhere of its own: a slot's pak is called
+        /// `MCDReborn_Slot07_HiddenGarden_P.pak`, and the middle of that filename IS the name.
+        /// So renaming is renaming a file, and the caption in the Camp follows on the next
+        /// install - which <see cref="sync"/> performs immediately.
+        ///
+        /// The level inside is untouched, so nothing has to be repacked and nothing can be lost.
+        /// </summary>
+        /// <param name="shownAs">
+        /// What to call it. Trimmed to what the panel can show, because the caption is rewritten
+        /// inside a cooked widget WITHOUT the property changing size - the spare room is taken
+        /// out of a key nothing reads - and a name too long to fit would simply be left as it
+        /// was, which reads as the rename not working.
+        /// </param>
+        public static void rename(int slot, string shownAs)
+        {
+            var found = inSlot(slot);
+            if (found == null)
+            {
+                throw new InvalidOperationException(
+                    $"Slot {slot:00} is empty, so there is nothing to rename.");
+            }
+
+            var tidied = tidy(shownAs);
+
+            if (tidied.Length == 0)
+            {
+                throw new InvalidOperationException(
+                    "A name needs at least one letter or number in it.");
+            }
+
+            if (tidied.Length > MapTable.CAPTION)
+            {
+                tidied = tidied.Substring(0, MapTable.CAPTION);
+            }
+
+            var folder = Path.GetDirectoryName(found.Path)!;
+            var wanted = Path.Combine(folder,
+                $"{FOUND_AS}{slot:00}_{tidied}_P.pak");
+
+            if (!string.Equals(wanted, found.Path, StringComparison.OrdinalIgnoreCase))
+            {
+                //Replace rather than refuse: the name is a label, and two slots are allowed to
+                //want the same one. Only the same slot's own file can be in the way.
+                if (File.Exists(wanted)) { File.Delete(wanted); }
+
+                File.Move(found.Path, wanted);
+            }
+
+            sync();
+        }
+
+        /// <summary>
+        /// A slot's map, written out as one zip somebody else can import.
+        ///
+        /// The WORKING FOLDER is what travels, not the pak. A pak plays and cannot be edited -
+        /// its level is packed, its object groups are inside it, and getting a map back out of
+        /// one is the awkward path this app already has to take when it imports somebody's mod.
+        /// The folder is the editable form: the level as json, its object groups, its block
+        /// packs, its wording. Shipping that means the person on the other end can open it in
+        /// this app, change it, and install it into whichever slot they like - rather than
+        /// receiving a thing that can only be run.
+        /// </summary>
+        public static string zipTo(int slot, string zipPath)
+        {
+            var found = inSlot(slot)
+                ?? throw new InvalidOperationException(
+                    $"Slot {slot:00} is empty, so there is nothing to export.");
+
+            var staging = Path.Combine(Path.GetTempPath(), "mcd-zip",
+                $"{found.Name}-{Guid.NewGuid():N}");
+
+            try
+            {
+                Directory.CreateDirectory(staging);
+
+                //Straight through the same unpack the Maps tab uses, so a zip and an "edit in
+                //Minecraft" contain the same thing. Two routes that produce different folders is
+                //how one of them quietly rots.
+                export(slot, staging);
+
+                if (File.Exists(zipPath)) { File.Delete(zipPath); }
+
+                System.IO.Compression.ZipFile.CreateFromDirectory(staging, zipPath);
+
+                return zipPath;
+            }
+            finally
+            {
+                try { if (Directory.Exists(staging)) { Directory.Delete(staging, true); } }
+                catch (Exception) { /* a temp folder left behind is not worth failing over */ }
+            }
+        }
+
+        /// <summary>
+        /// Somebody else's zip, into a slot.
+        ///
+        /// The archive is unpacked somewhere temporary and then installed by the ordinary path,
+        /// which is what makes this safe: everything the installer checks - the level being
+        /// readable, its wording travelling with it, the slot being rewritten rather than added
+        /// to - happens exactly as it does for a folder picked by hand.
+        ///
+        /// A zip may have its files at the top or inside one folder, because both are what people
+        /// send, so the level is FOUND rather than assumed.
+        /// </summary>
+        public static CustomSkins.InstalledMod zipFrom(string zipPath, int slot, string shownAs)
+        {
+            var staging = Path.Combine(Path.GetTempPath(), "mcd-unzip", Guid.NewGuid().ToString("N"));
+
+            try
+            {
+                Directory.CreateDirectory(staging);
+                System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, staging);
+
+                var level = Directory
+                    .EnumerateFiles(staging, "level.json", SearchOption.AllDirectories)
+                    .OrderBy(one => one.Length)
+                    .FirstOrDefault()
+                    ?? throw new InvalidOperationException(
+                        "That zip has no level.json in it, so it is not a map this app wrote. "
+                        + "A map exported from the Maps tab has one at its top.");
+
+                return install(Path.GetDirectoryName(level)!, slot, shownAs);
+            }
+            finally
+            {
+                try { if (Directory.Exists(staging)) { Directory.Delete(staging, true); } }
+                catch (Exception) { }
+            }
+        }
 
         /// <summary>Empties a slot, and takes it off the table.</summary>
         public static void clear(int slot)
@@ -234,7 +525,88 @@ namespace MCDSaveEdit.Logic
             var found = inSlot(slot);
             if (found != null) { File.Delete(found.Path); }
 
+            shadows(slot, found?.Path);
+
             sync();
+        }
+
+        /// <summary>
+        /// Removes anything ELSE installed that claims this slot's level.
+        ///
+        /// A slot's map lives at one address - "data/lovika/levels/mcdcustom01.json" - and more
+        /// than one thing writes there. Installing the same folder over one of the game's own
+        /// missions produces "MCDReborn_Map_mcdcustom01_P.pak" holding that exact path, and
+        /// clearing the slot used to delete the Slot pak and leave it. Two paks then offered the
+        /// game one file and the game read whichever it read, which is not a coin toss anybody
+        /// can see: the map loads, it is simply not the one that was just installed.
+        ///
+        /// That cost most of a day. Every repair made to a map went into the slot, the game kept
+        /// reading a copy made hours earlier, and the outcome never changed no matter what was
+        /// fixed - so each fix looked wrong and was abandoned for the next guess.
+        ///
+        /// Matched on what a pak CONTAINS rather than on what it is called, because the naming is
+        /// the part that differs: the two install paths agree about the address and about nothing
+        /// else. Only this app's own paks are considered, and only the file being argued over -
+        /// a pak that happens to sit nearby and holds something different is left alone.
+        /// </summary>
+        private static void shadows(int slot, string? alreadyGone)
+        {
+            var folder = CustomSkins.paksFolder;
+            if (folder == null || !Directory.Exists(folder)) { return; }
+
+            var wanted = "Dungeons/Content/data/lovika/levels/"
+                + MapTable.slotName(slot) + ".json";
+
+            foreach (var pak in Directory.EnumerateFiles(
+                folder, CustomSkins.MOD_PREFIX + "*" + CustomSkins.MOD_SUFFIX))
+            {
+                if (string.Equals(pak, alreadyGone, StringComparison.OrdinalIgnoreCase)) { continue; }
+
+                //A pak's index is plaintext, so a file that does not mention the address anywhere
+                //in its bytes cannot be offering it. Cheap, and it matters: this runs on every
+                //install, and there can be a hundred slots to walk. Reading them is quick and
+                //INFLATING them is not, so the ones that obviously do not match never are.
+                try
+                {
+                    if (File.ReadAllBytes(pak).AsSpan().IndexOf(
+                        System.Text.Encoding.ASCII.GetBytes(wanted)) < 0)
+                    {
+                        continue;
+                    }
+                }
+                catch (Exception) { continue; }
+
+                bool claims;
+                try
+                {
+                    //ModPak.read already hands paths back with forward slashes and no leading
+                    //one, which is the shape `wanted` is written in.
+                    claims = ModPak.read(pak).Any(one => string.Equals(
+                        one.Path, wanted, StringComparison.OrdinalIgnoreCase));
+                }
+                catch (Exception)
+                {
+                    //Not every pak beside ours is one this reader understands, and a pak it
+                    //cannot open is not evidence of anything. Left where it is.
+                    continue;
+                }
+
+                if (!claims) { continue; }
+
+                try
+                {
+                    File.Delete(pak);
+                    Console.WriteLine($"[slot] also removed {Path.GetFileName(pak)}, "
+                        + $"which claimed the same level");
+                }
+                catch (Exception problem)
+                {
+                    //Said rather than thrown: the slot HAS been emptied, and the game holding a
+                    //pak open is the ordinary reason this fails.
+                    Console.WriteLine($"[slot] {Path.GetFileName(pak)} claims the same level and "
+                        + $"could not be removed: {problem.Message}");
+                }
+            }
         }
 
         /// <summary>
@@ -252,11 +624,48 @@ namespace MCDSaveEdit.Logic
         /// </summary>
         public static void sync()
         {
+            //Said before anything is attempted, because the failure it prevents is invisible.
+            //
+            //The game holds its paks open for as long as it is running, so rewriting the table
+            //while it is up throws - and every caller here treats that as "nothing to do". The
+            //app then reports success, the OLD table stays mounted, and the change quietly did
+            //not happen. That cost a round trip of "the statue moved back on its own".
+            if (GameRunning.isUp)
+            {
+                Console.WriteLine("[slot] the game is running, so the Camp table was not "
+                    + "updated - close the game and change a slot again, or the table will "
+                    + "keep whatever it had");
+            }
+
             var slots = installed();
 
-            if (slots.Count == 0)
+            //An EMPTY table still stands in the Camp, and only the toggle takes it away.
+            //
+            //It used to go when the last map went, on the reasoning that a menu with no rows is
+            //a menu of nothing. That reasoning was about the menu and ignored the prop: the
+            //statue is a thing somebody placed, walked to, and positioned by eye over several
+            //restarts, and having it disappear because they cleared their maps reads as the mod
+            //breaking rather than as a tidy-up.
+            //
+            //It also cost the position. The installed table is where the last good coordinate
+            //lives - see MapTable.whereItStands - so removing it threw away the only record
+            //that survives a preference file the app cannot read.
+            if (!inGame)
             {
                 MapTable.remove();
+
+                //The loader goes too, but ONLY if nothing else is standing on it.
+                //
+                //It is a mod in somebody's game folder, and one they did not ask for once the
+                //thing it was installed for is gone. But payloads are installed INTO its folders
+                //- a camera, whatever comes next - and pulling it out from under those would
+                //break features the person never touched, silently, in a different part of the
+                //app.
+                if (Payloads.installed().Count == 0)
+                {
+                    Loader.remove();
+                }
+
                 return;
             }
 
@@ -307,6 +716,51 @@ namespace MCDSaveEdit.Logic
                 throw new InvalidOperationException(
                     "There is no file called \"level.json\" in that folder, so it is not a map "
                     + "exported by this tab.");
+            }
+
+            //Every route into the game passes through here, so this is where a level that the
+            //generator would refuse gets repaired - not in whichever button happened to be
+            //pressed. A map can arrive from a Minecraft world, from somebody else's zip, or
+            //from a folder welded by an older build, and only one of those was being checked.
+            //
+            //It changes nothing unless the level is already invalid: a tile is only touched when
+            //it declares two or more travel entry doors, which the game rejects outright.
+            //Markers onto real ground, before anything is packed.
+            //
+            //Here rather than in the button that imports, because there are two import paths and
+            //only one of them was covered: a map that still has several tiles is welded first and
+            //went through the fix, a map that is already one tile is installed directly and
+            //skipped it entirely. The second is what a re-import of an existing custom map does,
+            //so the case most likely to be repeated was the one not covered.
+            try
+            {
+                var plan = MapSpawns.load(folder);
+                var settled = MapSpawns.settle(plan);
+
+                if (settled > 0)
+                {
+                    MapSpawns.save(plan);
+                    Console.WriteLine($"[slot] settled {settled} marker(s) onto the ground");
+
+                    foreach (var note in plan.Notes)
+                    {
+                        Services.Journal.note("  " + note);
+                    }
+                }
+            }
+            catch (Exception problem)
+            {
+                //A map that installs with its markers where they were is no worse than before
+                //this existed; refusing to install at all would be.
+                Console.WriteLine($"[slot] could not settle the markers: {problem.Message}");
+            }
+
+            MapMod.tidyMobGroups(folder);
+            MapMod.wireMobs(folder);
+            var untangled = MapMod.dropSidePaths(folder);
+            if (untangled > 0)
+            {
+                Console.WriteLine($"[slot] dropped the dead side-paths from {untangled} tile(s)");
             }
 
             clear(slot);
@@ -407,8 +861,64 @@ namespace MCDSaveEdit.Logic
 
                 level["loctable-id"] = BORROWED;
 
-                if (level["music-override"] == null && level["ambience-level-id"] == null)
+                //The level's own `id` has to be a level THE GAME HAS, and this is the field that
+                //was crashing every map this app made.
+                //
+                //Proved by holding everything else still: the same folder installed over Creeper
+                //Woods loads, installed into a slot crashes, and the two level files differ in
+                //exactly one field - `id`, "creeperwoods" against "mcdcustom02". Blossoming's map
+                //survives a slot because its id is "lowertemple", which is a real mission; it was
+                //never the slot machinery that worked for it, only the borrowed name.
+                //
+                //The game looks the id up. A name it does not know is not a missing lookup, it is
+                //a crash on the loading screen with nothing said about which field was wrong.
+                //
+                //What this does NOT do is change how the map is LAUNCHED. That stays
+                //`randommission`, so nothing is recorded against the real mission's progress -
+                //the id is borrowed for lookups, not for identity. Which is the same bargain the
+                //loctable and the ambience already make.
+                var was = level["id"]?.GetValue<string>();
+
+                var real = was != null && GameMaps.all().Any(one =>
+                    string.Equals(one.Name, was, StringComparison.OrdinalIgnoreCase));
+
+                if (!real)
                 {
+                    if (was != null)
+                    {
+                        Console.WriteLine($"[slot] \"{was}\" is not a level this game has, so "
+                            + $"the map is identified as {BORROWED} instead");
+                    }
+
+                    level["id"] = BORROWED;
+                }
+
+                //Ambience has to name a level THE GAME HAS, and it was only being filled in
+                //when the level named none at all.
+                //
+                //That left the worst case untouched. A map made here starts with its own id in
+                //that field - "mcdcustom01" - which is not null, so nothing replaced it, and the
+                //game went looking for the ambience of a level it has never heard of. It does
+                //not survive that, and the crash arrives on the loading screen with nothing to
+                //say which field was wrong.
+                //
+                //A real name is kept: a map imported from another mod may legitimately say
+                //CactiCanyon, and that works because Cacti Canyon exists. Anything the game
+                //cannot find is replaced with the mission this slot already borrows everything
+                //else from.
+                var ambience = level["ambience-level-id"]?.GetValue<string>();
+
+                var known = ambience != null && GameMaps.all().Any(one =>
+                    string.Equals(one.Name, ambience, StringComparison.OrdinalIgnoreCase));
+
+                if (level["music-override"] == null && !known)
+                {
+                    if (ambience != null)
+                    {
+                        Console.WriteLine($"[slot] \"{ambience}\" is not a level this game has, "
+                            + $"so its ambience comes from {BORROWED} instead");
+                    }
+
                     level["ambience-level-id"] = "creeperwoods";
                 }
 

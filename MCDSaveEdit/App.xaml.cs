@@ -5561,6 +5561,312 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_ZIP=<slot>[;<into slot>] - the whole zip round trip, and then undone.
+            //
+            //A zip is the one thing here that leaves this machine, so "it compiles" is not a
+            //standard worth shipping it on. This takes a real installed slot out to a file,
+            //reads it back into a DIFFERENT slot, and then compares what arrived against what
+            //left - file by file, byte count by byte count.
+            //
+            //It cleans up after itself. A test that leaves a map installed in somebody's game is
+            //a test that has to be undone by hand, and the one time it is forgotten it looks
+            //like a slot filling itself.
+            var probeZip = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_ZIP="));
+            if (probeZip != null)
+            {
+                var bits = probeZip.Substring("PROBE_ZIP=".Length).Trim('"')
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+                if (bits.Length < 1 || !int.TryParse(bits[0], out var from))
+                {
+                    Console.WriteLine("[zip] need PROBE_ZIP=<slot>[;<into slot>]");
+                    this.Shutdown();
+                    return;
+                }
+
+                var into = bits.Length > 1 && int.TryParse(bits[1], out var said) ? said : 99;
+
+                var source = Logic.MapSlots.inSlot(from);
+                if (source == null)
+                {
+                    Console.WriteLine($"[zip] slot {from:00} is empty - nothing to export");
+                    this.Shutdown();
+                    return;
+                }
+
+                if (Logic.MapSlots.inSlot(into) != null)
+                {
+                    Console.WriteLine($"[zip] slot {into:00} is not free - pick another to test "
+                        + "into, so nothing of yours is overwritten");
+                    this.Shutdown();
+                    return;
+                }
+
+                var work = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "mcd-zip-probe");
+                var archive = System.IO.Path.Combine(work, source.Name + ".zip");
+
+                try
+                {
+                    System.IO.Directory.CreateDirectory(work);
+
+                    Console.WriteLine($"[zip] exporting slot {from:00} ({source.Name})");
+                    Logic.MapSlots.zipTo(from, archive);
+
+                    var size = new System.IO.FileInfo(archive).Length;
+                    Console.WriteLine($"[zip]   wrote {System.IO.Path.GetFileName(archive)}, "
+                        + $"{size:N0} bytes");
+
+                    using (var reading = System.IO.Compression.ZipFile.OpenRead(archive))
+                    {
+                        foreach (var one in reading.Entries.OrderBy(x => x.FullName))
+                        {
+                            Console.WriteLine($"[zip]     {one.FullName,-52} {one.Length,10:N0}");
+                        }
+                    }
+
+                    Console.WriteLine($"[zip] reading it back into slot {into:00}");
+                    var made = Logic.MapSlots.zipFrom(archive, into, "ZipProbe");
+
+                    var landed = Logic.MapSlots.inSlot(into);
+
+                    if (landed == null)
+                    {
+                        Console.WriteLine("[zip] FAILED - nothing is in the slot afterwards");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[zip]   installed as {landed.Name}, "
+                            + $"{new System.IO.FileInfo(landed.Path).Length:N0} bytes");
+
+                        //The two paks will NOT be byte-identical and should not be expected to
+                        //be: the level is repacked, and the slot name is written into it. What
+                        //has to match is the CONTENT, so the level is read out of both and
+                        //compared.
+                        var a = System.IO.Path.Combine(work, "before");
+                        var b = System.IO.Path.Combine(work, "after");
+
+                        Logic.MapSlots.export(from, a);
+                        Logic.MapSlots.export(into, b);
+
+                        var left = System.IO.Directory.GetFiles(a, "*",
+                            System.IO.SearchOption.AllDirectories);
+
+                        var same = 0;
+                        var differ = 0;
+
+                        foreach (var one in left)
+                        {
+                            var mirror = System.IO.Path.Combine(b,
+                                one.Substring(a.Length).TrimStart('\\', '/'));
+
+                            if (!System.IO.File.Exists(mirror))
+                            {
+                                Console.WriteLine($"[zip]   MISSING {one.Substring(a.Length)}");
+                                differ++;
+                                continue;
+                            }
+
+                            if (System.IO.File.ReadAllBytes(one).SequenceEqual(
+                                System.IO.File.ReadAllBytes(mirror)))
+                            {
+                                same++;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"[zip]   DIFFERS {one.Substring(a.Length)}");
+                                differ++;
+                            }
+                        }
+
+                        Console.WriteLine($"[zip] {same} file(s) identical, {differ} different");
+                        Console.WriteLine(differ == 0 && same > 0
+                            ? "[zip] ROUND TRIP OK"
+                            : "[zip] ROUND TRIP FAILED");
+                    }
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[zip] FAILED: {problem.Message}");
+                }
+                finally
+                {
+                    try
+                    {
+                        if (Logic.MapSlots.inSlot(into) != null)
+                        {
+                            Logic.MapSlots.clear(into);
+                            Console.WriteLine($"[zip] slot {into:00} emptied again");
+                        }
+
+                        if (System.IO.Directory.Exists(work))
+                        {
+                            System.IO.Directory.Delete(work, true);
+                        }
+                    }
+                    catch (Exception problem)
+                    {
+                        Console.WriteLine($"[zip] could not tidy up: {problem.Message}");
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_PUT=<x>;<y>;<z>[;<sink>] - the table's position, written by the app itself.
+            //
+            //Exists because a preference file written by anything OTHER than this app turned out
+            //to be a file this app could not read back - reported missing, for an hour, while it
+            //sat on disk. Handing the value to the app and letting it do the writing removes the
+            //whole question.
+            var probePut = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_PUT="));
+            if (probePut != null)
+            {
+                var bits = probePut.Substring("PROBE_PUT=".Length).Trim('"')
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+                float said(int at, float fallback = 0f)
+                    => bits.Length > at && float.TryParse(bits[at],
+                        System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var one)
+                        ? one : fallback;
+
+                if (bits.Length < 3)
+                {
+                    Console.WriteLine("[put] need PROBE_PUT=<x>;<y>;<z>[;<sink>]");
+                    this.Shutdown();
+                    return;
+                }
+
+                Logic.MapTable.moveTo(said(0), said(1), said(2), said(3));
+
+                var (px, py, pz, ps) = Logic.MapTable.where();
+                Console.WriteLine($"[put] written, and reads back as {px:F0} {py:F0} {pz:F0} "
+                    + $"(sink {ps:F0})");
+
+                try
+                {
+                    Logic.MapSlots.sync();
+                    Console.WriteLine("[put] table rebuilt");
+                }
+                catch (IOException)
+                {
+                    Console.WriteLine("[put] saved, but the game is open so the table was not "
+                        + "rebuilt");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_THEME=<folder>[;<pack>] - what a map is drawn with, and what it would be.
+            //
+            //Says the block-name COVERAGE of the pack against the map's original, because that
+            //is the number that decides whether a theme works: a pack defines the names it
+            //re-skins and nothing else, and the ones it leaves out have no definition anywhere
+            //once it is the only pack named. "dingyjungle" covers 375 of Creeper Woods' 376 and
+            //"jungle" covers 210, and only one of those is a theme a map survives.
+            //
+            //With no pack named it only reports. There is otherwise no way to exercise setTheme
+            //without the Maps tab, which is why a swap could be reasoned about and not tried.
+            var probeTheme = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_THEME="));
+            if (probeTheme != null)
+            {
+                var bits = probeTheme.Substring("PROBE_THEME=".Length).Trim('"')
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+                var folder = bits[0].Trim();
+
+                Console.WriteLine($"[theme] now drawn with: {Logic.MapMod.themeOf(folder) ?? "(none named)"}");
+
+                if (bits.Length > 1)
+                {
+                    var wanted = bits[1].Trim();
+
+                    if (!Logic.MapMod.setTheme(folder, wanted))
+                    {
+                        Console.WriteLine($"[theme] refused: {wanted}");
+                        this.Shutdown();
+                        return;
+                    }
+
+                    Console.WriteLine($"[theme] set to: {Logic.MapMod.themeOf(folder)}");
+
+                    try
+                    {
+                        var levelText = System.IO.File.ReadAllText(
+                            System.IO.Path.Combine(folder, "level.json"));
+
+                        var packs = System.Text.Json.Nodes.JsonNode.Parse(
+                            Logic.GameMaps.stripComments(levelText))?["resource-packs"];
+
+                        Console.WriteLine($"[theme] resource-packs now {packs?.ToJsonString()}");
+                    }
+                    catch (Exception problem)
+                    {
+                        Console.WriteLine($"[theme] could not read it back: {problem.Message}");
+                    }
+                }
+
+                this.Shutdown();
+                return;
+            }
+
+            //PROBE_OVER=<folder>;<mission> - a map folder installed over a mission, and LEFT there.
+            //
+            //PROBE_MAPS_IN does the same install and then deletes it again, which is right for
+            //testing that the writer works and useless for testing whether the GAME can load
+            //what was written. This one leaves it, so the next launch plays it.
+            //
+            //It exists because the question "does this map work over a real mission, as opposed
+            //to in a custom slot" is the one that splits a map being broken from the slot path
+            //being broken, and there was no way to ask it without a file dialog.
+            var probeOver = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_OVER="));
+            if (probeOver != null)
+            {
+                var bits = probeOver.Substring("PROBE_OVER=".Length).Trim('"')
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries);
+
+                if (bits.Length < 2)
+                {
+                    Console.WriteLine("[over] need PROBE_OVER=<folder>;<mission>");
+                    this.Shutdown();
+                    return;
+                }
+
+                var mission = Logic.GameMaps.all().FirstOrDefault(one =>
+                    one.Name.Equals(bits[1], StringComparison.OrdinalIgnoreCase));
+
+                if (mission == null)
+                {
+                    Console.WriteLine($"[over] no mission called {bits[1]}");
+                    this.Shutdown();
+                    return;
+                }
+
+                if (!System.IO.File.Exists(System.IO.Path.Combine(bits[0], "level.json")))
+                {
+                    Console.WriteLine($"[over] no level.json in {bits[0]}");
+                    this.Shutdown();
+                    return;
+                }
+
+                try
+                {
+                    var mod = Logic.MapMod.install(bits[0], mission);
+                    Console.WriteLine($"[over] {System.IO.Path.GetFileName(mod.Path)}, "
+                        + $"{mod.Size / 1024:N0} KB, installed over {mission.Label} and LEFT "
+                        + "there - play the mission, then Remove to put the game's own back");
+                }
+                catch (Exception problem)
+                {
+                    Console.WriteLine($"[over] failed: {problem.Message}");
+                }
+
+                this.Shutdown();
+                return;
+            }
+
             //PROBE_LOADED=<part of a name> - everything the game is holding whose name contains it.
             //
             //PROBE_STRUCT asks by exact name, which is the wrong question when the question is

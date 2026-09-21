@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -3090,6 +3090,195 @@ namespace MCDSaveEdit.Logic
         /// In place, because the whole point of doing this here rather than in a browser is that
         /// the app already owns these files - no downloads, no putting things back by hand.
         /// </summary>
+        /// <summary>
+        /// Puts a tile's player start, exit and doors back on the ground after the tile grows.
+        ///
+        /// Bringing a world back from Minecraft replaces a tile's BLOCKS and leaves everything
+        /// else where it was. That is right for a map whose shape has not changed and wrong the
+        /// moment it has: a 30x30 baseline built out into a 192x160 island keeps its player start
+        /// at x=7, y=8 - which in the new map is underground, or in the sea, or in mid-air. The
+        /// game is handed a level whose spawn is inside solid rock, and it does not survive it.
+        ///
+        /// The tile already knows where its surface is. A height plane is one byte per column -
+        /// exactly a top-down picture - so each marker is looked up rather than searched for, and
+        /// dropped on top of whatever is under it.
+        ///
+        /// What this deliberately does NOT do is decide where the interesting part of the map is.
+        /// It keeps every marker at the x and z somebody placed it at and only corrects the
+        /// height. Moving them sideways would be guessing at which corner of a map six times
+        /// bigger the player is meant to begin in, and a wrong guess there is a spawn in the
+        /// ocean - which looks exactly like this bug and would be harder to explain.
+        /// </summary>
+        /// <returns>How many markers were lifted.</returns>
+        public static int settle(Map map)
+        {
+            var moved = 0;
+
+            foreach (var room in map.Rooms)
+            {
+                var heights = heightsOf(room);
+                if (heights == null) { continue; }
+
+                var wide = room.Size[0];
+                var deep = room.Size[2];
+
+                int? groundAt(int x, int z)
+                {
+                    if (x < 0 || z < 0 || x >= wide || z >= deep) { return null; }
+
+                    var height = heights[z * wide + x];
+
+                    //Zero is the gap between rooms rather than a floor at sea level, so a marker
+                    //over one is left alone: there is nothing there to stand on and inventing a
+                    //height would put it in the air.
+                    return height == 0 ? null : height;
+                }
+
+                //The nearest column that HAS ground, when the marker's own column has none.
+                //
+                //Lifting alone is not enough and the reason is worth stating: a height of zero is
+                //not "sea level", it is "nothing here". An island built inside a bigger tile
+                //leaves most columns empty, and the baseline's markers sit in a corner that is
+                //now open air - so raising them puts the spawn in the sky instead of in rock.
+                //
+                //Moving sideways IS a guess, which is why it is the second choice and why it is
+                //reported. Nearest is the least surprising guess available: it keeps the marker
+                //as close as possible to where somebody put it, and the alternative - the middle
+                //of the map, or the biggest landmass - would move it further for no better
+                //reason.
+                //Where the LAND is, rather than where the old marker was.
+                //
+                //"Nearest ground to where it used to be" sounded like the least surprising rule
+                //and is the wrong one. A small baseline built out into a big island leaves the
+                //old corner empty, and the nearest ground to an empty corner is the map's outer
+                //EDGE - so the spawn ends up in the far corner of somewhere six times bigger,
+                //which reads in game as being dumped outside the map.
+                //
+                //The middle of the land is a better guess for the same reason a person would
+                //make it: it is where the map is. The centre of mass is taken over every column
+                //that has ground, then snapped to a column that really has some - a centroid can
+                //easily land in a lake, or in the gap between two arms of an island.
+                (int x, int z)? middleOfTheLand()
+                {
+                    long sumX = 0;
+                    long sumZ = 0;
+                    long count = 0;
+
+                    for (var z = 0; z < deep; z++)
+                    {
+                        for (var x = 0; x < wide; x++)
+                        {
+                            if (heights[z * wide + x] == 0) { continue; }
+
+                            sumX += x;
+                            sumZ += z;
+                            count++;
+                        }
+                    }
+
+                    if (count == 0) { return null; }
+
+                    var midX = (int)(sumX / count);
+                    var midZ = (int)(sumZ / count);
+
+                    var best = ((int x, int z)?)null;
+                    var bestAway = long.MaxValue;
+
+                    for (var z = 0; z < deep; z++)
+                    {
+                        for (var x = 0; x < wide; x++)
+                        {
+                            if (heights[z * wide + x] == 0) { continue; }
+
+                            long dx = x - midX;
+                            long dz = z - midZ;
+                            var away = dx * dx + dz * dz;
+
+                            if (away >= bestAway) { continue; }
+
+                            bestAway = away;
+                            best = (x, z);
+                        }
+                    }
+
+                    return best;
+                }
+
+                bool lift(JsonNode? node, string what)
+                {
+                    if (node?["pos"] is not JsonArray at || at.Count < 3) { return false; }
+
+                    var x = at[0]?.GetValue<int>() ?? 0;
+                    var y = at[1]?.GetValue<int>() ?? 0;
+                    var z = at[2]?.GetValue<int>() ?? 0;
+
+                    var ground = groundAt(x, z);
+
+                    if (ground == null)
+                    {
+                        var found = middleOfTheLand();
+                        if (found == null) { return false; }
+
+                        ground = groundAt(found.Value.x, found.Value.z);
+                        if (ground == null) { return false; }
+
+                        at[0] = JsonValue.Create(found.Value.x);
+                        at[2] = JsonValue.Create(found.Value.z);
+                        at[1] = JsonValue.Create(ground.Value);
+
+                        map.Notes.Add($"{what} had no ground under it at {x},{z} - moved to "
+                            + $"the middle of the land at {found.Value.x},{found.Value.z}, "
+                            + $"height {ground.Value}");
+
+                        return true;
+                    }
+
+                    if (ground.Value == y) { return false; }
+
+                    at[1] = JsonValue.Create(ground.Value);
+                    map.Notes.Add($"{what} lifted from {y} to {ground.Value}");
+                    return true;
+                }
+
+                //Only the things somebody stands on or walks through. Everything else in a tile
+                //is placed relative to the blocks around it and moving it would be vandalism.
+                foreach (var region in room.Tile["regions"] as JsonArray ?? new JsonArray())
+                {
+                    var tags = region?["tags"]?.GetValue<string>() ?? string.Empty;
+                    var name = region?["name"]?.GetValue<string>() ?? string.Empty;
+
+                    if (tags.IndexOf("playerstart", StringComparison.OrdinalIgnoreCase) < 0
+                        && !string.Equals(name, "playerstart", StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(name, "exit", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    if (lift(region, name.Length > 0 ? name : "a region"))
+                    {
+                        moved++;
+
+                        //save() writes only what is listed here. Mutating the JSON and not
+                        //saying so means the edit lives in memory, gets reported as done, and
+                        //never reaches the file - which is exactly what happened the first time.
+                        map.Changed.Add(room.File);
+                    }
+                }
+
+                foreach (var door in room.Tile["doors"] as JsonArray ?? new JsonArray())
+                {
+                    var named = door?["name"]?.GetValue<string>() ?? "a door";
+                    if (lift(door, $"door \"{named}\""))
+                    {
+                        moved++;
+                        map.Changed.Add(room.File);
+                    }
+                }
+            }
+
+            return moved;
+        }
+
         public static int save(Map map)
         {
             var written = 0;

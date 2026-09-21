@@ -171,14 +171,82 @@ namespace MCDSaveEdit.Logic
                     //right answer for it: it was placed at the height it was placed at.
                     return (x, y, z, at(3));
                 }
+
+                //Read, but not understood. Worth saying out loud: it is the difference between
+                //a preference that is missing and one that is being ignored, and from the
+                //outside those look identical - the table simply goes back to the Merchant.
+                Services.Journal.note($"table: could not read a position out of "
+                    + $"\"{string.Join(" ", said)}\" - using the Mystery Merchant");
+            }
+            catch (Exception problem)
+            {
+                //A position that cannot be read is a table at home, not an error. The file is a
+                //preference and the Camp gets its table either way - but silence here is what
+                //made a table that walked back to the Merchant impossible to explain three
+                //times over, so it is recorded.
+                Services.Journal.note($"table: no remembered position ({problem.Message}) "
+                    + "- using the Mystery Merchant");
+            }
+
+            //Where it ALREADY stands, before the Mystery Merchant.
+            //
+            //The preference was reported missing while the file was sitting on disk - a lock, an
+            //indexer, a scanner, something transient. Falling straight back to HOME turns that
+            //momentary failure into a permanent move across the Camp, which is exactly what it
+            //did, three times, while every line of this reported success.
+            //
+            //So the installed table is asked first. A table that is already in the game knows
+            //where it stands better than a constant does, and the worst this can do is leave it
+            //where it was - which is what somebody whose preference file could not be read
+            //wanted anyway.
+            var standing = whereItStands();
+            if (standing != null) { return (standing.Value.x, standing.Value.y, standing.Value.z, 0f); }
+
+            return (HOME.x, HOME.y, HOME.z, 0f);
+        }
+
+        /// <summary>
+        /// Where the table installed in the game currently stands, read out of its own pak.
+        ///
+        /// The installed table is a record of the last position that actually worked, and it is
+        /// a better answer than a constant for anybody whose preference file cannot be read this
+        /// second. Null when nothing is installed, which is the one case where there genuinely
+        /// is no prior position.
+        /// </summary>
+        private static (float x, float y, float z)? whereItStands()
+        {
+            try
+            {
+                var pak = installed();
+                if (pak == null) { return null; }
+
+                foreach (var one in ModPak.read(pak))
+                {
+                    if (!one.Path.EndsWith("MapTable.uexp", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    //The header is needed to make sense of the data, and it is in the same pak.
+                    foreach (var head in ModPak.read(pak))
+                    {
+                        if (!head.Path.EndsWith("MapTable.umap",
+                            StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        return CookedEdit.vectorOf(
+                            CookedEdit.read(head.Data, one.Data), "RelativeLocation");
+                    }
+                }
             }
             catch (Exception)
             {
-                //A position that cannot be read is a table at home, not an error. The file is a
-                //preference and the Camp gets its table either way.
+                //An unreadable table is no worse than no table: fall through to HOME.
             }
 
-            return (HOME.x, HOME.y, HOME.z, 0f);
+            return null;
         }
 
         /// <summary>Whether the table is where it was cooked to stand.</summary>
@@ -208,6 +276,66 @@ namespace MCDSaveEdit.Logic
             File.WriteAllText(file, string.Format(CultureInfo.InvariantCulture,
                 "{0} {1} {2} {3}", x, y, z, sink));
         }
+
+        /// <summary>
+        /// Which way the prop faces, in degrees of yaw.
+        ///
+        /// Written by the installer rather than trusted from the cooked level, and that is not
+        /// belt-and-braces. Spawning the actor with a rotation put **(0, 180, 180)** in the
+        /// asset when one 180 was asked for - the extra one landed in ROLL, which turned the
+        /// statue upside down, so it hung below its own pivot and read in game as "the prop has
+        /// gone underground". Stating all three angles here means the generator's quirk cannot
+        /// reach the game, whatever caused it.
+        ///
+        /// The level still has to be AUTHORED with a rotation, though, and that part cannot move
+        /// here: Unreal serialises only what differs from the class default, so a prop spawned
+        /// facing forward has no RelativeRotation in the package at all and there is nothing for
+        /// this to write into. The generator creates the twelve bytes; this decides what goes in
+        /// them.
+        /// </summary>
+        public static float facing()
+        {
+            try
+            {
+                var said = File.ReadAllText(facingAt());
+
+                if (float.TryParse(said, NumberStyles.Float, CultureInfo.InvariantCulture,
+                    out var one))
+                {
+                    return one;
+                }
+            }
+            catch (Exception)
+            {
+                //Unreadable means the angle it was built with, which is a prop facing the plaza.
+            }
+
+            return FACES;
+        }
+
+        /// <summary>Turns it. Takes effect on the next install, like everything else here.</summary>
+        public static void turnTo(float yaw)
+        {
+            var file = facingAt();
+
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+                File.WriteAllText(file, yaw.ToString(CultureInfo.InvariantCulture));
+            }
+            catch (Exception problem)
+            {
+                Console.WriteLine($"[table] the angle could not be saved: {problem.Message}");
+            }
+        }
+
+        /// <summary>The angle the prop is authored with, and the one it falls back to.</summary>
+        public const float FACES = 180f;
+
+        private static string facingAt()
+            => Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "MCDReborn", "table-facing.txt");
 
         /// <summary>Puts it back beside the Mystery Merchant.</summary>
         public static void moveHome()
@@ -264,6 +392,15 @@ namespace MCDSaveEdit.Logic
         public static CustomSkins.InstalledMod installBuiltIn(ICollection<int> filled,
             IReadOnlyDictionary<int, string> names)
         {
+            //Asked BEFORE the old pak is deleted, because the old pak is one of the answers.
+            //
+            //where() falls back to the installed table when the preference file cannot be read,
+            //and remove() was running first - so by the time anything asked, the record it would
+            //have read was already gone. The fallback was dead on arrival, and every install
+            //that could not read the preference put the table back at the Mystery Merchant while
+            //reporting success. That is the bug that kept moving the statue.
+            var standing = where();
+
             remove();
 
             var entries = new List<PakWriter.Entry>();
@@ -282,7 +419,7 @@ namespace MCDSaveEdit.Logic
 
                 if (string.Equals(file, LEVEL, StringComparison.Ordinal))
                 {
-                    stand(head, data);
+                    stand(head, data, standing);
                 }
 
                 entries.Add(new PakWriter.Entry(inside + header, head));
@@ -308,14 +445,27 @@ namespace MCDSaveEdit.Logic
         /// compiled bytecode. It only matters if the table is parked within a few metres of
         /// something else clickable, and then it matters a great deal.
         /// </summary>
-        private static void stand(byte[] header, byte[] data)
+        private static void stand(byte[] header, byte[] data,
+            (float x, float y, float z, float sink) standing)
         {
-            var (x, y, z, _) = where();
+            var (x, y, z, _) = standing;
 
             try
             {
                 var package = CookedEdit.read(header, data);
                 var moved = CookedEdit.setVector(package, "RelativeLocation", x, y, z);
+
+                //Pitch, Yaw, Roll - the order FRotator declares and therefore serialises in. Zero
+                //pitch and zero ROLL are the two that matter: a prop with roll is on its side or
+                //upside down, and an upside-down prop hangs below its own pivot, which looks
+                //exactly like a position that is too low.
+                var turned = CookedEdit.setVector(package, "RelativeRotation", 0f, facing(), 0f);
+
+                if (turned != 1)
+                {
+                    Console.WriteLine($"[table] the prop's rotation was not written ({turned} "
+                        + "found) - it will face whatever it was cooked facing");
+                }
 
                 //Exactly one actor is placed in this level, so anything but one means the level
                 //is not the shape this was written against and the table may be half-moved.
@@ -324,6 +474,42 @@ namespace MCDSaveEdit.Logic
                     Console.WriteLine($"[table] expected one placed actor, found {moved} - "
                         + "the table's position may not be what was asked for");
                 }
+
+                //Read back what was actually written, and refuse to ship anything else.
+                //
+                //Three times now the table has arrived in the Camp at the Mystery Merchant with
+                //every line of this having reported success, and each explanation turned out to
+                //be a different guess. A patch that says it worked and a patch that worked are
+                //only the same thing if somebody checks, so this checks: the bytes are read back
+                //out of the buffer that is about to be packed, and a mismatch throws rather than
+                //being written to somebody's game.
+                var wrote = CookedEdit.read(package.Header, package.Data);
+                var back = CookedEdit.vectorOf(wrote, "RelativeLocation");
+
+                if (back == null || Math.Abs(back.Value.x - x) > 0.01f
+                    || Math.Abs(back.Value.y - y) > 0.01f
+                    || Math.Abs(back.Value.z - z) > 0.01f)
+                {
+                    throw new InvalidOperationException(
+                        $"the table was told to stand at {x:F0} {y:F0} {z:F0} and reads back as "
+                        + (back == null ? "nothing at all" : $"{back.Value.x:F0} "
+                            + $"{back.Value.y:F0} {back.Value.z:F0}"));
+                }
+
+                Services.Journal.note($"table: standing at {x:F0} {y:F0} {z:F0}, facing "
+                    + $"{facing():F0}");
+
+                //Written back through the app's own hands, every time it installs successfully.
+                //
+                //The preference file was reported missing for an hour while it sat on disk,
+                //readable by everything except this app - because it had been written by a tool
+                //outside it, and whatever Windows made of that, this process could not open it.
+                //Rewriting it here means the file is always one the app itself created, which is
+                //the one kind it is certain to be able to read back.
+                //
+                //It costs a few bytes per install and it closes the hole that kept putting the
+                //table back at the Mystery Merchant.
+                moveTo(x, y, z, standing.sink);
             }
             catch (Exception problem)
             {

@@ -147,6 +147,18 @@ PROPS = [
         'reach': 250.0,
 
         'where': (15950.0, 9150.0, 11800.0),
+
+        #Which way it faces, in degrees of yaw.
+        #
+        #Authored NON-ZERO on purpose, and that is the whole reason this key exists rather than
+        #being left at the default. Unreal serialises only what differs from the class default,
+        #so a prop spawned facing forward has NO RelativeRotation in the cooked level at all -
+        #there is no property to edit and nothing to patch, which is the same wall the panel's
+        #slots hit with Visibility. Writing a real angle here creates the twelve bytes, and from
+        #then on MCD Reborn can turn the prop in place with no editor and no cook.
+        #
+        #180 because the statue arrived with its back to the plaza.
+        'facing': 180.0,
         'opens': '/Game/MCDReborn/UI/UMG_MCDRebornMaps',
         'trigger': 'Lobby',
     },
@@ -382,7 +394,17 @@ def build_level(prop, actor):
     #reflection, and it wants the plugin's own vector type - handed a
     #unreal_engine.structs.Vector it answers "location must be an FVector", which reads like the
     #numbers being wrong rather than the type.
-    placed = world.actor_spawn(actor.GeneratedClass, ue.FVector(x, y, z))
+    #ue.FRotator is (pitch, yaw, roll), the same order the struct serialises in - so a value put
+    #in the wrong slot tips the prop over instead of turning it, which is easy to see and easy to
+    #misread as the rotation not having applied at all.
+    turn = ue.FRotator(0.0, float(prop.get('facing', 0.0)), 0.0)
+
+    try:
+        placed = world.actor_spawn(actor.GeneratedClass, ue.FVector(x, y, z), turn)
+    except Exception as problem:
+        say('could not spawn with a rotation (%s) - placing it unturned, which means the level '
+            'will carry no RelativeRotation to edit later' % problem)
+        placed = world.actor_spawn(actor.GeneratedClass, ue.FVector(x, y, z))
 
     #Said out loud because a prop at the origin is the failure this produces, and a Camp is big
     #enough that the origin is somewhere nobody walks.

@@ -332,6 +332,31 @@ namespace MCDSaveEdit.Logic
             return done;
         }
 
+        /// <summary>
+        /// Reads a Vector property back, so a write can be checked rather than trusted.
+        ///
+        /// The counterpart to <see cref="setVector"/>, and it exists because "the call returned
+        /// 1" and "the bytes say what I asked for" are different claims. Everything in this file
+        /// edits a buffer in place; nothing until now ever looked at the result.
+        /// </summary>
+        public static (float x, float y, float z)? vectorOf(Package package, string property)
+        {
+            foreach (var export in package.Exports)
+            {
+                var found = findTag(package, export, property);
+                if (found == null) { continue; }
+
+                var (at, size, kind) = found.Value;
+                if (kind != "StructProperty" || size != 12) { continue; }
+
+                return (BitConverter.ToSingle(package.Data, at),
+                    BitConverter.ToSingle(package.Data, at + 4),
+                    BitConverter.ToSingle(package.Data, at + 8));
+            }
+
+            return null;
+        }
+
         private static void writeString(BinaryWriter writer, string said)
         {
             writer.Write(said.Length + 1);

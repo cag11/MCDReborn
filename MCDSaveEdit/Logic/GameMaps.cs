@@ -80,9 +80,16 @@ namespace MCDSaveEdit.Logic
                 {
                     if (IsSlot)
                     {
-                        return ShownAs == null
-                            ? $"Custom {Slot:00}  (empty)"
-                            : $"{ShownAs}  (custom {Slot:00})";
+                        if (ShownAs != null) { return $"{ShownAs}  (custom {Slot:00})"; }
+
+                        //Three states, not two. A slot can hold a map that is not in the game
+                        //yet - New empty map makes one, and so does bringing a world back before
+                        //it is installed - and calling that "(empty)" contradicts the line right
+                        //underneath it saying how big the working folder is. Somebody who has
+                        //just made a map should not be told they have nothing.
+                        return Bytes > 0
+                            ? $"Custom {Slot:00}  (not installed)"
+                            : $"Custom {Slot:00}  (empty)";
                     }
 
                     var pretty = prettyName(Name);

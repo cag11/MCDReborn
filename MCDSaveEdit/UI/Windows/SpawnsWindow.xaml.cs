@@ -3065,7 +3065,17 @@ namespace MCDSaveEdit.UI
                 group["types"] = types;
             }
 
-            types.Add(JsonValue.Create(GameMobs.ALL.FirstOrDefault()?.Id ?? "zombie"));
+            //An OBJECT, the way the group's first mob is written and the way every level in the
+            //game writes all of them.
+            //
+            //This added a bare string, so a group built here read {"type":"zombie"} followed by
+            //"skeleton" - two shapes in one array, which nothing in the game does. The editor
+            //showed both quite happily, the level saved, and no mobs appeared: the group is read
+            //by the game, not by the editor.
+            types.Add(new JsonObject
+            {
+                ["type"] = GameMobs.ALL.FirstOrDefault()?.Id ?? "zombie",
+            });
             _map.Changed.Add("level.json");
 
             fillGroups();
@@ -3143,7 +3153,42 @@ namespace MCDSaveEdit.UI
             _busy = true;
             updateUI();
 
-            await saveNow();
+            if (await saveNow())
+            {
+                //Saving a map that is ALREADY in the game puts it back in the game.
+                //
+                //Save wrote the folder and stopped, which is a distinction nobody outside this
+                //window can see: the edits were on disk, the game kept playing the old pak, and
+                //the only sign was that nothing changed. The tab that opens this window promises
+                //"it saves and installs itself", and this is where that promise is kept.
+                //
+                //Only when it is already installed. Saving a map nobody has installed should not
+                //quietly put it in somebody's game.
+                try
+                {
+                    var already = _mission != null && (_mission.IsSlot
+                        ? MapSlots.inSlot(_mission.Slot) != null
+                        : MapMod.installedFor(_mission) != null);
+
+                    if (already)
+                    {
+                        var mod = _mission!.IsSlot
+                            ? MapSlots.install(_map.Folder, _mission.Slot,
+                                _mission.ShownAs ?? System.IO.Path.GetFileName(_map.Folder))
+                            : MapMod.install(_map.Folder, _mission);
+
+                        statusLabel.Text = string.Format(R.SPAWNS_INSTALLED,
+                            _mission.Label, System.IO.Path.GetFileName(mod.Path),
+                            mod.Size / 1024);
+
+                        Installed?.Invoke();
+                    }
+                }
+                catch (Exception problem)
+                {
+                    statusLabel.Text = problem.Message;
+                }
+            }
 
             lookAtInstall();
 
@@ -3179,7 +3224,18 @@ namespace MCDSaveEdit.UI
                     return;
                 }
 
-                var mod = MapMod.install(_map.Folder, _mission);
+                //Routed by WHAT is being edited, not by what this window was first written
+                //for. A custom slot is not installed the way a mission is: a mission is replaced
+                //in place, a slot is packed under its own name and revealed on the Camp's table.
+                //
+                //This called the mission path for both, so editing the spawns of a custom map
+                //wrote a pak the game never loads - the edits saved, the install reported
+                //success, and nothing changed in game. Which is indistinguishable, from the
+                //outside, from the save button not working.
+                var mod = _mission.IsSlot
+                    ? MapSlots.install(_map.Folder, _mission.Slot,
+                        _mission.ShownAs ?? System.IO.Path.GetFileName(_map.Folder))
+                    : MapMod.install(_map.Folder, _mission);
                 statusLabel.Text = string.Format(R.SPAWNS_INSTALLED,
                     _mission.Label, System.IO.Path.GetFileName(mod.Path), mod.Size / 1024);
 
