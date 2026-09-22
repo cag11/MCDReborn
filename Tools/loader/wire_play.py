@@ -127,7 +127,7 @@ def array(page, of, x, y, values=()):
     return node
 
 
-def launch(page, widget, gate, y):
+def launch(page, widget, gate, y, prefs):
     """
     Everything that happens when Play is pressed.
 
@@ -210,10 +210,44 @@ def launch(page, widget, gate, y):
     cast = page.graph_add_node_dynamic_cast(DungeonsGameInstance, 2100, y + 1600)
     link(instance, 'ReturnValue', cast, 'Object')
 
+    #--- remembered, before anything travels -----------------------------------------------
+    #
+    #Written on Play rather than on each button press, because Play is the moment the choice is
+    #real: somebody who opens a map, looks at the numbers and backs out has not decided anything,
+    #and saving as they browsed would rewrite that map's settings from a glance.
+    #
+    #Created fresh rather than loaded and amended. The object holds three ints and all three are
+    #about to be overwritten, so reading the old one first would be a load, a cast and a branch
+    #to arrive at exactly the same bytes.
+    say('step: remember')
+    made = page.graph_add_node_call_function(GameplayStatics.CreateSaveGameObject, 1800, y + 2000)
+    made.node_find_pin('SaveGameClass').default_object = prefs
+    link(gate, 'then', made, 'execute')
+
+    ours = page.graph_add_node_dynamic_cast(prefs, 2100, y + 2000)
+    link(made, 'ReturnValue', ours, 'Object')
+    link(made, 'then', ours, 'execute')
+    mcd_ui.reconstruct(ours)
+    holds = mcd_ui.as_pin(ours)
+
+    before = ours
+    for mine, theirs in [('Difficulty', 'Diff'), ('Threat', 'Threat'), ('Endless', 'Endless')]:
+        put = page.graph_add_node_variable_set(theirs, prefs, 2400, y + 2000)
+        link(ours, holds, put, 'self')
+        link(page.graph_add_node_variable_get(mine, None, 2200, y + 2150), mine, put, theirs)
+        link(before, 'then', put, 'execute')
+        before = put
+
+    written = page.graph_add_node_call_function(GameplayStatics.SaveGameToSlot, 2700, y + 2000)
+    link(ours, holds, written, 'SaveGameObject')
+    mcd_ui.set_default(written, 'SlotName', mcd_ui.PREFS_LAST)
+    written.node_find_pin('UserIndex').default_value = '0'
+    link(before, 'then', written, 'execute')
+
     #A Cast is impure, so it has to be RUN rather than read - an impure node with nothing on its
     #exec pins is pruned out of the graph entirely, and everything downstream then complains that
     #its target is unset.
-    link(gate, 'then', cast, 'execute')
+    link(written, 'then', cast, 'execute')
     mcd_ui.reconstruct(cast)
 
     #Reached as an attribute of the class, which is how every other call node in this folder is

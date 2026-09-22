@@ -114,6 +114,17 @@ namespace MCDSaveEdit.Logic
             //a class that is not there, which draws nothing and says nothing about why.
             ("/Game/MCDReborn/UI/UMG_MCDRebornSign_MapTable", "UMG_MCDRebornSign_MapTable",
                 ".uasset"),
+
+            //Where the panel remembers what each map was last played at. A USaveGame with three
+            //ints in it and nothing else - one save file per map, named for the slot, so the
+            //object never has to index anything.
+            //
+            //It carries no behaviour, which makes it easy to leave out and impossible to notice:
+            //the panel names this class when it writes and again when it reads, and a class the
+            //pak does not carry resolves to nothing at run time. Nothing errors. Every setting
+            //simply comes back as zero - which is the exact failure this whole feature exists to
+            //stop, wearing a different hat.
+            ("/Game/MCDReborn/BP_MCDRebornMapPrefs", "BP_MCDRebornMapPrefs", ".uasset"),
         };
 
         /// <summary>

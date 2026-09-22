@@ -78,6 +78,9 @@ from unreal_engine.classes import (                                             
     Button,
     CanvasPanel,
     KismetMathLibrary,
+    KismetTextLibrary,
+    GameplayStatics,
+    SaveGame,
     ScrollBox,
     TextBlock,
     UserWidget,
@@ -89,7 +92,7 @@ from unreal_engine.classes import (                                             
 
 import mcd_ui                                                                     # noqa: E402
 import wire_play                                                                  # noqa: E402
-from mcd_ui import (say, keep, on_disk, link, pin, place, stretch, label, fill,      # noqa: E402
+from mcd_ui import (say, keep, on_disk, as_pin, link, pin, place, stretch, label, fill,      # noqa: E402
                     button, stub_font, event)
 
 
@@ -152,6 +155,46 @@ DEBOUNCE = 20
 #Fractions rather than pixels. See the note above about the button that ended up off the canvas.
 PANEL = (0.14, 0.10, 0.86, 0.90)
 PAD = 0.02
+
+
+PREFS = '/Game/MCDReborn/BP_MCDRebornMapPrefs'
+
+#ONE save file for the whole panel, not one per map.
+#
+#Per-map was built first and taken out again. The game itself does not remember a difficulty per
+#mission - it remembers the last one you played - and matching that is both simpler and what
+#somebody expects: setting Apocalypse +25 once should stick until it is changed, not until the
+#next map is opened. It also deletes a hundred per-button nodes and the whole question of what a
+#map that has never been played should inherit.
+
+
+def prefs_class():
+    """
+    The tiny USaveGame the panel remembers a map's settings in.
+
+    Built here rather than by hand because everything else in this folder is, and because the
+    class has to exist at COOK time for the panel to reference it: a widget that names a class
+    the pak does not carry resolves it to nothing at run time and every read comes back zero.
+
+    Three ints, no methods. It is a record, not behaviour.
+    """
+    there = on_disk(PREFS, 'Blueprint')
+    if there is None:
+        there = ue.create_blueprint(SaveGame, PREFS)
+        say('prefs save class created: ' + PREFS)
+
+    for name in ['Diff', 'Threat', 'Endless']:
+        try:
+            ue.blueprint_add_member_variable(there, name, 'int')
+        except Exception as problem:
+            #Already present on a rebuild, which is not a failure.
+            say('  prefs field %s: %s' % (name, problem))
+
+    ue.blueprint_mark_as_structurally_modified(there)
+    ue.compile_blueprint(there)
+    keep(there)
+
+    return there.GeneratedClass
 
 
 def missions():
@@ -408,8 +451,13 @@ def variables(widget):
     #furthest unlock is not, and a panel compiled into the exe cannot read a save anyway.
     starts_at = {'Difficulty': '1', 'Threat': '1'}
 
+    #`Pending` says a map was just picked and the remembered settings have not been read back
+    #yet. The read is ONE branch shared by all hundred buttons rather than a copy inside each -
+    #the panel is a per-frame chain of tests, so a flag costs one node per button and the
+    #alternative costs thirty.
     for name, kind in [('Chosen', 'string'), ('Mission', 'int'), ('Difficulty', 'int'),
-                       ('Threat', 'int'), ('Endless', 'int'), ('Busy', 'int')]:
+                       ('Threat', 'int'), ('Endless', 'int'), ('Busy', 'int'),
+                       ('Pending', 'int')]:
         ue.blueprint_add_member_variable(widget, name, kind, False, starts_at.get(name, ''))
 
     ue.blueprint_mark_as_structurally_modified(widget)
@@ -465,7 +513,7 @@ def hold(page, y):
     return node
 
 
-def build_graph(widget, made):
+def build_graph(widget, made, prefs):
     page = widget.UberGraphPages[0]
     tick = event(widget, UserWidget, 'Tick', 0, 0)
 
@@ -515,15 +563,141 @@ def build_graph(widget, made):
         says(shown, said)
         link(numbered, 'then', shown, 'execute')
 
+        #A note that the remembered settings have not been read back yet. One node per button;
+        #the reading itself is one branch further down.
+        asked = page.graph_add_node_variable_set('Pending', None, 1100, y + 320)
+        asked.node_find_pin('Pending').default_value = '1'
+        link(shown, 'then', asked, 'execute')
+
         turn = page.graph_add_node_call_function(WidgetSwitcher.SetActiveWidgetIndex, 1900, y)
         link(page.graph_add_node_variable_get('Pages', None, 1700, y + 140), 'Pages', turn, 'self')
         turn.node_find_pin('Index').default_value = '1'
-        link(shown, 'then', turn, 'execute')
+        link(asked, 'then', turn, 'execute')
 
         held = hold(page, y)
         link(turn, 'then', held, 'execute')
 
         y += 340
+
+    #--- what that map was last played at -------------------------------------------------------
+    #
+    #One copy, reached through the Pending flag, rather than one inside each of the hundred
+    #buttons - which would be three thousand nodes for the same behaviour. It runs the frame
+    #AFTER a map is picked, which is invisible: page two is already up and the readouts change
+    #long before anything on it can be pressed.
+    #
+    #A map with no save file yet falls to Default and threat 1, not to nothing. That is the whole
+    #reason this exists - zero is not a difficulty the panel offers, and a level launched at
+    #difficulty zero plays as one with no mobs in it.
+    waiting = page.graph_add_node_call_function(KismetMathLibrary.Greater_IntInt, 300, y)
+    link(page.graph_add_node_variable_get('Pending', None, 60, y), 'Pending', waiting, 'A')
+    waiting.node_find_pin('B').default_value = '0'
+
+    gate = page.graph_add_node(K2Node_IfThenElse, 780, y)
+    link(waiting, 'ReturnValue', gate, 'Condition')
+    chain(gate)
+
+    #The one remembered setting, read whenever a map is picked. Whichever map it was last set
+    #on, it applies to all of them - see the note by PREFS_LAST about why this is not per map.
+    there = page.graph_add_node_call_function(GameplayStatics.DoesSaveGameExist, 1100, y)
+    mcd_ui.set_default(there, 'SlotName', mcd_ui.PREFS_LAST)
+    there.node_find_pin('UserIndex').default_value = '0'
+    link(gate, 'then', there, 'execute')
+
+    known = page.graph_add_node(K2Node_IfThenElse, 1500, y)
+    link(there, 'ReturnValue', known, 'Condition')
+    link(there, 'then', known, 'execute')
+
+    #--- something to go on: read it back
+    read = page.graph_add_node_call_function(GameplayStatics.LoadGameFromSlot, 1800, y)
+    mcd_ui.set_default(read, 'SlotName', mcd_ui.PREFS_LAST)
+    read.node_find_pin('UserIndex').default_value = '0'
+    link(known, 'then', read, 'execute')
+
+    mine = page.graph_add_node_dynamic_cast(prefs, 2150, y)
+    link(read, 'ReturnValue', mine, 'Object')
+    link(read, 'then', mine, 'execute')
+    mcd_ui.reconstruct(mine)
+    holds = as_pin(mine)
+
+    before = None
+    for ours, theirs in [('Difficulty', 'Diff'), ('Threat', 'Threat'), ('Endless', 'Endless')]:
+        got = page.graph_add_node_variable_get(theirs, prefs, 2450, y + 200)
+        link(mine, holds, got, 'self')
+
+        put = page.graph_add_node_variable_set(ours, None, 2700, y)
+        link(got, theirs, put, ours)
+        link(mine if before is None else before, 'then', put, 'execute')
+
+        before, y = put, y + 170
+
+    #--- nothing has been played yet on this install: the floor
+    fresh = None
+    for ours, first in [('Difficulty', '1'), ('Threat', '1'), ('Endless', '0')]:
+        put = page.graph_add_node_variable_set(ours, None, 1800, y)
+        put.node_find_pin(ours).default_value = first
+        link(known, 'else', put, 'execute') if fresh is None else link(fresh, 'then', put, 'execute')
+        fresh, y = put, y + 170
+
+    #--- either way, say so on screen
+    #
+    #Difficulty is a WORD rather than its number, so it is chosen rather than converted. Two
+    #nested picks cover the three the panel offers, which is the same thing as a switch and
+    #fewer nodes.
+    is_two = page.graph_add_node_call_function(KismetMathLibrary.EqualEqual_IntInt, 300, y)
+    link(page.graph_add_node_variable_get('Difficulty', None, 60, y), 'Difficulty', is_two, 'A')
+    is_two.node_find_pin('B').default_value = '2'
+
+    is_three = page.graph_add_node_call_function(KismetMathLibrary.EqualEqual_IntInt, 300, y + 140)
+    link(page.graph_add_node_variable_get('Difficulty', None, 60, y + 140), 'Difficulty',
+         is_three, 'A')
+    is_three.node_find_pin('B').default_value = '3'
+
+    middle = page.graph_add_node_call_function(KismetMathLibrary.SelectString, 600, y)
+    mcd_ui.set_default(middle, 'A', 'Adventure')
+    mcd_ui.set_default(middle, 'B', 'Default')
+    link(is_two, 'ReturnValue', middle, 'bPickA')
+
+    worst = page.graph_add_node_call_function(KismetMathLibrary.SelectString, 900, y)
+    mcd_ui.set_default(worst, 'A', 'Apocalypse')
+    link(middle, 'ReturnValue', worst, 'B')
+    link(is_three, 'ReturnValue', worst, 'bPickA')
+
+    worded = page.graph_add_node_call_function(KismetTextLibrary.Conv_StringToText, 1200, y)
+    link(worst, 'ReturnValue', worded, 'InString')
+
+    told = page.graph_add_node_call_function(TextBlock.SetText, 1500, y)
+    link(page.graph_add_node_variable_get('DifficultyValue', None, 1300, y + 140),
+         'DifficultyValue', told, 'self')
+    link(worded, 'ReturnValue', told, 'InText')
+
+    #Both branches arrive here. Two exec outputs into one input is allowed, and it is what keeps
+    #the readout wiring from being written twice.
+    link(before, 'then', told, 'execute')
+    link(fresh, 'then', told, 'execute')
+
+    last = told
+    for ours, label in [('Threat', 'ThreatValue'), ('Endless', 'EndlessValue')]:
+        y += 170
+        number = page.graph_add_node_call_function(KismetTextLibrary.Conv_IntToText, 1200, y)
+        link(page.graph_add_node_variable_get(ours, None, 1000, y + 140), ours, number, 'Value')
+
+        #Grouping off - it is the thing that puts a comma in a four figure number, and these are
+        #a threat level and a tier rather than quantities.
+        mcd_ui.set_default(number, 'bUseGrouping', 'false')
+
+        one = page.graph_add_node_call_function(TextBlock.SetText, 1500, y)
+        link(page.graph_add_node_variable_get(label, None, 1300, y + 140), label, one, 'self')
+        link(number, 'ReturnValue', one, 'InText')
+        link(last, 'then', one, 'execute')
+        last = one
+
+    y += 170
+    settled = page.graph_add_node_variable_set('Pending', None, 1800, y)
+    settled.node_find_pin('Pending').default_value = '0'
+    link(last, 'then', settled, 'execute')
+
+    y += 340
 
     #--- how hard -------------------------------------------------------------------------------
     for store, prefix, entries in [('Difficulty', 'Diff', made['difficulty']),
@@ -570,7 +744,7 @@ def build_graph(widget, made):
     #the GAME's. When the panel works and nothing launches, that is the line between the halves.
     gate = pressed(page, widget, 'Play', y)
     chain(gate)
-    wire_play.launch(page, widget, gate, y)
+    wire_play.launch(page, widget, gate, y, prefs)
     y += 340
 
     gate = pressed(page, widget, 'Close', y)
@@ -602,7 +776,7 @@ def main():
 
     variables(widget)
     made = build_tree(widget, list_of)
-    build_graph(widget, made)
+    build_graph(widget, made, prefs_class())
 
     keep(widget)
     say('panel built: ' + WIDGET)
