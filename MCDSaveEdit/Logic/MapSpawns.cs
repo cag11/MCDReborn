@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -779,6 +779,82 @@ namespace MCDSaveEdit.Logic
             return true;
         }
 
+        /// <summary>
+        /// Points a door INTO a sub-area instead of at another door.
+        ///
+        /// The counterpart of <see cref="linkDoors"/>, and the same file field. They are NOT
+        /// alternatives, which is the thing to know here: across the game's 56 levels, 290
+        /// teleports carry "dungeons" and "exit" together - the dungeons say which sub-area is
+        /// entered and the exit says which door is arrived at inside it. Only 256 carry dungeons
+        /// alone.
+        ///
+        /// So this sets the destination on whatever the door already had rather than replacing
+        /// the entry. Writing it as a replacement - which is what it did first - threw away a
+        /// working exit every time somebody pointed an already-linked door at a sub-area, and
+        /// left a descent that arrives nowhere in particular.
+        ///
+        /// More than one dungeon is allowed and is how the game gets variety: Creeper Woods sends
+        /// one door at a choice of three crypts. They are comma separated, which is the shape
+        /// <see cref="Teleport.Dungeons"/> already reads back.
+        ///
+        /// Existed because there was no way to write one. Reading a descent worked, drawing it
+        /// worked, and the only way to MAKE one was to hand-edit the level file - which is not a
+        /// thing this app asks anybody to do.
+        /// </summary>
+        public static bool linkDungeon(Map map, Room room, string door, string dungeons,
+                                       string look)
+        {
+            if (door.Length == 0 || dungeons.Trim().Length == 0) { return false; }
+
+            var row = rowFor(map, room);
+
+            if (row["teleports"] is not JsonArray ports)
+            {
+                ports = new JsonArray();
+                row["teleports"] = ports;
+            }
+
+            //The door's existing entry, if it has one, so an exit already on it survives.
+            var made = ports.OfType<JsonObject>().FirstOrDefault(one =>
+                string.Equals(one["door"]?.GetValue<string>(), door, StringComparison.OrdinalIgnoreCase));
+
+            if (made == null)
+            {
+                made = new JsonObject { ["door"] = door };
+                ports.Add(made);
+            }
+
+            made["dungeons"] = new JsonArray(dungeons
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(one => (JsonNode?)JsonValue.Create(one.Trim()))
+                .ToArray());
+
+            //A descent with no prefab is a hole in the wall. The game draws nothing there and the
+            //player walks into it by accident, so a look is written whenever one is offered.
+            if (look.Length > 0) { made["object"] = look; }
+
+            return true;
+        }
+
+        /// <summary>Stops a door leading into any sub-area, leaving whatever else it had.</summary>
+        public static bool unlinkDungeon(Map map, Room room, string door)
+        {
+            var row = rowFor(map, room);
+            if (row["teleports"] is not JsonArray ports) { return false; }
+
+            var found = ports.OfType<JsonObject>().FirstOrDefault(one =>
+                string.Equals(one["door"]?.GetValue<string>(), door, StringComparison.OrdinalIgnoreCase));
+
+            if (found == null || found["dungeons"] == null) { return false; }
+
+            found.Remove("dungeons");
+
+            //An entry that now says nothing at all is a door with a prefab and no destination,
+            //which the game reads as a place you ARRIVE. That is a real shape - 546 of them ship
+            //- so it is left rather than tidied away.
+            return true;
+        }
+
         /// <summary>Takes any teleport off a door.</summary>
         public static bool unlinkDoor(Map map, Room room, string door)
         {
@@ -1446,6 +1522,19 @@ namespace MCDSaveEdit.Logic
         ///
         /// Ordered by how obvious the thing is to walk up to rather than by how often the game
         /// uses it. A bell and a lever read as "press me" to anybody; a magic book does not.
+        ///
+        /// The base game's own come first and carry no marker. After them are BUTTONS, which are
+        /// the thing people actually want - press one, a wall opens - and almost every button
+        /// this game has shipped since launch lives in a DLC. The rule above has not changed: a
+        /// prefab that is not installed is a mission that does not start. What changed is that
+        /// refusing to list them did not stop anybody using them; the community's Blossoming
+        /// Isles reaches straight past this list for an End button, which is where the prompt to
+        /// add these came from. So they are offered and SAID to be downloadable content, which is
+        /// a choice somebody can make, where an absent list was not.
+        ///
+        /// One per look rather than every variant. The game ships six numbered children of the
+        /// Gale Sanctum button and a decoy for the redstone puzzle; a chooser holding sixty rows
+        /// is a worse tool than one holding twenty.
         /// </summary>
         public static readonly (string path, string name)[] CLICKABLES =
         {
@@ -1456,6 +1545,46 @@ namespace MCDSaveEdit.Logic
             ("Decor/Prefabs/RedstoneMachine/BP_RedstoneMachine", "Redstone machine"),
             ("Decor/Prefabs/CapturedVillager/BP_CapturedVillager", "Captured villager"),
             ("Decor/Prefabs/_Interactables/MagicBook/BP_MagicBook", "Magic book"),
+
+            //Buttons. The base game has exactly one, in the redstone puzzle.
+            ("Decor/Prefabs/RedstonePuzzle/Base/BP_Button", "Button"),
+            ("Decor/Prefabs/RedstonePuzzle/BP_Button_Straight", "Button, flush"),
+            ("Decor/Prefabs/RedstonePuzzle/BP_Button_Straight_Inconspicuous",
+                "Button, hidden"),
+
+            //The End. BP_Button_SH is the one Blossoming Isles presses.
+            ("Content_DLC6/Decor/Prefabs/_End_Structures_/End_Buttons/BP_Button_SH",
+                "Stronghold button (DLC)"),
+            ("Content_DLC6/Decor/Prefabs/_End_Structures_/End_Buttons/BP_Button_SH_Vault",
+                "Stronghold vault button (DLC)"),
+            ("Content_DLC6/Decor/Prefabs/_End_Structures_/SWT_Staircase/BP_Button_Staircase_A",
+                "Watchtower stair button (DLC)"),
+
+            //Hidden Depths - the underwater set.
+            ("Content_DLC5/Decor/Prefabs/_HiddenDepths/Buttons/BP_Button_AM",
+                "Abyssal button (DLC)"),
+            ("Content_DLC5/Decor/Prefabs/_HiddenDepths/Buttons/BP_Button_Coral",
+                "Coral button (DLC)"),
+            ("Content_DLC5/Decor/Prefabs/_HiddenDepths/Buttons/BP_Button_RR",
+                "Radiant Ravine button (DLC)"),
+
+            //Jungle Awakens.
+            ("Decor/Prefabs/DingyJungle/Jungle_DesignAssets/BP_Button_Jungle",
+                "Jungle button (DLC)"),
+            ("Decor/Prefabs/DingyJungle/Jungle_DesignAssets/BP_Button_Bamboo",
+                "Bamboo button (DLC)"),
+            ("Decor/Prefabs/DingyJungle/Jungle_DesignAssets/BP_Button_Temple",
+                "Temple button (DLC)"),
+
+            //Creeping Winter and the mountains.
+            ("Decor/Prefabs/_Creepingwinter_Structures/Buttons/BP_Button_LS",
+                "Lost Settlement button (DLC)"),
+            ("Decor/Prefabs/_Creepingwinter_Structures/Buttons/BP_Button_GS",
+                "Gale Sanctum button (DLC)"),
+            ("Decor/Prefabs/_Creepingwinter_Structures/Buttons/BP_Button_LF",
+                "Lonely Fortress button (DLC)"),
+            ("Decor/Prefabs/_Creepingwinter_Structures/Buttons/BP_Button_WP",
+                "Windswept button (DLC)"),
         };
 
         /// <summary>
@@ -2001,8 +2130,41 @@ namespace MCDSaveEdit.Logic
         /// </summary>
         public static readonly (string path, string key, string name)[] LOCKED_DOORS =
         {
+            //Highblock Halls first: it is the pair the game uses most and the one a map with no
+            //particular theme should get.
             ("Decor/Prefabs/DoorExit/BP_DoorLocked_Gold_HighblockHalls", "gold", "Gold door"),
             ("Decor/Prefabs/DoorExit/BP_DoorLocked_Silver_HighblockHalls", "silver", "Silver door"),
+
+            //The rest are the same door dressed for a theme. Worth listing because a gold door
+            //in Highblock stone standing in a desert is the kind of thing that reads as a bug in
+            //somebody else's map, and there is nothing to do about it after the fact.
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Gold_DesertTemple", "gold",
+                "Gold door, Desert Temple"),
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Silver_DesertTemple", "silver",
+                "Silver door, Desert Temple"),
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Gold_CactiCanyon", "gold",
+                "Gold door, Cacti Canyon"),
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Silver_CactiCanyon", "silver",
+                "Silver door, Cacti Canyon"),
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Gold_LonelyFortress", "gold",
+                "Gold door, Lonely Fortress"),
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Silver_LonelyFortress", "silver",
+                "Silver door, Lonely Fortress"),
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Gold_End", "gold", "Gold door, the End"),
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Silver_End", "silver", "Silver door, the End"),
+
+            //Downloadable, and marked, for the reason on CLICKABLES: a prefab that is not
+            //installed is a mission that does not start.
+            ("Decor/Prefabs/DingyJungle/Jungle_DesignAssets/BP_DoorLocked_Gold_OvergrownTemple",
+                "gold", "Gold door, Overgrown Temple (DLC)"),
+            ("Decor/Prefabs/DingyJungle/Jungle_DesignAssets/BP_DoorLocked_Silver_OvergrownTemple",
+                "silver", "Silver door, Overgrown Temple (DLC)"),
+            ("Content_DLC5/Decor/Prefabs/_HiddenDepths/DoorExit/BP_DoorLocked_Gold_DryDryDungeon1",
+                "gold", "Gold door, Dry Dry Dungeon (DLC)"),
+            ("Content_DLC5/Decor/Prefabs/_HiddenDepths/DoorExit/BP_DoorLocked_Silver_DryDryDungeon1",
+                "silver", "Silver door, Dry Dry Dungeon (DLC)"),
+            ("Content_DLC5/Decor/Prefabs/_HiddenDepths/AbyssalMonument/Keydoor_RotationAware/"
+                + "BP_DoorLocked_Silver_Abyssal", "silver", "Silver door, Abyssal (DLC)"),
         };
 
         /// <summary>

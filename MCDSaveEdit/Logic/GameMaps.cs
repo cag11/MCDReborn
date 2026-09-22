@@ -31,6 +31,9 @@ namespace MCDSaveEdit.Logic
         /// </summary>
         private const string LEVELS = "data/lovika/levels/";
 
+        /// <summary>Where every asset path in this game is rooted.</summary>
+        private const string MOUNT = "Dungeons/Content/";
+
         public const string GROUPS = "data/lovika/objectgroups/";
         public const string PACKS = "data/resourcepacks/";
 
@@ -215,7 +218,18 @@ namespace MCDSaveEdit.Logic
                 //One leading slash, not two: the enumerator joins the mount point onto a key that
                 //already begins with one, and GetFile returns nothing for the doubled spelling
                 //without complaining about it.
-                found[name] = new Mission(name, "/" + path.TrimStart('/'), entry.Value.UncompressedSize);
+                //
+                //And for six of the fifty-six, the mount is joined on in the MIDDLE as well -
+                //"Dungeons/Content//Dungeons/Content/data/lovika/levels/soulsandvalley" - which
+                //the leading-slash guard above does nothing about. Those missions were in the
+                //list, looked ordinary, and could not have their level read at all: Soul Sand
+                //Valley, Spider Cave and Woodland Mansion among them. Taking the path from the
+                //LAST mount fixes both spellings and leaves a correct one untouched.
+                var rooted = path;
+                var again = rooted.LastIndexOf(MOUNT, StringComparison.OrdinalIgnoreCase);
+                if (again > 0) { rooted = rooted.Substring(again); }
+
+                found[name] = new Mission(name, "/" + rooted.TrimStart('/'), entry.Value.UncompressedSize);
             }
 
             Notes.Add($"{found.Count:N0} missions in the index");

@@ -5812,6 +5812,52 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_LEVELS=<folder> - every level file the game ships, written out at once.
+            //
+            //PROBE_FRESH exports ONE mission and pulls its object groups with it, which is right
+            //when the map is going to be edited and far too slow when the question is about the
+            //level files themselves: fifty-six launches of this app to read fifty-six small json
+            //files. This reads them all in one pass and writes nothing else.
+            //
+            //Read-only, and the levels are the game's own bytes rather than anything reserialised
+            //- a rule derived from a file this app rewrote first would be a rule about this app.
+            var probeLevels = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_LEVELS="));
+            if (probeLevels != null)
+            {
+                var into = probeLevels.Substring("PROBE_LEVELS=".Length).Trim('"');
+                System.IO.Directory.CreateDirectory(into);
+
+                var done = 0;
+                var missed = 0;
+
+                foreach (var one in Logic.GameMaps.all())
+                {
+                    try
+                    {
+                        var raw = Logic.GameMaps.read(one.PakPath);
+                        if (raw == null)
+                        {
+                            Console.WriteLine($"[levels] {one.Name}: nothing at {one.PakPath}");
+                            missed++;
+                            continue;
+                        }
+
+                        System.IO.File.WriteAllBytes(
+                            System.IO.Path.Combine(into, one.Name + ".json"), raw);
+                        done++;
+                    }
+                    catch (Exception problem)
+                    {
+                        Console.WriteLine($"[levels] {one.Name}: {problem.Message}");
+                        missed++;
+                    }
+                }
+
+                Console.WriteLine($"[levels] wrote {done} level(s) to {into}, {missed} missed");
+                this.Shutdown();
+                return;
+            }
+
             //PROBE_OVER=<folder>;<mission> - a map folder installed over a mission, and LEFT there.
             //
             //PROBE_MAPS_IN does the same install and then deletes it again, which is right for
