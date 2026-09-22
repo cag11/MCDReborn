@@ -7830,5 +7830,458 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("MODS_LOADER_CLASH", resourceCulture);
             }
         }
+        public static string WIRING_TITLE {
+            get {
+                return ResourceManager.GetString("WIRING_TITLE", resourceCulture);
+            }
+        }
+        
+        public static string WIRING_ARRANGE {
+            get {
+                return ResourceManager.GetString("WIRING_ARRANGE", resourceCulture);
+            }
+        }
+        
+        public static string WIRING_WHERE {
+            get {
+                return ResourceManager.GetString("WIRING_WHERE", resourceCulture);
+            }
+        }
+        
+        public static string WIRING_WRITES {
+            get {
+                return ResourceManager.GetString("WIRING_WRITES", resourceCulture);
+            }
+        }
+        
+        public static string WIRING_FIXED {
+            get {
+                return ResourceManager.GetString("WIRING_FIXED", resourceCulture);
+            }
+        }
+        
+        public static string WIRING_CUT {
+            get {
+                return ResourceManager.GetString("WIRING_CUT", resourceCulture);
+            }
+        }
+        
+        public static string WIRING_HELP_TITLE {
+            get {
+                return ResourceManager.GetString("WIRING_HELP_TITLE", resourceCulture);
+            }
+        }
+        
+        public static string WIRING_HELP_PULL {
+            get {
+                return ResourceManager.GetString("WIRING_HELP_PULL", resourceCulture);
+            }
+        }
+        
+        public static string WIRING_HELP_DROP {
+            get {
+                return ResourceManager.GetString("WIRING_HELP_DROP", resourceCulture);
+            }
+        }
+        
+        public static string WIRING_HELP_CUT {
+            get {
+                return ResourceManager.GetString("WIRING_HELP_CUT", resourceCulture);
+            }
+        }
+        
+        public static string WIRING_NO_JOIN {
+            get {
+                return ResourceManager.GetString("WIRING_NO_JOIN", resourceCulture);
+            }
+        }
+        
+        public static string WIRING_SAME_TILE {
+            get {
+                return ResourceManager.GetString("WIRING_SAME_TILE", resourceCulture);
+            }
+        }
+        
+        public static string WIRING_NO_LOCK {
+            get {
+                return ResourceManager.GetString("WIRING_NO_LOCK", resourceCulture);
+            }
+        }
+        
+        public static string WIRING_MADE {
+            get {
+                return ResourceManager.GetString("WIRING_MADE", resourceCulture);
+            }
+        }
+        
+        public static string WIRING_GONE {
+            get {
+                return ResourceManager.GetString("WIRING_GONE", resourceCulture);
+            }
+        }
+        
+        public static string WIRING_ARRANGED {
+            get {
+                return ResourceManager.GetString("WIRING_ARRANGED", resourceCulture);
+            }
+        }
+        
+        public static string WIRING_NAMELESS {
+            get {
+                return ResourceManager.GetString("WIRING_NAMELESS", resourceCulture);
+            }
+        }
+        
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Challenges.
+        /// </summary>
+        public static string SPAWNS_TAB_CHALLENGE {
+            get {
+                return ResourceManager.GetString("SPAWNS_TAB_CHALLENGE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A challenge is an optional fight. It fires when the player walks into its trigger region and the mission never waits for it.
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_HINT {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_HINT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No challenges yet. Put one down and it starts when the player walks into it..
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_NONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_NONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} challenges..
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_SOME {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_SOME", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} challenges, {1} with no trigger.
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_BROKEN {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_BROKEN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Put a challenge here.
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_ADD {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_ADD", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Add a wave.
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_WAVE {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_WAVE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Remove.
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_REMOVE {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_REMOVE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Apply to the chosen challenge.
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_APPLY {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_APPLY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Walking in here starts it.
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_TRIGGER {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_TRIGGER", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Mobs it draws from.
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_GROUP {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_GROUP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to How many.
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_COUNT {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_COUNT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to What it leaves behind.
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_REWARD {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_REWARD", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Sealed while it runs.
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_SEALS {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_SEALS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Usually nothing. Only 28 of the game's 1,304 challenges name a region here.
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_SEALS_WHY {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_SEALS_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing.
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_NOTHING {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_NOTHING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Pick a mob group first.
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_NEEDS_GROUP {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_NEEDS_GROUP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Challenge {0} added at {1}, {2}, {3}.
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_ADDED {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_ADDED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Wave added.
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_WAVED {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_WAVED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Challenge updated..
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_APPLIED {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_APPLIED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Challenge removed, and the regions it made with it..
+        /// </summary>
+        public static string SPAWNS_CHALLENGE_GONE {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHALLENGE_GONE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Fit.
+        /// </summary>
+        public static string WIRING_FIT {
+            get {
+                return ResourceManager.GetString("WIRING_FIT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to show all.
+        /// </summary>
+        public static string WIRING_SHOW_ALL {
+            get {
+                return ResourceManager.GetString("WIRING_SHOW_ALL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Everything back on screen..
+        /// </summary>
+        public static string WIRING_FITTED {
+            get {
+                return ResourceManager.GetString("WIRING_FITTED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Nothing in this map can carry that wire yet..
+        /// </summary>
+        public static string WIRING_EMPTY {
+            get {
+                return ResourceManager.GetString("WIRING_EMPTY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} drawn · {1} of {2} shown.
+        /// </summary>
+        public static string WIRING_COUNT {
+            get {
+                return ResourceManager.GetString("WIRING_COUNT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Written with the thing it belongs to.
+        /// </summary>
+        public static string WIRING_ONLY_READ {
+            get {
+                return ResourceManager.GetString("WIRING_ONLY_READ", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Only a fight draws from a mob group..
+        /// </summary>
+        public static string WIRING_NO_GROUP {
+            get {
+                return ResourceManager.GetString("WIRING_NO_GROUP", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Inspect unwelded….
+        /// </summary>
+        public static string MAPS_UNWELDED {
+            get {
+                return ResourceManager.GetString("MAPS_UNWELDED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Opens a separate, never-welded copy of the game's own missio.
+        /// </summary>
+        public static string MAPS_UNWELDED_WHY {
+            get {
+                return ResourceManager.GetString("MAPS_UNWELDED_WHY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Exporting an unwelded copy of {0}….
+        /// </summary>
+        public static string MAPS_UNWELDED_MAKING {
+            get {
+                return ResourceManager.GetString("MAPS_UNWELDED_MAKING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0}, unwelded.
+        /// </summary>
+        public static string MAPS_UNWELDED_OPEN {
+            get {
+                return ResourceManager.GetString("MAPS_UNWELDED_OPEN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Only the game's own missions have an unwelded form to look a.
+        /// </summary>
+        public static string MAPS_UNWELDED_ONLY_GAME {
+            get {
+                return ResourceManager.GetString("MAPS_UNWELDED_ONLY_GAME", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to named, but its region is not in this copy.
+        /// </summary>
+        public static string WIRING_NOT_HERE {
+            get {
+                return ResourceManager.GetString("WIRING_NOT_HERE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to filled in at run time.
+        /// </summary>
+        public static string WIRING_RUNTIME {
+            get {
+                return ResourceManager.GetString("WIRING_RUNTIME", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to named, but this level declares no such sub-area.
+        /// </summary>
+        public static string WIRING_UNDECLARED {
+            get {
+                return ResourceManager.GetString("WIRING_UNDECLARED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Pinning {0}.
+        /// </summary>
+        public static string MAPS_UNWELDED_PINNING {
+            get {
+                return ResourceManager.GetString("MAPS_UNWELDED_PINNING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Without the converters a stretch that still picks at random .
+        /// </summary>
+        public static string MAPS_UNWELDED_NO_PIN {
+            get {
+                return ResourceManager.GetString("MAPS_UNWELDED_NO_PIN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0}, unwelded and pinned.
+        /// </summary>
+        public static string MAPS_UNWELDED_PINNED {
+            get {
+                return ResourceManager.GetString("MAPS_UNWELDED_PINNED", resourceCulture);
+            }
+        }
 }
 }

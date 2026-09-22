@@ -25,6 +25,8 @@
                     Click="revertButton_Click"/>
             <Button x:Name="installButton" Content="*Install*" Padding="14,6"
                     Click="installButton_Click"/>
+            <Button x:Name="wiringButton" Content="*Wiring*" Padding="14,6" Margin="8,0,0,0"
+                    Click="wiringButton_Click"/>
             <TextBlock x:Name="changedLabel" VerticalAlignment="Center" Margin="14,0,0,0"
                        FontSize="12" Foreground="{DynamicResource Brush.TextMuted}"/>
         </StackPanel>
@@ -383,6 +385,75 @@
                         <Button x:Name="applyArenaButton" Content="*Apply to the chosen fight*"
                                 Padding="10,4" Margin="0,0,0,12" HorizontalAlignment="Left"
                                 Click="applyArenaButton_Click"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <TabItem x:Name="challengeTab">
+                    <ScrollViewer x:Name="challengeTabScroll" VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Padding="0,8,6,0">
+                        <StackPanel>
+                        <TextBlock x:Name="challengeWhy" TextWrapping="Wrap" FontSize="11"
+                                   Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <TextBlock x:Name="challengeHint" TextWrapping="Wrap" FontSize="11"
+                                   Margin="0,0,0,8"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ListBox x:Name="challengeList" MaxHeight="150" Margin="0,0,0,6"
+                                 SelectionChanged="challengeList_SelectionChanged"/>
+                        <WrapPanel Margin="0,0,0,12">
+                            <Button x:Name="addChallengeButton" Content="*Put a challenge here*"
+                                    Padding="10,4" Margin="0,0,6,6" Click="addChallengeButton_Click"/>
+                            <Button x:Name="waveChallengeButton" Content="*Add a wave*"
+                                    Padding="10,4" Margin="0,0,6,6" Click="waveChallengeButton_Click"/>
+                            <Button x:Name="removeChallengeButton" Content="*Remove*"
+                                    Padding="10,4" Margin="0,0,0,6" Click="removeChallengeButton_Click"/>
+                        </WrapPanel>
+
+                        <Separator Margin="0,4,0,10"/>
+
+                        <TextBlock x:Name="challengeTriggerLabel" FontSize="11" Margin="0,2,0,4"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ComboBox x:Name="challengeTriggerBox" Margin="0,0,0,6" Height="26"
+                                  VerticalContentAlignment="Center"/>
+
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="8"/>
+                                <ColumnDefinition Width="80"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="challengeGroupLabel" FontSize="11" Margin="0,0,0,4"
+                                           Foreground="{DynamicResource Brush.TextMuted}"/>
+                                <ComboBox x:Name="challengeGroupBox" Height="26"
+                                          VerticalContentAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock x:Name="challengeCountLabel" FontSize="11" Margin="0,0,0,4"
+                                           Foreground="{DynamicResource Brush.TextMuted}"/>
+                                <TextBox x:Name="challengeCountBox" Height="26" Text="6"
+                                         VerticalContentAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock x:Name="challengeRewardLabel" FontSize="11" Margin="0,2,0,4"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ComboBox x:Name="challengeRewardBox" Margin="0,0,0,6" Height="26"
+                                  VerticalContentAlignment="Center"/>
+
+                        <TextBlock x:Name="challengeSealsLabel" FontSize="11" Margin="0,2,0,4"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+                        <ComboBox x:Name="challengeSealsBox" Margin="0,0,0,4" Height="26"
+                                  VerticalContentAlignment="Center"/>
+                        <TextBlock x:Name="challengeSealsWhy" TextWrapping="Wrap" FontSize="11"
+                                   Margin="0,0,0,10"
+                                   Foreground="{DynamicResource Brush.TextMuted}"/>
+
+                        <Button x:Name="applyChallengeButton" Content="*Apply to the chosen challenge*"
+                                Padding="10,4" Margin="0,0,0,12" HorizontalAlignment="Left"
+                                Click="applyChallengeButton_Click"/>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

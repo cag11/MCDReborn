@@ -3541,4 +3541,211 @@ That is allowed - a map can be installed over any mission - but if it was not wh
     <value>Warning: {0} also replaces the same actor, so only one of the two loaders will start. Remove it if payloads do not run.</value>
     <comment>When another mod replaces the loader anchor</comment>
   </data>
+  <data name="WIRING_TITLE" xml:space="preserve">
+    <value>Wiring</value>
+  </data>
+  <data name="WIRING_ARRANGE" xml:space="preserve">
+    <value>Arrange</value>
+  </data>
+  <data name="WIRING_WHERE" xml:space="preserve">
+    <value>{0} things, {1} wires</value>
+  </data>
+  <data name="WIRING_WRITES" xml:space="preserve">
+    <value>writes</value>
+  </data>
+  <data name="WIRING_FIXED" xml:space="preserve">
+    <value>Edited on the Arena tab, not here.</value>
+  </data>
+  <data name="WIRING_CUT" xml:space="preserve">
+    <value>Cut this wire</value>
+  </data>
+  <data name="WIRING_HELP_TITLE" xml:space="preserve">
+    <value>Nothing selected</value>
+  </data>
+  <data name="WIRING_HELP_PULL" xml:space="preserve">
+    <value>Drag from a socket to wire it up, or click one and click the other.</value>
+  </data>
+  <data name="WIRING_HELP_DROP" xml:space="preserve">
+    <value>Dropping anywhere on a box lands on its nearest usable socket.</value>
+  </data>
+  <data name="WIRING_HELP_CUT" xml:space="preserve">
+    <value>Click a wire to select it, then Delete to cut it.</value>
+  </data>
+  <data name="WIRING_NO_JOIN" xml:space="preserve">
+    <value>Those two do not join.</value>
+  </data>
+  <data name="WIRING_SAME_TILE" xml:space="preserve">
+    <value>Two doors can only be linked inside one tile.</value>
+  </data>
+  <data name="WIRING_NO_LOCK" xml:space="preserve">
+    <value>Only a click objective can hold a gate shut.</value>
+  </data>
+  <data name="WIRING_MADE" xml:space="preserve">
+    <value>{0} wired</value>
+  </data>
+  <data name="WIRING_GONE" xml:space="preserve">
+    <value>{0} cut</value>
+  </data>
+  <data name="WIRING_ARRANGED" xml:space="preserve">
+    <value>Arranged. Positions only - nothing was rewired.</value>
+  </data>
+  <data name="WIRING_NAMELESS" xml:space="preserve">
+    <value>   ({0} unnamed, nothing can point at them)</value>
+  </data>
+  <data name="SPAWNS_TAB_CHALLENGE" xml:space="preserve">
+    <value>Challenges</value>
+    <comment>Tab header</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_HINT" xml:space="preserve">
+    <value>A challenge is an optional fight. It fires when the player walks into its trigger region and the mission never waits for it — the game ships 1,304 of them against 412 objectives.</value>
+    <comment>Hint</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_NONE" xml:space="preserve">
+    <value>No challenges yet. Put one down and it starts when the player walks into it.</value>
+    <comment>Hint</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_SOME" xml:space="preserve">
+    <value>{0} challenges.</value>
+    <comment>Hint, count</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_BROKEN" xml:space="preserve">
+    <value>{0} challenges, {1} with no trigger — those never fire.</value>
+    <comment>Hint, count and broken</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_ADD" xml:space="preserve">
+    <value>Put a challenge here</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_WAVE" xml:space="preserve">
+    <value>Add a wave</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_REMOVE" xml:space="preserve">
+    <value>Remove</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_APPLY" xml:space="preserve">
+    <value>Apply to the chosen challenge</value>
+    <comment>Button</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_TRIGGER" xml:space="preserve">
+    <value>Walking in here starts it</value>
+    <comment>Picker label</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_GROUP" xml:space="preserve">
+    <value>Mobs it draws from</value>
+    <comment>Picker label</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_COUNT" xml:space="preserve">
+    <value>How many</value>
+    <comment>Field label</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_REWARD" xml:space="preserve">
+    <value>What it leaves behind</value>
+    <comment>Picker label</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_SEALS" xml:space="preserve">
+    <value>Sealed while it runs</value>
+    <comment>Picker label</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_SEALS_WHY" xml:space="preserve">
+    <value>Usually nothing. Only 28 of the game's 1,304 challenges name a region here — the rest take their walls from the arena's own tiles.</value>
+    <comment>Explainer under the seals picker</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_NOTHING" xml:space="preserve">
+    <value>Nothing</value>
+    <comment>Picker row for no reward and no gate</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_NEEDS_GROUP" xml:space="preserve">
+    <value>Pick a mob group first — a challenge naming none spawns nothing.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_ADDED" xml:space="preserve">
+    <value>Challenge {0} added at {1}, {2}, {3} — {4} × {5}.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_WAVED" xml:space="preserve">
+    <value>Wave added — {0} × {1}, after the ones already there.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_APPLIED" xml:space="preserve">
+    <value>Challenge updated.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="SPAWNS_CHALLENGE_GONE" xml:space="preserve">
+    <value>Challenge removed, and the regions it made with it.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="WIRING_FIT" xml:space="preserve">
+    <value>Fit</value>
+    <comment>Button</comment>
+  </data>
+  <data name="WIRING_SHOW_ALL" xml:space="preserve">
+    <value>show all</value>
+    <comment>Toggle</comment>
+  </data>
+  <data name="WIRING_FITTED" xml:space="preserve">
+    <value>Everything back on screen.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="WIRING_EMPTY" xml:space="preserve">
+    <value>Nothing in this map can carry that wire yet.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="WIRING_COUNT" xml:space="preserve">
+    <value>{0} drawn · {1} of {2} shown</value>
+    <comment>Readout</comment>
+  </data>
+  <data name="WIRING_ONLY_READ" xml:space="preserve">
+    <value>Written with the thing it belongs to — there is no pin to pull. {0}</value>
+    <comment>Status</comment>
+  </data>
+  <data name="WIRING_NO_GROUP" xml:space="preserve">
+    <value>Only a fight draws from a mob group.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="MAPS_UNWELDED" xml:space="preserve">
+    <value>Inspect unwelded…</value>
+    <comment>Button</comment>
+  </data>
+  <data name="MAPS_UNWELDED_WHY" xml:space="preserve">
+    <value>Opens a separate, never-welded copy of the game's own mission, for reading. Welding fuses every tile into one and the teleports between them stop existing — Creeper Woods goes from 59 to 3. Editing still has to happen on the welded copy, because that is what the game is given.</value>
+    <comment>Tooltip</comment>
+  </data>
+  <data name="MAPS_UNWELDED_MAKING" xml:space="preserve">
+    <value>Exporting an unwelded copy of {0}…</value>
+    <comment>Status</comment>
+  </data>
+  <data name="MAPS_UNWELDED_OPEN" xml:space="preserve">
+    <value>{0}, unwelded — {1} room(s). This is an inspection copy at {2}; it is never installed and Edit spawns does not use it.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="MAPS_UNWELDED_ONLY_GAME" xml:space="preserve">
+    <value>Only the game's own missions have an unwelded form to look at.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="WIRING_NOT_HERE" xml:space="preserve">
+    <value>named, but its region is not in this copy</value>
+    <comment>Note under a gate box</comment>
+  </data>
+  <data name="WIRING_RUNTIME" xml:space="preserve">
+    <value>filled in at run time — an Ancient Hunt substitutes itself here</value>
+    <comment>Note under a placeholder sub-area</comment>
+  </data>
+  <data name="WIRING_UNDECLARED" xml:space="preserve">
+    <value>named, but this level declares no such sub-area</value>
+    <comment>Note under a missing sub-area</comment>
+  </data>
+  <data name="MAPS_UNWELDED_PINNING" xml:space="preserve">
+    <value>Pinning {0} — choosing one tile per stretch…</value>
+    <comment>Status</comment>
+  </data>
+  <data name="MAPS_UNWELDED_NO_PIN" xml:space="preserve">
+    <value>Without the converters a stretch that still picks at random has no single tile to show, so parts of the mission are missing from this copy.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="MAPS_UNWELDED_PINNED" xml:space="preserve">
+    <value>{0}, unwelded and pinned — {1} room(s). An inspection copy at {2}: it is never installed and Edit spawns does not use it.</value>
+    <comment>Status</comment>
+  </data>
 </root>

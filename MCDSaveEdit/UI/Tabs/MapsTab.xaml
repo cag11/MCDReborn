@@ -96,7 +96,13 @@
                       VerticalContentAlignment="Center"
                       SelectionChanged="themeBox_SelectionChanged"/>
             <Button x:Name="spawnsButton" Content="*Edit spawns…*" Padding="10,5"
-                    Click="spawnsButton_Click"/>
+                    Margin="0,0,6,0" Click="spawnsButton_Click"/>
+            <!--
+                 Only for the game's own missions, because only they have an unwelded form worth
+                 looking at: a map somebody built is one stretch playing one tile already.
+            -->
+            <Button x:Name="unweldedButton" Content="*Inspect unwelded…*" Padding="10,5"
+                    Click="unweldedButton_Click"/>
             <TextBlock x:Name="spawnsWhyLabel" VerticalAlignment="Center" Margin="12,0,0,0"
                        FontSize="11" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
         </StackPanel>

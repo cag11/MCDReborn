@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -779,6 +779,82 @@ namespace MCDSaveEdit.Logic
             return true;
         }
 
+        /// <summary>
+        /// Points a door INTO a sub-area instead of at another door.
+        ///
+        /// The counterpart of <see cref="linkDoors"/>, and the same file field. They are NOT
+        /// alternatives, which is the thing to know here: across the game's 56 levels, 290
+        /// teleports carry "dungeons" and "exit" together - the dungeons say which sub-area is
+        /// entered and the exit says which door is arrived at inside it. Only 256 carry dungeons
+        /// alone.
+        ///
+        /// So this sets the destination on whatever the door already had rather than replacing
+        /// the entry. Writing it as a replacement - which is what it did first - threw away a
+        /// working exit every time somebody pointed an already-linked door at a sub-area, and
+        /// left a descent that arrives nowhere in particular.
+        ///
+        /// More than one dungeon is allowed and is how the game gets variety: Creeper Woods sends
+        /// one door at a choice of three crypts. They are comma separated, which is the shape
+        /// <see cref="Teleport.Dungeons"/> already reads back.
+        ///
+        /// Existed because there was no way to write one. Reading a descent worked, drawing it
+        /// worked, and the only way to MAKE one was to hand-edit the level file - which is not a
+        /// thing this app asks anybody to do.
+        /// </summary>
+        public static bool linkDungeon(Map map, Room room, string door, string dungeons,
+                                       string look)
+        {
+            if (door.Length == 0 || dungeons.Trim().Length == 0) { return false; }
+
+            var row = rowFor(map, room);
+
+            if (row["teleports"] is not JsonArray ports)
+            {
+                ports = new JsonArray();
+                row["teleports"] = ports;
+            }
+
+            //The door's existing entry, if it has one, so an exit already on it survives.
+            var made = ports.OfType<JsonObject>().FirstOrDefault(one =>
+                string.Equals(one["door"]?.GetValue<string>(), door, StringComparison.OrdinalIgnoreCase));
+
+            if (made == null)
+            {
+                made = new JsonObject { ["door"] = door };
+                ports.Add(made);
+            }
+
+            made["dungeons"] = new JsonArray(dungeons
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(one => (JsonNode?)JsonValue.Create(one.Trim()))
+                .ToArray());
+
+            //A descent with no prefab is a hole in the wall. The game draws nothing there and the
+            //player walks into it by accident, so a look is written whenever one is offered.
+            if (look.Length > 0) { made["object"] = look; }
+
+            return true;
+        }
+
+        /// <summary>Stops a door leading into any sub-area, leaving whatever else it had.</summary>
+        public static bool unlinkDungeon(Map map, Room room, string door)
+        {
+            var row = rowFor(map, room);
+            if (row["teleports"] is not JsonArray ports) { return false; }
+
+            var found = ports.OfType<JsonObject>().FirstOrDefault(one =>
+                string.Equals(one["door"]?.GetValue<string>(), door, StringComparison.OrdinalIgnoreCase));
+
+            if (found == null || found["dungeons"] == null) { return false; }
+
+            found.Remove("dungeons");
+
+            //An entry that now says nothing at all is a door with a prefab and no destination,
+            //which the game reads as a place you ARRIVE. That is a real shape - 546 of them ship
+            //- so it is left rather than tidied away.
+            return true;
+        }
+
         /// <summary>Takes any teleport off a door.</summary>
         public static bool unlinkDoor(Map map, Room room, string door)
         {
@@ -1446,6 +1522,19 @@ namespace MCDSaveEdit.Logic
         ///
         /// Ordered by how obvious the thing is to walk up to rather than by how often the game
         /// uses it. A bell and a lever read as "press me" to anybody; a magic book does not.
+        ///
+        /// The base game's own come first and carry no marker. After them are BUTTONS, which are
+        /// the thing people actually want - press one, a wall opens - and almost every button
+        /// this game has shipped since launch lives in a DLC. The rule above has not changed: a
+        /// prefab that is not installed is a mission that does not start. What changed is that
+        /// refusing to list them did not stop anybody using them; the community's Blossoming
+        /// Isles reaches straight past this list for an End button, which is where the prompt to
+        /// add these came from. So they are offered and SAID to be downloadable content, which is
+        /// a choice somebody can make, where an absent list was not.
+        ///
+        /// One per look rather than every variant. The game ships six numbered children of the
+        /// Gale Sanctum button and a decoy for the redstone puzzle; a chooser holding sixty rows
+        /// is a worse tool than one holding twenty.
         /// </summary>
         public static readonly (string path, string name)[] CLICKABLES =
         {
@@ -1456,6 +1545,46 @@ namespace MCDSaveEdit.Logic
             ("Decor/Prefabs/RedstoneMachine/BP_RedstoneMachine", "Redstone machine"),
             ("Decor/Prefabs/CapturedVillager/BP_CapturedVillager", "Captured villager"),
             ("Decor/Prefabs/_Interactables/MagicBook/BP_MagicBook", "Magic book"),
+
+            //Buttons. The base game has exactly one, in the redstone puzzle.
+            ("Decor/Prefabs/RedstonePuzzle/Base/BP_Button", "Button"),
+            ("Decor/Prefabs/RedstonePuzzle/BP_Button_Straight", "Button, flush"),
+            ("Decor/Prefabs/RedstonePuzzle/BP_Button_Straight_Inconspicuous",
+                "Button, hidden"),
+
+            //The End. BP_Button_SH is the one Blossoming Isles presses.
+            ("Content_DLC6/Decor/Prefabs/_End_Structures_/End_Buttons/BP_Button_SH",
+                "Stronghold button (DLC)"),
+            ("Content_DLC6/Decor/Prefabs/_End_Structures_/End_Buttons/BP_Button_SH_Vault",
+                "Stronghold vault button (DLC)"),
+            ("Content_DLC6/Decor/Prefabs/_End_Structures_/SWT_Staircase/BP_Button_Staircase_A",
+                "Watchtower stair button (DLC)"),
+
+            //Hidden Depths - the underwater set.
+            ("Content_DLC5/Decor/Prefabs/_HiddenDepths/Buttons/BP_Button_AM",
+                "Abyssal button (DLC)"),
+            ("Content_DLC5/Decor/Prefabs/_HiddenDepths/Buttons/BP_Button_Coral",
+                "Coral button (DLC)"),
+            ("Content_DLC5/Decor/Prefabs/_HiddenDepths/Buttons/BP_Button_RR",
+                "Radiant Ravine button (DLC)"),
+
+            //Jungle Awakens.
+            ("Decor/Prefabs/DingyJungle/Jungle_DesignAssets/BP_Button_Jungle",
+                "Jungle button (DLC)"),
+            ("Decor/Prefabs/DingyJungle/Jungle_DesignAssets/BP_Button_Bamboo",
+                "Bamboo button (DLC)"),
+            ("Decor/Prefabs/DingyJungle/Jungle_DesignAssets/BP_Button_Temple",
+                "Temple button (DLC)"),
+
+            //Creeping Winter and the mountains.
+            ("Decor/Prefabs/_Creepingwinter_Structures/Buttons/BP_Button_LS",
+                "Lost Settlement button (DLC)"),
+            ("Decor/Prefabs/_Creepingwinter_Structures/Buttons/BP_Button_GS",
+                "Gale Sanctum button (DLC)"),
+            ("Decor/Prefabs/_Creepingwinter_Structures/Buttons/BP_Button_LF",
+                "Lonely Fortress button (DLC)"),
+            ("Decor/Prefabs/_Creepingwinter_Structures/Buttons/BP_Button_WP",
+                "Windswept button (DLC)"),
         };
 
         /// <summary>
@@ -1990,6 +2119,451 @@ namespace MCDSaveEdit.Logic
             return true;
         }
 
+        //--- challenges ---------------------------------------------------------------------
+
+        /// <summary>
+        /// What a beaten challenge leaves behind.
+        ///
+        /// A region and a prefab dropped in it, which is NOT the same thing as a kill-group's
+        /// reward: that one is <see cref="REWARDS"/>, a count of loot handed straight to the
+        /// player. This one is furniture. Across the game's 1,304 challenges, 809 carry one.
+        ///
+        /// The podium is DLC, and a level that asks for it without the DLC installed gets an
+        /// empty patch of floor where the reward should be.
+        /// </summary>
+        public static readonly (string path, string name)[] CHESTS =
+        {
+            ("Decor/Prefabs/RewardChest/BP_FancyChest_Reward", "Fancy chest"),
+            ("Decor/Prefabs/RewardChest/BP_WoodenChest_Reward", "Wooden chest"),
+            ("Decor/Prefabs/RewardChest/BP_FancyChest_Hidden", "Hidden chest"),
+            ("Content_Season1/Decor/Prefab/Interactables/Podium/BP_Podium", "Podium (DLC)"),
+        };
+
+        /// <summary>
+        /// A fight that is not part of the mission.
+        ///
+        /// The game has two shapes for a fight and they are not interchangeable. A "killgroup"
+        /// is an OBJECTIVE - it has banner text, it sits in the chain, and the level does not end
+        /// until it is done. A challenge is optional: it lives in its own array, it fires when
+        /// the player walks into its trigger region, and nothing waits for it. The shipped levels
+        /// are mostly the second kind - 1,304 challenges against 412 objectives - which is why a
+        /// custom map built only out of objectives feels so unlike one of the game's own.
+        ///
+        /// Four things can be named from here, and all four are optional:
+        ///
+        ///   trigger   the region walking into starts it        1,140 of 1,304
+        ///   waves     how many of which mob group, in order    1,053
+        ///   reward    a region, and the chest left in it         809
+        ///   gate      the regions sealed while it runs            28
+        ///
+        /// That last number is the surprise. Nearly every challenge in the game has a gate with
+        /// nothing in it but "start-unlocked" - the walls come from the arena's own tiles, and
+        /// naming regions is the rare case. An arena with no sealed region is normal here, and
+        /// the opposite of what a kill-group objective wants.
+        /// </summary>
+        public sealed class Challenge
+        {
+            public Challenge(int at, string id, string trigger, string reward, string chest,
+                             (int count, string group)[] waves, string[] gates, string drawn,
+                             bool openAtFirst)
+            {
+                At = at;
+                Id = id;
+                Trigger = trigger;
+                Reward = reward;
+                Chest = chest;
+                Waves = waves;
+                Gates = gates;
+                Drawn = drawn;
+                OpenAtFirst = openAtFirst;
+            }
+
+            /// <summary>Its place in the level's challenges array.</summary>
+            public int At { get; }
+
+            /// <summary>The name it goes by. Nothing else refers to it, so it is for people.</summary>
+            public string Id { get; }
+
+            /// <summary>The region walking into sets it off, or empty for one that never fires.</summary>
+            public string Trigger { get; }
+
+            /// <summary>Where the reward is left, and what the reward looks like.</summary>
+            public string Reward { get; }
+            public string Chest { get; }
+
+            /// <summary>How many mobs of which group, in the order they come.</summary>
+            public (int count, string group)[] Waves { get; }
+
+            /// <summary>The regions sealed while it runs - usually none, see the class note.</summary>
+            public string[] Gates { get; }
+
+            /// <summary>The prefab those gates are drawn as.</summary>
+            public string Drawn { get; }
+
+            /// <summary>Whether the gates start open rather than shut.</summary>
+            public bool OpenAtFirst { get; }
+
+            /// <summary>The mob groups it draws from, each named once.</summary>
+            public string[] Groups => Waves.Select(one => one.group)
+                .Where(one => one.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+
+            public override string ToString()
+            {
+                var fight = Waves.Length == 0
+                    ? "  ·  NO WAVES - nothing will appear"
+                    : "  ·  " + string.Join(" then ",
+                        Waves.Select(one => $"{one.count} × {one.group}"));
+
+                var starts = Trigger.Length == 0
+                    ? "  ·  NO TRIGGER - it never fires"
+                    : "  ·  at " + Trigger;
+
+                var pays = Reward.Length == 0
+                    ? string.Empty
+                    : "  ·  pays out at " + Reward;
+
+                var walls = Gates.Length == 0
+                    ? string.Empty
+                    : "  ·  seals " + string.Join(", ", Gates);
+
+                return $"{At + 1}. {Id}{starts}{fight}{walls}{pays}";
+            }
+        }
+
+        /// <summary>Every challenge in the level.</summary>
+        public static List<Challenge> challengesOf(Map map)
+        {
+            var made = new List<Challenge>();
+            var all = map.Level["challenges"] as JsonArray ?? new JsonArray();
+
+            for (var at = 0; at < all.Count; at++)
+            {
+                if (all[at] is not JsonObject one) { continue; }
+
+                var arena = one["arena"] as JsonObject;
+                var gate = arena?["gate"] as JsonObject;
+                var reward = one["reward"] as JsonObject;
+
+                var waves = new List<(int, string)>();
+                foreach (var wave in arena?["waves"] as JsonArray ?? new JsonArray())
+                {
+                    if (wave is not JsonArray pair || pair.Count < 2) { continue; }
+
+                    //A count that is not a number, or a group that is not a string, is a wave the
+                    //game will not read either. Kept in the list as a zero rather than dropped,
+                    //because a wave that vanishes from the panel is a wave nobody fixes.
+                    var howMany = pair[0] is JsonValue first
+                                  && first.TryGetValue<int>(out var many) ? many : 0;
+
+                    waves.Add((howMany, text(pair[1]) ?? string.Empty));
+                }
+
+                made.Add(new Challenge(at,
+                    text(one["id"]) ?? string.Empty,
+                    lastPart(text(one["trigger"]) ?? string.Empty),
+                    lastPart(text(reward?["region"]) ?? string.Empty),
+                    text(reward?["object"]) ?? string.Empty,
+                    waves.ToArray(),
+                    namesIn(gate, "regions"),
+                    text(gate?["object"]) ?? string.Empty,
+                    gate?["start-unlocked"] is JsonValue open
+                        && open.TryGetValue<bool>(out var unlocked) && unlocked));
+            }
+
+            return made;
+        }
+
+        /// <summary>A name no challenge in this level is using yet.</summary>
+        public static string freeChallengeName(Map map)
+        {
+            var taken = new HashSet<string>(challengesOf(map).Select(one => one.Id),
+                StringComparer.OrdinalIgnoreCase);
+
+            var name = "challenge";
+            for (var at = 1; taken.Contains(name); at++) { name = $"challenge{at}"; }
+            return name;
+        }
+
+        /// <summary>
+        /// Puts an optional fight on the map, with everything it needs to happen.
+        ///
+        /// Three regions at once, for the same reason <see cref="addArena"/> makes three: a
+        /// challenge that names a region which does not exist is a challenge that never fires,
+        /// and there is nothing in the file to say so. The trigger goes where the pin is, the
+        /// reward a little past it, and the gate across the way.
+        ///
+        /// The arena scalars are the game's own commonest: stretch "*" so it is not tied to one
+        /// part of the level, start-time 1, interval 1, rest-interval 0. They are written rather
+        /// than left out because a missing one is not a default - it is a field the game reads as
+        /// zero, and a fight that starts at zero starts before the player is through the door.
+        /// </summary>
+        public static int addChallenge(Map map, Room room, string id, string group, int count,
+                                       string chest, string look, bool seal,
+                                       int x, int y, int z)
+        {
+            if (map.Level["challenges"] is not JsonArray all)
+            {
+                all = new JsonArray();
+                map.Level["challenges"] = all;
+            }
+
+            if (id.Trim().Length == 0) { id = freeChallengeName(map); }
+
+            var starts = freeStepName(room, id + "_trigger");
+            var paid = freeStepName(room, id + "_reward");
+
+            room.Regions.Add(new JsonObject
+            {
+                ["locked"] = false,
+                ["name"] = starts,
+                ["pos"] = new JsonArray(x, y, z),
+                ["size"] = new JsonArray(5, 1, 5),
+                ["tags"] = string.Empty,
+                ["type"] = "trigger",
+            });
+
+            room.Regions.Add(new JsonObject
+            {
+                ["locked"] = false,
+                ["name"] = paid,
+                ["pos"] = new JsonArray(x + 3, y, z),
+                ["size"] = new JsonArray(1, 1, 1),
+                ["tags"] = string.Empty,
+                ["type"] = "trigger",
+            });
+
+            var arena = new JsonObject
+            {
+                ["stretch"] = "*",
+                ["interval"] = 1,
+                ["rest-interval"] = 0,
+                ["start-time"] = 1,
+                ["prespawn-mob"] = string.Empty,
+                ["waves"] = new JsonArray(new JsonArray(Math.Max(1, count), group)),
+            };
+
+            //Written even when nothing is sealed, because 510 of the game's challenges carry a
+            //gate whose only field is this one - it is how a challenge says "the walls are the
+            //arena's own tiles, and they are open until I start".
+            var wall = new JsonObject { ["start-unlocked"] = true };
+
+            if (seal)
+            {
+                var shut = freeStepName(room, id + "_gate");
+
+                room.Regions.Add(new JsonObject
+                {
+                    ["locked"] = false,
+                    ["name"] = shut,
+                    ["pos"] = new JsonArray(x, y, z + 6),
+                    ["size"] = new JsonArray(5, 1, 1),
+                    ["tags"] = GATE,
+                    ["type"] = "trigger",
+                });
+
+                wall["regions"] = new JsonArray("*.*." + shut);
+                if (look.Length > 0) { wall["object"] = look; }
+            }
+
+            arena["gate"] = wall;
+
+            var made = new JsonObject
+            {
+                ["id"] = id,
+                ["trigger"] = "*.*." + starts,
+                ["arena"] = arena,
+            };
+
+            if (chest.Length > 0)
+            {
+                made["reward"] = new JsonObject
+                {
+                    ["region"] = "*.*." + paid,
+                    ["object"] = chest,
+                };
+            }
+
+            all.Add(made);
+
+            map.Changed.Add("level.json");
+            map.Changed.Add(room.File);
+
+            return all.Count - 1;
+        }
+
+        /// <summary>Changes the first wave of a challenge, and what it pays out.</summary>
+        public static bool reshapeChallenge(Map map, int at, int count, string group, string chest)
+        {
+            if (bodyOfChallenge(map, at) is not JsonObject one) { return false; }
+            if (one["arena"] is not JsonObject arena) { return false; }
+
+            if (arena["waves"] is not JsonArray waves || waves.Count == 0)
+            {
+                arena["waves"] = new JsonArray(new JsonArray(Math.Max(1, count), group));
+            }
+            else
+            {
+                waves[0] = new JsonArray(Math.Max(1, count), group);
+            }
+
+            //The region it pays out at is kept - only the thing standing in it changes. Clearing
+            //the chest clears the whole reward, which is what "nothing" has to mean: a reward
+            //body with a region and no object is a region the game looks at and finds empty.
+            if (chest.Length > 0)
+            {
+                if (one["reward"] is JsonObject paid) { paid["object"] = chest; }
+                else { return false; }
+            }
+            else
+            {
+                one.Remove("reward");
+            }
+
+            map.Changed.Add("level.json");
+            return true;
+        }
+
+        /// <summary>Another wave on the same challenge, after the ones already there.</summary>
+        public static bool addChallengeWave(Map map, int at, int count, string group)
+        {
+            if (bodyOfChallenge(map, at) is not JsonObject one) { return false; }
+            if (one["arena"] is not JsonObject arena) { return false; }
+
+            if (arena["waves"] is not JsonArray waves)
+            {
+                waves = new JsonArray();
+                arena["waves"] = waves;
+            }
+
+            //Appended rather than inserted, the opposite of addWave. A kill-group's waves are
+            //separate objectives and the LAST one holds the gate, so a new one has to go first;
+            //a challenge's waves are one list read in order, so a new one goes at the end.
+            waves.Add(new JsonArray(Math.Max(1, count), group));
+
+            map.Changed.Add("level.json");
+            return true;
+        }
+
+        /// <summary>Takes a challenge out, and the regions it made with it.</summary>
+        public static bool removeChallengeAt(Map map, Room room, int at)
+        {
+            if (map.Level["challenges"] is not JsonArray all) { return false; }
+            if (at < 0 || at >= all.Count) { return false; }
+            if (all[at] is not JsonObject one) { return false; }
+
+            //Only the regions this editor named after the challenge itself. One somebody placed
+            //by hand and pointed the trigger at is theirs, and a tidy-up that deletes those is a
+            //tidy-up that quietly breaks a map.
+            var id = text(one["id"]) ?? string.Empty;
+            var mine = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                { id + "_trigger", id + "_reward", id + "_gate" };
+
+            for (var pos = room.Regions.Count - 1; pos >= 0; pos--)
+            {
+                if (room.Regions[pos] is not JsonObject region) { continue; }
+                var name = text(region["name"]) ?? string.Empty;
+
+                //freeStepName may have numbered it, so "challenge1_gate2" counts as ours too.
+                if (mine.Any(stem => name.Equals(stem, StringComparison.OrdinalIgnoreCase)
+                        || (name.StartsWith(stem, StringComparison.OrdinalIgnoreCase)
+                            && name.Length > stem.Length
+                            && char.IsDigit(name[stem.Length]))))
+                {
+                    room.Regions.RemoveAt(pos);
+                }
+            }
+
+            all.RemoveAt(at);
+
+            map.Changed.Add("level.json");
+            map.Changed.Add(room.File);
+            return true;
+        }
+
+        /// <summary>
+        /// Points a challenge at the region that sets it off.
+        ///
+        /// Its own call rather than part of <see cref="reshapeChallenge"/> because this is the
+        /// one field a challenge cannot do without: 1,140 of the game's 1,304 name one, and the
+        /// 164 that do not are fired by something else entirely - a trigger-object, or a click.
+        /// A challenge with neither is dead weight in the file.
+        /// </summary>
+        public static bool setChallengeTrigger(Map map, int at, string region)
+        {
+            if (bodyOfChallenge(map, at) is not JsonObject one) { return false; }
+
+            if (region.Length == 0) { one.Remove("trigger"); }
+            else { one["trigger"] = "*.*." + lastPart(region); }
+
+            map.Changed.Add("level.json");
+            return true;
+        }
+
+        /// <summary>
+        /// Sets which region a challenge walls off while it runs, if any.
+        ///
+        /// Empty is not a mistake and not a no-op: it writes the gate back as bare
+        /// "start-unlocked", which is what 482 of the game's challenges carry. That says the
+        /// walls are the arena's own tiles. Only 28 name regions here, so this is the unusual
+        /// case being made reachable rather than the normal one being enforced.
+        /// </summary>
+        public static bool setChallengeGate(Map map, int at, string region, string look)
+        {
+            if (bodyOfChallenge(map, at) is not JsonObject one) { return false; }
+            if (one["arena"] is not JsonObject arena) { return false; }
+
+            var wall = new JsonObject { ["start-unlocked"] = true };
+
+            if (region.Length > 0)
+            {
+                wall["regions"] = new JsonArray("*.*." + lastPart(region));
+                if (look.Length > 0) { wall["object"] = look; }
+            }
+
+            arena["gate"] = wall;
+
+            map.Changed.Add("level.json");
+            return true;
+        }
+
+        /// <summary>
+        /// The regions a challenge could be pointed at, by what they are for.
+        ///
+        /// Trigger regions are any trigger-type region in the room; gates are the ones tagged
+        /// as gates. Offered as lists because the alternative is typing a region name, and a
+        /// name typed one letter wrong is a challenge that silently never fires.
+        /// </summary>
+        public static List<string> regionNames(Room room, bool gatesOnly)
+        {
+            var found = new List<string>();
+
+            foreach (var one in room.Regions)
+            {
+                if (one is not JsonObject region) { continue; }
+
+                var name = text(region["name"]) ?? string.Empty;
+                if (name.Length == 0) { continue; }
+
+                var tags = text(region["tags"]) ?? string.Empty;
+                var isGate = tags.Split(' ', ',', ';')
+                    .Any(tag => tag.Equals(GATE, StringComparison.OrdinalIgnoreCase));
+
+                if (gatesOnly != isGate) { continue; }
+                if (!found.Contains(name, StringComparer.OrdinalIgnoreCase)) { found.Add(name); }
+            }
+
+            found.Sort(StringComparer.OrdinalIgnoreCase);
+            return found;
+        }
+
+        private static JsonObject? bodyOfChallenge(Map map, int at)
+        {
+            if (map.Level["challenges"] is not JsonArray all) { return null; }
+            if (at < 0 || at >= all.Count) { return null; }
+            return all[at] as JsonObject;
+        }
+
         //--- doors that want a key ---------------------------------------------------------------
 
         /// <summary>
@@ -2001,8 +2575,41 @@ namespace MCDSaveEdit.Logic
         /// </summary>
         public static readonly (string path, string key, string name)[] LOCKED_DOORS =
         {
+            //Highblock Halls first: it is the pair the game uses most and the one a map with no
+            //particular theme should get.
             ("Decor/Prefabs/DoorExit/BP_DoorLocked_Gold_HighblockHalls", "gold", "Gold door"),
             ("Decor/Prefabs/DoorExit/BP_DoorLocked_Silver_HighblockHalls", "silver", "Silver door"),
+
+            //The rest are the same door dressed for a theme. Worth listing because a gold door
+            //in Highblock stone standing in a desert is the kind of thing that reads as a bug in
+            //somebody else's map, and there is nothing to do about it after the fact.
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Gold_DesertTemple", "gold",
+                "Gold door, Desert Temple"),
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Silver_DesertTemple", "silver",
+                "Silver door, Desert Temple"),
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Gold_CactiCanyon", "gold",
+                "Gold door, Cacti Canyon"),
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Silver_CactiCanyon", "silver",
+                "Silver door, Cacti Canyon"),
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Gold_LonelyFortress", "gold",
+                "Gold door, Lonely Fortress"),
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Silver_LonelyFortress", "silver",
+                "Silver door, Lonely Fortress"),
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Gold_End", "gold", "Gold door, the End"),
+            ("Decor/Prefabs/DoorExit/BP_DoorLocked_Silver_End", "silver", "Silver door, the End"),
+
+            //Downloadable, and marked, for the reason on CLICKABLES: a prefab that is not
+            //installed is a mission that does not start.
+            ("Decor/Prefabs/DingyJungle/Jungle_DesignAssets/BP_DoorLocked_Gold_OvergrownTemple",
+                "gold", "Gold door, Overgrown Temple (DLC)"),
+            ("Decor/Prefabs/DingyJungle/Jungle_DesignAssets/BP_DoorLocked_Silver_OvergrownTemple",
+                "silver", "Silver door, Overgrown Temple (DLC)"),
+            ("Content_DLC5/Decor/Prefabs/_HiddenDepths/DoorExit/BP_DoorLocked_Gold_DryDryDungeon1",
+                "gold", "Gold door, Dry Dry Dungeon (DLC)"),
+            ("Content_DLC5/Decor/Prefabs/_HiddenDepths/DoorExit/BP_DoorLocked_Silver_DryDryDungeon1",
+                "silver", "Silver door, Dry Dry Dungeon (DLC)"),
+            ("Content_DLC5/Decor/Prefabs/_HiddenDepths/AbyssalMonument/Keydoor_RotationAware/"
+                + "BP_DoorLocked_Silver_Abyssal", "silver", "Silver door, Abyssal (DLC)"),
         };
 
         /// <summary>

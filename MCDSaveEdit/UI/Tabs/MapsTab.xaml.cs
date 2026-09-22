@@ -54,6 +54,8 @@ namespace MCDSaveEdit.UI
             fixedToMinecraftButton.ToolTip = R.MAPS_FIXED_TO_MINECRAFT_WHY;
             spawnsButton.Content = R.MAPS_SPAWNS;
             spawnsButton.ToolTip = R.MAPS_SPAWNS_WHY;
+            unweldedButton.Content = R.MAPS_UNWELDED;
+            unweldedButton.ToolTip = R.MAPS_UNWELDED_WHY;
             fromMinecraftButton.Content = R.MAPS_FROM_MINECRAFT;
             fromMinecraftButton.ToolTip = R.MAPS_FROM_MINECRAFT_WHY;
 
@@ -314,6 +316,12 @@ namespace MCDSaveEdit.UI
             //The spawn editor needs no converter - it reads the exported folder, which the tab
             //writes on its own.
             spawnsButton.IsEnabled = ready && _chosen != null;
+
+            //A custom slot has no unwelded form: it was built as one tile, so there is nothing
+            //for the weld to have flattened and nothing here to compare against.
+            unweldedButton.Visibility = _chosen is { IsSlot: false }
+                ? Visibility.Visible : Visibility.Collapsed;
+            unweldedButton.IsEnabled = ready && _chosen is { IsSlot: false };
             fromMinecraftButton.IsEnabled = ready && tools && _chosen != null;
 
             toolsLabel.Text = tools
@@ -1340,6 +1348,137 @@ namespace MCDSaveEdit.UI
                 //Whatever it installs, this tab should stop claiming the mission is untouched.
                 window.Installed += () => { fillInstalled(); fillList(); };
                 window.Show();
+            }
+            catch (Exception problem)
+            {
+                statusLabel.Text = problem.Message;
+            }
+        }
+
+        private async void unweldedButton_Click(object sender, RoutedEventArgs e)
+            => await openUnwelded().ConfigureAwait(true);
+
+        /// <summary>
+        /// The mission as the game's own files hold it, before anything is fused.
+        ///
+        /// Edit spawns welds, and it has to: a welded mission is one place, which is how anybody
+        /// thinks about a level and what actually gets installed. But welding is lossy in a way
+        /// that is invisible until you go looking for what it took. Every tile becomes one tile,
+        /// and a teleport that pointed from one to another has nowhere left to point: Creeper
+        /// Woods drops from 59 links to 3, and from 48 descents into its crypts to 14. Creepy
+        /// Crypt keeps all 26 of its sub-areas declared and not one door that reaches them.
+        ///
+        /// So this exports a SECOND copy and never welds it. It is for reading - the Wiring
+        /// window on this copy is the only place the real shape of a shipped mission shows up -
+        /// and it is deliberately not the folder Edit spawns uses, is never remembered against
+        /// the mission, and is never installed. Saving in it changes the inspection copy and
+        /// nothing else.
+        /// </summary>
+        internal async Task openUnwelded()
+        {
+            if (_chosen == null) { return; }
+
+            if (_chosen.IsSlot)
+            {
+                statusLabel.Text = R.MAPS_UNWELDED_ONLY_GAME;
+                return;
+            }
+
+            var mission = _chosen;
+            var folder = workshopFor(mission) + ".unwelded";
+
+            //Exported once and kept. Re-exporting on every press would be slower and no more
+            //truthful - the paks do not change under the app - and it would throw away a note
+            //somebody left in the copy while reading it.
+            var level = Directory.Exists(folder)
+                && Directory.GetFiles(folder, "level.json", SearchOption.AllDirectories).Length > 0;
+
+            if (!level)
+            {
+                if (Directory.Exists(folder))
+                {
+                    try { erase(folder); } catch (Exception) { }
+                }
+
+                _busy = true;
+                statusLabel.Text = string.Format(R.MAPS_UNWELDED_MAKING, mission.Label);
+                updateUI();
+
+                try
+                {
+                    await Task.Run(() => exportTo(mission, folder));
+                }
+                catch (Exception problem)
+                {
+                    statusLabel.Text = problem.Message;
+                    _busy = false;
+                    updateUI();
+                    return;
+                }
+                finally
+                {
+                    _busy = false;
+                    updateUI();
+                }
+
+                /* Pinned, and NOT welded. The two are separate steps and only the second one is
+                   lossy.
+
+                   Pinning replaces a stretch that still picks from a tile-group with the one
+                   tile it picked, which is what makes it a room at all - a Room is a stretch
+                   naming exactly one tile. Straight out of the paks Creeper Woods pins six of
+                   its nineteen stretches and the other thirteen are simply not there: no tiles,
+                   no regions, and the gates the objectives name nowhere to be found.
+
+                   Welding is the step after, and it is the one that fuses every pinned tile into
+                   one and takes the teleports between them with it. Skipping it is the entire
+                   point of this copy. */
+                if (!MapTools.available)
+                {
+                    statusLabel.Text = R.MAPS_UNWELDED_NO_PIN;
+                }
+                else
+                {
+                    _busy = true;
+                    statusLabel.Text = string.Format(R.MAPS_UNWELDED_PINNING, mission.Label);
+                    updateUI();
+
+                    try
+                    {
+                        var pin = await MapTools.makeFixed(folder);
+                        if (!pin.Ok)
+                        {
+                            statusLabel.Text = pin.Last.Length > 0
+                                ? pin.Last : R.MAPS_CONVERT_FAILED;
+                        }
+                    }
+                    catch (Exception problem)
+                    {
+                        statusLabel.Text = problem.Message;
+                    }
+                    finally
+                    {
+                        _busy = false;
+                        updateUI();
+                    }
+                }
+            }
+
+            try
+            {
+                var map = MapSpawns.load(folder);
+
+                var window = new SpawnsWindow(map, mission)
+                {
+                    Owner = Window.GetWindow(this),
+                };
+
+                //No Installed hook. This copy is not installable and the tab has nothing to
+                //re-read when it changes.
+                window.Show();
+
+                statusLabel.Text = string.Format(R.MAPS_UNWELDED_PINNED,
+                    mission.Label, map.Rooms.Count, folder);
             }
             catch (Exception problem)
             {

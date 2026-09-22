@@ -136,6 +136,28 @@ def keep(asset):
         say('could not save %s: %s' % (asset, problem))
 
 
+#The save file holding whatever was played LAST, whichever map it was. Shared by the panel and
+#by the Play wiring, so it is here rather than spelled twice - the two halves have to agree on
+#it exactly, and a typo would not fail, it would just never find anything.
+PREFS_LAST = 'MCDRebornMapLast'
+
+
+def as_pin(cast):
+    """
+    A Cast node's output pin, found rather than spelled.
+
+    It is named for the class's DISPLAY name - BP_PrefsProbe_C comes back as "AsBP Prefs Probe" -
+    so writing the string down means re-deriving Unreal's own word splitting, being wrong the
+    first time, and being wrong again the first time a class is renamed. There is only ever one
+    pin beginning with "As".
+    """
+    for one in cast.node_pins():
+        if one.name.startswith('As'):
+            return one.name
+
+    raise Exception('that cast has no As... pin: %r' % [o.name for o in cast.node_pins()])
+
+
 def on_disk(path, kind):
     """
     An asset that is already there, whether or not this session has it loaded.
