@@ -687,6 +687,7 @@ namespace MCDSaveEdit.UI
             questTab.Header = R.SPAWNS_TAB_QUEST;
             gatesTab.Header = R.SPAWNS_TAB_GATES;
             arenaTab.Header = R.SPAWNS_TAB_ARENA;
+            challengeTab.Header = R.SPAWNS_TAB_CHALLENGE;
             keysTab.Header = R.SPAWNS_TAB_KEYS;
             levelTab.Header = R.SPAWNS_TAB_LEVEL;
 
@@ -706,6 +707,18 @@ namespace MCDSaveEdit.UI
                 arenaRewardBox.Items.Add(new ComboBoxItem { Content = pays.name, Tag = pays.id });
             }
             arenaRewardBox.SelectedIndex = 0;
+
+            addChallengeButton.Content = R.SPAWNS_CHALLENGE_ADD;
+            waveChallengeButton.Content = R.SPAWNS_CHALLENGE_WAVE;
+            removeChallengeButton.Content = R.SPAWNS_CHALLENGE_REMOVE;
+            applyChallengeButton.Content = R.SPAWNS_CHALLENGE_APPLY;
+            challengeWhy.Text = R.SPAWNS_CHALLENGE_HINT;
+            challengeTriggerLabel.Text = R.SPAWNS_CHALLENGE_TRIGGER;
+            challengeGroupLabel.Text = R.SPAWNS_CHALLENGE_GROUP;
+            challengeCountLabel.Text = R.SPAWNS_CHALLENGE_COUNT;
+            challengeRewardLabel.Text = R.SPAWNS_CHALLENGE_REWARD;
+            challengeSealsLabel.Text = R.SPAWNS_CHALLENGE_SEALS;
+            challengeSealsWhy.Text = R.SPAWNS_CHALLENGE_SEALS_WHY;
 
             addKeyedButton.Content = R.SPAWNS_ADD_KEYED;
             alsoKeyButton.Content = R.SPAWNS_KEY_ALSO;
@@ -788,6 +801,7 @@ namespace MCDSaveEdit.UI
             revertButton.Content = R.SPAWNS_RELOAD;
             frameButton.Content = R.SPAWNS_FIT;
             installButton.Content = R.SPAWNS_INSTALL;
+            wiringButton.Content = R.WIRING_TITLE;
             installButton.ToolTip = R.SPAWNS_INSTALL_WHY;
             installButton.Visibility = _mission == null ? Visibility.Collapsed : Visibility.Visible;
             overheadButton.Content = R.SPAWNS_OVERHEAD;
@@ -925,6 +939,7 @@ namespace MCDSaveEdit.UI
             fillSteps();
             fillGates();
             fillArenas();
+            fillChallenges();
             fillKeys();
             fillLevel();
         }
@@ -1135,6 +1150,184 @@ namespace MCDSaveEdit.UI
 
         //--- doors that want a key ------------------------------------------------------------------
 
+        private int _challenge = -1;
+
+        /// <summary>
+        /// The mission's optional fights.
+        ///
+        /// Their own tab because a challenge is not a step. An objective has banner text and the
+        /// level waits for it; a challenge fires when somebody walks into a region and nothing
+        /// waits for anything. The shipped levels are overwhelmingly the second kind - 1,304
+        /// challenges against 412 objectives - and a custom map built only out of objectives is
+        /// missing the shape the game actually uses.
+        ///
+        /// Four things can be pointed at from here and every one of them is a picker rather than
+        /// a text box, because all four are region or asset names and a name typed one letter
+        /// wrong is a challenge that fails silently: nothing in the file checks them.
+        /// </summary>
+        private void fillChallenges()
+        {
+            if (_map == null || _room == null) { return; }
+
+            var fights = MapSpawns.challengesOf(_map);
+
+            _filling = true;
+            var wasAt = _challenge;
+            challengeList.ItemsSource = fights;
+            challengeList.SelectedIndex = fights.FindIndex(one => one.At == wasAt);
+
+            //The same three lists the other tabs use, rebuilt here rather than shared, because
+            //each one is filtered differently: triggers are plain regions, seals are gates only.
+            fillPicker(challengeGroupBox,
+                MapSpawns.usage(_map.Level).Keys
+                    .OrderBy(one => one, StringComparer.OrdinalIgnoreCase)
+                    .Select(one => (one, one)));
+
+            fillPicker(challengeTriggerBox,
+                MapSpawns.regionNames(_room, false).Select(one => (one, one)));
+
+            fillPicker(challengeSealsBox,
+                new[] { (string.Empty, R.SPAWNS_CHALLENGE_NOTHING) }
+                    .Concat(MapSpawns.regionNames(_room, true).Select(one => (one, one))));
+
+            fillPicker(challengeRewardBox,
+                new[] { (string.Empty, R.SPAWNS_CHALLENGE_NOTHING) }
+                    .Concat(MapSpawns.CHESTS.Select(one => (one.path, one.name))));
+
+            _filling = false;
+
+            var dead = fights.Count(one => one.Trigger.Length == 0);
+
+            challengeHint.Text = fights.Count == 0
+                ? R.SPAWNS_CHALLENGE_NONE
+                : dead > 0
+                    ? string.Format(R.SPAWNS_CHALLENGE_BROKEN, fights.Count, dead)
+                    : string.Format(R.SPAWNS_CHALLENGE_SOME, fights.Count);
+        }
+
+        /// <summary>Refills a picker, keeping whatever it was on if that row is still there.</summary>
+        private static void fillPicker(System.Windows.Controls.ComboBox box,
+                                       IEnumerable<(string tag, string name)> rows)
+        {
+            var was = (box.SelectedItem as ComboBoxItem)?.Tag as string;
+            box.Items.Clear();
+
+            foreach (var row in rows)
+            {
+                box.Items.Add(new ComboBoxItem { Content = row.name, Tag = row.tag });
+            }
+
+            if (box.Items.Count == 0) { return; }
+
+            var back = box.Items.OfType<ComboBoxItem>().ToList()
+                .FindIndex(one => (one.Tag as string) == was);
+
+            box.SelectedIndex = back >= 0 ? back : 0;
+        }
+
+        private void challengeList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling) { return; }
+            if (challengeList.SelectedItem is not MapSpawns.Challenge fight)
+            {
+                _challenge = -1;
+                return;
+            }
+
+            _challenge = fight.At;
+
+            //All four pickers move to what the challenge already says, so Apply changes the one
+            //thing that was touched rather than quietly rewriting the other three.
+            challengeCountBox.Text = (fight.Waves.Length > 0 ? fight.Waves[0].count : 6).ToString();
+
+            pick(challengeTriggerBox, fight.Trigger);
+            pick(challengeGroupBox, fight.Waves.Length > 0 ? fight.Waves[0].group : string.Empty);
+            pick(challengeRewardBox, fight.Chest);
+            pick(challengeSealsBox, fight.Gates.Length > 0 ? fight.Gates[0] : string.Empty);
+
+            drawWires();
+            statusLabel.Text = fight.ToString();
+            updateUI();
+        }
+
+        private int challengeCount()
+            => int.TryParse(challengeCountBox.Text.Trim(), out var many) ? Math.Max(1, many) : 6;
+
+        private static string tagOf(System.Windows.Controls.ComboBox box)
+            => (box.SelectedItem as ComboBoxItem)?.Tag as string ?? string.Empty;
+
+        private void addChallengeButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_map == null || _room == null) { return; }
+
+            var group = tagOf(challengeGroupBox);
+            if (group.Length == 0) { statusLabel.Text = R.SPAWNS_CHALLENGE_NEEDS_GROUP; return; }
+
+            var x = number(xBox, _room.Size[0] / 2);
+            var y = number(yBox, _room.Size[1] / 2);
+            var z = number(zBox, _room.Size[2] / 2);
+
+            var count = challengeCount();
+            var id = MapSpawns.freeChallengeName(_map);
+
+            //A challenge whose seals picker is on something gets a gate of its own, made beside
+            //the trigger. Picking an existing gate region is what Apply is for - this is the
+            //first press, and there is nothing yet to pick.
+            var at = MapSpawns.addChallenge(_map, _room, id, group, count,
+                tagOf(challengeRewardBox),
+                (drawnBox.SelectedItem as ComboBoxItem)?.Tag as string
+                    ?? MapSpawns.GATE_LOOKS[0].path,
+                tagOf(challengeSealsBox).Length > 0, x, y, z);
+
+            _challenge = at;
+            statusLabel.Text = string.Format(R.SPAWNS_CHALLENGE_ADDED, id, x, y, z, count, group);
+
+            redrawAll();
+        }
+
+        private void waveChallengeButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_map == null || _challenge < 0) { return; }
+
+            var group = tagOf(challengeGroupBox);
+            if (group.Length == 0) { statusLabel.Text = R.SPAWNS_CHALLENGE_NEEDS_GROUP; return; }
+
+            var count = challengeCount();
+            if (!MapSpawns.addChallengeWave(_map, _challenge, count, group)) { return; }
+
+            statusLabel.Text = string.Format(R.SPAWNS_CHALLENGE_WAVED, count, group);
+            redrawAll();
+        }
+
+        private void applyChallengeButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_map == null || _challenge < 0) { return; }
+
+            var group = tagOf(challengeGroupBox);
+            if (group.Length == 0) { statusLabel.Text = R.SPAWNS_CHALLENGE_NEEDS_GROUP; return; }
+
+            MapSpawns.reshapeChallenge(_map, _challenge, challengeCount(), group,
+                tagOf(challengeRewardBox));
+
+            MapSpawns.setChallengeTrigger(_map, _challenge, tagOf(challengeTriggerBox));
+
+            MapSpawns.setChallengeGate(_map, _challenge, tagOf(challengeSealsBox),
+                (drawnBox.SelectedItem as ComboBoxItem)?.Tag as string ?? string.Empty);
+
+            statusLabel.Text = R.SPAWNS_CHALLENGE_APPLIED;
+            redrawAll();
+        }
+
+        private void removeChallengeButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_map == null || _room == null || _challenge < 0) { return; }
+            if (!MapSpawns.removeChallengeAt(_map, _room, _challenge)) { return; }
+
+            _challenge = -1;
+            statusLabel.Text = R.SPAWNS_CHALLENGE_GONE;
+            redrawAll();
+        }
+
         private int _keyed = -1;
 
         private void fillKeys()
@@ -1178,6 +1371,36 @@ namespace MCDSaveEdit.UI
             drawWires();
             statusLabel.Text = door.ToString();
             updateUI();
+        }
+
+        /// <summary>
+        /// Opens the wiring graph on the map this window is already holding.
+        ///
+        /// The SAME Map object, deliberately: the graph writes through the same calls these tabs
+        /// do, so handing it a second copy loaded from disk would give two views that disagree
+        /// the moment either of them changed anything, and only one of them would be saved.
+        /// </summary>
+        /// <summary>Every list that can be changed by rewiring, rebuilt.</summary>
+        private void again()
+        {
+            fillDoors();
+            fillExits();
+            fillGates();
+            fillArenas();
+            fillChallenges();
+            fillKeys();
+            fillQuest();
+        }
+
+        private void wiringButton_Click(object sender, RoutedEventArgs e)
+        {
+            var window = new WiringWindow(_map) { Owner = this };
+
+            //Rewiring changes what the lists hold, so they are rebuilt when it closes rather
+            //than left showing what the map used to be.
+            window.Changed += again;
+            window.ShowDialog();
+            again();
         }
 
         private void addKeyedButton_Click(object sender, RoutedEventArgs e)
@@ -1354,6 +1577,7 @@ namespace MCDSaveEdit.UI
             fillSteps();
             fillGates();
             fillArenas();
+            fillChallenges();
             fillKeys();
             drawWires();
             updateUI();

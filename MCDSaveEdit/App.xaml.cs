@@ -1073,6 +1073,159 @@ namespace MCDSaveEdit
             //arena and killgroup keep a "gate" instead. If that holds across every mission then
             //hanging a gate off a gauntlet writes a field the game never reads - a gate that is
             //drawn, and lit, and never opens, with no error anywhere.
+            //Builds the challenge example on a COPY of a map and prints what the app actually
+            //wrote. Not a test of the UI - a test of the file, which is the thing that has to be
+            //right. The copy matters: a probe that edits the map somebody is working on is a
+            //probe that eats an afternoon.
+            //
+            //  MCDReborn.exe PROBE_CHALLENGE=<map folder>;<out folder>
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_CHALLENGE=", StringComparison.Ordinal)))
+            {
+                var said = _startupArguments.First(a =>
+                    a.StartsWith("PROBE_CHALLENGE=", StringComparison.Ordinal))["PROBE_CHALLENGE=".Length..];
+
+                var parts = said.Split(';', 2);
+                var from = parts[0].Trim().Trim('"');
+                var into = (parts.Length > 1 ? parts[1] : Path.Combine(Path.GetTempPath(), "cwork"))
+                    .Trim().Trim('"');
+
+                Directory.CreateDirectory(into);
+
+                var work = Path.Combine(into, "map");
+                if (Directory.Exists(work)) { Directory.Delete(work, true); }
+
+                foreach (var dir in Directory.GetDirectories(from, "*", SearchOption.AllDirectories))
+                {
+                    Directory.CreateDirectory(dir.Replace(from, work));
+                }
+                Directory.CreateDirectory(work);
+                foreach (var file in Directory.GetFiles(from, "*", SearchOption.AllDirectories))
+                {
+                    var landing = file.Replace(from, work);
+                    Directory.CreateDirectory(Path.GetDirectoryName(landing)!);
+                    File.Copy(file, landing, true);
+                }
+
+                var map = Logic.MapSpawns.load(work);
+                var room = map.Rooms.FirstOrDefault();
+                if (room == null) { Console.WriteLine("no room in " + from); Shutdown(); return; }
+
+                var log = new System.Text.StringBuilder();
+                log.AppendLine("room " + room.Id + "  " + string.Join("x", room.Size));
+
+                //A group first, because a challenge naming one that does not exist spawns
+                //nothing - which is the trap the whole wiring view exists to make visible.
+                var group = Logic.MapSpawns.addGroup(map, "zombie");
+                var id = group["id"]?.GetValue<string>() ?? "custom";
+                log.AppendLine("group " + id);
+
+                var made = Logic.MapSpawns.place(room, room.Size[0] / 2, room.Size[1] / 2,
+                    room.Size[2] / 2, 6, 8, string.Empty);
+                log.AppendLine("spawn points " + made);
+
+                var at = Logic.MapSpawns.addChallenge(map, room,
+                    Logic.MapSpawns.freeChallengeName(map), id, 6,
+                    Logic.MapSpawns.CHESTS[0].path, Logic.MapSpawns.GATE_LOOKS[0].path,
+                    true, room.Size[0] / 2, room.Size[1] / 2, room.Size[2] / 2 + 4);
+
+                log.AppendLine("challenge at " + at);
+
+                Logic.MapSpawns.save(map);
+
+                foreach (var one in Logic.MapSpawns.challengesOf(map))
+                {
+                    log.AppendLine("  " + one);
+                }
+
+                var levelPath = Directory.GetFiles(work, "level.json", SearchOption.AllDirectories)
+                    .FirstOrDefault();
+
+                if (levelPath != null)
+                {
+                    File.Copy(levelPath, Path.Combine(into, "level.json"), true);
+                    log.AppendLine("level.json -> " + Path.Combine(into, "level.json"));
+                }
+
+                var roomPath = Directory.GetFiles(work, Path.GetFileName(room.File),
+                    SearchOption.AllDirectories).FirstOrDefault();
+
+                if (roomPath != null)
+                {
+                    File.Copy(roomPath, Path.Combine(into, Path.GetFileName(room.File)), true);
+                    log.AppendLine("room -> " + Path.Combine(into, Path.GetFileName(room.File)));
+                }
+
+                File.WriteAllText(Path.Combine(into, "probe.txt"), log.ToString());
+                Console.WriteLine(log.ToString());
+                Shutdown();
+                return;
+            }
+
+            //Every wiring tab's shape, read off a real map and printed. Read-only: it loads,
+            //builds each tab twice, and writes nothing back.
+            //
+            //  MCDReborn.exe PROBE_WIRING=<map folder>
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_WIRING=", StringComparison.Ordinal)))
+            {
+                var folder = _startupArguments.First(a =>
+                    a.StartsWith("PROBE_WIRING=", StringComparison.Ordinal))["PROBE_WIRING=".Length..]
+                    .Trim().Trim('"');
+
+                var map = Logic.MapSpawns.load(folder);
+                Console.WriteLine(folder + "  " + map.Rooms.Count + " room(s)");
+                Console.WriteLine(new UI.WiringWindow(map).probeTabs());
+                Shutdown();
+                return;
+            }
+
+            //What Inspect unwelded opens, without the window: exports a mission straight from
+            //the paks, never welds it, and prints every wiring tab's shape. The point is the
+            //comparison with the same mission welded - see PROBE_WIRING.
+            //
+            //  MCDReborn.exe PROBE_UNWELD=<mission name>;<out folder>
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_UNWELD=", StringComparison.Ordinal)))
+            {
+                var said = _startupArguments.First(a =>
+                    a.StartsWith("PROBE_UNWELD=", StringComparison.Ordinal))["PROBE_UNWELD=".Length..];
+
+                var bits = said.Split(';', 2);
+                var wanted = bits[0].Trim().Trim('"');
+                var into = (bits.Length > 1 ? bits[1] : Path.Combine(Path.GetTempPath(), "unweld"))
+                    .Trim().Trim('"');
+
+                var mission = Logic.GameMaps.all()
+                    .FirstOrDefault(one => string.Equals(one.Name, wanted,
+                        StringComparison.OrdinalIgnoreCase));
+
+                if (mission == null) { Console.WriteLine("no mission " + wanted); Shutdown(); return; }
+
+                Directory.CreateDirectory(into);
+
+                if (Directory.GetFiles(into, "level.json", SearchOption.AllDirectories).Length == 0)
+                {
+                    Logic.MapMod.export(mission, into);
+
+                    //Pinned but never welded, exactly as the button does it. Without the pin a
+                    //stretch that still picks from a tile-group has no single tile and simply
+                    //is not there: Creeper Woods comes out of the paks with six of its nineteen.
+                    if (Logic.MapTools.available)
+                    {
+                        var pin = Task.Run(() => Logic.MapTools.makeFixed(into)).GetAwaiter().GetResult();
+                        Console.WriteLine("pin " + (pin.Ok ? "ok" : pin.Last));
+                    }
+                    else
+                    {
+                        Console.WriteLine("no converters - stretches left picking at random");
+                    }
+                }
+
+                var map = Logic.MapSpawns.load(into);
+                Console.WriteLine(mission.Name + " unwelded  " + map.Rooms.Count + " room(s)");
+                Console.WriteLine(new UI.WiringWindow(map).probeTabs());
+                Shutdown();
+                return;
+            }
+
             if (_startupArguments.Any(a => a == "PROBE_GATES"))
             {
                 var held = new SortedDictionary<string, int>(StringComparer.Ordinal);
