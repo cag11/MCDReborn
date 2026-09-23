@@ -102,6 +102,39 @@ namespace LiveEdit
         public int Id { get; }
         public bool IsRunning => !Process.HasExited;
 
+        /// <summary>
+        /// True when this is not the game itself and the game has since turned up.
+        ///
+        /// On Steam, Dungeons.exe is a launcher stub that starts the real game -
+        /// Dungeons-Win64-Shipping - about a second later and then sits there for as long as the
+        /// game runs. "Dungeons" is in PROCESS_NAMES because some installs call the game itself
+        /// that, so a link that polls in the gap between the two finds the stub, attaches, and
+        /// has no reason ever to look again: the stub never exits. Everything after that reads
+        /// the launcher's memory, finds no character, and every slider writes to nothing.
+        ///
+        /// Only asked of a process that is not already the shipping one, so the cost - a
+        /// process lookup per poll - is paid only in the case that needs it.
+        /// </summary>
+        public bool Superseded
+        {
+            get
+            {
+                try
+                {
+                    if (string.Equals(Process.ProcessName, PROCESS_NAME, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return false;
+                    }
+
+                    return Process.GetProcessesByName(PROCESS_NAME).Length > 0;
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            }
+        }
+
         private IntPtr _image;
         private int _imageSize;
 

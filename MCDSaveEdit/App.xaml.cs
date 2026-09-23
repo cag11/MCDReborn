@@ -1226,6 +1226,39 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //Which process the live links would take, and whether a character can be read out of
+            //it. READ-ONLY: it opens, looks, and lets go - nothing is applied, no debugger is
+            //attached, and it is the same external read the Difficulty tab makes every 400 ms.
+            //Written for the Steam launcher race: Dungeons.exe is a stub that starts the real game
+            //a second later and stays alive, so what was taken matters as much as whether.
+            //
+            //  MCDReborn.exe PROBE_LIVE
+            if (_startupArguments.Any(a => a == "PROBE_LIVE"))
+            {
+                foreach (var name in LiveEdit.GameProcess.PROCESS_NAMES)
+                {
+                    foreach (var one in System.Diagnostics.Process.GetProcessesByName(name))
+                    {
+                        Console.WriteLine($"running  {one.ProcessName,-26} pid {one.Id,-6} "
+                            + $"{one.WorkingSet64 / (1024 * 1024)} MB");
+                    }
+                }
+
+                var game = LiveEdit.GameProcess.open(out var problem);
+                if (game == null) { Console.WriteLine("open failed: " + problem); Shutdown(); return; }
+
+                Console.WriteLine($"opened   {game.Process.ProcessName,-26} pid {game.Id}"
+                    + $"   superseded={game.Superseded}");
+
+                var stats = new LiveEdit.LiveStats(game);
+                var found = stats.look();
+                Console.WriteLine($"character found={found}  ready={stats.Ready}");
+
+                game.Dispose();
+                Shutdown();
+                return;
+            }
+
             if (_startupArguments.Any(a => a == "PROBE_GATES"))
             {
                 var held = new SortedDictionary<string, int>(StringComparer.Ordinal);
