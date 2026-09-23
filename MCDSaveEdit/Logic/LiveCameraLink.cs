@@ -73,7 +73,9 @@ namespace MCDSaveEdit.Logic
         {
             var was = attached;
 
-            if (_game != null && !_game.IsRunning) { drop(); }
+            //Superseded: attached to Steam's launcher stub in the second before the real game
+            //started. The stub never exits, so without this the camera would stay on it for good.
+            if (_game != null && (!_game.IsRunning || _game.Superseded)) { drop(); }
 
             if (_game == null)
             {

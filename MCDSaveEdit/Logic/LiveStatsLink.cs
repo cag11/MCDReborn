@@ -235,13 +235,35 @@ namespace MCDSaveEdit.Logic
 
         private bool _saidEnemiesOn;
 
+        /// <summary>
+        /// One poll, and a word to the page whenever what it has to say changed.
+        ///
+        /// The page used to be told only when `attached` flipped, which meant "the game is not
+        /// running" stayed on screen for as long as the link was stuck anywhere short of attached
+        /// - including attached to the wrong process, with the game plainly open. A message that
+        /// is out of date is worse than none, because it points at the wrong thing to fix.
+        /// </summary>
         private void tick()
+        {
+            var said = status;
+            step();
+            if (status != said) { changed?.Invoke(); }
+        }
+
+        private void step()
         {
             var was = attached;
             var had = enemyCount;
 
-            if (_game != null && !_game.IsRunning)
+            //Superseded is the Steam launcher case: attached to Dungeons.exe in the second before
+            //the real game started, and it would otherwise stay attached to it for good.
+            if (_game != null && (!_game.IsRunning || _game.Superseded))
             {
+                if (_game.IsRunning)
+                {
+                    Services.Journal.note($"enemy loop let go of pid {_game.Id} ({_game.Process.ProcessName})"
+                        + " - the game itself is running now");
+                }
                 _game.Dispose();
                 _game = null;
                 _stats = null;
