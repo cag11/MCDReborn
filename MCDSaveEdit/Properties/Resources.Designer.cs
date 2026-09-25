@@ -8283,5 +8283,536 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("MAPS_UNWELDED_PINNED", resourceCulture);
             }
         }
-}
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Before installing.
+        /// </summary>
+        public static string SPAWNS_CHECK_TITLE {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHECK_TITLE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This map has {0} problem(s) that stop it working in the game.
+        /// </summary>
+        public static string SPAWNS_CHECK_BAD {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHECK_BAD", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0}   ·   {1} warning(s) - open Wiring to see them..
+        /// </summary>
+        public static string SPAWNS_CHECK_WARNED {
+            get {
+                return ResourceManager.GetString("SPAWNS_CHECK_WARNED", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} - unwelded, for reading.
+        /// </summary>
+        public static string SPAWNS_INSPECTING_TITLE {
+            get {
+                return ResourceManager.GetString("SPAWNS_INSPECTING_TITLE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Inspection copy. Nothing here is saved or installed - edit t.
+        /// </summary>
+        public static string SPAWNS_INSPECTING {
+            get {
+                return ResourceManager.GetString("SPAWNS_INSPECTING", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Problems.
+        /// </summary>
+        public static string WIRING_PROBLEMS {
+            get {
+                return ResourceManager.GetString("WIRING_PROBLEMS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to No problems found..
+        /// </summary>
+        public static string WIRING_NO_PROBLEMS {
+            get {
+                return ResourceManager.GetString("WIRING_NO_PROBLEMS", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to This is an inspection copy. Wiring here is not saved - open .
+        /// </summary>
+        public static string WIRING_READ_ONLY {
+            get {
+                return ResourceManager.GetString("WIRING_READ_ONLY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to New Items.
+        /// </summary>
+        public static string ITEMS_TAB {
+            get {
+                return ResourceManager.GetString("ITEMS_TAB", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Free item slots.
+        /// </summary>
+        public static string ITEMS_SLOTS {
+            get {
+                return ResourceManager.GetString("ITEMS_SLOTS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The game has these items built in but ships nothing for them. Fill one with a copy of an existing item. Its type, its gold frame and its name come from the game and cannot change..
+        /// </summary>
+        public static string ITEMS_SLOTS_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_SLOTS_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to empty.
+        /// </summary>
+        public static string ITEMS_SLOT_EMPTY {
+            get {
+                return ResourceManager.GetString("ITEMS_SLOT_EMPTY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to copy of {0}.
+        /// </summary>
+        public static string ITEMS_SLOT_FILLED {
+            get {
+                return ResourceManager.GetString("ITEMS_SLOT_FILLED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to not tested yet.
+        /// </summary>
+        public static string ITEMS_SLOT_LATER {
+            get {
+                return ResourceManager.GetString("ITEMS_SLOT_LATER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Melee.
+        /// </summary>
+        public static string ITEMS_KIND_MELEE {
+            get {
+                return ResourceManager.GetString("ITEMS_KIND_MELEE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Ranged.
+        /// </summary>
+        public static string ITEMS_KIND_RANGED {
+            get {
+                return ResourceManager.GetString("ITEMS_KIND_RANGED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Armour.
+        /// </summary>
+        public static string ITEMS_KIND_ARMOR {
+            get {
+                return ResourceManager.GetString("ITEMS_KIND_ARMOR", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Artifact.
+        /// </summary>
+        public static string ITEMS_KIND_ARTIFACT {
+            get {
+                return ResourceManager.GetString("ITEMS_KIND_ARTIFACT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to unique.
+        /// </summary>
+        public static string ITEMS_UNIQUE {
+            get {
+                return ResourceManager.GetString("ITEMS_UNIQUE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Copy from.
+        /// </summary>
+        public static string ITEMS_COPY_FROM {
+            get {
+                return ResourceManager.GetString("ITEMS_COPY_FROM", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Search….
+        /// </summary>
+        public static string ITEMS_SEARCH {
+            get {
+                return ResourceManager.GetString("ITEMS_SEARCH", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Icon.
+        /// </summary>
+        public static string ITEMS_ICON {
+            get {
+                return ResourceManager.GetString("ITEMS_ICON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Keep the copied item's icon.
+        /// </summary>
+        public static string ITEMS_ICON_COPIED {
+            get {
+                return ResourceManager.GetString("ITEMS_ICON_COPIED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Use another item's icon.
+        /// </summary>
+        public static string ITEMS_ICON_OTHER {
+            get {
+                return ResourceManager.GetString("ITEMS_ICON_OTHER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Use my own picture.
+        /// </summary>
+        public static string ITEMS_ICON_IMAGE {
+            get {
+                return ResourceManager.GetString("ITEMS_ICON_IMAGE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Choose picture….
+        /// </summary>
+        public static string ITEMS_ICON_CHOOSE {
+            get {
+                return ResourceManager.GetString("ITEMS_ICON_CHOOSE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Behaviour.
+        /// </summary>
+        public static string ITEMS_BEHAVIOUR {
+            get {
+                return ResourceManager.GetString("ITEMS_BEHAVIOUR", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to One row per swing of the combo, in order. Only the values the copied item stores can be changed..
+        /// </summary>
+        public static string ITEMS_BEHAVIOUR_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_BEHAVIOUR_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Show every value.
+        /// </summary>
+        public static string ITEMS_SHOW_ALL {
+            get {
+                return ResourceManager.GetString("ITEMS_SHOW_ALL", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Swing.
+        /// </summary>
+        public static string ITEMS_COL_SWING {
+            get {
+                return ResourceManager.GetString("ITEMS_COL_SWING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Setting.
+        /// </summary>
+        public static string ITEMS_COL_SETTING {
+            get {
+                return ResourceManager.GetString("ITEMS_COL_SETTING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Game.
+        /// </summary>
+        public static string ITEMS_COL_GAME {
+            get {
+                return ResourceManager.GetString("ITEMS_COL_GAME", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Yours.
+        /// </summary>
+        public static string ITEMS_COL_YOURS {
+            get {
+                return ResourceManager.GetString("ITEMS_COL_YOURS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Every swing:.
+        /// </summary>
+        public static string ITEMS_ALL_SWINGS {
+            get {
+                return ResourceManager.GetString("ITEMS_ALL_SWINGS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Damage ×.
+        /// </summary>
+        public static string ITEMS_DAMAGE_X {
+            get {
+                return ResourceManager.GetString("ITEMS_DAMAGE_X", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Speed ×.
+        /// </summary>
+        public static string ITEMS_SPEED_X {
+            get {
+                return ResourceManager.GetString("ITEMS_SPEED_X", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Reach ×.
+        /// </summary>
+        public static string ITEMS_REACH_X {
+            get {
+                return ResourceManager.GetString("ITEMS_REACH_X", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Apply.
+        /// </summary>
+        public static string ITEMS_APPLY {
+            get {
+                return ResourceManager.GetString("ITEMS_APPLY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Game values.
+        /// </summary>
+        public static string ITEMS_RESET {
+            get {
+                return ResourceManager.GetString("ITEMS_RESET", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Save and install.
+        /// </summary>
+        public static string ITEMS_INSTALL {
+            get {
+                return ResourceManager.GetString("ITEMS_INSTALL", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Empty this slot.
+        /// </summary>
+        public static string ITEMS_CLEAR {
+            get {
+                return ResourceManager.GetString("ITEMS_CLEAR", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Take {0} off every character first. A character still holding it will crash the game once the slot is empty..
+        /// </summary>
+        public static string ITEMS_CLEAR_WARN {
+            get {
+                return ResourceManager.GetString("ITEMS_CLEAR_WARN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Installed {0} item(s). Restart the game, then add them to a character from the inventory..
+        /// </summary>
+        public static string ITEMS_INSTALLED {
+            get {
+                return ResourceManager.GetString("ITEMS_INSTALLED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Could not build the items: {0}.
+        /// </summary>
+        public static string ITEMS_FAILED {
+            get {
+                return ResourceManager.GetString("ITEMS_FAILED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The game's content is not loaded yet..
+        /// </summary>
+        public static string ITEMS_NOT_READY {
+            get {
+                return ResourceManager.GetString("ITEMS_NOT_READY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pick an item to copy first..
+        /// </summary>
+        public static string ITEMS_PICK_SOURCE {
+            get {
+                return ResourceManager.GetString("ITEMS_PICK_SOURCE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Damage.
+        /// </summary>
+        public static string ITEMS_SET_DAMAGE {
+            get {
+                return ResourceManager.GetString("ITEMS_SET_DAMAGE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Swing time (s).
+        /// </summary>
+        public static string ITEMS_SET_SWING {
+            get {
+                return ResourceManager.GetString("ITEMS_SET_SWING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Reach.
+        /// </summary>
+        public static string ITEMS_SET_REACH {
+            get {
+                return ResourceManager.GetString("ITEMS_SET_REACH", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Arc (°).
+        /// </summary>
+        public static string ITEMS_SET_ARC {
+            get {
+                return ResourceManager.GetString("ITEMS_SET_ARC", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Splash.
+        /// </summary>
+        public static string ITEMS_SET_SPLASH {
+            get {
+                return ResourceManager.GetString("ITEMS_SET_SPLASH", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Stun.
+        /// </summary>
+        public static string ITEMS_SET_STUN {
+            get {
+                return ResourceManager.GetString("ITEMS_SET_STUN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Knockback.
+        /// </summary>
+        public static string ITEMS_SET_KNOCKBACK {
+            get {
+                return ResourceManager.GetString("ITEMS_SET_KNOCKBACK", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Cooldown (s).
+        /// </summary>
+        public static string ITEMS_SET_COOLDOWN {
+            get {
+                return ResourceManager.GetString("ITEMS_SET_COOLDOWN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Hit delay (s).
+        /// </summary>
+        public static string ITEMS_SET_DELAY {
+            get {
+                return ResourceManager.GetString("ITEMS_SET_DELAY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Working….
+        /// </summary>
+        public static string ITEMS_WORKING {
+            get {
+                return ResourceManager.GetString("ITEMS_WORKING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Name.
+        /// </summary>
+        public static string ITEMS_NAME {
+            get {
+                return ResourceManager.GetString("ITEMS_NAME", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Description.
+        /// </summary>
+        public static string ITEMS_DESCRIPTION {
+            get {
+                return ResourceManager.GetString("ITEMS_DESCRIPTION", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Shown in every language the game has. Leave a box empty to keep the game's own text..
+        /// </summary>
+        public static string ITEMS_TEXT_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_TEXT_HINT", resourceCulture);
+            }
+        }
+    }
 }

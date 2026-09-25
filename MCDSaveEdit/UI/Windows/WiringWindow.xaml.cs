@@ -121,6 +121,17 @@ namespace MCDSaveEdit.UI
 
         private Tab _tab = Tab.Lock;
         private bool _showAll;
+        private bool _readOnly;
+
+        /// <summary>
+        /// For the unwelded inspection copy: every tab still reads, nothing can be drawn or cut.
+        /// </summary>
+        public void readOnly()
+        {
+            _readOnly = true;
+            say(R.WIRING_READ_ONLY);
+            detail();
+        }
 
         private Box? _chosenBox;
         private Wire? _chosenWire;
@@ -389,8 +400,14 @@ namespace MCDSaveEdit.UI
             //while every step has a different one - and it cannot work at all when the gate's
             //region was never exported. lockedBy reads locked-doors straight off the body, and
             //the kill-group's gate beside it.
+            //Clicks only. lockedBy also hands back a kill-group's gate, which is a SEAL - shut
+            //while the fight runs, open when it ends - and the Objectives tab draws it as one
+            //from arenasOf. Taking it here as well drew the same gate twice under two names on
+            //Squid Coast and Arch Haven, the only two shipped levels with kill-group objectives.
             foreach (var step in MapSpawns.objectivesOf(_map))
             {
+                if (!step.CanHoldGates) { continue; }
+
                 foreach (var name in MapSpawns.lockedBy(_map, step.At))
                 {
                     join(boxFor("step/" + step.At), Wiring.Lock, boxFor("gate/" + name));
@@ -574,6 +591,41 @@ namespace MCDSaveEdit.UI
             }
         }
 
+        /// <summary>
+        /// The box for a mob group, made if nothing has made it yet.
+        ///
+        /// Wires used to land only on groups addGroups had already drawn, and that list is
+        /// MapSpawns.usage - which does not hold every group a fight can name. Checked against
+        /// all 56 shipped levels, that lost five of Squid Coast's seven fight-to-group wires,
+        /// three of the Tower's and Warped Forest's `warped-ambush`: a wire with no box to land
+        /// on was simply not drawn, and a missing wire looks exactly like a fight with no mobs.
+        /// </summary>
+        private Box groupBox(string name)
+        {
+            var found = boxFor("group/" + name);
+            if (found != null) { return found; }
+
+            var box = add("group", "group/" + name, name, "mob group", false);
+            box.Name = name;
+            return box;
+        }
+
+        /// <summary>
+        /// The box for a gate region, made if nothing has made it yet - the same trap as
+        /// <see cref="groupBox"/>. Gate boxes came only from the rooms and from what objectives
+        /// lock, so a challenge's own gate had nowhere to land: every one of the 52 challenge
+        /// seals in the shipped game went undrawn.
+        /// </summary>
+        private Box gateBox(string name)
+        {
+            var found = boxFor("gate/" + name);
+            if (found != null) { return found; }
+
+            var box = add("gate", "gate/" + name, name, R.WIRING_NOT_HERE, false);
+            box.Name = name;
+            return box;
+        }
+
         private void addGroups()
         {
             foreach (var id in MapSpawns.usage(_map.Level).Keys
@@ -605,14 +657,14 @@ namespace MCDSaveEdit.UI
 
             foreach (var fight in MapSpawns.arenasOf(_map))
             {
-                join(boxFor("fight/" + fight.At), Wiring.Mobs, boxFor("group/" + fight.Group));
+                if (fight.Group.Length > 0) { join(boxFor("fight/" + fight.At), Wiring.Mobs, groupBox(fight.Group)); }
             }
 
             foreach (var fight in MapSpawns.challengesOf(_map))
             {
                 foreach (var group in fight.Groups)
                 {
-                    join(boxFor("challenge/" + fight.At), Wiring.Mobs, boxFor("group/" + group));
+                    join(boxFor("challenge/" + fight.At), Wiring.Mobs, groupBox(group));
                 }
             }
         }
@@ -637,8 +689,14 @@ namespace MCDSaveEdit.UI
             addGroups();
 
             //What each step names. Needs is the region list the objective body carries.
+            //
+            //Not for a fight. A kill-group's Needs holds its spawn regions and its marker, and
+            //those are drawn below as Arena from arenasOf - reading them here as well drew each
+            //one twice, once as a Target it is not.
             foreach (var step in MapSpawns.objectivesOf(_map))
             {
+                if (string.Equals(step.Kind, "fight", StringComparison.Ordinal)) { continue; }
+
                 foreach (var named in step.Needs)
                 {
                     var name = leaf(named);
@@ -653,10 +711,10 @@ namespace MCDSaveEdit.UI
                         to.Name = name;
                     }
 
-                    //A region that is also a gate is drawn as the gate it is, and the wire that
-                    //lands on it says which of the two things this step is doing to it.
-                    join(boxFor("step/" + step.At),
-                         gate != null ? Wiring.Lock : Wiring.Target, to);
+                    //A location is a Target even when the region happens to be a gate as well.
+                    //Holding a gate shut is a separate field, locked-doors, drawn by addLocks -
+                    //deciding it from the region's tags drew a click's own location as a Lock.
+                    join(boxFor("step/" + step.At), Wiring.Target, to);
                 }
             }
 
@@ -668,9 +726,9 @@ namespace MCDSaveEdit.UI
             foreach (var fight in MapSpawns.arenasOf(_map))
             {
                 var from = boxFor("step/" + fight.At);
-                join(from, Wiring.Mobs, boxFor("group/" + fight.Group));
+                if (fight.Group.Length > 0) { join(from, Wiring.Mobs, groupBox(fight.Group)); }
 
-                foreach (var wall in fight.Gates) { join(from, Wiring.Seal, boxFor("gate/" + wall)); }
+                foreach (var wall in fight.Gates) { join(from, Wiring.Seal, gateBox(wall)); }
 
                 foreach (var ground in fight.From)
                 {
@@ -730,10 +788,10 @@ namespace MCDSaveEdit.UI
 
                 foreach (var group in fight.Groups)
                 {
-                    join(from, Wiring.Mobs, boxFor("group/" + group));
+                    join(from, Wiring.Mobs, groupBox(group));
                 }
 
-                foreach (var wall in fight.Gates) { join(from, Wiring.Seal, boxFor("gate/" + wall)); }
+                foreach (var wall in fight.Gates) { join(from, Wiring.Seal, gateBox(wall)); }
 
                 if (fight.Reward.Length > 0)
                 {
@@ -756,6 +814,31 @@ namespace MCDSaveEdit.UI
         /// wrongly, and the only way to tell them apart is to check the numbers against the file.
         /// PROBE_WIRING does that for all six at once.
         /// </summary>
+        /// <summary>
+        /// Every tab's wires, counted by kind, with show-all on - one row per tab and kind. The
+        /// machine-readable half of <see cref="probeTabs"/>, for checking all 56 shipped levels
+        /// against a count taken straight out of their JSON by something that is not this window.
+        /// </summary>
+        internal IEnumerable<(string tab, string kind, int count)> probeCounts()
+        {
+            var was = (_tab, _showAll);
+
+            foreach (Tab which in Enum.GetValues(typeof(Tab)))
+            {
+                _tab = which;
+                _showAll = true;
+                rebuild();
+
+                foreach (var group in _wires.GroupBy(one => one.Kind))
+                {
+                    yield return (which.ToString(), LOOK[group.Key].name, group.Count());
+                }
+            }
+
+            (_tab, _showAll) = was;
+            rebuild();
+        }
+
         internal string probeTabs()
         {
             var said = new System.Text.StringBuilder();
@@ -1055,6 +1138,8 @@ namespace MCDSaveEdit.UI
                     return;
                 }
 
+                if (_readOnly) { return; }
+
                 var cut = new Button { Content = R.WIRING_CUT, Padding = new Thickness(10, 4, 10, 4) };
                 cut.Click += (s, e) => cutChosen();
                 detailPanel.Children.Add(cut);
@@ -1079,6 +1164,30 @@ namespace MCDSaveEdit.UI
                 if (mine.Count == 0) { line(R.WIRING_HELP_PULL, dim: true); }
                 return;
             }
+
+            //What is wrong with the level comes first when nothing is picked, because it is
+            //the question the window is usually opened to answer.
+            line(R.WIRING_PROBLEMS, bold: true);
+
+            var problems = MapChecks.run(_map);
+            if (problems.Count == 0) { line(R.WIRING_NO_PROBLEMS, dim: true); }
+
+            foreach (var one in problems)
+            {
+                detailPanel.Children.Add(new TextBlock
+                {
+                    Text = (one.Severity == MapChecks.Severity.Bad ? "\u2716 " : "\u26A0 ") + one.What,
+                    TextWrapping = TextWrapping.Wrap,
+                    FontWeight = FontWeights.SemiBold,
+                    FontSize = 12,
+                    Margin = new Thickness(0, 4, 0, 1),
+                    Foreground = new SolidColorBrush(one.Severity == MapChecks.Severity.Bad
+                        ? Color.FromRgb(0xFF, 0x6B, 0x5A) : Color.FromRgb(0xF5, 0xA6, 0x5B)),
+                });
+                line(one.Why, dim: true);
+            }
+
+            detailPanel.Children.Add(new Separator { Margin = new Thickness(0, 8, 0, 10) });
 
             line(R.WIRING_HELP_TITLE, bold: true);
             line(R.WIRING_HELP_PULL, dim: true);
@@ -1276,6 +1385,8 @@ namespace MCDSaveEdit.UI
 
         private void land(Spot from, Spot to)
         {
+            if (_readOnly) { say(R.WIRING_READ_ONLY); return; }
+
             var a = from.Owner;
             var b = to.Owner;
 
@@ -1349,6 +1460,7 @@ namespace MCDSaveEdit.UI
         {
             var wire = _chosenWire;
             if (wire == null || !LOOK[wire.Kind].hand) { return; }
+            if (_readOnly) { say(R.WIRING_READ_ONLY); return; }
 
             try
             {

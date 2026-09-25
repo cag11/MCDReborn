@@ -74,6 +74,14 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 * Two things worth knowing before you model: this game's weapon textures are tiny - often 32 square - and your artwork is scaled to whatever the one you are replacing uses, so fine detail cannot survive. And an **enchanted** weapon wears the game's purple glint over whatever it is; on a dark model that is most of what you will see, so export brighter than feels right
 * **Or just reshape the game's own model**: resize from a tenth up to **8x**, move and rotate it - a claymore at half size, a dagger the length of a spear, or something absurd
 
+#### New Items Feature
+* **Brand-new items, not replacements**: the game has items built in that it never shipped. The New Items tab fills one with a copy of any existing item of the same type, so the original stays exactly as it was, and the new one is a separate item you can put on a character beside it
+* **Name it**: your own name and description, shown whatever language the game runs in
+* **Pick its icon**: keep the copied item's, use any other item's, or bring your own picture
+* **Give it your own 3D model**: custom items appear at the top of the **Weapons** tab marked ★. Import a `.glb` there and line it up exactly as for a stock weapon; only your item changes, never the weapon it was copied from
+* **Change how it fights**: damage, swing time, reach, arc, knockback, stun and cooldown for every swing of the combo, one by one or with a multiplier for all of them
+* Melee and ranged for now. The slot decides the type and the gold unique frame, because those are compiled into the game; take an item off every character before emptying its slot, or the game crashes loading it
+
 #### Mob Import Feature
 * **Import your own model onto a creature**: export a `.glb` from Blender the same way, pick a sheep, a pig, a wolf or any of 122 other meshes, and the creature comes out wearing it. A skateboard, a mount, a truck - anything is possible as long as you have 3D design for it.
 * **Summoned creatures come out right too.** An artifact summons a variant with its own custom skin, you can change skin to achieve custom looking summons. 

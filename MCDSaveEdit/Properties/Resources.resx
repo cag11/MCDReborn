@@ -3748,4 +3748,246 @@ That is allowed - a map can be installed over any mission - but if it was not wh
     <value>{0}, unwelded and pinned — {1} room(s). An inspection copy at {2}: it is never installed and Edit spawns does not use it.</value>
     <comment>Status</comment>
   </data>
+  <data name="SPAWNS_CHECK_TITLE" xml:space="preserve">
+    <value>Before installing</value>
+    <comment>Dialog title</comment>
+  </data>
+  <data name="SPAWNS_CHECK_BAD" xml:space="preserve">
+    <value>This map has {0} problem(s) that stop it working in the game:
+
+{1}
+
+Install it anyway?</value>
+    <comment>Dialog, {0} count, {1} list</comment>
+  </data>
+  <data name="SPAWNS_CHECK_WARNED" xml:space="preserve">
+    <value>{0}   ·   {1} warning(s) - open Wiring to see them.</value>
+    <comment>Status, {0} what install said, {1} count</comment>
+  </data>
+  <data name="SPAWNS_INSPECTING_TITLE" xml:space="preserve">
+    <value>{0} - unwelded, for reading</value>
+    <comment>Window title</comment>
+  </data>
+  <data name="SPAWNS_INSPECTING" xml:space="preserve">
+    <value>Inspection copy. Nothing here is saved or installed - edit the map itself with Edit spawns.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="WIRING_PROBLEMS" xml:space="preserve">
+    <value>Problems</value>
+    <comment>Heading</comment>
+  </data>
+  <data name="WIRING_NO_PROBLEMS" xml:space="preserve">
+    <value>No problems found.</value>
+    <comment>Inspector</comment>
+  </data>
+  <data name="WIRING_READ_ONLY" xml:space="preserve">
+    <value>This is an inspection copy. Wiring here is not saved - open the map with Edit spawns to change it.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="ITEMS_TAB" xml:space="preserve">
+    <value>New Items</value>
+    <comment>Title of the custom items tab</comment>
+  </data>
+  <data name="ITEMS_SLOTS" xml:space="preserve">
+    <value>Free item slots</value>
+    <comment>Label above the slot list</comment>
+  </data>
+  <data name="ITEMS_SLOTS_HINT" xml:space="preserve">
+    <value>The game has these items built in but ships nothing for them. Fill one with a copy of an existing item, then name it. Its type and its gold frame come from the game and cannot change.</value>
+    <comment>Hint under the slot list label</comment>
+  </data>
+  <data name="ITEMS_SLOT_EMPTY" xml:space="preserve">
+    <value>empty</value>
+    <comment>Slot state</comment>
+  </data>
+  <data name="ITEMS_SLOT_FILLED" xml:space="preserve">
+    <value>copy of {0}</value>
+    <comment>Slot state. {0} is the copied item</comment>
+  </data>
+  <data name="ITEMS_SLOT_LATER" xml:space="preserve">
+    <value>not tested yet</value>
+    <comment>Slot state for slots that cannot be filled yet</comment>
+  </data>
+  <data name="ITEMS_KIND_MELEE" xml:space="preserve">
+    <value>Melee</value>
+    <comment>Item type</comment>
+  </data>
+  <data name="ITEMS_KIND_RANGED" xml:space="preserve">
+    <value>Ranged</value>
+    <comment>Item type</comment>
+  </data>
+  <data name="ITEMS_KIND_ARMOR" xml:space="preserve">
+    <value>Armour</value>
+    <comment>Item type</comment>
+  </data>
+  <data name="ITEMS_KIND_ARTIFACT" xml:space="preserve">
+    <value>Artifact</value>
+    <comment>Item type</comment>
+  </data>
+  <data name="ITEMS_UNIQUE" xml:space="preserve">
+    <value>unique</value>
+    <comment>Marks a slot with the gold unique frame</comment>
+  </data>
+  <data name="ITEMS_COPY_FROM" xml:space="preserve">
+    <value>Copy from</value>
+    <comment>Label above the source item list</comment>
+  </data>
+  <data name="ITEMS_SEARCH" xml:space="preserve">
+    <value>Search…</value>
+    <comment>Search box placeholder</comment>
+  </data>
+  <data name="ITEMS_ICON" xml:space="preserve">
+    <value>Icon</value>
+    <comment>Label above the icon choices</comment>
+  </data>
+  <data name="ITEMS_ICON_COPIED" xml:space="preserve">
+    <value>Keep the copied item's icon</value>
+    <comment>Icon choice</comment>
+  </data>
+  <data name="ITEMS_ICON_OTHER" xml:space="preserve">
+    <value>Use another item's icon</value>
+    <comment>Icon choice</comment>
+  </data>
+  <data name="ITEMS_ICON_IMAGE" xml:space="preserve">
+    <value>Use my own picture</value>
+    <comment>Icon choice</comment>
+  </data>
+  <data name="ITEMS_ICON_CHOOSE" xml:space="preserve">
+    <value>Choose picture…</value>
+    <comment>Button</comment>
+  </data>
+  <data name="ITEMS_BEHAVIOUR" xml:space="preserve">
+    <value>Behaviour</value>
+    <comment>Label above the behaviour grid</comment>
+  </data>
+  <data name="ITEMS_BEHAVIOUR_HINT" xml:space="preserve">
+    <value>One row per swing of the combo, in order. Only the values the copied item stores can be changed.</value>
+    <comment>Hint under the behaviour label</comment>
+  </data>
+  <data name="ITEMS_SHOW_ALL" xml:space="preserve">
+    <value>Show every value</value>
+    <comment>Check box</comment>
+  </data>
+  <data name="ITEMS_COL_SWING" xml:space="preserve">
+    <value>Swing</value>
+    <comment>Grid column</comment>
+  </data>
+  <data name="ITEMS_COL_SETTING" xml:space="preserve">
+    <value>Setting</value>
+    <comment>Grid column</comment>
+  </data>
+  <data name="ITEMS_COL_GAME" xml:space="preserve">
+    <value>Game</value>
+    <comment>Grid column: the copied item's value</comment>
+  </data>
+  <data name="ITEMS_COL_YOURS" xml:space="preserve">
+    <value>Yours</value>
+    <comment>Grid column: the value that will be installed</comment>
+  </data>
+  <data name="ITEMS_ALL_SWINGS" xml:space="preserve">
+    <value>Every swing:</value>
+    <comment>Label before the multipliers</comment>
+  </data>
+  <data name="ITEMS_DAMAGE_X" xml:space="preserve">
+    <value>Damage ×</value>
+    <comment>Multiplier label</comment>
+  </data>
+  <data name="ITEMS_SPEED_X" xml:space="preserve">
+    <value>Speed ×</value>
+    <comment>Multiplier label</comment>
+  </data>
+  <data name="ITEMS_REACH_X" xml:space="preserve">
+    <value>Reach ×</value>
+    <comment>Multiplier label</comment>
+  </data>
+  <data name="ITEMS_APPLY" xml:space="preserve">
+    <value>Apply</value>
+    <comment>Button that applies the multipliers</comment>
+  </data>
+  <data name="ITEMS_RESET" xml:space="preserve">
+    <value>Game values</value>
+    <comment>Button that resets the grid to the copied item's values</comment>
+  </data>
+  <data name="ITEMS_INSTALL" xml:space="preserve">
+    <value>Save and install</value>
+    <comment>Button</comment>
+  </data>
+  <data name="ITEMS_CLEAR" xml:space="preserve">
+    <value>Empty this slot</value>
+    <comment>Button</comment>
+  </data>
+  <data name="ITEMS_CLEAR_WARN" xml:space="preserve">
+    <value>Take {0} off every character first. A character still holding it will crash the game once the slot is empty.
+
+Empty the slot?</value>
+    <comment>Confirmation. {0} is the item's name</comment>
+  </data>
+  <data name="ITEMS_INSTALLED" xml:space="preserve">
+    <value>Installed {0} item(s). Restart the game, then add them to a character from the inventory.</value>
+    <comment>Status after installing</comment>
+  </data>
+  <data name="ITEMS_FAILED" xml:space="preserve">
+    <value>Could not build the items: {0}</value>
+    <comment>Status</comment>
+  </data>
+  <data name="ITEMS_NOT_READY" xml:space="preserve">
+    <value>The game's content is not loaded yet.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="ITEMS_PICK_SOURCE" xml:space="preserve">
+    <value>Pick an item to copy first.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="ITEMS_SET_DAMAGE" xml:space="preserve">
+    <value>Damage</value>
+    <comment>Behaviour setting</comment>
+  </data>
+  <data name="ITEMS_SET_SWING" xml:space="preserve">
+    <value>Swing time (s)</value>
+    <comment>Behaviour setting</comment>
+  </data>
+  <data name="ITEMS_SET_REACH" xml:space="preserve">
+    <value>Reach</value>
+    <comment>Behaviour setting</comment>
+  </data>
+  <data name="ITEMS_SET_ARC" xml:space="preserve">
+    <value>Arc (°)</value>
+    <comment>Behaviour setting</comment>
+  </data>
+  <data name="ITEMS_SET_SPLASH" xml:space="preserve">
+    <value>Splash</value>
+    <comment>Behaviour setting</comment>
+  </data>
+  <data name="ITEMS_SET_STUN" xml:space="preserve">
+    <value>Stun</value>
+    <comment>Behaviour setting</comment>
+  </data>
+  <data name="ITEMS_SET_KNOCKBACK" xml:space="preserve">
+    <value>Knockback</value>
+    <comment>Behaviour setting</comment>
+  </data>
+  <data name="ITEMS_SET_COOLDOWN" xml:space="preserve">
+    <value>Cooldown (s)</value>
+    <comment>Behaviour setting</comment>
+  </data>
+  <data name="ITEMS_SET_DELAY" xml:space="preserve">
+    <value>Hit delay (s)</value>
+    <comment>Behaviour setting</comment>
+  </data>
+  <data name="ITEMS_WORKING" xml:space="preserve">
+    <value>Working…</value>
+    <comment>Status while the item list is read or the pak is built</comment>
+  </data>
+  <data name="ITEMS_NAME" xml:space="preserve">
+    <value>Name</value>
+    <comment>Label for the item's name</comment>
+  </data>
+  <data name="ITEMS_DESCRIPTION" xml:space="preserve">
+    <value>Description</value>
+    <comment>Label for the item's flavour text</comment>
+  </data>
+  <data name="ITEMS_TEXT_HINT" xml:space="preserve">
+    <value>Shown in every language the game has. Leave a box empty to keep the game's own text.</value>
+    <comment>Hint under the name and description</comment>
+  </data>
 </root>

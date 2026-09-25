@@ -251,6 +251,90 @@
         </Setter>
     </Style>
 
+    <!-- ===================== RadioButton ===================== -->
+
+    <!-- The CheckBox's twin, round. Without it WPF's default draws black text on the dark
+         palettes - first noticed on the New Items tab, the first to use one. -->
+    <Style TargetType="{x:Type RadioButton}">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text}"/>
+        <Setter Property="Cursor"     Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type RadioButton}">
+                    <StackPanel Orientation="Horizontal" Background="Transparent">
+                        <Border x:Name="ring" Width="15" Height="15"
+                                Background="{DynamicResource Brush.Field}"
+                                BorderBrush="{DynamicResource Brush.BorderStrong}"
+                                BorderThickness="1" CornerRadius="7.5"
+                                VerticalAlignment="Center" SnapsToDevicePixels="True">
+                            <Ellipse x:Name="dot" Width="7" Height="7" Fill="{DynamicResource Brush.Accent}"
+                                     Visibility="Collapsed"/>
+                        </Border>
+                        <ContentPresenter Margin="7,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="dot"  Property="Visibility" Value="Visible"/>
+                            <Setter TargetName="ring" Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ring" Property="BorderBrush" Value="{DynamicResource Brush.Accent}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.TextDisabled}"/>
+                            <Setter TargetName="ring" Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ===================== DataGrid ===================== -->
+
+    <Style TargetType="{x:Type DataGrid}">
+        <Setter Property="Background"                Value="{DynamicResource Brush.Field}"/>
+        <Setter Property="Foreground"                Value="{DynamicResource Brush.Text}"/>
+        <Setter Property="BorderBrush"               Value="{DynamicResource Brush.Border}"/>
+        <Setter Property="BorderThickness"           Value="1"/>
+        <Setter Property="RowBackground"             Value="Transparent"/>
+        <Setter Property="AlternatingRowBackground"  Value="{DynamicResource Brush.Surface}"/>
+        <Setter Property="HorizontalGridLinesBrush"  Value="{DynamicResource Brush.Border}"/>
+        <Setter Property="VerticalGridLinesBrush"    Value="{DynamicResource Brush.Border}"/>
+    </Style>
+
+    <Style TargetType="{x:Type DataGridColumnHeader}">
+        <Setter Property="Background"      Value="{DynamicResource Brush.Panel}"/>
+        <Setter Property="Foreground"      Value="{DynamicResource Brush.TextMuted}"/>
+        <Setter Property="BorderBrush"     Value="{DynamicResource Brush.Border}"/>
+        <Setter Property="BorderThickness" Value="0,0,1,1"/>
+        <Setter Property="Padding"         Value="6,4"/>
+    </Style>
+
+    <Style TargetType="{x:Type DataGridRow}">
+        <Setter Property="Foreground" Value="{DynamicResource Brush.Text}"/>
+    </Style>
+
+    <Style TargetType="{x:Type DataGridCell}">
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding"         Value="4,2"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type DataGridCell}">
+                    <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="{DynamicResource Brush.PanelHover}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Brush.AccentBright}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
     <!-- ===================== Scrolling ===================== -->
 
     <Style x:Key="ScrollThumb" TargetType="{x:Type Thumb}">

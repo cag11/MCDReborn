@@ -294,6 +294,16 @@ namespace MCDSaveEdit.Logic
             return entries;
         }
 
+        /// <summary>
+        /// The same on one material already in memory - a custom item's own copy, which is in no
+        /// pak the index can read. True when <paramref name="uexp"/> was changed.
+        /// </summary>
+        public static bool unmask(PakReader.Pak.PakPackage package, byte[] uexp)
+        {
+            var clip = clipValueIn(package);
+            return clip != null && clip > 0f && replace(uexp, clip.Value, 0f);
+        }
+
         /// <summary>What a material instance clips its mask at, when it overrides that at all.</summary>
         private static float? clipValueIn(PakReader.Pak.PakPackage package)
         {

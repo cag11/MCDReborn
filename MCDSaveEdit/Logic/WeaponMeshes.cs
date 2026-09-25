@@ -146,6 +146,16 @@ namespace MCDSaveEdit.Logic
 
         public static IReadOnlyList<MeshEntry> all()
         {
+            //Custom items first, and never cached with the rest: they come and go with the New
+            //Items tab, and the game's own list does not change while the app runs.
+            var custom = CustomItems.meshesForWorkshop()
+                .Select(m => new MeshEntry(m.assetPath, m.bow ? BOWS : WEAPONS, "★ " + m.name, R.ITEMS_TAB))
+                .ToList();
+            return custom.Count == 0 ? gameMeshes() : custom.Concat(gameMeshes()).ToList();
+        }
+
+        private static IReadOnlyList<MeshEntry> gameMeshes()
+        {
             if (_catalogue != null) { return _catalogue; }
 
             var paks = CustomSkins.index;
@@ -280,6 +290,8 @@ namespace MCDSaveEdit.Logic
         public static CustomSkins.InstalledMod apply(string assetPath, MeshEdit.Transform transform,
             string modName, IEnumerable<PakWriter.Entry>? extra = null)
         {
+            if (CustomItems.isCopied(assetPath)) { return CustomItems.setModel(assetPath, null, transform); }
+
             var package = readPackage(assetPath)
                 ?? throw new InvalidOperationException($"Could not read {assetPath}.");
 
@@ -322,6 +334,10 @@ namespace MCDSaveEdit.Logic
         public static CustomSkins.InstalledMod import(string assetPath, GlbModel model,
             MeshEdit.Transform transform, string modName, IEnumerable<PakWriter.Entry>? extra = null)
         {
+            //A custom item keeps its model in its own design and is rebuilt with the rest of the
+            //New Items - a pak of its own would be a second copy of the same paths.
+            if (CustomItems.isCopied(assetPath)) { return CustomItems.setModel(assetPath, model, transform); }
+
             var entries = new List<PakWriter.Entry>();
 
             //A bow is four meshes rather than one - the draw states - and the model goes into
@@ -385,7 +401,7 @@ namespace MCDSaveEdit.Logic
             for (int state = parts.Value.number + 1; state <= parts.Value.number + 15; state++)
             {
                 var next = stateNamed(parts.Value, state);
-                if (!known.Contains(next)) { break; }
+                if (!known.Contains(next) && !CustomItems.isCopied(next)) { break; }
                 family.Add(next);
             }
 
@@ -454,6 +470,8 @@ namespace MCDSaveEdit.Logic
         /// </summary>
         public static BitmapSource? textureFor(string meshAssetPath)
         {
+            if (CustomItems.isCopied(meshAssetPath)) { return CustomItems.copiedTexture(meshAssetPath); }
+
             var texture = CustomSkins.textureBeside(meshAssetPath);
             if (texture == null) { return null; }
 
@@ -463,6 +481,9 @@ namespace MCDSaveEdit.Logic
 
         private static PakPackage? readPackage(string assetPath)
         {
+            //A custom item's copy is in no pak the index reads; it lives in memory until built.
+            if (CustomItems.copiedPackage(assetPath) is { } copied) { return copied; }
+
             var paks = CustomSkins.index;
             if (paks == null) { return null; }
 

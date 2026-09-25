@@ -161,8 +161,16 @@ namespace MCDSaveEdit.Services
             return getItemString(key) ?? type;
         }
 
+        /// <summary>
+        /// Names and descriptions this app gives items itself - the New Items tab's - consulted
+        /// before the game's own table. The game's Game.locres is what the running game reads; this
+        /// is the app reading its own intentions, since the app never reads a mod's locres back.
+        /// </summary>
+        public static readonly Dictionary<string, string> itemTextOverrides = new(StringComparer.OrdinalIgnoreCase);
+
         private static string? getItemString(string key)
         {
+            if (itemTextOverrides.TryGetValue(key, out var mine)) { return mine; }
             if (!isStringsLoaded) { return key; }
             if (Constants.stringMismatches.ContainsKey(key))
             {

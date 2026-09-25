@@ -241,6 +241,25 @@ namespace MCDSaveEdit.Services
             //definition, so they are added once the looking is done rather than during it.
             Data.HiddenEnchantments.register();
             Console.WriteLine($"Added {Data.HiddenEnchantments.ids.Count()} enchantments the game never offers");
+
+            //And whatever installed mods add, so a new enchantment or item can be put on
+            //something. Found by icon, the same way the game's own were a moment ago.
+            try
+            {
+                //This resolver's own folder, passed in. Asking CustomSkins.paksFolder instead
+                //returns null here: it goes through ImageResolver.instance, which is only set
+                //to this resolver once loading - the thing running now - has finished.
+                var (added, extra) = Logic.NewContent.registerInstalled(path);
+                Logic.CustomItems.showInApp();
+                if (added + extra > 0)
+                {
+                    Console.WriteLine($"Added {added} enchantment(s) and {extra} item(s) from installed mods");
+                }
+            }
+            catch (Exception problem)
+            {
+                Console.WriteLine("Could not read installed mods for new content: " + problem.Message);
+            }
             if (preloadBitmaps)
             {
                 Console.WriteLine($"Preloaded {_bitmaps.Count()} bitmaps");
@@ -301,6 +320,9 @@ namespace MCDSaveEdit.Services
         }
 
         public BitmapImage? imageSourceForItem(string itemType) {
+            //A custom item's picture is in the New Items pak, which this resolver never reads -
+            //so it comes from the design instead.
+            if (Logic.CustomItems.iconForApp(itemType) is { } custom) { return custom; }
             if (_equipment.TryGetValue(itemType, out string fullPath))
             {
                 var image = imageSource(fullPath);

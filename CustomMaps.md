@@ -271,6 +271,41 @@ the moment the mission ends.
 So the smallest working lock is: **add a click step, put a gate somewhere else, and wire the two
 together.** If the dropdown is empty, that is the missing half - there is no click step yet.
 
+## Checks before installing
+
+None of the ways a map goes wrong announce themselves in game. A step with nothing to click loads,
+plays and can never be finished; a fight naming a group that does not exist spawns nothing, and
+in the file it looks exactly like one that works. So **Save and install** looks first, and the
+**Wiring** window lists the same things under **Problems** whenever nothing is picked.
+
+**These stop the mission, and install asks before going ahead:**
+
+* a click step with no location, or a reach step with no end region - the chain stops there
+* a fight, or a challenge wave, that names no mob group
+
+**These are counted in the status line, and never stop anything:**
+
+* an **exit gate nothing sends you to** - the gate is only drawn where an objective clicks it
+* a **rescue that opens no gate** - all seven in the game hold one shut (the captured villager,
+  panda, miner and turtle), because the reward for freeing somebody is the way on
+* a **mob group no level declares** - not checked against this level alone, because a level that
+  borrows another's sub-area borrows its mobs too: Creeper Woods names 25 groups in its fights
+  and declares only 9
+
+Every rule was run over all fifty-six of the game's own levels first, on the grounds that a rule
+which flags a shipped mission is wrong, not the mission. That is why there is **no "must have an
+exit" rule**: seventeen of the game's missions have nothing called exit and all of them can be
+finished. A mission ends when its last objective completes, and the game's own end on an
+elevator, a beacon, a Nether door or a walk to the end of a path. None of the game's missions
+fails a check.
+
+The mob-group check does find the game's own mistakes: nine levels name `miniarea-singles` where
+the group is `miniarena-singles`, and Enderwilds has `endling-mix-default,Entermites` as one name
+with a comma in it. Those are warnings for the same reason yours would be.
+
+There is nothing here that fixes things for you. It says what is wrong and where; the fix is
+yours, and a repair that guesses would only be a second bug.
+
 ## Seams, and why the level is welded
 
 The game assembles a mission from tiles at run time and picks its own doors. So a structure built
