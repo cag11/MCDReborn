@@ -35,7 +35,6 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **Press J to throw every enemy in the level into the air**, with the enemy gravity slider deciding how long they stay there - at normal weight they reach 141 units, at a fortieth nearly 3000. The two go together: gravity does nothing to a mob standing on the floor
 * **Music Tab:** Play your own MP3 over any of the game's 112 music tracks, installed as a mod pak beside the game's own so removing it puts the original back
 * **Installed Mods Tab:** Every mod pak in one place. You can import and export multiple mods via a zip package.
-* **Payload loader**, built into the app one button. Install a payload folder, point it at a folder cooked in Unreal and the whole tree is installed at once, the level and the blueprints, models, materials and resource packs it is built from. 
 
 #### Custom Maps Feature
 * Exports the game missions as Minecraft worlds or allows you to build on them to create your own custom maps..Use the maps tab to do the export and imports.
@@ -75,13 +74,11 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 * **Or just reshape the game's own model**: resize from a tenth up to **8x**, move and rotate it - a claymore at half size, a dagger the length of a spear, or something absurd
 
 #### New Items Feature
-* **Brand-new items, as many as you like**: **New melee item**, **New ranged item**, **New armour** and **New artifact** make a copy of any of the game's items as a separate item. The original stays exactly as it was, and you can put the new one on a character beside it. Each keeps the type and gold frame of the item it copies
+* **Brand-new items, as many as you like**: **New melee item**, **New ranged item**, **New armour** and **New artifact** make a copy of any of the game's items as a separate item. 
 * **Name it**: your own name and description, shown whatever language the game runs in
 * **Pick its icon**: keep the copied item's, use any other item's, or bring your own picture
-* **Give it your own 3D model**: custom weapons appear at the top of the **Weapons** tab marked ★. Import a `.glb` there and line it up exactly as for a stock weapon; only your item changes, never the weapon it was copied from
-* **Change how it fights**: damage, swing time, reach, arc, knockback, stun and cooldown for every swing of the combo, one by one or with a multiplier for all of them. An armour keeps the built-in stats of the one it copies, and its armour properties are set per character in the inventory, as for any armour. An artifact works like the artifact it copies
+* **Give it your own 3D model**: custom weapons appear at the top of the **Weapons** tab marked ★. Import a `.glb` there and line it up
 * **Share it**: Export saves a custom item as one `.mcditem` file with its name, behaviour, icon and model inside; Import adds it as a new item on anyone's game
-* **How it gets into the game**: MCD Reborn installs a small plugin beside the game as `xinput1_3.dll`, and it adds your items every time the game starts, with MCD Reborn closed. Steam and Minecraft Launcher versions only. Keep that file there: without it the game deletes these items from your characters. Take an item off every character before deleting it, for the same reason
 
 #### Mob Import Feature
 * **Import your own model onto a creature**: export a `.glb` from Blender the same way, pick a sheep, a pig, a wolf or any of 122 other meshes, and the creature comes out wearing it. A skateboard, a mount, a truck - anything is possible as long as you have 3D design for it.
