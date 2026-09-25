@@ -1,0 +1,15 @@
+; The plugin standing in for xinput1_3.dll: the real one's exports, at the real one's ordinals,
+; each passed on to the system's copy (ItemPlugin.cpp). 100-103 have no names there either.
+EXPORTS
+    XInputGetState = proxyGetState @2
+    XInputSetState = proxySetState @3
+    XInputGetCapabilities = proxyGetCapabilities @4
+    XInputEnable = proxyEnable @5
+    XInputGetDSoundAudioDeviceGuids = proxyGetDSoundAudioDeviceGuids @6
+    XInputGetBatteryInformation = proxyGetBatteryInformation @7
+    XInputGetKeystroke = proxyGetKeystroke @8
+    proxyGetStateEx @100 NONAME
+    proxyWaitForGuideButton @101 NONAME
+    proxyCancelGuideButtonWait @102 NONAME
+    proxyPowerOffController @103 NONAME
+    MCDRebornPlugin @200

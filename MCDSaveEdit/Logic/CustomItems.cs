@@ -41,8 +41,9 @@ namespace MCDSaveEdit.Logic
         /// <summary>A free id the game already knows, and what it will always be.</summary>
         public sealed class Slot
         {
-            public Slot(string id, string folder, Kind kind, string nativeParent, bool unique, string builtInName, bool ready)
+            public Slot(string id, string folder, Kind kind, string nativeParent, bool unique, string builtInName, bool ready, bool plugin = false)
             {
+                Plugin = plugin;
                 Id = id;
                 Folder = folder;
                 Kind = kind;
@@ -62,6 +63,8 @@ namespace MCDSaveEdit.Logic
             public string BuiltInName { get; }
             /// <summary>Tested in game. The others are listed so it is clear what exists, not offered yet.</summary>
             public bool Ready { get; }
+            /// <summary>An id the game never had, registered by the plugin (GamePlugin) rather than a cut one.</summary>
+            public bool Plugin { get; }
 
             public string FolderId => Folder.Substring(Folder.LastIndexOf('/') + 1);
         }
@@ -89,6 +92,73 @@ namespace MCDSaveEdit.Logic
         public static Slot? slotForFolder(string folderId)
             => slots.FirstOrDefault(s => string.Equals(s.FolderId, folderId, StringComparison.OrdinalIgnoreCase));
 
+        // ------------------------------------------------------------------ beyond the free slots
+
+        /// <summary>
+        /// Items under ids the game never had: MCDR_Item01, MCDR_Item02 and on. The files are built
+        /// exactly as a slot's, into a folder named after the id beside the source's, and the
+        /// plugin registers the id when the game starts (GamePlugin). Unlike a slot, the type and
+        /// the unique frame are the source's own: the plugin copies the source's entry whole.
+        /// Melee and ranged, as the slots.
+        /// </summary>
+        public const string PLUGIN_PREFIX = "MCDR_Item";
+
+        public static bool isPluginId(string id) => id.StartsWith("MCDR_", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// The next id: one past the highest ever handed out, never a gap. A character may still
+        /// hold an emptied item's id, and it should not quietly turn into a different item.
+        /// </summary>
+        public static string newPluginId(IEnumerable<Design> designs)
+        {
+            var highest = designs.Select(d => d.Slot)
+                .Where(id => id.StartsWith(PLUGIN_PREFIX, StringComparison.OrdinalIgnoreCase))
+                .Select(id => int.TryParse(id.Substring(PLUGIN_PREFIX.Length), out var n) ? n : 0)
+                .DefaultIfEmpty(0).Max();
+            highest = Math.Max(highest, lastPluginNumber());
+            rememberPluginNumber(highest + 1);
+            return PLUGIN_PREFIX + (highest + 1).ToString("00", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        private static string numberFile => Path.Combine(folder, "last-plugin-id.txt");
+
+        private static int lastPluginNumber()
+        {
+            try { return File.Exists(numberFile) && int.TryParse(File.ReadAllText(numberFile).Trim(), out var n) ? n : 0; }
+            catch (IOException) { return 0; }
+        }
+
+        private static void rememberPluginNumber(int number)
+        {
+            try { File.WriteAllText(numberFile, number.ToString(System.Globalization.CultureInfo.InvariantCulture)); }
+            catch (IOException) { }
+        }
+
+        /// <summary>A plugin item's slot. Its folder is beside its source's once that is chosen.</summary>
+        public static Slot pluginSlot(string id, Kind kind, RegistryPatch.GameItem? source = null)
+        {
+            var (parent, native) = kind switch
+            {
+                Kind.Melee => ("MeleeWeapons", "MeleeWeaponGearItemInstance"),
+                Kind.Ranged => ("RangedWeapons", "RangedWeaponGearItemInstance"),
+                _ => throw new InvalidOperationException("Only melee and ranged items can be added beyond the free slots."),
+            };
+            var folder = source == null ? parent + "/" + id : extraFolder(source, id);
+            return new Slot(id, folder, kind, native, false, id, true, plugin: true);
+        }
+
+        /// <summary>The slot a design fills: a free slot, or - for a plugin item - one made from the design.</summary>
+        public static Slot slotOf(Design design)
+        {
+            var fixedSlot = slotFor(design.Slot);
+            if (fixedSlot != null) { return fixedSlot; }
+            if (design.PluginKind is not { } kind || !isPluginId(design.Slot))
+            {
+                throw new InvalidOperationException($"{design.Slot} is not a free slot.");
+            }
+            return pluginSlot(design.Slot, kind, string.IsNullOrEmpty(design.Source) ? null : gameItem(design.Source));
+        }
+
         // ------------------------------------------------------------------ what the user designed
 
         public enum IconSource { Copied, OtherItem, Image }
@@ -112,6 +182,8 @@ namespace MCDSaveEdit.Logic
             public string? Description { get; set; }
             /// <summary>A model put on it from the Weapons tab, or its own reshaped. Null keeps the copy's.</summary>
             public ModelEdit? Model { get; set; }
+            /// <summary>For an item beyond the free slots (MCDR_ItemNN): its type. Null for a free slot, whose type is fixed.</summary>
+            public Kind? PluginKind { get; set; }
         }
 
         /// <summary>
@@ -175,6 +247,148 @@ namespace MCDSaveEdit.Logic
             return kept;
         }
 
+        // ------------------------------------------------------------------ sharing
+
+        public const string SHARE_EXTENSION = ".mcditem";
+
+        /// <summary>
+        /// One design as a file somebody else can import: a zip holding `item.json` - the design, with
+        /// its paths taken out - and beside it the picture and the model the design points at. The
+        /// look travels with it; nothing refers back to this machine.
+        /// </summary>
+        public static void export(Design design, string path)
+        {
+            var slot = slotOf(design);
+            var shared = copy(design);
+            shared.IconFile = null;
+            if (shared.Model != null) { shared.Model.File = null; }
+
+            using var zip = System.IO.Compression.ZipFile.Open(path, System.IO.Compression.ZipArchiveMode.Create);
+            void add(string name, byte[] bytes)
+            {
+                using var stream = zip.CreateEntry(name).Open();
+                stream.Write(bytes, 0, bytes.Length);
+            }
+
+            add("item.json", JsonSerializer.SerializeToUtf8Bytes(new SharedItem
+            {
+                Format = 1,
+                Kind = slot.Kind,
+                Design = shared,
+                HasModel = design.Model?.File != null,
+            }, new JsonSerializerOptions { WriteIndented = true }));
+            if (design.Icon == IconSource.Image && design.IconFile != null && File.Exists(design.IconFile))
+            {
+                add("icon.png", File.ReadAllBytes(design.IconFile));
+            }
+            if (design.Model?.File != null && File.Exists(design.Model.File))
+            {
+                add("model.glb", File.ReadAllBytes(design.Model.File));
+            }
+        }
+
+        /// <summary>What an exported file holds, read without putting it anywhere yet.</summary>
+        public sealed class SharedItem
+        {
+            public int Format { get; set; }
+            public Kind Kind { get; set; }
+            public Design Design { get; set; } = new();
+            public bool HasModel { get; set; }
+        }
+
+        public static SharedItem readShared(string path)
+        {
+            using var zip = System.IO.Compression.ZipFile.OpenRead(path);
+            var entry = zip.GetEntry("item.json") ?? throw new InvalidOperationException("That is not an exported item.");
+            using var stream = entry.Open();
+            var shared = JsonSerializer.Deserialize<SharedItem>(stream) ?? throw new InvalidOperationException("That item file is empty.");
+            if (shared.Format != 1) { throw new InvalidOperationException("That item was exported by a newer MCD Reborn."); }
+            if (gameItem(shared.Design.Source) == null)
+            {
+                throw new InvalidOperationException($"It is a copy of {shared.Design.Source}, which this game does not have.");
+            }
+            return shared;
+        }
+
+        /// <summary>
+        /// The free slot an imported item goes in: the one it was exported from when that is free,
+        /// then any other free slot of its type. Null when every slot of its type is taken - the
+        /// caller asks which one to replace.
+        /// </summary>
+        public static Slot? slotForImport(SharedItem shared, IReadOnlyList<Design> designs)
+        {
+            bool free(Slot s) => s.Ready && s.Kind == shared.Kind && designs.All(d => d.Slot != s.Id);
+            var own = slotFor(shared.Design.Slot);
+            if (own != null && free(own)) { return own; }
+            return slots.FirstOrDefault(free);
+        }
+
+        /// <summary>
+        /// The shared design, unpacked into <paramref name="slot"/>: its picture and model are copied
+        /// into this app's folder under that slot's name, and the design points at them there.
+        /// </summary>
+        public static Design unpack(string path, SharedItem shared, Slot slot)
+        {
+            if (slot.Kind != shared.Kind) { throw new InvalidOperationException($"{slot.BuiltInName} does not take that kind of item."); }
+            var design = copy(shared.Design);
+            design.Slot = slot.Id;
+            design.PluginKind = slot.Plugin ? slot.Kind : null;
+
+            using var zip = System.IO.Compression.ZipFile.OpenRead(path);
+            byte[]? read(string name)
+            {
+                var entry = zip.GetEntry(name);
+                if (entry == null) { return null; }
+                using var stream = entry.Open();
+                using var memory = new MemoryStream();
+                stream.CopyTo(memory);
+                return memory.ToArray();
+            }
+
+            if (design.Icon == IconSource.Image)
+            {
+                var png = read("icon.png");
+                if (png == null) { design.Icon = IconSource.Copied; }
+                else
+                {
+                    design.IconFile = Path.Combine(folder, slot.Id + ".png");
+                    File.WriteAllBytes(design.IconFile, png);
+                }
+            }
+            if (design.Model != null && shared.HasModel)
+            {
+                var glb = read("model.glb");
+                if (glb == null) { design.Model = null; }
+                else
+                {
+                    design.Model.File = Path.Combine(folder, slot.Id + ".glb");
+                    File.WriteAllBytes(design.Model.File, glb);
+                }
+            }
+            return design;
+        }
+
+        /// <summary>A design with nothing shared with the original, the model's arrays included.</summary>
+        public static Design copy(Design d) => new Design
+        {
+            Slot = d.Slot,
+            Source = d.Source,
+            Icon = d.Icon,
+            IconItem = d.IconItem,
+            IconFile = d.IconFile,
+            Values = new Dictionary<string, double>(d.Values),
+            Name = d.Name,
+            Description = d.Description,
+            PluginKind = d.PluginKind,
+            Model = d.Model == null ? null : new ModelEdit
+            {
+                File = d.Model.File,
+                Scale = d.Model.Scale,
+                Offset = (float[])d.Model.Offset.Clone(),
+                Rotation = (float[])d.Model.Rotation.Clone(),
+            },
+        };
+
         // ------------------------------------------------------------------ the game's items
 
         private static List<RegistryPatch.GameItem>? _gameItems;
@@ -193,7 +407,7 @@ namespace MCDSaveEdit.Logic
         public static IReadOnlyList<RegistryPatch.GameItem> sourcesFor(Slot slot)
             => gameItems()
                 .Where(i => string.Equals(i.NativeParent, slot.NativeParent, StringComparison.Ordinal))
-                .Where(i => slotFor(i.Id) == null)
+                .Where(i => slotFor(i.Id) == null && !isPluginId(i.Id))
                 .GroupBy(i => i.Id, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
                 .OrderBy(i => i.Id, StringComparer.OrdinalIgnoreCase)
                 .ToList();
@@ -238,17 +452,57 @@ namespace MCDSaveEdit.Logic
         /// Every design, built into one pak with one registry, and installed. An empty list removes
         /// the pak instead - there is nothing for the registry to carry.
         /// </summary>
-        public static Built build(IReadOnlyList<Design> designs, string? into = null)
+        /// <summary>
+        /// An item under a brand-new id, beyond the free slots: its files go in the same pak and its
+        /// entries in the same registry, and MCD Reborn's plugin registers the id inside the game.
+        /// </summary>
+        public sealed record Extra(string Id, string Source, string Name, string Description);
+
+        /// <summary>Where a copy of <paramref name="source"/> named <paramref name="id"/> lives, as the plugin needs it: `MeleeWeapons/<id>`.</summary>
+        public static string extraFolder(RegistryPatch.GameItem source, string id)
         {
+            var folder = source.Folder;
+            foreach (var place in new[] { "/Actors/Equipment/", "/Actors/Items/" })
+            {
+                var at = folder.IndexOf(place, StringComparison.OrdinalIgnoreCase);
+                if (at < 0) { continue; }
+                var relative = folder.Substring(at + place.Length);
+                var cut = relative.LastIndexOf('/');
+                return cut < 0 ? id : relative.Substring(0, cut + 1) + id;
+            }
+            throw new InvalidOperationException($"{source.Id} is not under Actors/Equipment or Actors/Items.");
+        }
+
+        public static Built build(IReadOnlyList<Design> designs, string? into = null, IReadOnlyList<Extra>? extras = null)
+        {
+            extras ??= Array.Empty<Extra>();
             var result = new Built();
             var paks = CustomSkins.paksFolder ?? throw new InvalidOperationException("The game's paks folder is not known.");
             var pakPath = into ?? Path.Combine(paks, CustomSkins.MOD_PREFIX + MOD_NAME + "_P.pak");
 
-            if (designs.Count == 0)
+            if (designs.Count == 0 && extras.Count == 0)
             {
                 if (File.Exists(pakPath)) { File.Delete(pakPath); }
                 result.Notes.Add("No custom items: the pak was removed.");
+                if (into == null && GamePlugin.gameFolder(paks) != null) { result.Notes.Add(GamePlugin.install(Array.Empty<GamePlugin.Item>(), paks)); }
                 return result;
+            }
+
+            //Checked before anything is written: a plugin item with no plugin to register it is an
+            //id the game does not know.
+            var pluginItems = new List<GamePlugin.Item>();
+            foreach (var design in designs)
+            {
+                var slot = slotOf(design);
+                if (!slot.Plugin) { continue; }
+                var source = gameItem(design.Source) ?? throw new InvalidOperationException($"{design.Source} is not a game item.");
+                pluginItems.Add(new GamePlugin.Item(slot.Id, source.Id, slot.Folder,
+                    string.IsNullOrWhiteSpace(design.Name) ? R.itemName(source.Id) : design.Name!,
+                    string.IsNullOrWhiteSpace(design.Description) ? R.itemDesc(source.Id) : design.Description!));
+            }
+            if (pluginItems.Count > 0 && into == null && GamePlugin.gameFolder(paks) == null)
+            {
+                throw new InvalidOperationException("Items beyond the free slots need the Steam or Minecraft Launcher version of the game.");
             }
 
             var registry = RegistryPatch.readGameRegistry(paks)
@@ -273,6 +527,18 @@ namespace MCDSaveEdit.Logic
                 result.Items++;
             }
 
+            foreach (var extra in extras)
+            {
+                var source = gameItem(extra.Source) ?? throw new InvalidOperationException($"{extra.Source} is not a game item.");
+                var made = NewContent.cloneFolder(cooked(source.Folder), extra.Id, ownsBareId: false,
+                    alsoRename: new Dictionary<string, string> { [source.Id] = extra.Id })
+                    ?? throw new InvalidOperationException($"Could not copy {source.Id}.");
+                entries.AddRange(made.Entries);
+                copies.Add((made.GameFrom, made.Rename));
+                result.Items++;
+                result.Notes.Add($"{extra.Id}: a copy of {source.Id} in {extraFolder(source, extra.Id)}.");
+            }
+
             applyText(designs, entries, result.Notes);
 
             var patched = RegistryPatch.withClones(registry, copies, out var added)
@@ -283,6 +549,10 @@ namespace MCDSaveEdit.Logic
             PakWriter.write(pakPath, entries);
             result.PakPath = pakPath;
             result.Notes.Add($"{result.Items} item(s), {added} registry entries.");
+            if (into == null && (pluginItems.Count > 0 || GamePlugin.gameFolder(paks) != null))
+            {
+                result.Notes.Add(GamePlugin.install(pluginItems, paks));
+            }
 
             //The SpiderCrossbow test pak carried its own registry. Two registries means only one
             //wins, and the other pak's items crash on click - so that one goes, and its item is
@@ -346,7 +616,7 @@ namespace MCDSaveEdit.Logic
         /// </summary>
         private static (Slot slot, NewContent.Made made) copyOf(Design design)
         {
-            var slot = slotFor(design.Slot) ?? throw new InvalidOperationException($"{design.Slot} is not a free slot.");
+            var slot = slotOf(design);
             var source = gameItem(design.Source) ?? throw new InvalidOperationException($"{design.Source} is not a game item.");
             if (!string.Equals(source.NativeParent, slot.NativeParent, StringComparison.Ordinal))
             {
@@ -477,8 +747,9 @@ namespace MCDSaveEdit.Logic
             var found = new List<(string, bool, string)>();
             foreach (var design in _saved)
             {
-                var slot = slotFor(design.Slot);
-                if (slot == null || (slot.Kind != Kind.Melee && slot.Kind != Kind.Ranged)) { continue; }
+                Slot slot;
+                try { slot = slotOf(design); } catch (Exception) { continue; }
+                if (slot.Kind != Kind.Melee && slot.Kind != Kind.Ranged) { continue; }
                 NewContent.Made made;
                 try { made = copyOf(design).made; } catch (Exception) { continue; }
                 var meshes = made.Entries.Select(e => e.Path)
@@ -487,7 +758,7 @@ namespace MCDSaveEdit.Logic
                     .Select(p => "/" + p.Substring(0, p.Length - ".uasset".Length))
                     .OrderBy(p => p, StringComparer.Ordinal)
                     .ToList();
-                var name = string.IsNullOrWhiteSpace(design.Name) ? slot.BuiltInName : design.Name!;
+                var name = string.IsNullOrWhiteSpace(design.Name) ? (slot.Plugin ? R.itemName(design.Slot) : slot.BuiltInName) : design.Name!;
                 if (slot.Kind == Kind.Ranged)
                 {
                     if (meshes.Count > 0) { found.Add((meshes[0], true, name)); }
@@ -598,8 +869,13 @@ namespace MCDSaveEdit.Logic
             _appIcons.Clear();
             foreach (var design in _saved)
             {
+                //A plugin item has no text of the game's to fall back on: unnamed, it is called what
+                //the plugin tells the game to call it, its source's name.
+                var plugin = isPluginId(design.Slot) && !string.IsNullOrEmpty(design.Source);
                 if (!string.IsNullOrWhiteSpace(design.Name)) { R.itemTextOverrides[design.Slot] = design.Name!; }
+                else if (plugin) { R.itemTextOverrides[design.Slot] = R.itemName(design.Source); }
                 if (!string.IsNullOrWhiteSpace(design.Description)) { R.itemTextOverrides["Flavour_" + design.Slot] = design.Description!; }
+                else if (plugin) { R.itemTextOverrides["Flavour_" + design.Slot] = R.itemDesc(design.Source); }
             }
         }
 

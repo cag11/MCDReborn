@@ -10539,6 +10539,187 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_SHAREITEM=<folder> - exports every saved custom item to <folder>, reads each file back
+            //and unpacks it into a scratch copy, comparing field for field. The saved designs, the
+            //installed pak and the app's own item folder are not written.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_SHAREITEM=", StringComparison.Ordinal)))
+            {
+                var into = _startupArguments.First(a => a.StartsWith("PROBE_SHAREITEM=", StringComparison.Ordinal))["PROBE_SHAREITEM=".Length..].Trim('"');
+                Directory.CreateDirectory(into);
+                try
+                {
+                    Logic.CustomItems.gameItems();
+                    foreach (var design in Logic.CustomItems.load())
+                    {
+                        var file = Path.Combine(into, design.Slot + Logic.CustomItems.SHARE_EXTENSION);
+                        if (File.Exists(file)) { File.Delete(file); }
+                        Logic.CustomItems.export(design, file);
+                        using (var zip = System.IO.Compression.ZipFile.OpenRead(file))
+                        {
+                            Console.WriteLine($"[share] {design.Slot}: {new FileInfo(file).Length:N0} bytes, holds {string.Join(", ", zip.Entries.Select(e => $"{e.Name} {e.Length:N0}"))}");
+                        }
+                        var shared = Logic.CustomItems.readShared(file);
+                        var slot = Logic.CustomItems.slotFor(design.Slot)!;
+                        //Unpacked as the tab would, except that the files go to a scratch folder.
+                        var back = Logic.CustomItems.copy(shared.Design);
+                        var same = back.Source == design.Source && back.Name == design.Name && back.Description == design.Description
+                            && back.Icon == design.Icon && back.IconItem == design.IconItem
+                            && back.Values.Count == design.Values.Count && back.Values.All(v => design.Values.TryGetValue(v.Key, out var w) && w == v.Value)
+                            && (back.Model == null) == (design.Model == null)
+                            && (back.Model == null || (back.Model.Scale == design.Model!.Scale && back.Model.Offset.SequenceEqual(design.Model.Offset) && back.Model.Rotation.SequenceEqual(design.Model.Rotation)));
+                        Console.WriteLine($"[share]    kind {shared.Kind}, fields identical={same}, paths removed={back.IconFile == null && back.Model?.File == null}, would go to {Logic.CustomItems.slotForImport(shared, new List<Logic.CustomItems.Design>())?.Id}");
+                        using (var zip = System.IO.Compression.ZipFile.OpenRead(file))
+                        {
+                            if (design.Model?.File != null && zip.GetEntry("model.glb") is { } glb)
+                            {
+                                using var s = glb.Open(); using var m = new MemoryStream(); s.CopyTo(m);
+                                Console.WriteLine($"[share]    model bytes identical={m.ToArray().AsSpan().SequenceEqual(File.ReadAllBytes(design.Model.File))}");
+                            }
+                            if (design.IconFile != null && zip.GetEntry("icon.png") is { } png)
+                            {
+                                using var s = png.Open(); using var m = new MemoryStream(); s.CopyTo(m);
+                                Console.WriteLine($"[share]    icon bytes identical={m.ToArray().AsSpan().SequenceEqual(File.ReadAllBytes(design.IconFile))}");
+                            }
+                        }
+                    }
+                }
+                catch (Exception e) { Console.WriteLine($"[share] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_PLUGINITEMS - items beyond the free slots through the app's own code, as the New
+            //Items tab would make them: adopts MCDR_Test01 (the plugin test, on a character) as a
+            //design, adds one new ranged item, builds, and prints what was installed where.
+            if (_startupArguments.Contains("PROBE_PLUGINITEMS"))
+            {
+                try
+                {
+                    if (Logic.GameRunning.isUp) { Console.WriteLine("[items] close the game first"); Shutdown(); return; }
+                    var designs = Logic.CustomItems.load();
+                    if (designs.All(d => d.Slot != "MCDR_Test01"))
+                    {
+                        designs.Add(new Logic.CustomItems.Design { Slot = "MCDR_Test01", Source = "Katana_Unique1", PluginKind = Logic.CustomItems.Kind.Melee, Name = "Plugin Test Katana" });
+                    }
+                    if (!designs.Any(d => d.Slot.StartsWith(Logic.CustomItems.PLUGIN_PREFIX, StringComparison.Ordinal)))
+                    {
+                        var id = Logic.CustomItems.newPluginId(designs);
+                        var sources = Logic.CustomItems.sourcesFor(Logic.CustomItems.pluginSlot(id, Logic.CustomItems.Kind.Ranged));
+                        var bow = sources.FirstOrDefault(s => s.Id == "Bow_Unique1") ?? sources.First();
+                        designs.Add(new Logic.CustomItems.Design { Slot = id, Source = bow.Id, PluginKind = Logic.CustomItems.Kind.Ranged, Name = "Plugin Test Bow", Description = "The second item the plugin ever registered." });
+                        Console.WriteLine($"[items] {id}: a copy of {bow.Id} ({sources.Count} ranged sources)");
+                    }
+                    foreach (var d in designs) { Console.WriteLine($"[items] design {d.Slot} <- {d.Source}, folder {Logic.CustomItems.slotOf(d).Folder}, plugin {Logic.CustomItems.slotOf(d).Plugin}"); }
+                    var built = Logic.CustomItems.build(designs);
+                    Logic.CustomItems.save(designs);
+                    foreach (var note in built.Notes) { Console.WriteLine($"[items] {note}"); }
+                    var folder = Logic.GamePlugin.gameFolder();
+                    Console.WriteLine($"[items] game folder {folder}; ours {Logic.GamePlugin.isOurs(System.IO.Path.Combine(folder!, Logic.GamePlugin.DLL_NAME))}");
+                    Console.WriteLine(System.IO.File.ReadAllText(System.IO.Path.Combine(folder!, Logic.GamePlugin.ITEMS_NAME)));
+                }
+                catch (Exception e) { Console.WriteLine($"[items] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_PLUGINTEST=<MCDRebornItems.dll> - the item plugin, end to end, with one extra item:
+            //MCDR_Test01, a copy of the Master's Katana under an id the game never had.
+            //  1. with the game closed: rebuilds the New Items pak with the saved designs AND the extra
+            //     item, and writes the plugin and its item list to %LOCALAPPDATA%\MCDReborn\Plugin
+            //  2. waits for the game to start, gives it three seconds to decrypt itself, and loads the
+            //     plugin into it - the way the community loaders do
+            //  3. prints the plugin's own log as it registers the item.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_PLUGINTEST=", StringComparison.Ordinal)))
+            {
+                var dll = _startupArguments.First(a => a.StartsWith("PROBE_PLUGINTEST=", StringComparison.Ordinal))["PROBE_PLUGINTEST=".Length..].Trim('"');
+                var pluginFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MCDReborn", "Plugin");
+                Directory.CreateDirectory(pluginFolder);
+                try
+                {
+                    var extras = new List<Logic.CustomItems.Extra>
+                    {
+                        new("MCDR_Test01", "Katana_Unique1", "Plugin Test Katana", "Registered by the MCD Reborn plugin, under an id the game never had."),
+                    };
+                    if (Logic.GameRunning.isUp)
+                    {
+                        Console.WriteLine("[plugin] the game is running: close it first so the pak can be rebuilt");
+                        Shutdown(); return;
+                    }
+                    var built = Logic.CustomItems.build(Logic.CustomItems.load(), null, extras);
+                    foreach (var note in built.Notes) { Console.WriteLine($"[plugin] {note}"); }
+
+                    var lines = new List<string> { "# id\tsource\tfolder\tname\tdescription" };
+                    foreach (var extra in extras)
+                    {
+                        var source = Logic.CustomItems.gameItem(extra.Source)!;
+                        lines.Add(string.Join("\t", extra.Id, extra.Source, Logic.CustomItems.extraFolder(source, extra.Id), extra.Name, extra.Description));
+                    }
+                    File.WriteAllLines(Path.Combine(pluginFolder, "MCDRebornItems.txt"), lines, new System.Text.UTF8Encoding(false));
+                    var pluginDll = Path.Combine(pluginFolder, "MCDRebornItems.dll");
+                    File.Copy(dll, pluginDll, overwrite: true);
+                    Console.WriteLine($"[plugin] plugin and item list in {pluginFolder}");
+                    foreach (var line in lines.Skip(1)) { Console.WriteLine($"[plugin]    {line.Replace('\t', '|')}"); }
+
+                    Console.WriteLine("[plugin] waiting for the game to start (10 minutes)...");
+                    var started = DateTime.UtcNow;
+                    System.Diagnostics.Process? game = null;
+                    while (game == null && DateTime.UtcNow - started < TimeSpan.FromMinutes(10))
+                    {
+                        game = System.Diagnostics.Process.GetProcessesByName("Dungeons-Win64-Shipping").FirstOrDefault();
+                        if (game == null) { Thread.Sleep(200); }
+                    }
+                    if (game == null) { Console.WriteLine("[plugin] the game never started"); Shutdown(); return; }
+                    //Not a fixed delay after launch: loading at three seconds, while the game was still
+                    //decrypting itself, failed and left that path unloadable for the rest of the run.
+                    //The Dungeons module's global going non-null says the engine is up.
+                    Console.WriteLine($"[plugin] game started (pid {game.Id}); waiting for the engine");
+                    using (var live = LiveEdit.GameProcess.open(out _))
+                    {
+                        var image = live?.image(out _) ?? IntPtr.Zero;
+                        var moduleGlobal = image == IntPtr.Zero ? IntPtr.Zero : new IntPtr(image.ToInt64() + 0x44c7390);
+                        var until2 = DateTime.UtcNow.AddMinutes(3);
+                        while (DateTime.UtcNow < until2 && live != null && !game.HasExited)
+                        {
+                            var value = live.read(moduleGlobal, 8);
+                            if (value != null && BitConverter.ToInt64(value, 0) != 0) { break; }
+                            Thread.Sleep(500);
+                        }
+                    }
+                    Thread.Sleep(2000);
+                    //Loaded from a fresh folder each time: from the app's own Plugin folder the game
+                    //refused it twice while an identical copy in a temp folder loaded - not
+                    //understood yet, so the path that works is the one used.
+                    var run = Path.Combine(Path.GetTempPath(), "MCDRebornPlugin", game.Id.ToString());
+                    Directory.CreateDirectory(run);
+                    File.Copy(pluginDll, Path.Combine(run, "MCDRebornItems.dll"), overwrite: true);
+                    File.Copy(Path.Combine(pluginFolder, "MCDRebornItems.txt"), Path.Combine(run, "MCDRebornItems.txt"), overwrite: true);
+                    pluginFolder = run;
+                    pluginDll = Path.Combine(run, "MCDRebornItems.dll");
+                    Console.WriteLine($"[plugin] engine up; loading the plugin from {run}");
+                    var ok = LiveEdit.DllInjector.inject(pluginDll, out var problem);
+                    Console.WriteLine($"[plugin] load: {(ok ? "ok" : "FAILED")} {problem}");
+
+                    var log = Path.Combine(pluginFolder, "MCDRebornItems.log");
+                    var shown = 0;
+                    var until = DateTime.UtcNow.AddSeconds(90);
+                    while (DateTime.UtcNow < until)
+                    {
+                        Thread.Sleep(500);
+                        if (!File.Exists(log)) { continue; }
+                        string[] now;
+                        try { using var s = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite); using var r = new StreamReader(s); now = r.ReadToEnd().Split('\n'); }
+                        catch (IOException) { continue; }
+                        //The last piece may be a line still being written; it is printed next time.
+                        for (; shown < now.Length - 1; shown++) { if (now[shown].Trim().Length > 0) { Console.WriteLine($"[plugin]    log: {now[shown].TrimEnd()}"); } }
+                        if (now.Any(l => l.Contains("done:") || l.Contains("nothing was changed"))) { break; }
+                        if (game.HasExited) { Console.WriteLine("[plugin] the GAME CLOSED"); break; }
+                    }
+                }
+                catch (Exception e) { Console.WriteLine($"[plugin] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
             //READ_PAK=<pak file> - lists what a real pak reader finds inside one.
             var readPak = _startupArguments.FirstOrDefault(a => a.StartsWith("READ_PAK="));
             if (readPak != null)

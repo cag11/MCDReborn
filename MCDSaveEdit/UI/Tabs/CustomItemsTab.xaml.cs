@@ -1,4 +1,4 @@
-using MCDSaveEdit.Logic;
+﻿using MCDSaveEdit.Logic;
 using MCDSaveEdit.Services;
 using Microsoft.Win32;
 using System;
@@ -27,11 +27,17 @@ namespace MCDSaveEdit.UI
     ///
     /// Its name and description can be changed too, in every language at once. What cannot change
     /// is what the game compiled in: the slot's type and its unique frame.
+    ///
+    /// Beyond the nine: new melee and ranged items under ids of MCD Reborn's own, registered by
+    /// the plugin when the game starts (GamePlugin). They are listed with the slots and built the
+    /// same way; a new one stays "not saved yet" until it is installed.
     /// </summary>
     public partial class CustomItemsTab : UserControl
     {
         private List<CustomItems.Design> _designs = new();
         private CustomItems.Slot? _slot;
+        /// <summary>New plugin items made with the New buttons and not installed yet.</summary>
+        private readonly List<CustomItems.Slot> _pending = new();
         private CustomItems.Design? _working;
         private List<ItemBehaviour.Number> _numbers = new();
         private readonly Dictionary<string, BitmapSource?> _icons = new(StringComparer.OrdinalIgnoreCase);
@@ -110,6 +116,12 @@ namespace MCDSaveEdit.UI
             yoursColumn.Header = R.ITEMS_COL_YOURS;
             installButton.Content = R.ITEMS_INSTALL;
             clearButton.Content = R.ITEMS_CLEAR;
+            exportButton.Content = R.ITEMS_EXPORT;
+            importButton.Content = R.ITEMS_IMPORT;
+            moreLabel.Content = R.ITEMS_MORE;
+            newMeleeButton.Content = R.ITEMS_NEW_MELEE;
+            newRangedButton.Content = R.ITEMS_NEW_RANGED;
+            pluginNote.Text = R.ITEMS_PLUGIN_KEEP;
         }
 
         // ------------------------------------------------------------------ loading
@@ -130,6 +142,33 @@ namespace MCDSaveEdit.UI
             adoptTestPak();
             statusLabel.Text = string.Empty;
             fillSlots();
+            showPluginStatus();
+        }
+
+        /// <summary>
+        /// Whether items beyond the slots can be added here, and what the plugin said the last time
+        /// the game started - the one place to see that it registered them.
+        /// </summary>
+        private void showPluginStatus()
+        {
+            var available = GamePlugin.gameFolder() != null;
+            newButtons.IsEnabled = available;
+            moreHint.Text = available ? R.ITEMS_MORE_HINT : R.ITEMS_NEW_UNAVAILABLE;
+            pluginStatus.Text = string.Empty;
+            if (!available) { return; }
+
+            var log = GamePlugin.lastLog();
+            //Its lines start with the time: "07:46:32.184  done: 1 item(s), registry now holds 325".
+            var last = log?.LastOrDefault(l => l.Contains("done:") || l.Contains("nothing was changed") || l.Contains("NOT "));
+            if (last != null)
+            {
+                var text = last.Length > 14 && last[2] == ':' ? last.Substring(14).Trim() : last;
+                pluginStatus.Text = string.Format(R.ITEMS_PLUGIN_LAST, text);
+            }
+            else if (_designs.Any(d => CustomItems.isPluginId(d.Slot)))
+            {
+                pluginStatus.Text = R.ITEMS_PLUGIN_NEVER;
+            }
         }
 
         /// <summary>
@@ -146,19 +185,42 @@ namespace MCDSaveEdit.UI
             CustomItems.save(_designs);
         }
 
+        /// <summary>The free slots, then the plugin items installed, then any new ones not installed yet.</summary>
+        private IEnumerable<CustomItems.Slot> allSlots()
+        {
+            foreach (var slot in CustomItems.slots) { yield return slot; }
+            foreach (var design in _designs.Where(d => CustomItems.slotFor(d.Slot) == null))
+            {
+                CustomItems.Slot? slot = null;
+                try { slot = CustomItems.slotOf(design); } catch (Exception) { }
+                if (slot != null) { yield return slot; }
+            }
+            foreach (var slot in _pending.Where(p => _designs.All(d => d.Slot != p.Id))) { yield return slot; }
+        }
+
+        /// <summary>What an item is called in this tab: its name, else the slot's, else - new - its type.</summary>
+        private string displayName(CustomItems.Slot slot)
+        {
+            var design = _designs.FirstOrDefault(d => d.Slot == slot.Id);
+            if (!string.IsNullOrWhiteSpace(design?.Name)) { return design!.Name!; }
+            if (!slot.Plugin) { return slot.BuiltInName; }
+            if (design != null && !string.IsNullOrEmpty(design.Source)) { return R.itemName(design.Source); }
+            return string.Format(R.ITEMS_NEW_TITLE, kindName(slot.Kind).ToLower(CultureInfo.CurrentCulture));
+        }
+
         private void fillSlots()
         {
             var keep = _slot?.Id;
             slotList.Items.Clear();
-            foreach (var slot in CustomItems.slots)
+            foreach (var slot in allSlots())
             {
                 var design = _designs.FirstOrDefault(d => d.Slot == slot.Id);
                 var state = !slot.Ready ? R.ITEMS_SLOT_LATER
-                    : design == null ? R.ITEMS_SLOT_EMPTY
+                    : design == null ? (slot.Plugin ? R.ITEMS_NEW_UNSAVED : R.ITEMS_SLOT_EMPTY)
                     : string.Format(R.ITEMS_SLOT_FILLED, R.itemName(design.Source));
 
                 var text = new StackPanel { Margin = new Thickness(0, 3, 0, 3) };
-                var title = string.IsNullOrWhiteSpace(design?.Name) ? slot.BuiltInName : design!.Name!;
+                var title = displayName(slot);
                 text.Children.Add(new TextBlock { Text = title, FontWeight = FontWeights.SemiBold });
                 text.Children.Add(new TextBlock
                 {
@@ -190,22 +252,15 @@ namespace MCDSaveEdit.UI
 
             var saved = _designs.FirstOrDefault(d => d.Slot == slot.Id);
             _working = saved == null
-                ? new CustomItems.Design { Slot = slot.Id }
-                : new CustomItems.Design
-                {
-                    Slot = saved.Slot,
-                    Source = saved.Source,
-                    Icon = saved.Icon,
-                    IconItem = saved.IconItem,
-                    IconFile = saved.IconFile,
-                    Values = new Dictionary<string, double>(saved.Values),
-                    Name = saved.Name,
-                    Description = saved.Description,
-                    Model = saved.Model,
-                };
+                ? new CustomItems.Design { Slot = slot.Id, PluginKind = slot.Plugin ? slot.Kind : null }
+                : CustomItems.copy(saved);
 
-            slotTitle.Text = slot.BuiltInName;
-            slotDetail.Text = $"{slot.Id} · {kindName(slot.Kind)}{(slot.Unique ? " · " + R.ITEMS_UNIQUE : "")}";
+            slotTitle.Text = displayName(slot);
+            slotDetail.Text = slot.Plugin
+                ? $"{slot.Id} · {kindName(slot.Kind)} · {R.ITEMS_PLUGIN_ITEM}"
+                : $"{slot.Id} · {kindName(slot.Kind)}{(slot.Unique ? " · " + R.ITEMS_UNIQUE : "")}";
+            pluginNote.Visibility = slot.Plugin ? Visibility.Visible : Visibility.Collapsed;
+            clearButton.Content = slot.Plugin ? R.ITEMS_DELETE : R.ITEMS_CLEAR;
             editor.IsEnabled = true;
             clearButton.IsEnabled = saved != null;
 
@@ -229,6 +284,32 @@ namespace MCDSaveEdit.UI
         }
 
         private void searchBox_TextChanged(object sender, TextChangedEventArgs e) => fillSources();
+
+        // ------------------------------------------------------------------ new items beyond the slots
+
+        private void newMeleeButton_Click(object sender, RoutedEventArgs e) => addNew(CustomItems.Kind.Melee);
+
+        private void newRangedButton_Click(object sender, RoutedEventArgs e) => addNew(CustomItems.Kind.Ranged);
+
+        /// <summary>A new id, listed and opened. Nothing is written until it is installed.</summary>
+        private void addNew(CustomItems.Kind kind)
+        {
+            if (!_loaded) { statusLabel.Text = R.ITEMS_NOT_READY; return; }
+            var slot = CustomItems.pluginSlot(CustomItems.newPluginId(_designs), kind);
+            _pending.Add(slot);
+            _slot = null;
+            _working = null;
+            fillSlots();
+            select(slot.Id);
+        }
+
+        private void select(string id)
+        {
+            foreach (ListBoxItem item in slotList.Items)
+            {
+                if (item.Tag is CustomItems.Slot s && s.Id == id) { item.IsSelected = true; slotList.ScrollIntoView(item); }
+            }
+        }
 
         private void text_Changed(object sender, TextChangedEventArgs e)
         {
@@ -462,7 +543,78 @@ namespace MCDSaveEdit.UI
         private void updateButtons()
         {
             installButton.IsEnabled = _working != null && !string.IsNullOrEmpty(_working.Source);
-            clearButton.IsEnabled = _slot != null && _designs.Any(d => d.Slot == _slot.Id);
+            var saved = _slot != null && _designs.Any(d => d.Slot == _slot.Id);
+            clearButton.IsEnabled = saved || _slot?.Plugin == true;
+            exportButton.IsEnabled = saved;
+        }
+
+        private void exportButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_slot == null) { return; }
+            //From disk rather than from this tab: a model set in the Weapons tab is saved there.
+            var design = CustomItems.load().FirstOrDefault(d => d.Slot == _slot.Id);
+            if (design == null) { return; }
+
+            var name = displayName(_slot);
+            var dialog = new SaveFileDialog
+            {
+                FileName = CustomSkins.safeName(name) + CustomItems.SHARE_EXTENSION,
+                Filter = $"{R.ITEMS_FILE_KIND}|*{CustomItems.SHARE_EXTENSION}",
+            };
+            if (dialog.ShowDialog() != true) { return; }
+            try
+            {
+                if (File.Exists(dialog.FileName)) { File.Delete(dialog.FileName); }
+                CustomItems.export(design, dialog.FileName);
+                statusLabel.Text = string.Format(R.ITEMS_EXPORTED, Path.GetFileName(dialog.FileName));
+            }
+            catch (Exception problem) { statusLabel.Text = problem.Message; }
+        }
+
+        private async void importButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_loaded) { statusLabel.Text = R.ITEMS_NOT_READY; return; }
+            if (GameRunning.isUp) { MessageBox.Show(R.MODS_GAME_RUNNING, R.ITEMS_TAB); return; }
+            var dialog = new OpenFileDialog { Filter = $"{R.ITEMS_FILE_KIND}|*{CustomItems.SHARE_EXTENSION}" };
+            if (dialog.ShowDialog() != true) { return; }
+
+            try
+            {
+                var shared = CustomItems.readShared(dialog.FileName);
+                var pluginKind = shared.Kind == CustomItems.Kind.Melee || shared.Kind == CustomItems.Kind.Ranged;
+                var canAdd = pluginKind && GamePlugin.gameFolder() != null;
+                //An item exported from beyond the slots comes back as a new item here too; one from a
+                //slot takes a free slot first, and a new item when there is none.
+                var slot = canAdd && CustomItems.isPluginId(shared.Design.Slot) ? null : CustomItems.slotForImport(shared, _designs);
+                if (slot == null && canAdd)
+                {
+                    slot = CustomItems.pluginSlot(CustomItems.newPluginId(_designs), shared.Kind);
+                }
+                if (slot == null)
+                {
+                    //Every slot of its type is taken: offer the one on screen if it is the right
+                    //type, otherwise the first of that type.
+                    slot = _slot != null && _slot.Ready && _slot.Kind == shared.Kind ? _slot
+                        : CustomItems.slots.FirstOrDefault(s => s.Ready && s.Kind == shared.Kind);
+                    if (slot == null) { statusLabel.Text = string.Format(R.ITEMS_FAILED, kindName(shared.Kind)); return; }
+                    var current = displayName(slot);
+                    var ask = MessageBox.Show(string.Format(R.ITEMS_IMPORT_REPLACE, kindName(shared.Kind), current),
+                        R.ITEMS_TAB, MessageBoxButton.YesNo, MessageBoxImage.Question);
+                    if (ask != MessageBoxResult.Yes) { return; }
+                }
+
+                var design = CustomItems.unpack(dialog.FileName, shared, slot);
+                var designs = _designs.Where(d => d.Slot != slot.Id).Select(CustomItems.copy).ToList();
+                designs.Add(design);
+                await build(designs, fresh: slot.Id);
+
+                //Show it, read afresh from what was just saved.
+                _slot = null;
+                _working = null;
+                select(slot.Id);
+                statusLabel.Text = string.Format(R.ITEMS_IMPORTED, displayName(slot)) + "   " + statusLabel.Text;
+            }
+            catch (Exception problem) { statusLabel.Text = string.Format(R.ITEMS_FAILED, problem.Message); }
         }
 
         private async void installButton_Click(object sender, RoutedEventArgs e)
@@ -482,12 +634,35 @@ namespace MCDSaveEdit.UI
         private async void clearButton_Click(object sender, RoutedEventArgs e)
         {
             if (_slot == null) { return; }
+            if (_slot.Plugin && _designs.All(d => d.Slot != _slot.Id))
+            {
+                //Never installed: nothing to take out of the game.
+                var unsaved = _slot.Id;
+                _pending.RemoveAll(p => p.Id == unsaved);
+                _slot = null;
+                _working = null;
+                editor.IsEnabled = false;
+                fillSlots();
+                updateButtons();
+                return;
+            }
             if (GameRunning.isUp) { MessageBox.Show(R.MODS_GAME_RUNNING, R.ITEMS_TAB); return; }
-            var ask = MessageBox.Show(string.Format(R.ITEMS_CLEAR_WARN, _slot.BuiltInName), R.ITEMS_TAB,
+            var ask = MessageBox.Show(string.Format(_slot.Plugin ? R.ITEMS_DELETE_WARN : R.ITEMS_CLEAR_WARN, displayName(_slot)), R.ITEMS_TAB,
                 MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (ask != MessageBoxResult.Yes) { return; }
 
             var designs = _designs.Where(d => d.Slot != _slot.Id).ToList();
+            if (_slot.Plugin)
+            {
+                //A deleted plugin item leaves the list; its id is not handed out again.
+                var gone = _slot.Id;
+                _pending.RemoveAll(p => p.Id == gone);
+                _slot = null;
+                _working = null;
+                editor.IsEnabled = false;
+                await build(designs);
+                return;
+            }
             await build(designs);
             _working = new CustomItems.Design { Slot = _slot.Id };
             loadBehaviour();
@@ -496,7 +671,7 @@ namespace MCDSaveEdit.UI
             updateButtons();
         }
 
-        private async Task build(List<CustomItems.Design> designs)
+        private async Task build(List<CustomItems.Design> designs, string? fresh = null)
         {
             //A model is set from the Weapons tab, which saves straight to disk. What this tab holds
             //may predate it, so the model on disk wins - unless the item is now a copy of something
@@ -504,6 +679,8 @@ namespace MCDSaveEdit.UI
             var onDisk = CustomItems.load();
             foreach (var design in designs)
             {
+                //An imported item brings its own model; the slot's old one is not it.
+                if (design.Slot == fresh) { continue; }
                 var saved = onDisk.FirstOrDefault(d => d.Slot == design.Slot);
                 design.Model = saved != null && string.Equals(saved.Source, design.Source, StringComparison.OrdinalIgnoreCase)
                     ? saved.Model : null;
@@ -514,18 +691,7 @@ namespace MCDSaveEdit.UI
             try
             {
                 var built = await Task.Run(() => CustomItems.build(designs));
-                _designs = designs.Select(d => new CustomItems.Design
-                {
-                    Slot = d.Slot,
-                    Source = d.Source,
-                    Icon = d.Icon,
-                    IconItem = d.IconItem,
-                    IconFile = d.IconFile,
-                    Values = new Dictionary<string, double>(d.Values),
-                    Name = d.Name,
-                    Description = d.Description,
-                    Model = d.Model,
-                }).ToList();
+                _designs = designs.Select(CustomItems.copy).ToList();
                 CustomItems.save(_designs);
                 //So the inventory's pickers offer the new ids straight away.
                 NewContent.registerInstalled(CustomSkins.paksFolder);
@@ -539,8 +705,10 @@ namespace MCDSaveEdit.UI
             finally
             {
                 IsEnabled = true;
+                _pending.RemoveAll(p => _designs.Any(d => d.Slot == p.Id));
                 fillSlots();
                 updateButtons();
+                showPluginStatus();
             }
         }
     }

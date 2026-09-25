@@ -3990,4 +3990,84 @@ Empty the slot?</value>
     <value>Shown in every language the game has. Leave a box empty to keep the game's own text.</value>
     <comment>Hint under the name and description</comment>
   </data>
+  <data name="ITEMS_EXPORT" xml:space="preserve">
+    <value>Export…</value>
+    <comment>Button: save the chosen custom item as a file</comment>
+  </data>
+  <data name="ITEMS_IMPORT" xml:space="preserve">
+    <value>Import…</value>
+    <comment>Button: add a custom item from a file</comment>
+  </data>
+  <data name="ITEMS_FILE_KIND" xml:space="preserve">
+    <value>MCD Reborn item</value>
+    <comment>File type in the open and save dialogs</comment>
+  </data>
+  <data name="ITEMS_EXPORTED" xml:space="preserve">
+    <value>Saved {0}. It holds the item's name, behaviour, icon and model.</value>
+    <comment>Status. {0} is the file</comment>
+  </data>
+  <data name="ITEMS_IMPORTED" xml:space="preserve">
+    <value>Imported into {0}.</value>
+    <comment>Status. {0} is the slot's name</comment>
+  </data>
+  <data name="ITEMS_IMPORT_REPLACE" xml:space="preserve">
+    <value>Every {0} slot is in use. Replace {1} with the imported item?
+
+Characters holding {1} will have the imported item in its place.</value>
+    <comment>Question. {0} is the item type, {1} the item being replaced</comment>
+  </data>
+  <data name="ITEMS_MORE" xml:space="preserve">
+    <value>More items</value>
+    <comment>Label above the buttons that add items beyond the free slots</comment>
+  </data>
+  <data name="ITEMS_MORE_HINT" xml:space="preserve">
+    <value>As many new melee and ranged items as you like, beyond the free slots. MCD Reborn's plugin adds them to the game every time it starts. Each one keeps the type and frame of the item it copies.</value>
+    <comment>Hint under the More items label</comment>
+  </data>
+  <data name="ITEMS_NEW_MELEE" xml:space="preserve">
+    <value>New melee item</value>
+    <comment>Button</comment>
+  </data>
+  <data name="ITEMS_NEW_RANGED" xml:space="preserve">
+    <value>New ranged item</value>
+    <comment>Button</comment>
+  </data>
+  <data name="ITEMS_NEW_UNAVAILABLE" xml:space="preserve">
+    <value>Items beyond the free slots need the Steam or Minecraft Launcher version of the game.</value>
+    <comment>Shown instead of the new item buttons</comment>
+  </data>
+  <data name="ITEMS_PLUGIN_ITEM" xml:space="preserve">
+    <value>added by the plugin</value>
+    <comment>Slot detail for items beyond the free slots</comment>
+  </data>
+  <data name="ITEMS_NEW_UNSAVED" xml:space="preserve">
+    <value>not saved yet</value>
+    <comment>Slot state for a new item that has not been installed</comment>
+  </data>
+  <data name="ITEMS_NEW_TITLE" xml:space="preserve">
+    <value>New {0} item</value>
+    <comment>Title of a new item with no name yet. {0} is melee or ranged, lower case</comment>
+  </data>
+  <data name="ITEMS_DELETE" xml:space="preserve">
+    <value>Delete this item</value>
+    <comment>Button, for items beyond the free slots</comment>
+  </data>
+  <data name="ITEMS_DELETE_WARN" xml:space="preserve">
+    <value>Any character still holding {0} loses it the next time it loads: the game deletes ids it does not know.
+
+Delete it?</value>
+    <comment>Confirmation. {0} is the item's name</comment>
+  </data>
+  <data name="ITEMS_PLUGIN_LAST" xml:space="preserve">
+    <value>Last game start: {0}</value>
+    <comment>Plugin status under the new item buttons. {0} is the plugin's own last log line</comment>
+  </data>
+  <data name="ITEMS_PLUGIN_NEVER" xml:space="preserve">
+    <value>The plugin has not run yet. Start the game once the items are installed.</value>
+    <comment>Plugin status</comment>
+  </data>
+  <data name="ITEMS_PLUGIN_KEEP" xml:space="preserve">
+    <value>Needs MCD Reborn's xinput1_3.dll beside the game, which is installed with it. Without that file the game deletes this item from any character holding it.</value>
+    <comment>Shown under an item beyond the free slots</comment>
+  </data>
 </root>

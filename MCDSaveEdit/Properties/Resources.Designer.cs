@@ -8814,5 +8814,176 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("ITEMS_TEXT_HINT", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Export….
+        /// </summary>
+        public static string ITEMS_EXPORT {
+            get {
+                return ResourceManager.GetString("ITEMS_EXPORT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Import….
+        /// </summary>
+        public static string ITEMS_IMPORT {
+            get {
+                return ResourceManager.GetString("ITEMS_IMPORT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to MCD Reborn item.
+        /// </summary>
+        public static string ITEMS_FILE_KIND {
+            get {
+                return ResourceManager.GetString("ITEMS_FILE_KIND", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Saved {0}. It holds the item's name, behaviour, icon and model..
+        /// </summary>
+        public static string ITEMS_EXPORTED {
+            get {
+                return ResourceManager.GetString("ITEMS_EXPORTED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Imported into {0}..
+        /// </summary>
+        public static string ITEMS_IMPORTED {
+            get {
+                return ResourceManager.GetString("ITEMS_IMPORTED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Every {0} slot is in use. Replace {1} with the imported item?.
+        /// </summary>
+        public static string ITEMS_IMPORT_REPLACE {
+            get {
+                return ResourceManager.GetString("ITEMS_IMPORT_REPLACE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to More items.
+        /// </summary>
+        public static string ITEMS_MORE {
+            get {
+                return ResourceManager.GetString("ITEMS_MORE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to As many new melee and ranged items as you like, beyond the free slots. MCD Reborn's plugin adds them to the game every time it starts. Each one keeps the type and frame of the item it copies..
+        /// </summary>
+        public static string ITEMS_MORE_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_MORE_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to New melee item.
+        /// </summary>
+        public static string ITEMS_NEW_MELEE {
+            get {
+                return ResourceManager.GetString("ITEMS_NEW_MELEE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to New ranged item.
+        /// </summary>
+        public static string ITEMS_NEW_RANGED {
+            get {
+                return ResourceManager.GetString("ITEMS_NEW_RANGED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Items beyond the free slots need the Steam or Minecraft Launcher version of the game..
+        /// </summary>
+        public static string ITEMS_NEW_UNAVAILABLE {
+            get {
+                return ResourceManager.GetString("ITEMS_NEW_UNAVAILABLE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to added by the plugin.
+        /// </summary>
+        public static string ITEMS_PLUGIN_ITEM {
+            get {
+                return ResourceManager.GetString("ITEMS_PLUGIN_ITEM", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to not saved yet.
+        /// </summary>
+        public static string ITEMS_NEW_UNSAVED {
+            get {
+                return ResourceManager.GetString("ITEMS_NEW_UNSAVED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to New {0} item.
+        /// </summary>
+        public static string ITEMS_NEW_TITLE {
+            get {
+                return ResourceManager.GetString("ITEMS_NEW_TITLE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Delete this item.
+        /// </summary>
+        public static string ITEMS_DELETE {
+            get {
+                return ResourceManager.GetString("ITEMS_DELETE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Any character still holding {0} loses it the next time it loads: the game deletes ids it does not know..
+        /// </summary>
+        public static string ITEMS_DELETE_WARN {
+            get {
+                return ResourceManager.GetString("ITEMS_DELETE_WARN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Last game start: {0}.
+        /// </summary>
+        public static string ITEMS_PLUGIN_LAST {
+            get {
+                return ResourceManager.GetString("ITEMS_PLUGIN_LAST", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The plugin has not run yet. Start the game once the items are installed..
+        /// </summary>
+        public static string ITEMS_PLUGIN_NEVER {
+            get {
+                return ResourceManager.GetString("ITEMS_PLUGIN_NEVER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Needs MCD Reborn's xinput1_3.dll beside the game, which is installed with it. Without that file the game deletes this item from any character holding it..
+        /// </summary>
+        public static string ITEMS_PLUGIN_KEEP {
+            get {
+                return ResourceManager.GetString("ITEMS_PLUGIN_KEEP", resourceCulture);
+            }
+        }
     }
 }

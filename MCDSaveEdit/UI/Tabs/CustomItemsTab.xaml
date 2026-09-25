@@ -20,6 +20,20 @@
             <Label x:Name="slotsLabel" DockPanel.Dock="Top" Content="*Free item slots*" Padding="0,0,0,4"/>
             <TextBlock x:Name="slotsHint" DockPanel.Dock="Top" Foreground="Gray" TextWrapping="Wrap"
                        FontSize="11" Margin="2,0,2,8"/>
+
+            <!-- Items beyond the free slots, registered by the plugin. They join the list above. -->
+            <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+                <Label x:Name="moreLabel" Content="*More items*" Padding="0,0,0,4"/>
+                <TextBlock x:Name="moreHint" Foreground="Gray" TextWrapping="Wrap" FontSize="11" Margin="2,0,2,6"/>
+                <StackPanel x:Name="newButtons" Orientation="Horizontal">
+                    <Button x:Name="newMeleeButton" Content="*New melee item*" Padding="8,4" Margin="0,0,6,0"
+                            Click="newMeleeButton_Click"/>
+                    <Button x:Name="newRangedButton" Content="*New ranged item*" Padding="8,4"
+                            Click="newRangedButton_Click"/>
+                </StackPanel>
+                <TextBlock x:Name="pluginStatus" Foreground="Gray" TextWrapping="Wrap" FontSize="11" Margin="2,6,2,0"/>
+            </StackPanel>
+
             <ListBox x:Name="slotList" SelectionChanged="slotList_SelectionChanged"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
         </DockPanel>
@@ -31,8 +45,12 @@
             <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="2,8,2,0">
                 <Button x:Name="installButton" Content="*Save and install*" Padding="10,5" Margin="0,0,6,0"
                         Click="installButton_Click"/>
-                <Button x:Name="clearButton" Content="*Empty this slot*" Padding="10,5"
+                <Button x:Name="clearButton" Content="*Empty this slot*" Padding="10,5" Margin="0,0,18,0"
                         Click="clearButton_Click"/>
+                <Button x:Name="exportButton" Content="*Export…*" Padding="10,5" Margin="0,0,6,0"
+                        Click="exportButton_Click"/>
+                <Button x:Name="importButton" Content="*Import…*" Padding="10,5"
+                        Click="importButton_Click"/>
             </StackPanel>
 
             <ScrollViewer x:Name="editor" VerticalScrollBarVisibility="Auto">
@@ -40,6 +58,8 @@
                     <TextBlock x:Name="slotTitle" FontWeight="SemiBold" FontSize="15"/>
                     <TextBlock x:Name="slotDetail" Foreground="Gray" FontSize="11" Margin="0,2,0,10"
                                TextWrapping="Wrap"/>
+                    <TextBlock x:Name="pluginNote" Foreground="Gray" FontSize="11" Margin="0,-6,0,10"
+                               TextWrapping="Wrap" Visibility="Collapsed"/>
 
                     <!-- What the game calls it. -->
                     <Grid Margin="0,0,0,4">
