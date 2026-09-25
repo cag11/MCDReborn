@@ -4021,7 +4021,7 @@ Characters holding {1} will have the imported item in its place.</value>
     <comment>Label above the buttons that add items beyond the free slots</comment>
   </data>
   <data name="ITEMS_MORE_HINT" xml:space="preserve">
-    <value>As many new melee and ranged items as you like, beyond the free slots. MCD Reborn's plugin adds them to the game every time it starts. Each one keeps the type and frame of the item it copies.</value>
+    <value>As many new melee, ranged and armour items as you like, beyond the free slots. MCD Reborn's plugin adds them to the game every time it starts. Each one keeps the type and frame of the item it copies.</value>
     <comment>Hint under the More items label</comment>
   </data>
   <data name="ITEMS_NEW_MELEE" xml:space="preserve">
@@ -4069,5 +4069,13 @@ Delete it?</value>
   <data name="ITEMS_PLUGIN_KEEP" xml:space="preserve">
     <value>Needs MCD Reborn's xinput1_3.dll beside the game, which is installed with it. Without that file the game deletes this item from any character holding it.</value>
     <comment>Shown under an item beyond the free slots</comment>
+  </data>
+  <data name="ITEMS_NEW_ARMOR" xml:space="preserve">
+    <value>New armour</value>
+    <comment>Button</comment>
+  </data>
+  <data name="ITEMS_BEHAVIOUR_ARMOR" xml:space="preserve">
+    <value>An armour's stats are built into the game, so the copy keeps its source's. Its armour properties are saved on each character: set them in the inventory, as for any armour.</value>
+    <comment>Shown instead of the behaviour grid for armour</comment>
   </data>
 </root>

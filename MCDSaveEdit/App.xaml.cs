@@ -10365,6 +10365,48 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_ARMOR=<id>;<id>... - what an armour's folder holds: every file, the names in each
+            //package that look like properties or references, and every number each export stores.
+            //Read-only; for finding where an armour's stats live.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_ARMOR=", StringComparison.Ordinal)))
+            {
+                var ids = _startupArguments.First(a => a.StartsWith("PROBE_ARMOR=", StringComparison.Ordinal))["PROBE_ARMOR=".Length..].Trim('"').Split(';', StringSplitOptions.RemoveEmptyEntries);
+                try
+                {
+                    foreach (var id in ids)
+                    {
+                        var item = Logic.CustomItems.gameItem(id);
+                        if (item == null) { Console.WriteLine($"[armor] {id}: not a game item"); continue; }
+                        var cooked = "/Dungeons/Content/" + item.Folder["/Game/".Length..];
+                        Console.WriteLine($"[armor] === {id} {cooked} native {item.NativeParent} instance {item.Instance}");
+                        var files = Logic.CustomSkins.index!.Where(p => p.TrimStart('/').StartsWith(cooked.TrimStart('/') + "/", StringComparison.OrdinalIgnoreCase)).ToList();
+                        foreach (var f in files) { Console.WriteLine($"[armor]   file {f}"); }
+                        foreach (var f in files.Where(f => !f.EndsWith(".uexp") && !f.EndsWith(".ubulk")).Select(f => "/" + f.TrimStart('/')).Distinct())
+                        {
+                            var package = Logic.CustomSkins.index!.extractPackage(f);
+                            if (package == null) { continue; }
+                            var names = Logic.CookedProperties.readNamesOf(package.Value.UAsset.ToArray());
+                            Console.WriteLine($"[armor]   --- {f.Substring(f.LastIndexOf('/') + 1)}: {names.Count} names");
+                            foreach (var n in names.Where(n => n.StartsWith("/Game/") || n.StartsWith("/Script/") || n.Contains("Propert") || n.Contains("Armor") || n.Contains("Mesh") || n.Contains("Material")))
+                            {
+                                Console.WriteLine($"[armor]       name {n}");
+                            }
+                            try
+                            {
+                                foreach (var n in Logic.ItemBehaviour.numbersOf(package.Value.UAsset.ToArray(), package.Value.UExp.ToArray()))
+                                {
+                                    Console.WriteLine($"[armor]       number {n.Export} {n.Path} = {n.Value}");
+                                }
+                            }
+                            catch (Exception e) { Console.WriteLine($"[armor]       numbers: {e.Message}"); }
+                        }
+                    }
+                }
+                catch (Exception e) { Console.WriteLine($"[armor] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
             //PROBE_BEHAVIOUR[=<id>;<id>...] - the game's items by type, read from its asset registry,
             //and every number the named items' Instance blueprints store. Read-only.
             if (_startupArguments.Any(a => a == "PROBE_BEHAVIOUR" || a.StartsWith("PROBE_BEHAVIOUR=", StringComparison.Ordinal)))
@@ -10584,6 +10626,49 @@ namespace MCDSaveEdit
                     }
                 }
                 catch (Exception e) { Console.WriteLine($"[share] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_ARMORITEMS - custom armour through the app's own code: the Curious Armor slot as a
+            //copy of Champion's Armor, and one armour beyond the slots as a copy of Fox Armor, whose
+            //textures do not carry its id. Builds, installs, and lists what each copy holds.
+            if (_startupArguments.Contains("PROBE_ARMORITEMS"))
+            {
+                try
+                {
+                    if (Logic.GameRunning.isUp) { Console.WriteLine("[armor] close the game first"); Shutdown(); return; }
+                    var designs = Logic.CustomItems.load();
+                    if (designs.All(d => d.Slot != "CowardsArmor_Unique1"))
+                    {
+                        designs.Add(new Logic.CustomItems.Design { Slot = "CowardsArmor_Unique1", Source = "ChampionsArmor", Name = "Slot Test Armour", Description = "Champion's Armor, in the slot the game cut." });
+                    }
+                    if (!designs.Any(d => d.PluginKind == Logic.CustomItems.Kind.Armor))
+                    {
+                        designs.Add(new Logic.CustomItems.Design { Slot = Logic.CustomItems.newPluginId(designs), Source = "WolfArmor_Unique1", PluginKind = Logic.CustomItems.Kind.Armor, Name = "Plugin Test Armour", Description = "Fox Armor, under an id the game never had." });
+                    }
+                    Console.WriteLine($"[armor] armour sources: {Logic.CustomItems.sourcesFor(Logic.CustomItems.slotFor("CowardsArmor_Unique1")!).Count}");
+                    var built = Logic.CustomItems.build(designs);
+                    Logic.CustomItems.save(designs);
+                    foreach (var note in built.Notes) { Console.WriteLine($"[armor] {note}"); }
+
+                    //Read the installed pak back: every file of the two armour copies.
+                    var inside = Logic.ModPak.read(built.PakPath!);
+                    foreach (var d in designs.Where(d => Logic.CustomItems.slotOf(d).Kind == Logic.CustomItems.Kind.Armor))
+                    {
+                        var slot = Logic.CustomItems.slotOf(d);
+                        Console.WriteLine($"[armor] === {slot.Id} <- {d.Source}, folder {slot.Folder}, plugin {slot.Plugin}");
+                        foreach (var f in inside.Where(f => f.Path.Replace('\\', '/').Contains("/" + slot.FolderId + "/", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            var names = f.Path.EndsWith(".uasset", StringComparison.OrdinalIgnoreCase) ? Logic.CookedProperties.readNamesOf(f.Data) : Array.Empty<string>();
+                            var stale = names.Where(n => n.Contains(d.Source, StringComparison.OrdinalIgnoreCase)).ToList();
+                            Console.WriteLine($"[armor]   {f.Path} {f.Data.Length} B{(stale.Count > 0 ? "  still names: " + string.Join(", ", stale) : "")}");
+                        }
+                    }
+                    var folder = Logic.GamePlugin.gameFolder();
+                    if (folder != null) { Console.WriteLine(System.IO.File.ReadAllText(System.IO.Path.Combine(folder, Logic.GamePlugin.ITEMS_NAME))); }
+                }
+                catch (Exception e) { Console.WriteLine($"[armor] FAILED {e}"); }
                 Shutdown();
                 return;
             }

@@ -8879,7 +8879,7 @@ namespace MCDSaveEdit.Properties {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to As many new melee and ranged items as you like, beyond the free slots. MCD Reborn's plugin adds them to the game every time it starts. Each one keeps the type and frame of the item it copies..
+        ///   Looks up a localized string similar to As many new melee, ranged and armour items as you like, beyond the free slots. MCD Reborn's plugin adds them to the game every time it starts. Each one keeps the type and frame of the item it copies..
         /// </summary>
         public static string ITEMS_MORE_HINT {
             get {
@@ -8983,6 +8983,24 @@ namespace MCDSaveEdit.Properties {
         public static string ITEMS_PLUGIN_KEEP {
             get {
                 return ResourceManager.GetString("ITEMS_PLUGIN_KEEP", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to New armour.
+        /// </summary>
+        public static string ITEMS_NEW_ARMOR {
+            get {
+                return ResourceManager.GetString("ITEMS_NEW_ARMOR", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to An armour's stats are built into the game, so the copy keeps its source's. Its armour properties are saved on each character: set them in the inventory, as for any armour..
+        /// </summary>
+        public static string ITEMS_BEHAVIOUR_ARMOR {
+            get {
+                return ResourceManager.GetString("ITEMS_BEHAVIOUR_ARMOR", resourceCulture);
             }
         }
     }

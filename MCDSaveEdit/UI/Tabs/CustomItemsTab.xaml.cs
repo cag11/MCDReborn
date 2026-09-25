@@ -121,6 +121,7 @@ namespace MCDSaveEdit.UI
             moreLabel.Content = R.ITEMS_MORE;
             newMeleeButton.Content = R.ITEMS_NEW_MELEE;
             newRangedButton.Content = R.ITEMS_NEW_RANGED;
+            newArmorButton.Content = R.ITEMS_NEW_ARMOR;
             pluginNote.Text = R.ITEMS_PLUGIN_KEEP;
         }
 
@@ -277,6 +278,12 @@ namespace MCDSaveEdit.UI
             fillIconItems();
             _filling = false;
 
+            //An armour stores none of its numbers in its blueprints: its stats are compiled into the
+            //game, and its armour properties are saved on each character. So there is no grid.
+            var armour = slot.Kind == CustomItems.Kind.Armor;
+            behaviourHint.Text = armour ? R.ITEMS_BEHAVIOUR_ARMOR : R.ITEMS_BEHAVIOUR_HINT;
+            multipliers.Visibility = behaviourGrid.Visibility = armour ? Visibility.Collapsed : Visibility.Visible;
+
             fillSources();
             loadBehaviour();
             updatePreview();
@@ -290,6 +297,8 @@ namespace MCDSaveEdit.UI
         private void newMeleeButton_Click(object sender, RoutedEventArgs e) => addNew(CustomItems.Kind.Melee);
 
         private void newRangedButton_Click(object sender, RoutedEventArgs e) => addNew(CustomItems.Kind.Ranged);
+
+        private void newArmorButton_Click(object sender, RoutedEventArgs e) => addNew(CustomItems.Kind.Armor);
 
         /// <summary>A new id, listed and opened. Nothing is written until it is installed.</summary>
         private void addNew(CustomItems.Kind kind)
@@ -581,7 +590,8 @@ namespace MCDSaveEdit.UI
             try
             {
                 var shared = CustomItems.readShared(dialog.FileName);
-                var pluginKind = shared.Kind == CustomItems.Kind.Melee || shared.Kind == CustomItems.Kind.Ranged;
+                var pluginKind = shared.Kind == CustomItems.Kind.Melee || shared.Kind == CustomItems.Kind.Ranged
+                    || shared.Kind == CustomItems.Kind.Armor;
                 var canAdd = pluginKind && GamePlugin.gameFolder() != null;
                 //An item exported from beyond the slots comes back as a new item here too; one from a
                 //slot takes a free slot first, and a new item when there is none.

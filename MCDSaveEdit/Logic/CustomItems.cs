@@ -77,8 +77,8 @@ namespace MCDSaveEdit.Logic
         {
             new Slot("Pickaxe_Unique2", "MeleeWeapons/Pickaxe_Unique2_Steel", Kind.Melee, "MeleeWeaponGearItemInstance", true, "The Monkey Motivator", true),
             new Slot("SpiderCrossbow", "RangedWeapons/SpiderCrossbow", Kind.Ranged, "RangedWeaponGearItemInstance", false, "Spider Crossbow", true),
-            new Slot("CowardsArmor_Unique1", "Armor/CowardsArmor_Unique1", Kind.Armor, "ArmorGearItemInstance", true, "Curious Armor", false),
-            new Slot("MysteryArmor_Unique1", "Armor/MysteryArmor_Unique1", Kind.Armor, "ArmorGearItemInstance", true, "Mystery Armor", false),
+            new Slot("CowardsArmor_Unique1", "Armor/CowardsArmor_Unique1", Kind.Armor, "ArmorGearItemInstance", true, "Curious Armor", true),
+            new Slot("MysteryArmor_Unique1", "Armor/MysteryArmor_Unique1", Kind.Armor, "ArmorGearItemInstance", true, "Mystery Armor", true),
             new Slot("Harvester_Unique1", "Harvester_Unique1", Kind.Artifact, "", true, "Blightbearer", false),
             new Slot("TotemOfShielding_Unique1", "TotemOfShielding_Unique1", Kind.Artifact, "", true, "Totem of Resistance", false),
             new Slot("TotemOfSoulProtection", "TotemOfSoulProtection", Kind.Artifact, "", false, "Totem of Soul Protection", false),
@@ -99,7 +99,7 @@ namespace MCDSaveEdit.Logic
         /// exactly as a slot's, into a folder named after the id beside the source's, and the
         /// plugin registers the id when the game starts (GamePlugin). Unlike a slot, the type and
         /// the unique frame are the source's own: the plugin copies the source's entry whole.
-        /// Melee and ranged, as the slots.
+        /// Melee, ranged and armour, as the slots.
         /// </summary>
         public const string PLUGIN_PREFIX = "MCDR_Item";
 
@@ -141,7 +141,8 @@ namespace MCDSaveEdit.Logic
             {
                 Kind.Melee => ("MeleeWeapons", "MeleeWeaponGearItemInstance"),
                 Kind.Ranged => ("RangedWeapons", "RangedWeaponGearItemInstance"),
-                _ => throw new InvalidOperationException("Only melee and ranged items can be added beyond the free slots."),
+                Kind.Armor => ("Armor", "ArmorGearItemInstance"),
+                _ => throw new InvalidOperationException("Only melee, ranged and armour items can be added beyond the free slots."),
             };
             var folder = source == null ? parent + "/" + id : extraFolder(source, id);
             return new Slot(id, folder, kind, native, false, id, true, plugin: true);

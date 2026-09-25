@@ -1,4 +1,4 @@
-<UserControl x:Class="MCDSaveEdit.UI.CustomItemsTab"
+﻿<UserControl x:Class="MCDSaveEdit.UI.CustomItemsTab"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -28,8 +28,10 @@
                 <StackPanel x:Name="newButtons" Orientation="Horizontal">
                     <Button x:Name="newMeleeButton" Content="*New melee item*" Padding="8,4" Margin="0,0,6,0"
                             Click="newMeleeButton_Click"/>
-                    <Button x:Name="newRangedButton" Content="*New ranged item*" Padding="8,4"
+                    <Button x:Name="newRangedButton" Content="*New ranged item*" Padding="8,4" Margin="0,0,6,0"
                             Click="newRangedButton_Click"/>
+                    <Button x:Name="newArmorButton" Content="*New armour*" Padding="8,4"
+                            Click="newArmorButton_Click"/>
                 </StackPanel>
                 <TextBlock x:Name="pluginStatus" Foreground="Gray" TextWrapping="Wrap" FontSize="11" Margin="2,6,2,0"/>
             </StackPanel>
@@ -133,7 +135,7 @@
                     <Label x:Name="behaviourLabel" Content="*Behaviour*" Padding="0,12,0,2"/>
                     <TextBlock x:Name="behaviourHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap"
                                Margin="2,0,2,6"/>
-                    <WrapPanel Margin="0,0,0,6">
+                    <WrapPanel x:Name="multipliers" Margin="0,0,0,6">
                         <TextBlock x:Name="allSwingsLabel" VerticalAlignment="Center" Margin="0,0,8,0"/>
                         <TextBlock x:Name="damageXLabel" VerticalAlignment="Center" Margin="0,0,4,0"/>
                         <TextBox x:Name="damageXBox" Width="46" Text="1" Margin="0,0,10,0"/>
