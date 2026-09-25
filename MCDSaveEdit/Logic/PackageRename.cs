@@ -39,7 +39,16 @@ namespace MCDSaveEdit.Logic
         /// A renamed copy of <paramref name="uasset"/>, or null when it is not a package this
         /// understands. <paramref name="changed"/> counts the names and strings that moved.
         /// </summary>
-        public static byte[]? rename(byte[] uasset, Func<string, string?> renamedOf, out int changed)
+        /// <param name="keepForNativeImports">
+        /// Names that keep their old spelling where they name a native class this package imports.
+        /// A name entry is shared by everything that spells it, and an item's bare id is often
+        /// also its C++ class: CorruptedBeacon's Instance derives from /Script/Dungeons.CorruptedBeacon.
+        /// Renaming the id would repoint that parent at a class that does not exist. For these, the
+        /// renamed entry keeps serving the id's values, and a new entry with the old spelling is
+        /// added for the class import alone.
+        /// </param>
+        public static byte[]? rename(byte[] uasset, Func<string, string?> renamedOf, out int changed,
+            ICollection<string>? keepForNativeImports = null)
         {
             changed = 0;
             var summary = read(uasset);
@@ -52,7 +61,16 @@ namespace MCDSaveEdit.Logic
             var nameOffset = BitConverter.ToInt32(bytes, summary.NameCountAt + 4);
             var table = new MemoryStream();
             var writer = new BinaryWriter(table);
+            var kept = new List<(int index, string text)>();
             var at = nameOffset;
+            void writeName(string spelled)
+            {
+                writer.Write(spelled.Length + 1);
+                writer.Write(Encoding.ASCII.GetBytes(spelled));
+                writer.Write((byte)0);
+                writer.Write(NewContent.nonCaseHash(spelled));
+                writer.Write(NewContent.caseHash(spelled));
+            }
             for (var i = 0; i < nameCount; i++)
             {
                 var length = BitConverter.ToInt32(bytes, at);
@@ -67,18 +85,38 @@ namespace MCDSaveEdit.Logic
 
                 var text = Encoding.ASCII.GetString(bytes, at + 4, Math.Max(0, length - 1));
                 var now = renamedOf(text);
-                if (now != null && now != text) { changed++; }
-                var spelled = now ?? text;
-
-                writer.Write(spelled.Length + 1);
-                writer.Write(Encoding.ASCII.GetBytes(spelled));
-                writer.Write((byte)0);
-                writer.Write(NewContent.nonCaseHash(spelled));
-                writer.Write(NewContent.caseHash(spelled));
+                if (now != null && now != text)
+                {
+                    changed++;
+                    if (keepForNativeImports != null && keepForNativeImports.Contains(text)) { kept.Add((i, text)); }
+                }
+                writeName(now ?? text);
                 at += 4 + length + 4;
+            }
+
+            //Only those that really are a native class import get their old spelling back.
+            var nativeImports = kept.Count == 0 ? new List<int>() : nativeClassImports(bytes, summary, kept.ConvertAll(k => k.index));
+            var restored = new Dictionary<int, int>();
+            foreach (var (index, text) in kept)
+            {
+                if (!nativeImports.Contains(index)) { continue; }
+                restored[index] = nameCount + restored.Count;
+                writeName(text);
             }
             writer.Flush();
             bytes = splice(bytes, summary, nameOffset, at - nameOffset, table.ToArray());
+
+            if (restored.Count > 0)
+            {
+                BitConverter.GetBytes(nameCount + restored.Count).CopyTo(bytes, summary.NameCountAt);
+                var importCount = BitConverter.ToInt32(bytes, summary.NameCountAt + 24);
+                var importOffset = BitConverter.ToInt32(bytes, summary.NameCountAt + 28);
+                foreach (var entry in nativeImportEntries(bytes, importCount, importOffset, restored.Keys))
+                {
+                    var index = BitConverter.ToInt32(bytes, entry + 20);
+                    BitConverter.GetBytes(restored[index]).CopyTo(bytes, entry + 20);
+                }
+            }
 
             //The asset registry block: object paths, class names and tag values, as FStrings. The
             //game's own tag here is ItemIdName, so a copy left saying HeavyCrossbow would claim to
@@ -108,6 +146,47 @@ namespace MCDSaveEdit.Logic
             }
 
             return bytes;
+        }
+
+        /// <summary>The name indexes, out of <paramref name="candidates"/>, that some native class import is named by.</summary>
+        private static List<int> nativeClassImports(byte[] bytes, Summary summary, List<int> candidates)
+        {
+            var importCount = BitConverter.ToInt32(bytes, summary.NameCountAt + 24);
+            var importOffset = BitConverter.ToInt32(bytes, summary.NameCountAt + 28);
+            var found = new List<int>();
+            foreach (var entry in nativeImportEntries(bytes, importCount, importOffset, candidates))
+            {
+                var index = BitConverter.ToInt32(bytes, entry + 20);
+                if (!found.Contains(index)) { found.Add(index); }
+            }
+            return found;
+        }
+
+        /// <summary>
+        /// The import entries - ClassPackage, ClassName, OuterIndex, ObjectName, 28 bytes - of class
+        /// `Class` whose outer is a /Script package and whose object name is one of <paramref name="names"/>.
+        /// Read by name index, which renaming leaves where it was.
+        /// </summary>
+        private static IEnumerable<int> nativeImportEntries(byte[] bytes, int importCount, int importOffset, IEnumerable<int> names)
+        {
+            var wanted = new HashSet<int>(names);
+            var nameTable = new List<string>(CookedProperties.readNamesOf(bytes));
+            string nameAt(int at)
+            {
+                var index = BitConverter.ToInt32(bytes, at);
+                return index >= 0 && index < nameTable.Count ? nameTable[index] : string.Empty;
+            }
+            const int ENTRY = 28;
+            for (var i = 0; i < importCount; i++)
+            {
+                var entry = importOffset + i * ENTRY;
+                if (!wanted.Contains(BitConverter.ToInt32(bytes, entry + 20))) { continue; }
+                if (nameAt(entry + 8) != "Class") { continue; }
+                var outer = BitConverter.ToInt32(bytes, entry + 16);
+                if (outer >= 0 || -outer - 1 >= importCount) { continue; }
+                if (!nameAt(importOffset + (-outer - 1) * ENTRY + 20).StartsWith("/Script/", StringComparison.Ordinal)) { continue; }
+                yield return entry;
+            }
         }
 
         /// <summary>

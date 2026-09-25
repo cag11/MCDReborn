@@ -3789,24 +3789,12 @@ Install it anyway?</value>
     <comment>Title of the custom items tab</comment>
   </data>
   <data name="ITEMS_SLOTS" xml:space="preserve">
-    <value>Free item slots</value>
+    <value>Your items</value>
     <comment>Label above the slot list</comment>
-  </data>
-  <data name="ITEMS_SLOTS_HINT" xml:space="preserve">
-    <value>The game has these items built in but ships nothing for them. Fill one with a copy of an existing item, then name it. Its type and its gold frame come from the game and cannot change.</value>
-    <comment>Hint under the slot list label</comment>
-  </data>
-  <data name="ITEMS_SLOT_EMPTY" xml:space="preserve">
-    <value>empty</value>
-    <comment>Slot state</comment>
   </data>
   <data name="ITEMS_SLOT_FILLED" xml:space="preserve">
     <value>copy of {0}</value>
     <comment>Slot state. {0} is the copied item</comment>
-  </data>
-  <data name="ITEMS_SLOT_LATER" xml:space="preserve">
-    <value>not tested yet</value>
-    <comment>Slot state for slots that cannot be filled yet</comment>
   </data>
   <data name="ITEMS_KIND_MELEE" xml:space="preserve">
     <value>Melee</value>
@@ -3823,10 +3811,6 @@ Install it anyway?</value>
   <data name="ITEMS_KIND_ARTIFACT" xml:space="preserve">
     <value>Artifact</value>
     <comment>Item type</comment>
-  </data>
-  <data name="ITEMS_UNIQUE" xml:space="preserve">
-    <value>unique</value>
-    <comment>Marks a slot with the gold unique frame</comment>
   </data>
   <data name="ITEMS_COPY_FROM" xml:space="preserve">
     <value>Copy from</value>
@@ -3911,16 +3895,6 @@ Install it anyway?</value>
   <data name="ITEMS_INSTALL" xml:space="preserve">
     <value>Save and install</value>
     <comment>Button</comment>
-  </data>
-  <data name="ITEMS_CLEAR" xml:space="preserve">
-    <value>Empty this slot</value>
-    <comment>Button</comment>
-  </data>
-  <data name="ITEMS_CLEAR_WARN" xml:space="preserve">
-    <value>Take {0} off every character first. A character still holding it will crash the game once the slot is empty.
-
-Empty the slot?</value>
-    <comment>Confirmation. {0} is the item's name</comment>
   </data>
   <data name="ITEMS_INSTALLED" xml:space="preserve">
     <value>Installed {0} item(s). Restart the game, then add them to a character from the inventory.</value>
@@ -4010,20 +3984,6 @@ Empty the slot?</value>
     <value>Imported into {0}.</value>
     <comment>Status. {0} is the slot's name</comment>
   </data>
-  <data name="ITEMS_IMPORT_REPLACE" xml:space="preserve">
-    <value>Every {0} slot is in use. Replace {1} with the imported item?
-
-Characters holding {1} will have the imported item in its place.</value>
-    <comment>Question. {0} is the item type, {1} the item being replaced</comment>
-  </data>
-  <data name="ITEMS_MORE" xml:space="preserve">
-    <value>More items</value>
-    <comment>Label above the buttons that add items beyond the free slots</comment>
-  </data>
-  <data name="ITEMS_MORE_HINT" xml:space="preserve">
-    <value>As many new melee, ranged and armour items as you like, beyond the free slots. MCD Reborn's plugin adds them to the game every time it starts. Each one keeps the type and frame of the item it copies.</value>
-    <comment>Hint under the More items label</comment>
-  </data>
   <data name="ITEMS_NEW_MELEE" xml:space="preserve">
     <value>New melee item</value>
     <comment>Button</comment>
@@ -4035,10 +3995,6 @@ Characters holding {1} will have the imported item in its place.</value>
   <data name="ITEMS_NEW_UNAVAILABLE" xml:space="preserve">
     <value>Items beyond the free slots need the Steam or Minecraft Launcher version of the game.</value>
     <comment>Shown instead of the new item buttons</comment>
-  </data>
-  <data name="ITEMS_PLUGIN_ITEM" xml:space="preserve">
-    <value>added by the plugin</value>
-    <comment>Slot detail for items beyond the free slots</comment>
   </data>
   <data name="ITEMS_NEW_UNSAVED" xml:space="preserve">
     <value>not saved yet</value>
@@ -4077,5 +4033,13 @@ Delete it?</value>
   <data name="ITEMS_BEHAVIOUR_ARMOR" xml:space="preserve">
     <value>An armour's stats are built into the game, so the copy keeps its source's. Its armour properties are saved on each character: set them in the inventory, as for any armour.</value>
     <comment>Shown instead of the behaviour grid for armour</comment>
+  </data>
+  <data name="ITEMS_NEW_ARTIFACT" xml:space="preserve">
+    <value>New artifact</value>
+    <comment>Button</comment>
+  </data>
+  <data name="ITEMS_BEHAVIOUR_ARTIFACT" xml:space="preserve">
+    <value>What an artifact does - its cooldown, damage and duration - is built into the game, so the copy works like its source. These are the few extra values its blueprint stores.</value>
+    <comment>Hint above the behaviour grid for artifacts</comment>
   </data>
 </root>

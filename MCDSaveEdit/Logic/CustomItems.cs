@@ -13,24 +13,29 @@ using System.Windows.Media.Imaging;
 namespace MCDSaveEdit.Logic
 {
     /// <summary>
-    /// New items in the ids the game registers but never shipped.
+    /// New items under ids of MCD Reborn's own - MCDR_Item01 and on - as many as the user likes.
     ///
     /// The game's item list is C++: 324 ids, each with its folder, English name, whether it is
-    /// unique and what slot it goes in, all compiled in. Fifteen of them have no files in any pak -
-    /// cut content - and nine of those can be equipped. Filling one is three things, and all three
-    /// were found by making it crash first:
+    /// unique and what slot it goes in, all compiled in, and an id it does not know is deleted
+    /// from a character on load. So a new item is three things, all found by making it crash
+    /// first:
     ///
-    ///   1. the files, copied from an existing item of the same type and renamed into the slot's
-    ///      folder, with the item id inside them pointed at the slot (NewContent.cloneFolder);
+    ///   1. the files, copied from an existing item and renamed into a folder named after the new
+    ///      id beside the source's, with the item id inside them pointed at the new one
+    ///      (NewContent.cloneFolder);
     ///   2. the game's asset registry, with those files added (RegistryPatch) - the game finds an
     ///      item's blueprint through it, and without the entries the item shows in the inventory
-    ///      and crashes the moment it is clicked;
-    ///   3. optionally its name and description, written into every language's Game.locres under
-    ///      the keys the game already has for the slot (Locres). The slot's type and its unique
-    ///      frame come from the C++ entry and cannot be changed from a pak: a melee slot takes a
-    ///      melee weapon.
+    ///      and crashes the moment it is clicked. Only one pak can own the registry, so every
+    ///      custom item is built into one pak together;
+    ///   3. the id itself, registered in the game's item list every time it starts by MCD Reborn's
+    ///      plugin (GamePlugin, ItemPlugin/), as a copy of the source's entry - which is why the
+    ///      type and the unique frame are the source's. The plugin passes the name and
+    ///      description with it.
     ///
-    /// Only one pak can own the registry, so every custom item is built into one pak together.
+    /// The first version filled the nine cut ids the game registers but ships nothing for (the
+    /// "free slots"). They were dropped: each one fixed a type and a frame, and two kinds of custom
+    /// item confused more than they helped. `retiredSlots` is kept so a design made for one can be
+    /// recognised and moved to an id of its own (PROBE_MIGRATESLOTS).
     /// </summary>
     public static class CustomItems
     {
@@ -38,7 +43,7 @@ namespace MCDSaveEdit.Logic
 
         public enum Kind { Melee, Ranged, Armor, Artifact }
 
-        /// <summary>A free id the game already knows, and what it will always be.</summary>
+        /// <summary>Where a custom item lives and what it is: its id, folder and type.</summary>
         public sealed class Slot
         {
             public Slot(string id, string folder, Kind kind, string nativeParent, bool unique, string builtInName, bool ready, bool plugin = false)
@@ -70,36 +75,30 @@ namespace MCDSaveEdit.Logic
         }
 
         /// <summary>
-        /// The nine cut ids that can be equipped. Read from the game's own registry records: the type
-        /// byte at +0x89, unique at +0x8C, the folder from the record's paths - see changelog.md.
+        /// The nine cut ids the first version filled, no longer offered. Read from the game's own
+        /// registry records: the type byte at +0x89, unique at +0x8C, the folder from the record's
+        /// paths - see changelog.md. Kept only to recognise a design made for one.
         /// </summary>
-        public static readonly IReadOnlyList<Slot> slots = new[]
+        public static readonly IReadOnlyList<Slot> retiredSlots = new[]
         {
             new Slot("Pickaxe_Unique2", "MeleeWeapons/Pickaxe_Unique2_Steel", Kind.Melee, "MeleeWeaponGearItemInstance", true, "The Monkey Motivator", true),
             new Slot("SpiderCrossbow", "RangedWeapons/SpiderCrossbow", Kind.Ranged, "RangedWeaponGearItemInstance", false, "Spider Crossbow", true),
             new Slot("CowardsArmor_Unique1", "Armor/CowardsArmor_Unique1", Kind.Armor, "ArmorGearItemInstance", true, "Curious Armor", true),
             new Slot("MysteryArmor_Unique1", "Armor/MysteryArmor_Unique1", Kind.Armor, "ArmorGearItemInstance", true, "Mystery Armor", true),
-            new Slot("Harvester_Unique1", "Harvester_Unique1", Kind.Artifact, "", true, "Blightbearer", false),
-            new Slot("TotemOfShielding_Unique1", "TotemOfShielding_Unique1", Kind.Artifact, "", true, "Totem of Resistance", false),
-            new Slot("TotemOfSoulProtection", "TotemOfSoulProtection", Kind.Artifact, "", false, "Totem of Soul Protection", false),
-            new Slot("FireworkBomb", "FireworkBomb", Kind.Artifact, "", false, "Firework Bomb", false),
-            new Slot("EnderPearl", "EnderPearl", Kind.Artifact, "", false, "Ender Pearl", false),
+            new Slot("Harvester_Unique1", "Harvester_Unique1", Kind.Artifact, "", true, "Blightbearer", true),
+            new Slot("TotemOfShielding_Unique1", "TotemOfShielding_Unique1", Kind.Artifact, "", true, "Totem of Resistance", true),
+            new Slot("TotemOfSoulProtection", "TotemOfSoulProtection", Kind.Artifact, "", false, "Totem of Soul Protection", true),
+            new Slot("FireworkBomb", "FireworkBomb", Kind.Artifact, "", false, "Firework Bomb", true),
+            new Slot("EnderPearl", "EnderPearl", Kind.Artifact, "", false, "Ender Pearl", true),
         };
 
-        public static Slot? slotFor(string id) => slots.FirstOrDefault(s => string.Equals(s.Id, id, StringComparison.OrdinalIgnoreCase));
+        public static Slot? retiredSlot(string id) => retiredSlots.FirstOrDefault(s => string.Equals(s.Id, id, StringComparison.OrdinalIgnoreCase));
 
-        /// <summary>The slot whose folder this is, so a mod pak's `Pickaxe_Unique2_Steel` reads as `Pickaxe_Unique2`.</summary>
-        public static Slot? slotForFolder(string folderId)
-            => slots.FirstOrDefault(s => string.Equals(s.FolderId, folderId, StringComparison.OrdinalIgnoreCase));
-
-        // ------------------------------------------------------------------ beyond the free slots
+        // ------------------------------------------------------------------ ids
 
         /// <summary>
-        /// Items under ids the game never had: MCDR_Item01, MCDR_Item02 and on. The files are built
-        /// exactly as a slot's, into a folder named after the id beside the source's, and the
-        /// plugin registers the id when the game starts (GamePlugin). Unlike a slot, the type and
-        /// the unique frame are the source's own: the plugin copies the source's entry whole.
-        /// Melee, ranged and armour, as the slots.
+        /// Every custom item's id: MCDR_Item01, MCDR_Item02 and on. Melee, ranged, armour and
+        /// artifacts alike.
         /// </summary>
         public const string PLUGIN_PREFIX = "MCDR_Item";
 
@@ -134,7 +133,7 @@ namespace MCDSaveEdit.Logic
             catch (IOException) { }
         }
 
-        /// <summary>A plugin item's slot. Its folder is beside its source's once that is chosen.</summary>
+        /// <summary>A custom item's slot. Its folder is beside its source's once that is chosen.</summary>
         public static Slot pluginSlot(string id, Kind kind, RegistryPatch.GameItem? source = null)
         {
             var (parent, native) = kind switch
@@ -142,20 +141,21 @@ namespace MCDSaveEdit.Logic
                 Kind.Melee => ("MeleeWeapons", "MeleeWeaponGearItemInstance"),
                 Kind.Ranged => ("RangedWeapons", "RangedWeaponGearItemInstance"),
                 Kind.Armor => ("Armor", "ArmorGearItemInstance"),
-                _ => throw new InvalidOperationException("Only melee, ranged and armour items can be added beyond the free slots."),
+                //Artifacts sit straight in Actors/Items, and each has a native class of its own.
+                _ => ("", ""),
             };
-            var folder = source == null ? parent + "/" + id : extraFolder(source, id);
+            var folder = source == null ? (parent.Length == 0 ? id : parent + "/" + id) : extraFolder(source, id);
             return new Slot(id, folder, kind, native, false, id, true, plugin: true);
         }
 
-        /// <summary>The slot a design fills: a free slot, or - for a plugin item - one made from the design.</summary>
+        /// <summary>The slot a design fills, made from the design.</summary>
         public static Slot slotOf(Design design)
         {
-            var fixedSlot = slotFor(design.Slot);
-            if (fixedSlot != null) { return fixedSlot; }
             if (design.PluginKind is not { } kind || !isPluginId(design.Slot))
             {
-                throw new InvalidOperationException($"{design.Slot} is not a free slot.");
+                throw new InvalidOperationException(retiredSlot(design.Slot) != null
+                    ? $"{design.Slot} is one of the free slots, which are no longer built: move it to an id of its own first (PROBE_MIGRATESLOTS)."
+                    : $"{design.Slot} is not a custom item id.");
             }
             return pluginSlot(design.Slot, kind, string.IsNullOrEmpty(design.Source) ? null : gameItem(design.Source));
         }
@@ -261,6 +261,7 @@ namespace MCDSaveEdit.Logic
         {
             var slot = slotOf(design);
             var shared = copy(design);
+            //Which id it had here means nothing on another machine; the kind says what it is.
             shared.IconFile = null;
             if (shared.Model != null) { shared.Model.File = null; }
 
@@ -312,25 +313,12 @@ namespace MCDSaveEdit.Logic
         }
 
         /// <summary>
-        /// The free slot an imported item goes in: the one it was exported from when that is free,
-        /// then any other free slot of its type. Null when every slot of its type is taken - the
-        /// caller asks which one to replace.
-        /// </summary>
-        public static Slot? slotForImport(SharedItem shared, IReadOnlyList<Design> designs)
-        {
-            bool free(Slot s) => s.Ready && s.Kind == shared.Kind && designs.All(d => d.Slot != s.Id);
-            var own = slotFor(shared.Design.Slot);
-            if (own != null && free(own)) { return own; }
-            return slots.FirstOrDefault(free);
-        }
-
-        /// <summary>
         /// The shared design, unpacked into <paramref name="slot"/>: its picture and model are copied
         /// into this app's folder under that slot's name, and the design points at them there.
         /// </summary>
         public static Design unpack(string path, SharedItem shared, Slot slot)
         {
-            if (slot.Kind != shared.Kind) { throw new InvalidOperationException($"{slot.BuiltInName} does not take that kind of item."); }
+            if (slot.Kind != shared.Kind) { throw new InvalidOperationException($"{slot.Id} is not that kind of item."); }
             var design = copy(shared.Design);
             design.Slot = slot.Id;
             design.PluginKind = slot.Plugin ? slot.Kind : null;
@@ -404,14 +392,32 @@ namespace MCDSaveEdit.Logic
             return _gameItems;
         }
 
-        /// <summary>What can go in a slot: game items of the same native type, the cut ids themselves excepted.</summary>
+        /// <summary>What a custom item can be a copy of: game items of the same type.</summary>
         public static IReadOnlyList<RegistryPatch.GameItem> sourcesFor(Slot slot)
             => gameItems()
-                .Where(i => string.Equals(i.NativeParent, slot.NativeParent, StringComparison.Ordinal))
-                .Where(i => slotFor(i.Id) == null && !isPluginId(i.Id))
+                .Where(i => canFill(slot, i))
+                .Where(i => !isPluginId(i.Id))
                 .GroupBy(i => i.Id, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
                 .OrderBy(i => i.Id, StringComparer.OrdinalIgnoreCase)
                 .ToList();
+
+        /// <summary>
+        /// Whether a game item can be copied into a slot. Gear by the native class its Instance
+        /// derives from, which is what the game's type is. An artifact has a native class of its
+        /// own - HarvesterInstance, TotemOfShieldingInstance - that IS its behaviour, so there is no
+        /// shared one to match: it is an artifact when the inventory lists it as one, and it has
+        /// to sit straight in an Actors/Items folder, where the slots' own folders are.
+        /// </summary>
+        public static bool canFill(Slot slot, RegistryPatch.GameItem item)
+        {
+            if (slot.Kind != Kind.Artifact)
+            {
+                return string.Equals(item.NativeParent, slot.NativeParent, StringComparison.Ordinal);
+            }
+            var parent = item.Folder.Substring(0, Math.Max(0, item.Folder.LastIndexOf('/')));
+            return ItemDatabase.artifacts.Contains(item.Id)
+                && parent.EndsWith("/Actors/Items", StringComparison.OrdinalIgnoreCase);
+        }
 
         public static RegistryPatch.GameItem? gameItem(string id)
             => gameItems().FirstOrDefault(i => string.Equals(i.Id, id, StringComparison.OrdinalIgnoreCase));
@@ -540,7 +546,6 @@ namespace MCDSaveEdit.Logic
                 result.Notes.Add($"{extra.Id}: a copy of {source.Id} in {extraFolder(source, extra.Id)}.");
             }
 
-            applyText(designs, entries, result.Notes);
 
             var patched = RegistryPatch.withClones(registry, copies, out var added)
                 ?? throw new InvalidOperationException("The game's asset registry is not in a shape this can add to.");
@@ -568,50 +573,6 @@ namespace MCDSaveEdit.Logic
         }
 
         /// <summary>
-        /// Names and descriptions, into a copy of every language's Game.locres. The keys are the
-        /// game's own - `ItemType/&lt;id&gt;` and `ItemType/Flavour_&lt;id&gt;`, present for every slot -
-        /// so each entry keeps the source hash the game checks it against and only its text changes.
-        /// Written into all fifteen languages alike: a name typed once should not turn back into
-        /// "The Monkey Motivator" for somebody playing in German.
-        /// </summary>
-        private static void applyText(IReadOnlyList<Design> designs, List<PakWriter.Entry> entries, List<string> notes)
-        {
-            var named = designs.Where(d => !string.IsNullOrWhiteSpace(d.Name) || !string.IsNullOrWhiteSpace(d.Description)).ToList();
-            if (named.Count == 0) { return; }
-            var index = CustomSkins.index ?? throw new InvalidOperationException("Game content is not loaded.");
-
-            var cultures = index.Where(p => p.Contains("/Localization/Game/", StringComparison.OrdinalIgnoreCase)
-                    && p.EndsWith("/Game", StringComparison.Ordinal))
-                .Select(p => p.StartsWith("//", StringComparison.Ordinal) ? p.Substring(1) : p)
-                .ToList();
-
-            var english = cultures.FirstOrDefault(c => c.EndsWith("/en/Game", StringComparison.OrdinalIgnoreCase));
-            var englishTable = english == null || index.GetFile(english) is not { } en ? null : Locres.read(en.ToArray());
-
-            var written = 0;
-            foreach (var culture in cultures)
-            {
-                if (index.GetFile(culture) is not { } raw) { continue; }
-                var table = Locres.read(raw.ToArray());
-                if (table == null) { continue; }             //the locmeta beside them, not a culture
-
-                foreach (var design in named)
-                {
-                    foreach (var (key, text) in new[] { (design.Slot, design.Name), ("Flavour_" + design.Slot, design.Description) })
-                    {
-                        if (string.IsNullOrWhiteSpace(text)) { continue; }
-                        //A key a language lacks is added with the English as its source, which is the
-                        //text the game's C++ compiled in for it.
-                        table.set("ItemType", key, text!.Trim(), englishTable?.get("ItemType", key));
-                    }
-                }
-                entries.Add(new PakWriter.Entry(culture.TrimStart('/') + ".locres", table.write()));
-                written++;
-            }
-            notes.Add($"Names written into {written} language(s).");
-        }
-
-        /// <summary>
         /// The source item's folder copied into the slot, as it would be before any design changes.
         /// Kept, because the Weapons tab reads the copy's mesh for its preview many times over.
         /// </summary>
@@ -619,9 +580,11 @@ namespace MCDSaveEdit.Logic
         {
             var slot = slotOf(design);
             var source = gameItem(design.Source) ?? throw new InvalidOperationException($"{design.Source} is not a game item.");
-            if (!string.Equals(source.NativeParent, slot.NativeParent, StringComparison.Ordinal))
+            if (!canFill(slot, source))
             {
-                throw new InvalidOperationException($"{source.Id} is a {source.NativeParent}, and {slot.Id} only takes a {slot.NativeParent}.");
+                throw new InvalidOperationException(slot.Kind == Kind.Artifact
+                    ? $"{source.Id} is not an artifact that can be copied into {slot.Id}."
+                    : $"{source.Id} is a {source.NativeParent}, and {slot.Id} only takes a {slot.NativeParent}.");
             }
 
             var key = slot.Id + "|" + source.Id;

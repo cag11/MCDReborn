@@ -8366,29 +8366,11 @@ namespace MCDSaveEdit.Properties {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Free item slots.
+        ///   Looks up a localized string similar to Your items.
         /// </summary>
         public static string ITEMS_SLOTS {
             get {
                 return ResourceManager.GetString("ITEMS_SLOTS", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to The game has these items built in but ships nothing for them. Fill one with a copy of an existing item. Its type, its gold frame and its name come from the game and cannot change..
-        /// </summary>
-        public static string ITEMS_SLOTS_HINT {
-            get {
-                return ResourceManager.GetString("ITEMS_SLOTS_HINT", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to empty.
-        /// </summary>
-        public static string ITEMS_SLOT_EMPTY {
-            get {
-                return ResourceManager.GetString("ITEMS_SLOT_EMPTY", resourceCulture);
             }
         }
 
@@ -8398,15 +8380,6 @@ namespace MCDSaveEdit.Properties {
         public static string ITEMS_SLOT_FILLED {
             get {
                 return ResourceManager.GetString("ITEMS_SLOT_FILLED", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to not tested yet.
-        /// </summary>
-        public static string ITEMS_SLOT_LATER {
-            get {
-                return ResourceManager.GetString("ITEMS_SLOT_LATER", resourceCulture);
             }
         }
 
@@ -8443,15 +8416,6 @@ namespace MCDSaveEdit.Properties {
         public static string ITEMS_KIND_ARTIFACT {
             get {
                 return ResourceManager.GetString("ITEMS_KIND_ARTIFACT", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to unique.
-        /// </summary>
-        public static string ITEMS_UNIQUE {
-            get {
-                return ResourceManager.GetString("ITEMS_UNIQUE", resourceCulture);
             }
         }
 
@@ -8641,24 +8605,6 @@ namespace MCDSaveEdit.Properties {
         public static string ITEMS_INSTALL {
             get {
                 return ResourceManager.GetString("ITEMS_INSTALL", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Empty this slot.
-        /// </summary>
-        public static string ITEMS_CLEAR {
-            get {
-                return ResourceManager.GetString("ITEMS_CLEAR", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Take {0} off every character first. A character still holding it will crash the game once the slot is empty..
-        /// </summary>
-        public static string ITEMS_CLEAR_WARN {
-            get {
-                return ResourceManager.GetString("ITEMS_CLEAR_WARN", resourceCulture);
             }
         }
 
@@ -8861,33 +8807,6 @@ namespace MCDSaveEdit.Properties {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Every {0} slot is in use. Replace {1} with the imported item?.
-        /// </summary>
-        public static string ITEMS_IMPORT_REPLACE {
-            get {
-                return ResourceManager.GetString("ITEMS_IMPORT_REPLACE", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to More items.
-        /// </summary>
-        public static string ITEMS_MORE {
-            get {
-                return ResourceManager.GetString("ITEMS_MORE", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to As many new melee, ranged and armour items as you like, beyond the free slots. MCD Reborn's plugin adds them to the game every time it starts. Each one keeps the type and frame of the item it copies..
-        /// </summary>
-        public static string ITEMS_MORE_HINT {
-            get {
-                return ResourceManager.GetString("ITEMS_MORE_HINT", resourceCulture);
-            }
-        }
-
-        /// <summary>
         ///   Looks up a localized string similar to New melee item.
         /// </summary>
         public static string ITEMS_NEW_MELEE {
@@ -8911,15 +8830,6 @@ namespace MCDSaveEdit.Properties {
         public static string ITEMS_NEW_UNAVAILABLE {
             get {
                 return ResourceManager.GetString("ITEMS_NEW_UNAVAILABLE", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to added by the plugin.
-        /// </summary>
-        public static string ITEMS_PLUGIN_ITEM {
-            get {
-                return ResourceManager.GetString("ITEMS_PLUGIN_ITEM", resourceCulture);
             }
         }
 
@@ -9001,6 +8911,24 @@ namespace MCDSaveEdit.Properties {
         public static string ITEMS_BEHAVIOUR_ARMOR {
             get {
                 return ResourceManager.GetString("ITEMS_BEHAVIOUR_ARMOR", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to New artifact.
+        /// </summary>
+        public static string ITEMS_NEW_ARTIFACT {
+            get {
+                return ResourceManager.GetString("ITEMS_NEW_ARTIFACT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to What an artifact does - its cooldown, damage and duration - is built into the game, so the copy works like its source. These are the few extra values its blueprint stores..
+        /// </summary>
+        public static string ITEMS_BEHAVIOUR_ARTIFACT {
+            get {
+                return ResourceManager.GetString("ITEMS_BEHAVIOUR_ARTIFACT", resourceCulture);
             }
         }
     }

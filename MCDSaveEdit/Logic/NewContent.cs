@@ -132,6 +132,12 @@ namespace MCDSaveEdit.Logic
             //carries its bare id separately, and the caller says what that becomes.
             foreach (var pair in alsoRename ?? new Dictionary<string, string>()) { swaps[pair.Key] = pair.Value; }
 
+            //A bare id that is also the name of a native class - CorruptedBeacon, the quivers, the
+            //shield of the Totem of Shielding - keeps its spelling on that class import, or the copy
+            //would derive from a class that does not exist (PROBE_IDCLASH lists 13 such artifacts).
+            var bareIds = new List<string>(alsoRename?.Keys ?? Array.Empty<string>());
+            if (ownsBareId) { bareIds.Add(oldId); }
+
             var entries = new List<PakWriter.Entry>();
             var files = new List<string>();
 
@@ -147,7 +153,7 @@ namespace MCDSaveEdit.Logic
                 catch (Exception) { continue; }
 
                 var uasset = PackageRename.rename(package.UAsset.ToArray(),
-                    text => renamedOf(text, swaps), out var changed);
+                    text => renamedOf(text, swaps), out var changed, bareIds);
                 if (uasset == null || changed == 0) { continue; }
 
                 var inside = (targetFolder + "/" + renamed[name]).TrimStart('/');
@@ -419,16 +425,23 @@ namespace MCDSaveEdit.Logic
                     if (lower.Contains("/actors/equipment/")
                         && file.EndsWith("_Icon_inventory", StringComparison.OrdinalIgnoreCase))
                     {
-                        //A custom item's folder is the slot's folder, which is not always its id:
-                        //Pickaxe_Unique2 lives in Pickaxe_Unique2_Steel. Offering the folder name
-                        //would put an id in the save that the game deletes on load.
-                        var id = CustomItems.slotForFolder(folder)?.Id ?? folder;
+                        //A custom item's folder is its id.
+                        var id = folder;
                         if (!ItemDatabase.all.Add(id)) { continue; }
                         items++;
 
                         if (lower.Contains("/meleeweapons/")) { ItemDatabase.meleeWeapons.Add(id); }
                         else if (lower.Contains("/rangedweapons/")) { ItemDatabase.rangedWeapons.Add(id); }
                         else if (lower.Contains("/armor")) { ItemDatabase.armor.Add(id); }
+                    }
+                    else if (lower.Contains("/actors/items/")
+                        && file.EndsWith("_Icon_inventory", StringComparison.OrdinalIgnoreCase))
+                    {
+                        //An artifact: a custom one lives straight in Actors/Items, as the game's do.
+                        var id = folder;
+                        if (!ItemDatabase.all.Add(id)) { continue; }
+                        items++;
+                        ItemDatabase.artifacts.Add(id);
                     }
                 }
             }

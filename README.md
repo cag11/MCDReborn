@@ -75,14 +75,13 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 * **Or just reshape the game's own model**: resize from a tenth up to **8x**, move and rotate it - a claymore at half size, a dagger the length of a spear, or something absurd
 
 #### New Items Feature
-* **Brand-new items, not replacements**: the game has items built in that it never shipped. The New Items tab fills one with a copy of any existing item of the same type, so the original stays exactly as it was, and the new one is a separate item you can put on a character beside it
+* **Brand-new items, as many as you like**: **New melee item**, **New ranged item**, **New armour** and **New artifact** make a copy of any of the game's items as a separate item. The original stays exactly as it was, and you can put the new one on a character beside it. Each keeps the type and gold frame of the item it copies
 * **Name it**: your own name and description, shown whatever language the game runs in
 * **Pick its icon**: keep the copied item's, use any other item's, or bring your own picture
-* **Share it**: Export saves a custom item as one `.mcditem` file with its name, behaviour, icon and model inside; Import puts it into a free slot of the same type on anyone's game
-* **Give it your own 3D model**: custom items appear at the top of the **Weapons** tab marked ★. Import a `.glb` there and line it up exactly as for a stock weapon; only your item changes, never the weapon it was copied from
-* **Change how it fights**: damage, swing time, reach, arc, knockback, stun and cooldown for every swing of the combo, one by one or with a multiplier for all of them
-* Melee, ranged and armour. An armour copy keeps its source's built-in stats, which are compiled into the game; its armour properties are set per character in the inventory, as for any armour. The slot decides the type and the gold unique frame, because those are compiled into the game; take an item off every character before emptying its slot, or the game crashes loading it
-* **As many more as you like**: **New melee item**, **New ranged item** and **New armour** add items beyond the nine free slots, each keeping the type and frame of the item it copies. MCD Reborn installs a small plugin beside the game as `xinput1_3.dll`, and it adds your items to the game every time the game starts, with MCD Reborn closed. Steam and Minecraft Launcher versions only. Keep that file there: without it the game deletes these items from your characters
+* **Give it your own 3D model**: custom weapons appear at the top of the **Weapons** tab marked ★. Import a `.glb` there and line it up exactly as for a stock weapon; only your item changes, never the weapon it was copied from
+* **Change how it fights**: damage, swing time, reach, arc, knockback, stun and cooldown for every swing of the combo, one by one or with a multiplier for all of them. An armour keeps the built-in stats of the one it copies, and its armour properties are set per character in the inventory, as for any armour. An artifact works like the artifact it copies
+* **Share it**: Export saves a custom item as one `.mcditem` file with its name, behaviour, icon and model inside; Import adds it as a new item on anyone's game
+* **How it gets into the game**: MCD Reborn installs a small plugin beside the game as `xinput1_3.dll`, and it adds your items every time the game starts, with MCD Reborn closed. Steam and Minecraft Launcher versions only. Keep that file there: without it the game deletes these items from your characters. Take an item off every character before deleting it, for the same reason
 
 #### Mob Import Feature
 * **Import your own model onto a creature**: export a `.glb` from Blender the same way, pick a sheep, a pig, a wolf or any of 122 other meshes, and the creature comes out wearing it. A skateboard, a mount, a truck - anything is possible as long as you have 3D design for it.
