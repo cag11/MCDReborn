@@ -219,10 +219,23 @@ namespace MCDSaveEdit.Data
         public static EnchantmentCategory categoriesFor(string? enchantmentId)
         {
             if (enchantmentId == null) { return EnchantmentCategory.Other; }
-            return CATEGORIES.TryGetValue(enchantmentId, out var categories)
-                ? categories
-                : EnchantmentCategory.Other;
+            if (CATEGORIES.TryGetValue(enchantmentId, out var categories)) { return categories; }
+
+            //One an installed mod adds, which carries the category of the game enchantment it is
+            //built on - see NewContent.modEnchantments.
+            if (Logic.NewContent.modEnchantments.TryGetValue(enchantmentId, out var inherited))
+            {
+                return inherited;
+            }
+
+            return EnchantmentCategory.Other;
         }
+
+        /// <summary>The categories this table itself gives an id, or None when it does not know it.</summary>
+        public static EnchantmentCategory known(string? enchantmentId)
+            => enchantmentId != null && CATEGORIES.TryGetValue(enchantmentId, out var categories)
+                ? categories
+                : EnchantmentCategory.None;
 
         /// <summary>Whether one enchantment passes the categories the user has turned on.</summary>
         public static bool matches(string? enchantmentId, EnchantmentCategory selected)

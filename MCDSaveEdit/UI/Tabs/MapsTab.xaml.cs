@@ -1475,6 +1475,7 @@ namespace MCDSaveEdit.UI
 
                 //No Installed hook. This copy is not installable and the tab has nothing to
                 //re-read when it changes.
+                window.inspectOnly();
                 window.Show();
 
                 statusLabel.Text = string.Format(R.MAPS_UNWELDED_PINNED,

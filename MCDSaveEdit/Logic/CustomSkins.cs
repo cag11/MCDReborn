@@ -581,6 +581,10 @@ namespace MCDSaveEdit.Logic
         /// <summary>An image out of PNG bytes, for artwork that never touches the disk.</summary>
         public static BitmapSource imageFromPng(byte[] png) => decodePng(png);
 
+        /// <summary>An image as BGRA bytes at exactly this size, scaled to fit if it is not.</summary>
+        public static byte[] pixelsAt(BitmapSource image, int width, int height)
+            => toBgra(scaled(image, width, height), width, height);
+
         private static BitmapSource decodePng(byte[] png)
         {
             using var stream = new MemoryStream(png);

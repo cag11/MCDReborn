@@ -81,6 +81,10 @@
                 <local:MeshWorkshopTab x:Name="weaponSkinsTab" Catalogue="Weapons"/>
             </TabItem>
 
+            <TabItem x:Name="customItemsTabItem" Header="*New Items*" Selector.Selected="OnTabSelected">
+                <local:CustomItemsTab x:Name="customItemsTab"/>
+            </TabItem>
+
             <TabItem x:Name="mobSkinsTabItem" Header="*Mob Import*" Selector.Selected="OnTabSelected">
                 <local:MeshWorkshopTab x:Name="mobSkinsTab" Catalogue="Mobs"/>
             </TabItem>

@@ -1395,6 +1395,7 @@ namespace MCDSaveEdit.UI
         private void wiringButton_Click(object sender, RoutedEventArgs e)
         {
             var window = new WiringWindow(_map) { Owner = this };
+            if (_inspecting) { window.readOnly(); }
 
             //Rewiring changes what the lists hold, so they are rebuilt when it closes rather
             //than left showing what the map used to be.
@@ -3320,6 +3321,24 @@ namespace MCDSaveEdit.UI
         private bool _busy;
 
         /// <summary>
+        /// True for the unwelded copy Inspect unwelded opens.
+        ///
+        /// Save and install are switched off for it rather than merely warned about. That copy is
+        /// pinned and never welded, so installing it would ship a mission the game has to
+        /// assemble from nineteen separate pieces - and saving in it looks exactly like editing
+        /// your map while changing a folder nothing else ever reads.
+        /// </summary>
+        private bool _inspecting;
+
+        internal void inspectOnly()
+        {
+            _inspecting = true;
+            Title = string.Format(R.SPAWNS_INSPECTING_TITLE, Title);
+            statusLabel.Text = R.SPAWNS_INSPECTING;
+            updateUI();
+        }
+
+        /// <summary>
         /// Whether the installed pak is behind the folder.
         ///
         /// Cached rather than asked each time, because updateUI runs on every block the pointer
@@ -3344,6 +3363,14 @@ namespace MCDSaveEdit.UI
         /// </summary>
         private async System.Threading.Tasks.Task<bool> saveNow()
         {
+            //The buttons are already off for an inspection copy; this is the second lock, for
+            //whatever reaches here some other way.
+            if (_inspecting)
+            {
+                statusLabel.Text = R.SPAWNS_INSPECTING;
+                return false;
+            }
+
             try
             {
                 var many = MapSpawns.save(_map);
@@ -3431,7 +3458,28 @@ namespace MCDSaveEdit.UI
         /// </summary>
         private async void installButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_mission == null || _busy) { return; }
+            if (_mission == null || _busy || _inspecting) { return; }
+
+            //Checked before anything is written, because none of these fail loudly in the game:
+            //a step with nothing to click loads, plays and can never be finished. Asked rather
+            //than refused - somebody testing half a map on purpose knows what they are doing -
+            //and warnings do not ask at all, they are only counted.
+            var problems = MapChecks.run(_map);
+            var bad = problems.Where(one => one.Severity == MapChecks.Severity.Bad).ToList();
+
+            if (bad.Count > 0)
+            {
+                var list = string.Join(Environment.NewLine,
+                    bad.Select(one => "\u2022 " + one.What + " - " + one.Why));
+
+                var answer = MessageBox.Show(string.Format(R.SPAWNS_CHECK_BAD, bad.Count, list),
+                    R.SPAWNS_CHECK_TITLE, MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                    MessageBoxResult.No);
+
+                if (answer != MessageBoxResult.Yes) { return; }
+            }
+
+            var warned = problems.Count - bad.Count;
 
             _busy = true;
             updateUI();
@@ -3463,6 +3511,11 @@ namespace MCDSaveEdit.UI
                 statusLabel.Text = string.Format(R.SPAWNS_INSTALLED,
                     _mission.Label, System.IO.Path.GetFileName(mod.Path), mod.Size / 1024);
 
+                if (warned > 0)
+                {
+                    statusLabel.Text = string.Format(R.SPAWNS_CHECK_WARNED, statusLabel.Text, warned);
+                }
+
                 Installed?.Invoke();
             }
             catch (Exception problem)
@@ -3490,7 +3543,11 @@ namespace MCDSaveEdit.UI
             var owner = Owner;
             Close();
 
-            var again = new SpawnsWindow(MapSpawns.load(folder)) { Owner = owner };
+            //The mission goes with it. Leaving it behind meant a reloaded window had nothing
+            //to install to, so Save and install stayed grey after every Reload - and an
+            //inspection copy came back editable.
+            var again = new SpawnsWindow(MapSpawns.load(folder), _mission) { Owner = owner };
+            if (_inspecting) { again.inspectOnly(); }
             again.Show();
         }
 
@@ -3499,12 +3556,12 @@ namespace MCDSaveEdit.UI
             var has = _room != null;
             placeButton.IsEnabled = has;
             clearButton.IsEnabled = has && _room!.Spawns > 0;
-            saveButton.IsEnabled = !_busy && _map.Changed.Count > 0;
+            saveButton.IsEnabled = !_busy && !_inspecting && _map.Changed.Count > 0;
 
             //Offered only when pressing it would change what the game loads. Unsaved edits
             //count, and so does a folder the installed pak is older than - a map that arrived
             //through Import has everything to install and nothing unsaved.
-            installButton.IsEnabled = !_busy && _mission != null
+            installButton.IsEnabled = !_busy && !_inspecting && _mission != null
                 && (_map.Changed.Count > 0 || _worthInstalling);
 
             //A door can be added wherever the map is aimed; the other two need one picked out of

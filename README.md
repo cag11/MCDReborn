@@ -35,7 +35,6 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **Press J to throw every enemy in the level into the air**, with the enemy gravity slider deciding how long they stay there - at normal weight they reach 141 units, at a fortieth nearly 3000. The two go together: gravity does nothing to a mob standing on the floor
 * **Music Tab:** Play your own MP3 over any of the game's 112 music tracks, installed as a mod pak beside the game's own so removing it puts the original back
 * **Installed Mods Tab:** Every mod pak in one place. You can import and export multiple mods via a zip package.
-* **Payload loader**, built into the app one button. Install a payload folder, point it at a folder cooked in Unreal and the whole tree is installed at once, the level and the blueprints, models, materials and resource packs it is built from. 
 
 #### Custom Maps Feature
 * Exports the game missions as Minecraft worlds or allows you to build on them to create your own custom maps..Use the maps tab to do the export and imports.
@@ -73,6 +72,13 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 * **Import your own model** onto any weapon and projectiles: export a `.glb` from Blender (File -> Export -> glTF Binary) and the weapon comes out wearing it, mesh and texture together, weapons installed as a mod pak beside the game's own so deleting it undoes everything
 * Two things worth knowing before you model: this game's weapon textures are tiny - often 32 square - and your artwork is scaled to whatever the one you are replacing uses, so fine detail cannot survive. And an **enchanted** weapon wears the game's purple glint over whatever it is; on a dark model that is most of what you will see, so export brighter than feels right
 * **Or just reshape the game's own model**: resize from a tenth up to **8x**, move and rotate it - a claymore at half size, a dagger the length of a spear, or something absurd
+
+#### New Items Feature
+* **Brand-new items, as many as you like**: **New melee item**, **New ranged item**, **New armour** and **New artifact** make a copy of any of the game's items as a separate item. 
+* **Name it**: your own name and description, shown whatever language the game runs in
+* **Pick its icon**: keep the copied item's, use any other item's, or bring your own picture
+* **Give it your own 3D model**: custom weapons appear at the top of the **Weapons** tab marked ★. Import a `.glb` there and line it up
+* **Share it**: Export saves a custom item as one `.mcditem` file with its name, behaviour, icon and model inside; Import adds it as a new item on anyone's game
 
 #### Mob Import Feature
 * **Import your own model onto a creature**: export a `.glb` from Blender the same way, pick a sheep, a pig, a wolf or any of 122 other meshes, and the creature comes out wearing it. A skateboard, a mount, a truck - anything is possible as long as you have 3D design for it.

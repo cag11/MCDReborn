@@ -1259,6 +1259,305 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //Runs MapChecks over every level the game ships, and optionally over one map folder.
+            //The shipped levels are the test: each of them can be finished, so a rule that flags
+            //one of them is a wrong rule rather than a broken level.
+            //
+            //  MCDReborn.exe PROBE_CHECKS[=<map folder>]
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_CHECKS", StringComparison.Ordinal)))
+            {
+                var said = _startupArguments.First(a => a.StartsWith("PROBE_CHECKS", StringComparison.Ordinal));
+                var clean = 0;
+                var shipped = 0;
+
+                Console.WriteLine("mob-group pool: " + Logic.MapChecks.pool().Count + " ids");
+
+                foreach (var mission in Logic.GameMaps.all())
+                {
+                    var level = Logic.MapChecks.parse(Logic.GameMaps.read(mission.PakPath));
+                    if (level == null) { Console.WriteLine("unreadable  " + mission.Name); continue; }
+
+                    shipped++;
+                    var found = Logic.MapChecks.run(level);
+                    if (found.Count == 0) { clean++; continue; }
+
+                    Console.WriteLine(mission.Name);
+                    foreach (var one in found) { Console.WriteLine("    " + one); }
+                }
+
+                Console.WriteLine($"{clean} of {shipped} shipped levels clean");
+
+                if (said.Contains('='))
+                {
+                    var folder = said[(said.IndexOf('=') + 1)..].Trim().Trim('"');
+                    var map = Logic.MapSpawns.load(folder);
+                    Console.WriteLine();
+                    Console.WriteLine(folder);
+                    var found = Logic.MapChecks.run(map);
+                    if (found.Count == 0) { Console.WriteLine("    clean"); }
+                    foreach (var one in found) { Console.WriteLine("    " + one); }
+                }
+
+                Shutdown();
+                return;
+            }
+
+            //Every wiring tab of every shipped level, counted, one row per level, tab and wire
+            //kind - written as TSV for a script that counts the same things straight out of the
+            //level JSON. Built with no rooms at all, deliberately: every wire the tabs draw comes
+            //from the level file, so a room-less map is exactly the part being tested.
+            //
+            //  MCDReborn.exe PROBE_WIRING_ALL=<out.tsv>
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_WIRING_ALL=", StringComparison.Ordinal)))
+            {
+                var into = _startupArguments.First(a =>
+                    a.StartsWith("PROBE_WIRING_ALL=", StringComparison.Ordinal))["PROBE_WIRING_ALL=".Length..]
+                    .Trim().Trim('"');
+
+                var rows = new System.Text.StringBuilder();
+                var levels = 0;
+
+                foreach (var mission in Logic.GameMaps.all())
+                {
+                    var level = Logic.MapChecks.parse(Logic.GameMaps.read(mission.PakPath));
+                    if (level == null) { continue; }
+
+                    levels++;
+                    var map = new Logic.MapSpawns.Map(string.Empty, level,
+                        new Dictionary<string, System.Text.Json.Nodes.JsonObject>(),
+                        new List<Logic.MapSpawns.Room>(), new List<string>());
+
+                    foreach (var (tab, kind, count) in new UI.WiringWindow(map).probeCounts())
+                    {
+                        rows.AppendLine($"{mission.Name}\t{tab}\t{kind}\t{count}");
+                    }
+                }
+
+                File.WriteAllText(into, rows.ToString());
+                Console.WriteLine($"{levels} levels -> {into}");
+                Shutdown();
+                return;
+            }
+
+            //PROBE_SLOTITEM=<out.pak> - fills one of the item ids the game registers but ships no
+            //files for (SpiderCrossbow) with a copy of HeavyCrossbow, and proves the resizing rename
+            //first: every package must come back byte-identical from a no-op rename and from a
+            //grow-then-shrink round trip, and must still parse. Writes nothing but the pak.
+            //
+            //  MCDReborn.exe PROBE_SLOTITEM=C:\...\MCDReborn_SpiderCrossbow_P.pak
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_SLOTITEM=", StringComparison.Ordinal)))
+            {
+                var into = _startupArguments.First(a => a.StartsWith("PROBE_SLOTITEM=", StringComparison.Ordinal))
+                    ["PROBE_SLOTITEM=".Length..].Trim().Trim('"');
+                var index = Logic.CustomSkins.index!;
+
+                bool parses(byte[] uasset, byte[] uexp, byte[]? ubulk, out string said)
+                {
+                    try
+                    {
+                        var reader = new PakReader.Parsers.PackageReader(new MemoryStream(uasset), new MemoryStream(uexp),
+                            ubulk == null ? null! : new MemoryStream(ubulk));
+                        said = $"{reader.ExportMap.Length} exports";
+                        return true;
+                    }
+                    catch (Exception e) { said = e.GetType().Name + ": " + e.Message; return false; }
+                }
+
+                var folders = new[]
+                {
+                    "Actors/Equipment/RangedWeapons/HeavyCrossbow/",
+                    "Actors/Equipment/MeleeWeapons/Katana_Unique1/",
+                    "Actors/Equipment/Armor/PhantomArmor_Unique1/",
+                    "Components/Enchantments/Stunning/",
+                    "DataTables/Assets/",
+                };
+                int tested = 0, identical = 0, roundTrip = 0, parsedBefore = 0, parsedGrown = 0;
+                foreach (var folder in folders)
+                {
+                    var packages = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var entry in index.AllEntries())
+                    {
+                        var at = entry.Key.IndexOf(folder, StringComparison.OrdinalIgnoreCase);
+                        if (at < 0) { continue; }
+                        var rest = entry.Key.Substring(at + folder.Length);
+                        if (rest.Length == 0 || rest.Contains('/')) { continue; }
+                        var dot = rest.IndexOf('.');
+                        packages.Add("/Dungeons/Content/" + folder + (dot >= 0 ? rest[..dot] : rest));
+                    }
+                    foreach (var path in packages)
+                    {
+                        var package = index.extractPackage(path);
+                        if (package == null) { continue; }
+                        var uasset = package.Value.UAsset.ToArray();
+                        var uexp = package.Value.UExp.ToArray();
+                        var ubulk = package.Value.UBulk?.ToArray();
+                        tested++;
+
+                        var same = Logic.PackageRename.rename(uasset, _ => null, out _);
+                        if (same != null && same.AsSpan().SequenceEqual(uasset)) { identical++; }
+                        else { Console.WriteLine($"  NOT IDENTICAL on a no-op: {path} ({(same == null ? "not understood" : "differs")})"); }
+
+                        //Grow every name by a suffix, then take it off again.
+                        var grown = Logic.PackageRename.rename(uasset, t => t.Length > 0 ? t + "_Grown7" : null, out var n);
+                        var back = grown == null ? null : Logic.PackageRename.rename(grown,
+                            t => t.EndsWith("_Grown7", StringComparison.Ordinal) ? t[..^7] : null, out _);
+                        if (back != null && back.AsSpan().SequenceEqual(uasset)) { roundTrip++; }
+                        else { Console.WriteLine($"  ROUND TRIP FAILED: {path}"); }
+
+                        if (parses(uasset, uexp, ubulk, out var before)) { parsedBefore++; }
+                        //A grown copy parses only if every offset moved: its names are all wrong
+                        //for the engine, but the reader only follows structure.
+                        if (grown != null && parses(grown, uexp, ubulk, out var after)) { parsedGrown++; }
+                        else if (parses(uasset, uexp, ubulk, out _)) { Console.WriteLine($"  GROWN DOES NOT PARSE: {path}"); }
+                    }
+                }
+                Console.WriteLine($"[slot] rename check on {tested} game packages: no-op identical {identical}, "
+                    + $"grow+shrink identical {roundTrip}, parse before {parsedBefore}, parse grown {parsedGrown}");
+
+                var made = Logic.NewContent.cloneFolder("/Dungeons/Content/Actors/Equipment/RangedWeapons/HeavyCrossbow",
+                    "SpiderCrossbow", ownsBareId: true);
+                if (made == null) { Console.WriteLine("[slot] clone FAILED"); Shutdown(); return; }
+                //The asset registry, with the copy's entries added - without them the game's item
+                //finder never learns the copy exists and the class it loads comes back null.
+                var entries = made.Entries.ToList();
+                var registry = Logic.RegistryPatch.readGameRegistry(Logic.CustomSkins.paksFolder!);
+                var patched = registry == null ? null
+                    : Logic.RegistryPatch.withClones(registry, made.GameFrom, made.Rename, out var registered);
+                if (patched == null) { Console.WriteLine("[slot] registry NOT patched"); Shutdown(); return; }
+                Console.WriteLine($"[slot] registry: {registry!.Length:N0} -> {patched.Length:N0} bytes, "
+                    + $"{(patched.Length - registry.Length):N0} added");
+                File.WriteAllBytes(Path.Combine(Path.GetTempPath(), "mcd-registry-patched.bin"), patched);
+                entries.Add(new Logic.PakWriter.Entry(Logic.RegistryPatch.PAK_PATH, patched));
+                Logic.PakWriter.write(into, entries);
+                Console.WriteLine($"[slot] wrote {entries.Count} file(s) -> {into}");
+
+                var byName = made.Entries.ToDictionary(e => e.Path, e => e.Data, StringComparer.OrdinalIgnoreCase);
+                foreach (var entry in made.Entries.Where(e => e.Path.EndsWith(".uasset", StringComparison.OrdinalIgnoreCase)))
+                {
+                    var stem = entry.Path[..^".uasset".Length];
+                    byName.TryGetValue(stem + ".ubulk", out var bulk);
+                    var ok = parses(entry.Data, byName[stem + ".uexp"], bulk, out var said);
+                    var names = Logic.CookedProperties.readNamesOf(entry.Data);
+                    var left = names.Where(x => x.Contains("HeavyCrossbow", StringComparison.OrdinalIgnoreCase)).ToList();
+                    var ours = names.Where(x => x.Contains("SpiderCrossbow", StringComparison.OrdinalIgnoreCase)).ToList();
+                    var (hashOk, hashAll) = Logic.NewContent.checkHashes(entry.Data);
+                    Console.WriteLine($"  {stem.Substring(stem.LastIndexOf('/') + 1),-32} parse={(ok ? said : "FAIL " + said)} hashes {hashOk}/{hashAll}");
+                    foreach (var x in ours) { Console.WriteLine($"      + {x}"); }
+                    foreach (var x in left) { Console.WriteLine($"      ! still {x}"); }
+                }
+                Shutdown();
+                return;
+            }
+
+            //Builds the new-content test pak: enchantments and an item under ids the game has
+            //never shipped, each a copy of a real one so that if the id loads, what it does is
+            //unmistakable. Then reads the pak back and checks every renamed name and hash.
+            //
+            //  MCDReborn.exe PROBE_NEWCONTENT=<out.pak>
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_NEWCONTENT=", StringComparison.Ordinal)))
+            {
+                var into = _startupArguments.First(a =>
+                    a.StartsWith("PROBE_NEWCONTENT=", StringComparison.Ordinal))["PROBE_NEWCONTENT=".Length..]
+                    .Trim().Trim('"');
+
+                var wanted = new[]
+                {
+                    ("/Dungeons/Content/Components/Enchantments/Stunning", "Stunlock"),
+                    ("/Dungeons/Content/Components/Enchantments/LevitationShot", "LevitationPlus"),
+                    ("/Dungeons/Content/Actors/Equipment/MeleeWeapons/Katana_Unique1", "Katana_Custom1"),
+                };
+
+                var all = new List<Logic.PakWriter.Entry>();
+                foreach (var (from, id) in wanted)
+                {
+                    var made = Logic.NewContent.cloneFolder(from, id, ownsBareId: from.Contains("/Actors/"));
+                    if (made == null) { Console.WriteLine($"FAILED  {from} -> {id}"); continue; }
+                    Console.WriteLine($"{id,-16} {made.Files.Count} asset(s): {string.Join(", ", made.Files)}");
+                    all.AddRange(made.Entries);
+                }
+
+                Logic.PakWriter.write(into, all);
+                Console.WriteLine($"wrote {all.Count} file(s) -> {into}");
+
+                //The hash functions themselves, tested on the game's own untouched assets first:
+                //anything short of every name means the port is wrong, whatever the pak says.
+                var original = 0;
+                var originalTotal = 0;
+                foreach (var source in new[]
+                {
+                    "/Dungeons/Content/Components/Enchantments/Stunning/BP_Stunning",
+                    "/Dungeons/Content/Components/Enchantments/LevitationShot/BP_LevitationShot",
+                    "/Dungeons/Content/Actors/Equipment/MeleeWeapons/Katana_Unique1/BP_Katana_Unique1Storable",
+                    "/Dungeons/Content/Actors/Equipment/MeleeWeapons/Katana_Unique1/BP_Katana_Unique1Instance",
+                    "/Dungeons/Content/Actors/Equipment/MeleeWeapons/Katana_Unique1/SM_Katana_Unique1",
+                })
+                {
+                    var package = Logic.CustomSkins.index?.extractPackage(source);
+                    if (package == null) { Console.WriteLine("  (could not read " + source + ")"); continue; }
+                    var (ok, total) = Logic.NewContent.checkHashes(package.Value.UAsset.ToArray());
+                    original += ok;
+                    originalTotal += total;
+                }
+                Console.WriteLine($"hash port vs the game's own assets: {original} / {originalTotal} names match");
+
+                var written = 0;
+                var writtenTotal = 0;
+                foreach (var item in Logic.ModPak.read(into))
+                {
+                    if (!item.Path.EndsWith(".uasset", StringComparison.OrdinalIgnoreCase)) { continue; }
+                    var (ok, total) = Logic.NewContent.checkHashes(item.Data);
+                    written += ok;
+                    writtenTotal += total;
+                }
+                Console.WriteLine($"hashes in the written pak:           {written} / {writtenTotal} names match");
+
+                //Read back: every name in every copied package, flagged if it still says an old id
+                //or if either hash disagrees with its spelling.
+                foreach (var item in Logic.ModPak.read(into))
+                {
+                    if (!item.Path.EndsWith(".uasset", StringComparison.OrdinalIgnoreCase)) { continue; }
+                    var names = Logic.CookedProperties.readNamesOf(item.Data);
+                    Console.WriteLine("  " + item.Path);
+                    foreach (var name in names)
+                    {
+                        if (name.IndexOf("Stunning", StringComparison.OrdinalIgnoreCase) >= 0
+                            || name.IndexOf("LevitationShot", StringComparison.OrdinalIgnoreCase) >= 0
+                            || name.IndexOf("Katana_Unique1", StringComparison.OrdinalIgnoreCase) >= 0
+                            || name.IndexOf("Stunlock", StringComparison.OrdinalIgnoreCase) >= 0
+                            || name.IndexOf("LevitationPlus", StringComparison.OrdinalIgnoreCase) >= 0
+                            || name.IndexOf("Katana_Custom1", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            Console.WriteLine("      " + name);
+                        }
+                    }
+                }
+
+                Shutdown();
+                return;
+            }
+
+            //What installed mods add to the pickers, and which gear each enchantment lands on.
+            //Read-only: the scan at startup has already run; this reports what it found.
+            //
+            //  MCDReborn.exe PROBE_MODCONTENT
+            if (_startupArguments.Any(a => a == "PROBE_MODCONTENT"))
+            {
+                foreach (var pair in Logic.NewContent.modEnchantments.OrderBy(one => one.Key))
+                {
+                    var melee = Data.EnchantmentCategories.matches(pair.Key, Data.EnchantmentCategory.Melee);
+                    var ranged = Data.EnchantmentCategories.matches(pair.Key, Data.EnchantmentCategory.Ranged);
+                    var armor = Data.EnchantmentCategories.matches(pair.Key, Data.EnchantmentCategory.Armor);
+                    Console.WriteLine($"enchantment {pair.Key,-16} {pair.Value,-22} shown for melee={melee} ranged={ranged} armor={armor}"
+                        + $"   in list={Services.EnchantmentDatabase.allEnchantments.Contains(pair.Key)}");
+                }
+                foreach (var id in new[] { "Katana_Custom1" })
+                {
+                    Console.WriteLine($"item        {id,-16} all={Services.ItemDatabase.all.Contains(id)} melee={Services.ItemDatabase.meleeWeapons.Contains(id)}");
+                }
+                Shutdown();
+                return;
+            }
+
             if (_startupArguments.Any(a => a == "PROBE_GATES"))
             {
                 var held = new SortedDictionary<string, int>(StringComparer.Ordinal);
@@ -4174,7 +4473,9 @@ namespace MCDSaveEdit
             //game is running from.
             //
             //Read-only.
-            if (_startupArguments.Any(a => a == "PROBE_GNAMES"))
+            //PROBE_GNAMES=<regex> additionally lists every name in the table that matches, to
+            //a file beside the output - read-only, the same external reads as the bare form.
+            if (_startupArguments.Any(a => a == "PROBE_GNAMES" || a.StartsWith("PROBE_GNAMES=", StringComparison.Ordinal)))
             {
                 var game = LiveEdit.GameProcess.open(out var why);
                 if (game == null)
@@ -4308,6 +4609,26 @@ namespace MCDSaveEdit
                         Console.WriteLine($"[gnames] GNAMES POINTER = {pointerAt:x}  "
                             + $"(RVA +{pointerAt - baseAt:x})");
                         Console.WriteLine($"[gnames] TABLE = {table:x}");
+
+                        var grepArg = _startupArguments.FirstOrDefault(a =>
+                            a.StartsWith("PROBE_GNAMES=", StringComparison.Ordinal));
+                        if (grepArg != null)
+                        {
+                            var pattern = new System.Text.RegularExpressions.Regex(
+                                grepArg["PROBE_GNAMES=".Length..].Trim('"'),
+                                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                            var total = counts == null ? 300000 : BitConverter.ToInt32(counts, 0);
+                            var hits = new List<string>();
+                            for (var i = 0; i < total; i++)
+                            {
+                                var said = names.nameOf(i);
+                                if (said != null && pattern.IsMatch(said)) { hits.Add($"{i}\t{said}"); }
+                            }
+                            var into = Path.Combine(Path.GetTempPath(), "mcd-gnames-grep.txt");
+                            File.WriteAllLines(into, hits);
+                            Console.WriteLine($"[gnames] {hits.Count} of {total:N0} names match -> {into}");
+                            break;
+                        }
 
                         //And the thing it is all for: can a tile's name be found in it?
                         var hunting = new[] { "cw_start_a001", "cw_theinn001", "LevelTransform",
@@ -6196,6 +6517,59 @@ namespace MCDSaveEdit
             //  MCDReborn.exe PROBE_STRUCT=LevelSettings;DungeonsGameInstance
             //
             //Read-only. Nothing is written to the game.
+            //PROBE_NATIVE=<Function>[;<Function>...] - where the game's C++ behind a blueprint-callable
+            //function lives, and its first bytes, so it can be disassembled outside the game.
+            //PROBE_MEM=<hex address>:<length>[;...] - raw bytes at an address, for following calls.
+            //Read-only, external ReadProcessMemory - never a debugger. Writes %TEMP%\mcd-native\.
+            //
+            //  MCDReborn.exe PROBE_NATIVE=IsItemIdValid;MakeItemId
+            var probeNative = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_NATIVE=") || a.StartsWith("PROBE_MEM="));
+            if (probeNative != null)
+            {
+                var into = Path.Combine(Path.GetTempPath(), "mcd-native");
+                Directory.CreateDirectory(into);
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[native] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var imageBase = game.image(out var imageSize).ToInt64();
+                    Console.WriteLine($"[native] image {imageBase:x} size {imageSize:x}");
+                    if (probeNative.StartsWith("PROBE_MEM="))
+                    {
+                        foreach (var ask in probeNative["PROBE_MEM=".Length..].Trim('"').Split(';', StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            var parts = ask.Split(':');
+                            var at = Convert.ToInt64(parts[0].Replace("0x", ""), 16);
+                            var length = parts.Length > 1 ? Convert.ToInt32(parts[1], parts[1].StartsWith("0x") ? 16 : 10) : 0x400;
+                            var bytes = game.read(new IntPtr(at), length);
+                            var file = Path.Combine(into, $"mem_{at:x}.bin");
+                            if (bytes != null) { File.WriteAllBytes(file, bytes); }
+                            Console.WriteLine($"[native] {at:x} +{length:x} -> {(bytes == null ? "unreadable" : file)}");
+                        }
+                    }
+                    else
+                    {
+                        var reflect = LiveEdit.Reflect.open(game, step => Console.WriteLine($"[native] {step}"));
+                        if (reflect == null) { Console.WriteLine("[native] no reflection data"); Shutdown(); return; }
+                        foreach (var name in probeNative["PROBE_NATIVE=".Length..].Trim('"').Split(';', StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            foreach (var (at, kind, outer) in reflect.findAll(name.Trim()))
+                            {
+                                if (kind != "Function") { continue; }
+                                var func = game.read(new IntPtr(at + 0xC0), 8);
+                                var exec = func == null ? 0 : BitConverter.ToInt64(func, 0);
+                                var bytes = exec == 0 ? null : game.read(new IntPtr(exec), 0x400);
+                                var file = Path.Combine(into, $"{outer}.{name}_{exec:x}.bin");
+                                if (bytes != null) { File.WriteAllBytes(file, bytes); }
+                                Console.WriteLine($"[native] {outer}.{name} exec {exec:x} (rva {exec - imageBase:x}) -> {(bytes == null ? "unreadable" : file)}");
+                            }
+                        }
+                    }
+                }
+                Shutdown();
+                return;
+            }
+
             var probeStruct = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_STRUCT="));
             if (probeStruct != null)
             {
@@ -9944,6 +10318,566 @@ namespace MCDSaveEdit
                     Console.WriteLine($"CODEC_DECODE failed: {e.Message}");
                 }
                 this.Shutdown();
+                return;
+            }
+
+            //PROBE_OUTSIDE[=<folder>] - what the game's paks hold OUTSIDE /Dungeons/Content, which the
+            //app's own index filters away: AssetRegistry.bin lives at Dungeons/AssetRegistry.bin. Lists
+            //them and, given a folder, writes each one there. Read-only on the game.
+            if (_startupArguments.Any(a => a == "PROBE_OUTSIDE" || a.StartsWith("PROBE_OUTSIDE=", StringComparison.Ordinal)))
+            {
+                var arg = _startupArguments.First(a => a.StartsWith("PROBE_OUTSIDE", StringComparison.Ordinal));
+                var into = arg.Contains('=') ? arg[(arg.IndexOf('=') + 1)..].Trim('"') : null;
+                var folder = Logic.CustomSkins.paksFolder!;
+                var paks = Directory.GetFiles(folder, "*.pak", SearchOption.TopDirectoryOnly)
+                    .Where(p => !Path.GetFileName(p).StartsWith("MCDReborn", StringComparison.OrdinalIgnoreCase));
+                var index = new PakReader.Pak.PakIndex(paks, cacheFiles: true, caseSensitive: true, filter: (PakReader.Pak.PakFilter?)null);
+                foreach (var key in Secrets.PAKS_AES_KEYS)
+                {
+                    var k = key.key.StartsWith("0x") ? key.key[2..] : key.key;
+                    if (index.UseKey(PakReader.Parsers.Objects.FGuid.Zero, k.ToBytesKey()) > 0) { break; }
+                }
+                foreach (var pakPath in paks)
+                {
+                    var reader = new PakReader.Pak.PakFileReader(pakPath);
+                    var opened = false;
+                    foreach (var key in Secrets.PAKS_AES_KEYS)
+                    {
+                        var k = key.key.StartsWith("0x") ? key.key[2..] : key.key;
+                        if (reader.TryReadIndex(k.ToBytesKey())) { opened = true; break; }
+                    }
+                    if (!opened) { continue; }
+                    foreach (var name in reader.Select(kv => kv.Key).Where(n => n.IndexOf("/Content/", StringComparison.OrdinalIgnoreCase) < 0
+                        && n.IndexOf("Dungeons/", StringComparison.OrdinalIgnoreCase) >= 0).ToList())
+                    {
+                        Console.WriteLine($"[outside] {Path.GetFileName(pakPath)} mount={reader.MountPoint} {name}");
+                        if (into == null) { continue; }
+                        try
+                        {
+                            var bytes = reader.GetFile(name).ToArray();
+                            var file = Path.Combine(into, name.Replace('/', '_').TrimStart('_'));
+                            File.WriteAllBytes(file, bytes);
+                            Console.WriteLine($"[outside]    -> {file} ({bytes.Length:N0} bytes)");
+                        }
+                        catch (Exception x) { Console.WriteLine($"[outside]    {x.GetType().Name}: {x.Message}"); }
+                    }
+                }                Shutdown();
+                return;
+            }
+
+            //PROBE_MIGRATESLOTS[=write] - the free slots are gone: every custom item is a plugin item.
+            //Turns each design still in a slot into a plugin item under a new MCDR_ItemNN id (name,
+            //icon, behaviour and model kept), and swaps the old id for the new one wherever a
+            //character save holds it. Without =write it only reports. With it: each save is copied
+            //to <file>.pre-migration first, the designs are saved, and the items pak is rebuilt -
+            //the slot's files go, so a character still holding the old id would crash on it.
+            if (_startupArguments.Any(a => a == "PROBE_MIGRATESLOTS" || a == "PROBE_MIGRATESLOTS=write"))
+            {
+                var write = _startupArguments.Contains("PROBE_MIGRATESLOTS=write");
+                try
+                {
+                    if (write && Logic.GameRunning.isUp) { Console.WriteLine("[migrate] close the game first"); Shutdown(); return; }
+                    var designs = Logic.CustomItems.load();
+                    var map = new Dictionary<string, string>(StringComparer.Ordinal);
+                    foreach (var design in designs)
+                    {
+                        var slot = Logic.CustomItems.retiredSlot(design.Slot);
+                        if (slot == null) { continue; }
+                        var id = write ? Logic.CustomItems.newPluginId(designs) : "MCDR_Item??";
+                        Console.WriteLine($"[migrate] design {design.Slot} ({design.Name ?? slot.BuiltInName}, copy of {design.Source}) -> {id}");
+                        map[design.Slot] = id;
+                        if (!write) { continue; }
+                        design.Name ??= slot.BuiltInName;
+                        design.PluginKind = slot.Kind;
+                        design.Slot = id;
+                    }
+                    if (map.Count == 0) { Console.WriteLine("[migrate] no design is in a slot"); }
+
+                    var root = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Saved Games", "Mojang Studios", "Dungeons");
+                    var saves = System.IO.Directory.Exists(root)
+                        ? System.IO.Directory.GetFiles(root, "*.dat", System.IO.SearchOption.AllDirectories).Where(f => f.Contains(@"\Characters\")).ToList()
+                        : new List<string>();
+                    Console.WriteLine($"[migrate] {saves.Count} character save(s) under {root}");
+                    //Every "field": "<old id>" in the save, whatever the field is called.
+                    var pattern = map.Count == 0 ? null : new System.Text.RegularExpressions.Regex(
+                        "\"(\\w+)\"\\s*:\\s*\"(" + string.Join("|", map.Keys.Select(System.Text.RegularExpressions.Regex.Escape)) + ")\"");
+                    foreach (var save in saves)
+                    {
+                        if (pattern == null) { break; }
+                        string json;
+                        using (var input = System.IO.File.OpenRead(save))
+                        {
+                            //Reads past the D001 header, as the app's own open does.
+                            if (!DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(input)) { Console.WriteLine($"[migrate] {save}: not encrypted, skipped"); continue; }
+                            var plain = System.Threading.Tasks.Task.Run(() => Logic.FileProcessHelper.Decrypt(input).AsTask()).Result;
+                            if (plain == null) { Console.WriteLine($"[migrate] {save}: could not decrypt"); continue; }
+                            using var reader = new System.IO.StreamReader(plain);
+                            json = reader.ReadToEnd();
+                        }
+                        var hits = pattern.Matches(json);
+                        Console.WriteLine($"[migrate] {save.Substring(root.Length)}: {hits.Count} hit(s) {string.Join(", ", hits.Select(h => h.Groups[1].Value + "=" + h.Groups[2].Value).GroupBy(x => x).Select(g => g.Count() + "x " + g.Key))}");
+                        if (!write || hits.Count == 0) { continue; }
+
+                        var changed = pattern.Replace(json, m => m.Value.Substring(0, m.Value.Length - m.Groups[2].Value.Length - 1) + map[m.Groups[2].Value] + "\"");
+                        System.IO.File.Copy(save, save + ".pre-migration", overwrite: false);
+                        using var plainOut = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(changed));
+                        var encrypted = System.Threading.Tasks.Task.Run(() => Logic.FileProcessHelper.Encrypt(plainOut).AsTask()).Result!;
+                        using (var output = System.IO.File.Open(save, System.IO.FileMode.Create, System.IO.FileAccess.Write)) { encrypted.CopyTo(output); }
+
+                        //Read back: it must decrypt to exactly what was written.
+                        using var check = System.IO.File.OpenRead(save);
+                        DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(check);
+                        using var back = new System.IO.StreamReader(System.Threading.Tasks.Task.Run(() => Logic.FileProcessHelper.Decrypt(check).AsTask()).Result!);
+                        Console.WriteLine($"[migrate]   written, backup {System.IO.Path.GetFileName(save)}.pre-migration, reads back {(back.ReadToEnd() == changed ? "identical" : "DIFFERENT")}");
+                    }
+
+                    if (write)
+                    {
+                        Logic.CustomItems.save(designs);
+                        var built = Logic.CustomItems.build(designs);
+                        foreach (var note in built.Notes) { Console.WriteLine($"[migrate] {note}"); }
+                    }
+                }
+                catch (Exception e) { Console.WriteLine($"[migrate] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_CLONECHECK - every game item's folder copied under a test id, as a custom item is,
+            //and checked: the copy imports exactly the native classes the original does, and its
+            //packages still parse. Nothing is written.
+            if (_startupArguments.Contains("PROBE_CLONECHECK"))
+            {
+                try
+                {
+                    int items = 0, packages = 0, bad = 0, idsMoved = 0;
+                    IEnumerable<string> natives(byte[] uasset)
+                    {
+                        var imports = Logic.CookedPackage.readImports(uasset);
+                        for (var i = 0; i < imports.Count; i++)
+                        {
+                            var imp = imports[i];
+                            if (imp.ClassName != "Class" || imp.Outer >= 0 || -imp.Outer - 1 >= imports.Count) { continue; }
+                            var outer = imports[-imp.Outer - 1].ObjectName;
+                            if (outer.StartsWith("/Script/", StringComparison.Ordinal)) { yield return outer + "." + imp.ObjectName; }
+                        }
+                    }
+                    foreach (var item in Logic.CustomItems.gameItems().GroupBy(i => i.Id).Select(g => g.First()).OrderBy(i => i.Id))
+                    {
+                        var cooked = "/Dungeons/Content/" + item.Folder["/Game/".Length..];
+                        var made = Logic.NewContent.cloneFolder(cooked, "MCDR_Check", ownsBareId: false,
+                            alsoRename: new Dictionary<string, string> { [item.Id] = "MCDR_Check" });
+                        if (made == null) { Console.WriteLine($"[clone] {item.Id}: nothing copied"); continue; }
+                        items++;
+                        var copies = made.Entries.Where(e => e.Path.EndsWith(".uasset", StringComparison.OrdinalIgnoreCase)).ToList();
+                        foreach (var copy in copies)
+                        {
+                            packages++;
+                            var name = System.IO.Path.GetFileNameWithoutExtension(copy.Path);
+                            var folderKey = cooked.Replace("/Dungeons/Content/", string.Empty).TrimStart('/') + "/";
+                            string strip(string p) { var f = p.Substring(p.LastIndexOf('/') + 1); var dot = f.IndexOf('.'); return dot < 0 ? f : f.Substring(0, dot); }
+                            var original = Logic.CustomSkins.index!.Where(p => p.IndexOf(folderKey, StringComparison.OrdinalIgnoreCase) >= 0
+                                    && !p.Substring(p.IndexOf(folderKey, StringComparison.OrdinalIgnoreCase) + folderKey.Length).Contains('/'))
+                                .Select(p => (path: "/" + p.TrimStart('/').Substring(0, p.TrimStart('/').LastIndexOf('/') + 1) + strip(p), renamed: made.Rename(strip(p)) ?? strip(p)))
+                                .FirstOrDefault(p => string.Equals(p.renamed, name, StringComparison.OrdinalIgnoreCase));
+                            var before = original.path == null ? null : Logic.CustomSkins.index!.extractPackage(original.path);
+                            if (before == null) { Console.WriteLine($"[clone] {item.Id} {name}: original not matched"); continue; }
+                            var want = natives(before.Value.UAsset.ToArray()).OrderBy(x => x).ToList();
+                            var got = natives(copy.Data).OrderBy(x => x).ToList();
+                            var names = Logic.CookedProperties.readNamesOf(copy.Data);
+                            var parses = true;
+                            try
+                            {
+                                var uexp = made.Entries.First(e => e.Path.Equals(copy.Path[..^7] + ".uexp", StringComparison.OrdinalIgnoreCase)).Data;
+                                var pkg = new PakReader.Pak.PakPackage(new ArraySegment<byte>(copy.Data), new ArraySegment<byte>(uexp), null);
+                                if (pkg.ExportTypes == null || pkg.ExportTypes.Length == 0) { parses = false; }
+                            }
+                            catch (Exception) { parses = false; }
+                            if (!want.SequenceEqual(got) || !parses)
+                            {
+                                bad++;
+                                Console.WriteLine($"[clone] BAD {item.Id} {name}: natives {string.Join(",", want)} -> {string.Join(",", got)}; parses {parses}");
+                            }
+                            if (names.Contains("MCDR_Check")) { idsMoved++; }
+                        }
+                    }
+                    Console.WriteLine($"[clone] {items} items, {packages} packages copied, {bad} bad, {idsMoved} carry the new bare id");
+                }
+                catch (Exception e) { Console.WriteLine($"[clone] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_IDCLASH - every game item whose bare id is ALSO the name of something its own
+            //packages import (a native class named like the item: CorruptedBeacon, TotemOfShielding's
+            //shield). A copy renames the bare id's name entry, and that would rename the import too.
+            if (_startupArguments.Contains("PROBE_IDCLASH"))
+            {
+                try
+                {
+                    foreach (var item in Logic.CustomItems.gameItems().GroupBy(i => i.Id).Select(g => g.First()).OrderBy(i => i.Id))
+                    {
+                        var cooked = "/Dungeons/Content/" + item.Folder["/Game/".Length..];
+                        var want = cooked.TrimStart('/') + "/";
+                        var packages = Logic.CustomSkins.index!.Where(p => p.TrimStart('/').StartsWith(want, StringComparison.OrdinalIgnoreCase)
+                                && !p.TrimStart('/').Substring(want.Length).Contains('/') && !p.EndsWith(".uexp") && !p.EndsWith(".ubulk"))
+                            .Select(p => "/" + p.TrimStart('/')).Distinct();
+                        foreach (var p in packages)
+                        {
+                            var package = Logic.CustomSkins.index!.extractPackage(p);
+                            if (package == null) { continue; }
+                            var imports = Logic.CookedPackage.readImports(package.Value.UAsset.ToArray());
+                            foreach (var clash in imports.Where(i => string.Equals(i.ObjectName, item.Id, StringComparison.Ordinal)))
+                            {
+                                Console.WriteLine($"[clash] {item.Id,-28} {p.Substring(p.LastIndexOf('/') + 1),-40} imports {clash.ClassName} {clash.ObjectName}");
+                            }
+                        }
+                    }
+                    Console.WriteLine("[clash] done");
+                }
+                catch (Exception e) { Console.WriteLine($"[clash] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_ARMOR=<id>;<id>... - what an armour's folder holds: every file, the names in each
+            //package that look like properties or references, and every number each export stores.
+            //Read-only; for finding where an armour's stats live.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_ARMOR=", StringComparison.Ordinal)))
+            {
+                var ids = _startupArguments.First(a => a.StartsWith("PROBE_ARMOR=", StringComparison.Ordinal))["PROBE_ARMOR=".Length..].Trim('"').Split(';', StringSplitOptions.RemoveEmptyEntries);
+                try
+                {
+                    foreach (var id in ids)
+                    {
+                        var item = Logic.CustomItems.gameItem(id);
+                        if (item == null) { Console.WriteLine($"[armor] {id}: not a game item"); continue; }
+                        var cooked = "/Dungeons/Content/" + item.Folder["/Game/".Length..];
+                        Console.WriteLine($"[armor] === {id} {cooked} native {item.NativeParent} instance {item.Instance}");
+                        var files = Logic.CustomSkins.index!.Where(p => p.TrimStart('/').StartsWith(cooked.TrimStart('/') + "/", StringComparison.OrdinalIgnoreCase)).ToList();
+                        foreach (var f in files) { Console.WriteLine($"[armor]   file {f}"); }
+                        foreach (var f in files.Where(f => !f.EndsWith(".uexp") && !f.EndsWith(".ubulk")).Select(f => "/" + f.TrimStart('/')).Distinct())
+                        {
+                            var package = Logic.CustomSkins.index!.extractPackage(f);
+                            if (package == null) { continue; }
+                            var names = Logic.CookedProperties.readNamesOf(package.Value.UAsset.ToArray());
+                            Console.WriteLine($"[armor]   --- {f.Substring(f.LastIndexOf('/') + 1)}: {names.Count} names");
+                            foreach (var n in names.Where(n => n.StartsWith("/Game/") || n.StartsWith("/Script/") || n.Contains("Propert") || n.Contains("Armor") || n.Contains("Mesh") || n.Contains("Material")))
+                            {
+                                Console.WriteLine($"[armor]       name {n}");
+                            }
+                            try
+                            {
+                                foreach (var n in Logic.ItemBehaviour.numbersOf(package.Value.UAsset.ToArray(), package.Value.UExp.ToArray()))
+                                {
+                                    Console.WriteLine($"[armor]       number {n.Export} {n.Path} = {n.Value}");
+                                }
+                            }
+                            catch (Exception e) { Console.WriteLine($"[armor]       numbers: {e.Message}"); }
+                        }
+                    }
+                }
+                catch (Exception e) { Console.WriteLine($"[armor] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_BEHAVIOUR[=<id>;<id>...] - the game's items by type, read from its asset registry,
+            //and every number the named items' Instance blueprints store. Read-only.
+            if (_startupArguments.Any(a => a == "PROBE_BEHAVIOUR" || a.StartsWith("PROBE_BEHAVIOUR=", StringComparison.Ordinal)))
+            {
+                var arg = _startupArguments.First(a => a.StartsWith("PROBE_BEHAVIOUR", StringComparison.Ordinal));
+                var wanted = arg.Contains('=') ? arg[(arg.IndexOf('=') + 1)..].Trim('"').Split(';', StringSplitOptions.RemoveEmptyEntries) : Array.Empty<string>();
+                var registry = Logic.RegistryPatch.readGameRegistry(Logic.CustomSkins.paksFolder!);
+                var items = registry == null ? new List<Logic.RegistryPatch.GameItem>() : Logic.RegistryPatch.items(registry);
+                foreach (var group in items.GroupBy(i => i.NativeParent).OrderByDescending(g => g.Count()))
+                {
+                    Console.WriteLine($"[behaviour] {group.Count(),4} {group.Key}: {string.Join(", ", group.Take(6).Select(i => i.Id))}");
+                }
+                foreach (var id in wanted)
+                {
+                    foreach (var item in items.Where(i => string.Equals(i.Id, id, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var cooked = "/Dungeons/Content/" + item.Folder["/Game/".Length..] + "/" + item.Instance;
+                        var package = Logic.CustomSkins.index!.extractPackage(cooked);
+                        Console.WriteLine($"[behaviour] === {item.Id} {cooked} {(package == null ? "(unreadable)" : "")}");
+                        if (package == null) { continue; }
+                        var names = Logic.CookedProperties.readNamesOf(package.Value.UAsset.ToArray());
+                        var parent = names.FirstOrDefault(n => n.StartsWith("/Game/", StringComparison.Ordinal) && n.EndsWith("Instance", StringComparison.Ordinal) && !n.EndsWith(item.Instance, StringComparison.Ordinal));
+                        Console.WriteLine($"[behaviour]     other instance referenced: {parent ?? "-"}");
+                        foreach (var n in Logic.ItemBehaviour.numbersOf(package.Value.UAsset.ToArray(), package.Value.UExp.ToArray()))
+                        {
+                            Console.WriteLine($"[behaviour]     {n.Export} {n.Path} = {n.Value}");
+                        }
+                    }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_LOCRESRT - every language's Game.locres read and written back by Logic.Locres: it must
+            //come back byte-identical, every key's CRC must be StrCrc32, and it lists what the file has
+            //for the item slots' names and descriptions. Read-only.
+            if (_startupArguments.Any(a => a == "PROBE_LOCRESRT"))
+            {
+                var index = Logic.CustomSkins.index!;
+                var cultures = index.Select(p => p).Where(p => p.Contains("/Localization/Game/", StringComparison.OrdinalIgnoreCase) && p.EndsWith("/Game", StringComparison.Ordinal)).ToList();
+                foreach (var path in cultures)
+                {
+                    var clean = path.StartsWith("//") ? path[1..] : path;
+                    var raw = index.GetFile(clean);
+                    if (raw == null) { Console.WriteLine($"[locres] {path}: unreadable"); continue; }
+                    var bytes = raw.Value.ToArray();
+                    var loc = Logic.Locres.read(bytes);
+                    if (loc == null) { Console.WriteLine($"[locres] {path}: not version 2 ({bytes[16]})"); continue; }
+                    var again = loc.write();
+                    var same = again.AsSpan().SequenceEqual(bytes);
+                    if (!same)
+                    {
+                        var first = 0;
+                        while (first < Math.Min(again.Length, bytes.Length) && again[first] == bytes[first]) { first++; }
+                        Console.WriteLine($"[locres]    sizes {bytes.Length} vs {again.Length}, first difference at {first}: game {BitConverter.ToString(bytes, Math.Max(0, first - 8), Math.Min(24, bytes.Length - Math.Max(0, first - 8)))} / ours {BitConverter.ToString(again, Math.Max(0, first - 8), Math.Min(24, again.Length - Math.Max(0, first - 8)))}");
+                    }
+                    var keys = loc.Namespaces.SelectMany(n => n.Entries).ToList();
+                    var hashOk = keys.Count(e => e.KeyHash == Logic.Locres.strCrc32(e.Key));
+                    var nsOk = loc.Namespaces.Count(n => n.Hash == Logic.Locres.strCrc32(n.Name));
+                    Console.WriteLine($"[locres] {path}: {bytes.Length:N0} bytes, round trip identical={same}, key hashes {hashOk}/{keys.Count}, namespace hashes {nsOk}/{loc.Namespaces.Count}");
+                    if (path.Contains("/en/"))
+                    {
+                        foreach (var slot in Logic.CustomItems.retiredSlots)
+                        {
+                            foreach (var key in new[] { slot.Id, "Flavour_" + slot.Id, "Desc_" + slot.Id })
+                            {
+                                Console.WriteLine($"[locres]    ItemType/{key} = {loc.get("ItemType", key) ?? "(none)"}");
+                            }
+                        }
+                        //Does a source hash equal StrCrc32 of the English? Checked on a shipped item.
+                        var entry = loc.Namespaces.First(n => n.Name == "ItemType").Entries.First(e => e.Key == "Katana_Unique1");
+                        Console.WriteLine($"[locres]    Katana_Unique1 source hash {entry.SourceHash:x8} vs crc(\"Master's Katana\") {Logic.Locres.strCrc32("Master's Katana"):x8}");
+                    }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_CUSTOMMODEL=<glb>;<out.pak> - the Weapons tab's side of a custom item, without the UI and
+            //without installing: the saved designs as the tab lists them, the copy's mesh read for the
+            //preview, then the model auto-fitted onto a copy of the first melee design and built into a
+            //pak that is read back. The installed pak and the saved designs are not touched.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_CUSTOMMODEL=", StringComparison.Ordinal)))
+            {
+                var bits = _startupArguments.First(a => a.StartsWith("PROBE_CUSTOMMODEL=", StringComparison.Ordinal))["PROBE_CUSTOMMODEL=".Length..].Trim('"').Split(';');
+                try
+                {
+                    Logic.CustomItems.showInApp();
+                    var listed = Logic.WeaponMeshes.all().Where(m => m.Name.StartsWith("★")).ToList();
+                    foreach (var m in listed) { Console.WriteLine($"[model] listed: {m.Name} [{m.Group}] {m.AssetPath}"); }
+                    var mesh = listed.First(m => m.Group == Logic.WeaponMeshes.WEAPONS);
+                    var shape = Logic.WeaponMeshes.read(mesh.AssetPath);
+                    Console.WriteLine($"[model] preview shape: {(shape == null ? "NONE" : $"{shape.LongestSide:0} long")}, texture: {(Logic.WeaponMeshes.textureFor(mesh.AssetPath) == null ? "none" : "yes")}");
+                    Console.WriteLine($"[model] stock mesh still the game's: {Logic.CustomItems.isCopied("/Dungeons/Content/Actors/Equipment/MeleeWeapons/Claymore_Unique2/SM_Claymore_Unique2")}");
+
+                    var model = Logic.GlbModel.read(bits[0]);
+                    var fit = Logic.ModelFitting.autoFit(model, shape!);
+                    var designs = Logic.CustomItems.load();
+                    var design = designs.First(d => Logic.CustomItems.slotOf(d).Kind == Logic.CustomItems.Kind.Melee);
+                    var keptGlb = Path.Combine(Path.GetTempPath(), "mcd-probe-model.glb");
+                    File.WriteAllBytes(keptGlb, model.Source!);
+                    design.Model = Logic.CustomItems.ModelEdit.of(fit, keptGlb);
+                    var built = Logic.CustomItems.build(designs, bits[1]);
+                    foreach (var note in built.Notes) { Console.WriteLine($"[model] {note}"); }
+
+                    var files = Logic.ModPak.read(bits[1]).ToDictionary(i => i.Path.TrimStart('/'), i => i.Data, StringComparer.OrdinalIgnoreCase);
+                    var key = mesh.AssetPath.TrimStart('/') + ".uasset";
+                    var pkg = new PakReader.Pak.PakPackage(new ArraySegment<byte>(files[key]), new ArraySegment<byte>(files[key[..^7] + ".uexp"]), null);
+                    Logic.MeshBounds.tryRead(pkg, out var o, out var ext, out var r);
+                    var before = Logic.CustomItems.copiedPackage(mesh.AssetPath)!.Value;
+                    Console.WriteLine($"[model] built mesh parses={pkg.HasExport()} bytes {before.UExp.Count} -> {files[key[..^7] + ".uexp"].Length}, extent {ext.X:0},{ext.Y:0},{ext.Z:0}");
+                    Console.WriteLine($"[model] model: {model.VertexCount} vertices, texture {(model.BaseColourPng == null ? "none" : model.BaseColourPng.Length + " bytes")}");
+                }
+                catch (Exception e) { Console.WriteLine($"[model] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_SHAREITEM=<folder> - exports every saved custom item to <folder>, reads each file back
+            //and unpacks it into a scratch copy, comparing field for field. The saved designs, the
+            //installed pak and the app's own item folder are not written.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_SHAREITEM=", StringComparison.Ordinal)))
+            {
+                var into = _startupArguments.First(a => a.StartsWith("PROBE_SHAREITEM=", StringComparison.Ordinal))["PROBE_SHAREITEM=".Length..].Trim('"');
+                Directory.CreateDirectory(into);
+                try
+                {
+                    Logic.CustomItems.gameItems();
+                    foreach (var design in Logic.CustomItems.load())
+                    {
+                        var file = Path.Combine(into, design.Slot + Logic.CustomItems.SHARE_EXTENSION);
+                        if (File.Exists(file)) { File.Delete(file); }
+                        Logic.CustomItems.export(design, file);
+                        using (var zip = System.IO.Compression.ZipFile.OpenRead(file))
+                        {
+                            Console.WriteLine($"[share] {design.Slot}: {new FileInfo(file).Length:N0} bytes, holds {string.Join(", ", zip.Entries.Select(e => $"{e.Name} {e.Length:N0}"))}");
+                        }
+                        var shared = Logic.CustomItems.readShared(file);
+                        var slot = Logic.CustomItems.slotOf(design);
+                        //Unpacked as the tab would, except that the files go to a scratch folder.
+                        var back = Logic.CustomItems.copy(shared.Design);
+                        var same = back.Source == design.Source && back.Name == design.Name && back.Description == design.Description
+                            && back.Icon == design.Icon && back.IconItem == design.IconItem
+                            && back.Values.Count == design.Values.Count && back.Values.All(v => design.Values.TryGetValue(v.Key, out var w) && w == v.Value)
+                            && (back.Model == null) == (design.Model == null)
+                            && (back.Model == null || (back.Model.Scale == design.Model!.Scale && back.Model.Offset.SequenceEqual(design.Model.Offset) && back.Model.Rotation.SequenceEqual(design.Model.Rotation)));
+                        Console.WriteLine($"[share]    kind {shared.Kind}, fields identical={same}, paths removed={back.IconFile == null && back.Model?.File == null}");
+                        using (var zip = System.IO.Compression.ZipFile.OpenRead(file))
+                        {
+                            if (design.Model?.File != null && zip.GetEntry("model.glb") is { } glb)
+                            {
+                                using var s = glb.Open(); using var m = new MemoryStream(); s.CopyTo(m);
+                                Console.WriteLine($"[share]    model bytes identical={m.ToArray().AsSpan().SequenceEqual(File.ReadAllBytes(design.Model.File))}");
+                            }
+                            if (design.IconFile != null && zip.GetEntry("icon.png") is { } png)
+                            {
+                                using var s = png.Open(); using var m = new MemoryStream(); s.CopyTo(m);
+                                Console.WriteLine($"[share]    icon bytes identical={m.ToArray().AsSpan().SequenceEqual(File.ReadAllBytes(design.IconFile))}");
+                            }
+                        }
+                    }
+                }
+                catch (Exception e) { Console.WriteLine($"[share] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_PLUGINITEMS - items beyond the free slots through the app's own code, as the New
+            //Items tab would make them: adopts MCDR_Test01 (the plugin test, on a character) as a
+            //design, adds one new ranged item, builds, and prints what was installed where.
+            if (_startupArguments.Contains("PROBE_PLUGINITEMS"))
+            {
+                try
+                {
+                    if (Logic.GameRunning.isUp) { Console.WriteLine("[items] close the game first"); Shutdown(); return; }
+                    var designs = Logic.CustomItems.load();
+                    if (designs.All(d => d.Slot != "MCDR_Test01"))
+                    {
+                        designs.Add(new Logic.CustomItems.Design { Slot = "MCDR_Test01", Source = "Katana_Unique1", PluginKind = Logic.CustomItems.Kind.Melee, Name = "Plugin Test Katana" });
+                    }
+                    if (!designs.Any(d => d.Slot.StartsWith(Logic.CustomItems.PLUGIN_PREFIX, StringComparison.Ordinal)))
+                    {
+                        var id = Logic.CustomItems.newPluginId(designs);
+                        var sources = Logic.CustomItems.sourcesFor(Logic.CustomItems.pluginSlot(id, Logic.CustomItems.Kind.Ranged));
+                        var bow = sources.FirstOrDefault(s => s.Id == "Bow_Unique1") ?? sources.First();
+                        designs.Add(new Logic.CustomItems.Design { Slot = id, Source = bow.Id, PluginKind = Logic.CustomItems.Kind.Ranged, Name = "Plugin Test Bow", Description = "The second item the plugin ever registered." });
+                        Console.WriteLine($"[items] {id}: a copy of {bow.Id} ({sources.Count} ranged sources)");
+                    }
+                    foreach (var d in designs) { Console.WriteLine($"[items] design {d.Slot} <- {d.Source}, folder {Logic.CustomItems.slotOf(d).Folder}, plugin {Logic.CustomItems.slotOf(d).Plugin}"); }
+                    var built = Logic.CustomItems.build(designs);
+                    Logic.CustomItems.save(designs);
+                    foreach (var note in built.Notes) { Console.WriteLine($"[items] {note}"); }
+                    var folder = Logic.GamePlugin.gameFolder();
+                    Console.WriteLine($"[items] game folder {folder}; ours {Logic.GamePlugin.isOurs(System.IO.Path.Combine(folder!, Logic.GamePlugin.DLL_NAME))}");
+                    Console.WriteLine(System.IO.File.ReadAllText(System.IO.Path.Combine(folder!, Logic.GamePlugin.ITEMS_NAME)));
+                }
+                catch (Exception e) { Console.WriteLine($"[items] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_PLUGINTEST=<MCDRebornItems.dll> - the item plugin, end to end, with one extra item:
+            //MCDR_Test01, a copy of the Master's Katana under an id the game never had.
+            //  1. with the game closed: rebuilds the New Items pak with the saved designs AND the extra
+            //     item, and writes the plugin and its item list to %LOCALAPPDATA%\MCDReborn\Plugin
+            //  2. waits for the game to start, gives it three seconds to decrypt itself, and loads the
+            //     plugin into it - the way the community loaders do
+            //  3. prints the plugin's own log as it registers the item.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_PLUGINTEST=", StringComparison.Ordinal)))
+            {
+                var dll = _startupArguments.First(a => a.StartsWith("PROBE_PLUGINTEST=", StringComparison.Ordinal))["PROBE_PLUGINTEST=".Length..].Trim('"');
+                var pluginFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MCDReborn", "Plugin");
+                Directory.CreateDirectory(pluginFolder);
+                try
+                {
+                    var extras = new List<Logic.CustomItems.Extra>
+                    {
+                        new("MCDR_Test01", "Katana_Unique1", "Plugin Test Katana", "Registered by the MCD Reborn plugin, under an id the game never had."),
+                    };
+                    if (Logic.GameRunning.isUp)
+                    {
+                        Console.WriteLine("[plugin] the game is running: close it first so the pak can be rebuilt");
+                        Shutdown(); return;
+                    }
+                    var built = Logic.CustomItems.build(Logic.CustomItems.load(), null, extras);
+                    foreach (var note in built.Notes) { Console.WriteLine($"[plugin] {note}"); }
+
+                    var lines = new List<string> { "# id\tsource\tfolder\tname\tdescription" };
+                    foreach (var extra in extras)
+                    {
+                        var source = Logic.CustomItems.gameItem(extra.Source)!;
+                        lines.Add(string.Join("\t", extra.Id, extra.Source, Logic.CustomItems.extraFolder(source, extra.Id), extra.Name, extra.Description));
+                    }
+                    File.WriteAllLines(Path.Combine(pluginFolder, "MCDRebornItems.txt"), lines, new System.Text.UTF8Encoding(false));
+                    var pluginDll = Path.Combine(pluginFolder, "MCDRebornItems.dll");
+                    File.Copy(dll, pluginDll, overwrite: true);
+                    Console.WriteLine($"[plugin] plugin and item list in {pluginFolder}");
+                    foreach (var line in lines.Skip(1)) { Console.WriteLine($"[plugin]    {line.Replace('\t', '|')}"); }
+
+                    Console.WriteLine("[plugin] waiting for the game to start (10 minutes)...");
+                    var started = DateTime.UtcNow;
+                    System.Diagnostics.Process? game = null;
+                    while (game == null && DateTime.UtcNow - started < TimeSpan.FromMinutes(10))
+                    {
+                        game = System.Diagnostics.Process.GetProcessesByName("Dungeons-Win64-Shipping").FirstOrDefault();
+                        if (game == null) { Thread.Sleep(200); }
+                    }
+                    if (game == null) { Console.WriteLine("[plugin] the game never started"); Shutdown(); return; }
+                    //Not a fixed delay after launch: loading at three seconds, while the game was still
+                    //decrypting itself, failed and left that path unloadable for the rest of the run.
+                    //The Dungeons module's global going non-null says the engine is up.
+                    Console.WriteLine($"[plugin] game started (pid {game.Id}); waiting for the engine");
+                    using (var live = LiveEdit.GameProcess.open(out _))
+                    {
+                        var image = live?.image(out _) ?? IntPtr.Zero;
+                        var moduleGlobal = image == IntPtr.Zero ? IntPtr.Zero : new IntPtr(image.ToInt64() + 0x44c7390);
+                        var until2 = DateTime.UtcNow.AddMinutes(3);
+                        while (DateTime.UtcNow < until2 && live != null && !game.HasExited)
+                        {
+                            var value = live.read(moduleGlobal, 8);
+                            if (value != null && BitConverter.ToInt64(value, 0) != 0) { break; }
+                            Thread.Sleep(500);
+                        }
+                    }
+                    Thread.Sleep(2000);
+                    //Loaded from a fresh folder each time: from the app's own Plugin folder the game
+                    //refused it twice while an identical copy in a temp folder loaded - not
+                    //understood yet, so the path that works is the one used.
+                    var run = Path.Combine(Path.GetTempPath(), "MCDRebornPlugin", game.Id.ToString());
+                    Directory.CreateDirectory(run);
+                    File.Copy(pluginDll, Path.Combine(run, "MCDRebornItems.dll"), overwrite: true);
+                    File.Copy(Path.Combine(pluginFolder, "MCDRebornItems.txt"), Path.Combine(run, "MCDRebornItems.txt"), overwrite: true);
+                    pluginFolder = run;
+                    pluginDll = Path.Combine(run, "MCDRebornItems.dll");
+                    Console.WriteLine($"[plugin] engine up; loading the plugin from {run}");
+                    var ok = LiveEdit.DllInjector.inject(pluginDll, out var problem);
+                    Console.WriteLine($"[plugin] load: {(ok ? "ok" : "FAILED")} {problem}");
+
+                    var log = Path.Combine(pluginFolder, "MCDRebornItems.log");
+                    var shown = 0;
+                    var until = DateTime.UtcNow.AddSeconds(90);
+                    while (DateTime.UtcNow < until)
+                    {
+                        Thread.Sleep(500);
+                        if (!File.Exists(log)) { continue; }
+                        string[] now;
+                        try { using var s = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite); using var r = new StreamReader(s); now = r.ReadToEnd().Split('\n'); }
+                        catch (IOException) { continue; }
+                        //The last piece may be a line still being written; it is printed next time.
+                        for (; shown < now.Length - 1; shown++) { if (now[shown].Trim().Length > 0) { Console.WriteLine($"[plugin]    log: {now[shown].TrimEnd()}"); } }
+                        if (now.Any(l => l.Contains("done:") || l.Contains("nothing was changed"))) { break; }
+                        if (game.HasExited) { Console.WriteLine("[plugin] the GAME CLOSED"); break; }
+                    }
+                }
+                catch (Exception e) { Console.WriteLine($"[plugin] FAILED {e}"); }
+                Shutdown();
                 return;
             }
 

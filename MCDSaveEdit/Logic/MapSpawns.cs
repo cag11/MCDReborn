@@ -2248,6 +2248,19 @@ namespace MCDSaveEdit.Logic
                 var waves = new List<(int, string)>();
                 foreach (var wave in arena?["waves"] as JsonArray ?? new JsonArray())
                 {
+                    //Two shapes. [count, "group"] is nearly all of them; nineteen - the Tower's
+                    //and Warped Forest's - are {"count": n, "groups": [...], "spawn-at-region"}.
+                    //Reading only the first dropped those waves from the panel entirely, and a
+                    //wave that is not shown is a wave nobody can see is there.
+                    if (wave is JsonObject body)
+                    {
+                        var count = body["count"] is JsonValue said
+                                    && said.TryGetValue<int>(out var n) ? n : 0;
+
+                        foreach (var group in MapChecks.groupsOf(body)) { waves.Add((count, group)); }
+                        continue;
+                    }
+
                     if (wave is not JsonArray pair || pair.Count < 2) { continue; }
 
                     //A count that is not a number, or a group that is not a string, is a wave the
@@ -2401,6 +2414,14 @@ namespace MCDSaveEdit.Logic
             if (arena["waves"] is not JsonArray waves || waves.Count == 0)
             {
                 arena["waves"] = new JsonArray(new JsonArray(Math.Max(1, count), group));
+            }
+            else if (waves[0] is JsonObject body)
+            {
+                //The object shape carries a spawn-at-region the array shape has no room for, so
+                //it is edited in place rather than replaced - replacing it quietly moved the wave
+                //to wherever the arena's own stretch puts it.
+                body["count"] = Math.Max(1, count);
+                body["groups"] = new JsonArray(group);
             }
             else
             {

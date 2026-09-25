@@ -50,6 +50,80 @@ namespace MCDSaveEdit.Logic
         }
 
         /// <summary>
+        /// BGRA into BC3, which Unreal calls PF_DXT5: the same colour block as BC1, after an alpha
+        /// block of its own. Item icons are stored this way - their edges are see-through, and
+        /// BC1 has one bit of alpha where they need a gradient.
+        /// </summary>
+        public static byte[] toDxt5(byte[] bgra, int width, int height)
+        {
+            var across = Math.Max(1, (width + 3) / 4);
+            var down = Math.Max(1, (height + 3) / 4);
+            var made = new byte[across * down * 16];
+
+            var block = new byte[16 * 4];
+
+            for (var by = 0; by < down; by++)
+            {
+                for (var bx = 0; bx < across; bx++)
+                {
+                    gather(bgra, width, height, bx * 4, by * 4, block);
+                    var at = (by * across + bx) * 16;
+                    encodeAlpha(block, made, at);
+                    //BC3's colour block is always read in four-colour mode, which is the mode
+                    //the BC1 encoder already forces.
+                    encode(block, made, at + 8);
+                }
+            }
+
+            return made;
+        }
+
+        /// <summary>
+        /// A block's alpha into eight bytes: the two extremes, then a three-bit choice per pixel
+        /// among them and the six steps between.
+        /// </summary>
+        private static void encodeAlpha(byte[] block, byte[] into, int at)
+        {
+            int low = 255, high = 0;
+            for (var i = 0; i < 16; i++)
+            {
+                int a = block[i * 4 + 3];
+                if (a < low) { low = a; }
+                if (a > high) { high = a; }
+            }
+
+            into[at + 0] = (byte)high;
+            into[at + 1] = (byte)low;
+
+            //high > low is the eight-value mode; equal means every pixel is index 0 anyway.
+            var palette = new int[8];
+            palette[0] = high;
+            palette[1] = low;
+            for (var step = 1; step <= 6; step++)
+            {
+                palette[1 + step] = ((7 - step) * high + step * low) / 7;
+            }
+
+            ulong indices = 0;
+            for (var i = 0; i < 16; i++)
+            {
+                int a = block[i * 4 + 3];
+                var best = 0;
+                var bestGap = int.MaxValue;
+                for (var choice = 0; choice < 8; choice++)
+                {
+                    var gap = Math.Abs(a - palette[choice]);
+                    if (gap >= bestGap) { continue; }
+                    bestGap = gap;
+                    best = choice;
+                }
+                indices |= (ulong)best << (i * 3);
+            }
+
+            for (var b = 0; b < 6; b++) { into[at + 2 + b] = (byte)((indices >> (b * 8)) & 0xFF); }
+        }
+
+        /// <summary>
         /// The sixteen pixels of one block, in BGRA.
         ///
         /// An image whose width or height is not a multiple of four still has to fill the last

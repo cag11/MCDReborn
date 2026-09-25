@@ -324,3 +324,9 @@ Tools/loader/*
 !MCDSaveEdit/Logic/LoaderAssets/
 !MCDSaveEdit/Logic/LoaderAssets/*.uasset
 !MCDSaveEdit/Logic/LoaderAssets/*.uexp
+
+# The item plugin's compiler output. The DLL the app ships is copied out of it by build.bat into
+# MCDSaveEdit/Logic/PluginAssets, and THAT copy is tracked: the app embeds it, and building it
+# takes the Visual Studio C++ tools, which the app's own build does not need.
+ItemPlugin/out/
+!MCDSaveEdit/Logic/PluginAssets/*.dll

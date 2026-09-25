@@ -64,6 +64,12 @@ namespace MCDSaveEdit.Logic
         /// </summary>
         public string Note { get; }
 
+        /// <summary>
+        /// The file it was read from, as bytes. A custom item keeps its model in its own design and
+        /// rebuilds it on every install, so it needs the model itself and not just this reading of it.
+        /// </summary>
+        public byte[]? Source { get; private init; }
+
         public int VertexCount => Positions.Count;
         public int TriangleCount => Indices.Count / 3;
 
@@ -220,7 +226,7 @@ namespace MCDSaveEdit.Logic
             var artwork = image ?? paletteFor(json, runs, texCoords);
 
             return new GlbModel(name, positions, normals, tangents, texCoords, indices, artwork,
-                image == null ? whatIsMissing(json, runs) : string.Empty);
+                image == null ? whatIsMissing(json, runs) : string.Empty) { Source = file };
         }
 
         /// <summary>

@@ -173,6 +173,11 @@ namespace MCDSaveEdit.Logic
                 at += was.Length - 1;
             }
 
+            //Each name in a cooked package carries two hashes of its own spelling, and writing a
+            //new spelling over the old left them describing the old one. Recomputed for the whole
+            //table - a no-op on every name that was not touched, checked against the game's own.
+            if (written > 0) { NewContent.renameNames(uasset, new Dictionary<string, string>()); }
+
             return written > 0;
         }
     }
