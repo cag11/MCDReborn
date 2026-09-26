@@ -1311,7 +1311,7 @@ namespace MCDSaveEdit.Logic
         /// Every mip of one texture replaced by the picture at that mip's size. The pixels are found
         /// where they are - in the .uexp or the .ubulk - and must be found exactly once.
         /// </summary>
-        private static string? repaint(byte[] uasset, byte[] uexp, byte[]? ubulk, BitmapSource picture,
+        internal static string? repaint(byte[] uasset, byte[] uexp, byte[]? ubulk, BitmapSource picture,
             out byte[] newUexp, out byte[]? newBulk)
         {
             newUexp = uexp;

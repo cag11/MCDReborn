@@ -82,6 +82,9 @@ namespace
     using Refresh = void (__fastcall*)(void* finder, bool force);
     using StaticClass = void* (__fastcall*)();
     using AddPath = void (__fastcall*)(void* finder, void* assetClass, FName path, FName id);
+    using LoadObject = void* (__fastcall*)(void* cls, void* outer, const wchar_t* name, const wchar_t* filename, uint32_t flags, void* sandbox,
+        bool allowReconciliation, void* serializeContext);
+    using Exec = void (__fastcall*)(void* context, void* stack, void** result);
 
     // The item asset finder: the game's index from item id to the paths of its blueprints and
     // icons, built from the asset registry for every id in the item list AT THE TIME IT IS BUILT.
@@ -117,6 +120,13 @@ namespace
         AddPath addPath = nullptr;            // the finder's own: one of an item's paths into its path table
         StaticClass pathClass[3]{};           // the classes the finder files those paths under
         StaticClass enchantmentClass = nullptr;  // the class the enchantment finder files a blueprint under
+        StaticClass textureClass = nullptr;      // ... an icon under
+        StaticClass materialClass = nullptr;     // ... an icon material under
+        LoadObject load = nullptr;               // StaticLoadObject (124d170)
+        int32_t* objectCount = nullptr;          // GUObjectArray: how many
+        uint8_t*** objectChunks = nullptr;       // GUObjectArray: its chunks, 0x10000 items of 0x18
+        uint8_t* textureExec = nullptr;          // execGetIconTextureForEnchantmentType (ef6a00)
+        uint8_t* materialExec = nullptr;         // its material twin (ef6940)
         uint8_t** module = nullptr;           // the Dungeons module, once the engine has made it
     };
 
@@ -251,6 +261,36 @@ namespace
         if (enchantmentPaths.size() == 1 && callTarget(enchantmentPaths[0] + 0x14) == reinterpret_cast<uint8_t*>(game.addPath))
         {
             game.enchantmentClass = reinterpret_cast<StaticClass>(callTarget(enchantmentPaths[0]));
+            game.textureClass = reinterpret_cast<StaticClass>(callTarget(enchantmentPaths[0] + 0x19));
+            game.materialClass = reinterpret_cast<StaticClass>(callTarget(enchantmentPaths[0] + 0x31));
+        }
+
+        // For an enchantment with an icon of its own, all optional. The class getter's
+        // fallback load (a627e0): mov rbx,[rip+classes] ... call StaticLoadObject. Its root-set
+        // step, which says where GUObjectArray is. And the two exec thunks the UI's icons come
+        // through: ..., mov [rbx+20],rdi / call getter / mov rbx,[rsp+30] / mov [rsi],rax.
+        auto loads = scan(parse("48 8B 1D ?? ?? ?? ?? 48 89 7C 24 28 89 7C 24 20 45 33 C9 4C 8B C5 33 D2 48 8B C8 E8"));
+        auto roots = scan(parse("8B 41 0C 3B 05 ?? ?? ?? ?? 7D ?? 99 0F B7 D2 03 C2 8B C8 0F B7 C0 2B C2 C1 F9 10 48 63 D1 48 8B 0D"));
+        say("patterns: object load %zu, object array %zu", loads.size(), roots.size());
+        // What the class getter calls is StaticLoadClass (124ccc0): it asks StaticLoadObject for
+        // a Class and checks it derives from the one given, so a texture never comes back from
+        // it. StaticLoadObject itself is its first call, at +0x6D.
+        if (loads.size() == 1)
+        {
+            uint8_t* loadClass = callTarget(loads[0] + 0x1B);
+            if (loadClass[0x6D] == 0xE8) { game.load = reinterpret_cast<LoadObject>(callTarget(loadClass + 0x6D)); }
+            else { say("patterns: StaticLoadClass is not the expected shape"); }
+        }
+        // The root-set step is inlined in many places (11 in the shipped game); every one must
+        // name the same two globals.
+        for (uint8_t* at : roots)
+        {
+            int32_t offset; memcpy(&offset, at + 5, 4);
+            auto count = reinterpret_cast<int32_t*>(at + 9 + offset);
+            memcpy(&offset, at + 33, 4);
+            auto chunks = reinterpret_cast<uint8_t***>(at + 37 + offset);
+            if (at == roots.front()) { game.objectCount = count; game.objectChunks = chunks; }
+            else if (count != game.objectCount || chunks != game.objectChunks) { say("patterns: the object array is named two ways"); game.objectCount = nullptr; game.objectChunks = nullptr; break; }
         }
         return true;
     }
@@ -325,6 +365,7 @@ namespace
         int source = 0;                // EEnchantmentTypeID of the one it copies
         std::wstring name, description, builtIn, effect;
         std::string folder;            // its own blueprint, "MCDR_Ench02/BP_MCDR_Ench02", or "-" for the source's
+        std::string icon;              // its own icon: "texture object path|material object path", or "-"
     };
 
     // "@enchantment \t id \t source type id \t name \t description \t built-in line \t effect \t folder",
@@ -363,6 +404,7 @@ namespace
             e.source = atoi(parts[2].c_str());
             e.name = wide(parts[3]); e.description = wide(parts[4]); e.builtIn = wide(parts[5]); e.effect = wide(parts[6]);
             e.folder = parts[7];
+            e.icon = parts.size() > 8 ? parts[8] : "-";
             found.push_back(e);
         }
         return found;
@@ -435,6 +477,124 @@ namespace
         __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
     }
 
+    // ---------------------------------------------------------------- enchantment icons
+    //
+    // An enchantment's icon and icon material are what PreloadEnchantments loaded into its two
+    // arrays at start-up, for ids up to 161 only; the getters (a62b10, a62b00) just index them
+    // and have no fallback, and their one caller each is an exec thunk the UI calls from
+    // Blueprint (ef6a00, ef6940). So an icon of its own is loaded on the first call, on the game
+    // thread, by wrapping those thunks: the new id's array entry holds a mark of the plugin's
+    // own, the original thunk returns it, and the wrapper swaps it for the loaded object - rooted,
+    // as the class getter roots what it loads - and stores that in the array for next time.
+    //
+    // The wrapper goes in through the UFunction's own pointer to its thunk, which is heap data:
+    // no game code is changed.
+    struct OwnIcon { int id; std::wstring texture, material; void* sourceTexture; void* sourceMaterial; };
+    std::vector<OwnIcon> g_icons;
+    uint8_t g_marks[256];
+    // The wrapper runs on the game thread for as long as the game does, long after the plugin's
+    // own thread - and the Game it found things with, a local there - has ended. So it keeps a
+    // copy of its own.
+    Game g_gameKept;
+    Game* g_game = nullptr;
+    TArrayRaw* g_iconArrays[2]{};             // icons, materials
+    Exec g_originalExec[2]{};
+
+    bool readBlock(const void* at, void* out, size_t size)
+    {
+        __try { memcpy(out, at, size); return true; }
+        __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    }
+
+    void rootObject(void* object)
+    {
+        int32_t index = 0;
+        if (!readBlock(static_cast<uint8_t*>(object) + 0xC, &index, 4) || index < 0 || index >= *g_game->objectCount) { return; }
+        uint8_t* chunk = (*g_game->objectChunks)[index >> 16];
+        if (!chunk) { return; }
+        *reinterpret_cast<int32_t*>(chunk + static_cast<size_t>(index & 0xFFFF) * 0x18 + 8) |= 0x40000000;
+    }
+
+    void resolveIcon(void** result, int which)
+    {
+        auto mark = static_cast<uint8_t*>(*result);
+        if (mark < g_marks || mark >= g_marks + sizeof(g_marks)) { return; }
+        int id = static_cast<int>(mark - g_marks);
+        void* found = nullptr;
+        for (const auto& icon : g_icons)
+        {
+            if (icon.id != id) { continue; }
+            const std::wstring& path = which == 0 ? icon.texture : icon.material;
+            void* cls = which == 0 ? g_game->textureClass() : g_game->materialClass();
+            found = g_game->load(cls, nullptr, path.c_str(), nullptr, 0, nullptr, true, nullptr);
+            if (found)
+            {
+                rootObject(found);
+                say("enchantment %d: its own %s loaded at %p", id, which == 0 ? "icon" : "icon material", found);
+            }
+            else
+            {
+                found = which == 0 ? icon.sourceTexture : icon.sourceMaterial;
+                say("enchantment %d: %ls did not load; the source's is shown", id, path.c_str());
+            }
+            break;
+        }
+        reinterpret_cast<void**>(g_iconArrays[which]->Data)[id] = found;
+        *result = found;
+    }
+
+    void __fastcall textureExec(void* context, void* stack, void** result) { g_originalExec[0](context, stack, result); resolveIcon(result, 0); }
+    void __fastcall materialExec(void* context, void* stack, void** result) { g_originalExec[1](context, stack, result); resolveIcon(result, 1); }
+
+    // The exec thunks, from their shared tail, told apart by which array their getter reads.
+    bool findIconExecs(Game& game, TArrayRaw* icons, TArrayRaw* materials)
+    {
+        for (uint8_t* tail : scan(parse("48 89 7B 20 E8 ?? ?? ?? ?? 48 8B 5C 24 30 48 89 06")))
+        {
+            uint8_t* getter = callTarget(tail + 4);
+            uint8_t code[15]{};
+            if (!readBlock(getter, code, sizeof(code)) || code[0] != 0x48 || code[1] != 0x8B || code[2] != 0x05
+                || code[7] != 0x0F || code[8] != 0xB6 || code[9] != 0xCA || code[14] != 0xC3) { continue; }
+            int32_t rel; memcpy(&rel, code + 3, 4);
+            uint8_t* reads = getter + 7 + rel;
+            if (reads == reinterpret_cast<uint8_t*>(icons)) { game.textureExec = tail - 0xA3; }
+            if (reads == reinterpret_cast<uint8_t*>(materials)) { game.materialExec = tail - 0xA3; }
+        }
+        return game.textureExec && game.materialExec;
+    }
+
+    // Each UFunction whose thunk pointer is one of the two gets the wrapper instead. Found by
+    // walking GUObjectArray for an object holding that pointer; exactly one each, or nothing is
+    // swapped.
+    bool hookIconExecs(Game& game)
+    {
+        int32_t count = *game.objectCount;
+        uint8_t** chunks = *game.objectChunks;
+        uint8_t** slot[2]{};
+        int hits[2]{};
+        for (int32_t i = 0; i < count; i++)
+        {
+            uint8_t* chunk = nullptr;
+            if (!readBlock(chunks + (i >> 16), &chunk, 8) || !chunk) { continue; }
+            uint8_t* object = nullptr;
+            if (!readBlock(chunk + static_cast<size_t>(i & 0xFFFF) * 0x18, &object, 8) || !object) { continue; }
+            uint8_t* body[0x140 / 8]{};
+            if (!readBlock(object, body, sizeof(body))) { continue; }
+            for (size_t at = 0; at < 0x140 / 8; at++)
+            {
+                if (body[at] == game.textureExec) { slot[0] = reinterpret_cast<uint8_t**>(object) + at; hits[0]++; }
+                if (body[at] == game.materialExec) { slot[1] = reinterpret_cast<uint8_t**>(object) + at; hits[1]++; }
+            }
+        }
+        say("icon functions: %d texture, %d material", hits[0], hits[1]);
+        if (hits[0] != 1 || hits[1] != 1) { return false; }
+        g_originalExec[0] = reinterpret_cast<Exec>(game.textureExec);
+        g_originalExec[1] = reinterpret_cast<Exec>(game.materialExec);
+        *slot[0] = reinterpret_cast<uint8_t*>(&textureExec);
+        *slot[1] = reinterpret_cast<uint8_t*>(&materialExec);
+        return true;
+    }
+
     // Registers each enchantment: a copy of its source's definition under a new id, then its name
     // in the enum once the engine has made that. Runs on the plugin's own thread.
     void addEnchantments(Game& game)
@@ -445,7 +605,7 @@ namespace
         uint8_t** table = enchantmentTable(header);
         if (!table) { say("enchantments: NOT registered"); return; }
 
-        struct Named { std::string id; int value; int source; bool own; };
+        struct Named { std::string id; int value; int source; bool own; std::string icon; };
         std::vector<Named> named;
         int next = FIRST_NEW_ENCHANTMENT;
         for (const auto& e : enchantments)
@@ -480,7 +640,7 @@ namespace
             }
             table[next] = def;
             say("%s registered as enchantment %d, a copy of %d%s", e.id.c_str(), next, e.source, own ? ", with its own blueprint" : "");
-            named.push_back({ e.id, next, e.source, own });
+            named.push_back({ e.id, next, e.source, own, e.icon });
             next++;
         }
         if (named.empty()) { return; }
@@ -523,6 +683,38 @@ namespace
         if (!filled) { say("enchantments: the icon and class arrays were never filled; NOT usable - do not open an item with one"); }
         else
         {
+            // Icons of their own: the thunks wrapped before any mark goes in, so that nothing
+            // hands a mark to the UI unwrapped.
+            bool iconsHooked = false;
+            bool wantIcons = false;
+            for (const auto& n : named) { wantIcons = wantIcons || n.icon != "-"; }
+            if (wantIcons)
+            {
+                if (!game.load || !game.objectCount || !game.objectChunks || !game.textureClass || !game.materialClass)
+                {
+                    say("enchantments: the object loader is not known; own icons NOT used - they show their source's");
+                }
+                else if (!findIconExecs(game, arrays[0], arrays[1])) { say("enchantments: the icon functions were not found; own icons NOT used"); }
+                else
+                {
+                    g_gameKept = game;
+                    g_game = &g_gameKept;
+                    g_iconArrays[0] = arrays[0];
+                    g_iconArrays[1] = arrays[1];
+                    for (const auto& n : named)
+                    {
+                        if (n.icon == "-") { continue; }
+                        size_t bar = n.icon.find('|');
+                        if (bar == std::string::npos) { say("%s: its icon field is not texture|material", n.id.c_str()); continue; }
+                        g_icons.push_back({ n.value, wide(n.icon.substr(0, bar)), wide(n.icon.substr(bar + 1)),
+                            reinterpret_cast<uint8_t**>(arrays[0]->Data)[n.source], reinterpret_cast<uint8_t**>(arrays[1]->Data)[n.source] });
+                    }
+                    iconsHooked = !g_icons.empty() && hookIconExecs(game);
+                    if (!iconsHooked) { say("enchantments: own icons NOT used - they show their source's"); }
+                }
+            }
+            auto ownIcon = [&](const Named& n) { return iconsHooked && n.icon != "-"; };
+
             for (auto* a : arrays)
             {
                 int32_t capacity = highest + 16;
@@ -533,7 +725,12 @@ namespace
                 // An enchantment with a blueprint of its own gets no class: the class getter
                 // (a627e0) loads it from the enchantment finder the first time it is asked, as
                 // it would any enchantment PreloadEnchantments had not reached.
-                for (const auto& n : named) { bigger[n.value] = (n.own && a == arrays[2]) ? nullptr : old[n.source]; }
+                for (const auto& n : named)
+                {
+                    bigger[n.value] = (n.own && a == arrays[2]) ? nullptr
+                        : (ownIcon(n) && a != arrays[2]) ? g_marks + n.value
+                        : old[n.source];
+                }
                 a->Max = capacity;
                 a->Data = reinterpret_cast<uint8_t*>(bigger);      // the old block is left as it is
             }

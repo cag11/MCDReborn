@@ -43,7 +43,7 @@ namespace MCDSaveEdit.Logic
         /// relative to Components/Enchantments ("MCDR_Ench02/BP_MCDR_Ench02"), or "-" for the source's.
         /// </summary>
         public sealed record Enchantment(string Id, int SourceType, string Name, string Description, string BuiltIn, string Effect,
-            string Blueprint = "-");
+            string Blueprint = "-", string Icon = "-");
 
         /// <summary>
         /// The folder with the game's executable, from its paks folder: Dungeons\Content\Paks is
@@ -105,9 +105,9 @@ namespace MCDSaveEdit.Logic
             lines.AddRange(items.Select(i => string.Join("\t", i.Id, i.Source, i.Folder, clean(i.Name), clean(i.Description), clean(i.Skills), clean(i.Lines), clean(i.ArmorProperties), clean(i.Numbers))));
             if (enchantments.Count > 0)
             {
-                lines.Add("# @enchantment\tid\tsource type id\tname\tdescription\tbuilt-in line\teffect\tblueprint - \"-\" keeps the source's");
+                lines.Add("# @enchantment\tid\tsource type id\tname\tdescription\tbuilt-in line\teffect\tblueprint\ticon (texture|material) - \"-\" keeps the source's");
                 lines.AddRange(enchantments.Select(e => string.Join("\t", "@enchantment", e.Id, e.SourceType.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    clean(e.Name), clean(e.Description), clean(e.BuiltIn), clean(e.Effect), e.Blueprint)));
+                    clean(e.Name), clean(e.Description), clean(e.BuiltIn), clean(e.Effect), e.Blueprint, e.Icon)));
             }
             File.WriteAllLines(list, lines, new UTF8Encoding(false));
             return enchantments.Count == 0
@@ -176,7 +176,7 @@ namespace MCDSaveEdit.Logic
                 if (!line.StartsWith("@enchantment\t", StringComparison.Ordinal)) { continue; }
                 var parts = line.Split('\t');
                 if (parts.Length < 7 || !int.TryParse(parts[2], out var source)) { continue; }
-                found.Add(new Enchantment(parts[1], source, parts[3], parts[4], parts[5], parts[6], parts.Length > 7 ? parts[7] : "-"));
+                found.Add(new Enchantment(parts[1], source, parts[3], parts[4], parts[5], parts[6], parts.Length > 7 ? parts[7] : "-", parts.Length > 8 ? parts[8] : "-"));
             }
             return found;
         }

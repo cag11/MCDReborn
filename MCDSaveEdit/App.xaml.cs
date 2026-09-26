@@ -10541,6 +10541,9 @@ namespace MCDSaveEdit
                     new Logic.CustomEnchantments.Design { Id = "MCDR_Ench90", Source = "FireAspect", Numbers = new() { ["damagePerSecond"] = 300, ["fireDuration"] = 10 } },
                     new Logic.CustomEnchantments.Design { Id = "MCDR_Ench91", Source = "Chains", Numbers = new() { ["ChainRange"] = 3000, ["BaseMobChainAmount"] = 6 } },
                     new Logic.CustomEnchantments.Design { Id = "MCDR_Ench92", Source = "Heavyweight", Numbers = new() { [Logic.EnchantmentNumbers.NUMBERS["Heavyweight"][0].Property] = 1 } },
+                    //An icon of its own, from PROBE_ENCHICON=<png>: painted, then decoded back into %TEMP%.
+                    new Logic.CustomEnchantments.Design { Id = "MCDR_Ench93", Source = "Chains",
+                        IconFile = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_ENCHICON=", StringComparison.Ordinal))?["PROBE_ENCHICON=".Length..].Trim('"') },
                 })
                 {
                     try
@@ -10563,6 +10566,26 @@ namespace MCDSaveEdit
                         while (json.Contains("  ")) { json = json.Replace("  ", " "); }
                         Console.WriteLine($"[enchbp]   parsed: {json.Substring(0, Math.Min(900, json.Length))}");
                         Console.WriteLine($"[enchbp]   names: {string.Join(", ", Logic.CookedProperties.readNamesOf(uasset))}");
+                        if (Logic.CustomEnchantments.hasIcon(design) && Logic.CustomEnchantments.iconObjects(design) is { } icon)
+                        {
+                            Console.WriteLine($"[enchbp]   icon objects: {icon.texture} | {icon.material}");
+                            var name = icon.texture[(icon.texture.LastIndexOf('.') + 1)..];
+                            byte[]? part(string extension) => files.FirstOrDefault(f => f.Path.EndsWith("/" + name + extension, StringComparison.OrdinalIgnoreCase))?.Data;
+                            var bulk = part(".ubulk");
+                            ArraySegment<byte>? bulkSegment = bulk == null ? (ArraySegment<byte>?)null : new ArraySegment<byte>(bulk);
+                            var painted = new PakReader.Pak.PakPackage(new ArraySegment<byte>(part(".uasset")!), new ArraySegment<byte>(part(".uexp")!),
+                                bulkSegment).GetExport<PakReader.Parsers.Class.UTexture2D>()?.Image;
+                            var shown = painted == null ? null : Services.PakIndexExtensions.bitmapImageFromSKImage(painted);
+                            if (shown != null)
+                            {
+                                var into = System.IO.Path.Combine(System.IO.Path.GetTempPath(), design.Id + "_icon.png");
+                                var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                                encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(shown));
+                                using (var stream = System.IO.File.Create(into)) { encoder.Save(stream); }
+                                Console.WriteLine($"[enchbp]   painted icon read back: {shown.PixelWidth}x{shown.PixelHeight} -> {into}");
+                            }
+                            var line = Logic.GamePlugin.installedEnchantments().Count;
+                        }
                         var registry = Logic.RegistryPatch.readGameRegistry(Logic.CustomSkins.paksFolder!);
                         var added = 0;
                         var patched = registry == null ? null : Logic.RegistryPatch.withClones(registry,

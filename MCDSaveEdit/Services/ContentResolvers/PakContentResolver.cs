@@ -361,7 +361,8 @@ namespace MCDSaveEdit.Services
                 return imageSource("/Dungeons/Content/UI/Materials/MissionSelectMap/marker/locked_node");
             }
 
-            //MCD Reborn's own wear the icon of the one each copies, as they do in the game.
+            //MCD Reborn's own: a picture of its own, else the icon of the one it copies, as in the game.
+            if (Logic.CustomEnchantments.iconForApp(enchantmentId) is { } mine) { return mine; }
             if (!_enchantments.ContainsKey(enchantmentId) && Logic.GamePlugin.sourceOf(enchantmentId) is { } source)
             {
                 enchantmentId = source;

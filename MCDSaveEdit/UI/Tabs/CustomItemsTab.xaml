@@ -273,6 +273,21 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
+                    <!-- Its own icon: painted over the copy's icon texture. -->
+                    <Label x:Name="enchantmentIconLabel" Content="*Icon*" Padding="0,12,0,2"/>
+                    <TextBlock x:Name="enchantmentIconHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="2,0,2,6"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <Border Width="72" Height="72" Background="#11FFFFFF" CornerRadius="3">
+                            <Image x:Name="enchantmentIconPreview" Stretch="Uniform" Margin="4"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center" Margin="10,0,0,0">
+                            <Button x:Name="enchantmentIconChoose" Content="*Choose picture…*" Padding="8,3" Margin="0,0,0,6"
+                                    HorizontalAlignment="Left" Click="enchantmentIconChoose_Click"/>
+                            <Button x:Name="enchantmentIconReset" Content="*Use the copied enchantment's*" Padding="8,3"
+                                    HorizontalAlignment="Left" Click="enchantmentIconReset_Click"/>
+                        </StackPanel>
+                    </StackPanel>
+
                     <!-- Its own numbers: overrides on a copy of the source's blueprint. -->
                     <Label x:Name="enchantmentNumbersLabel" Content="*Numbers*" Padding="0,12,0,2"/>
                     <TextBlock x:Name="enchantmentNumbersHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="2,0,2,6"/>

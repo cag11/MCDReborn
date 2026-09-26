@@ -4220,4 +4220,12 @@ Delete it?</value>
     <value>Use the copied enchantment's</value>
     <comment>Button: drop the enchantment's own numbers</comment>
   </data>
+  <data name="ITEMS_ENCH_ICON_HINT" xml:space="preserve">
+    <value>A square PNG with a clear background, drawn over the copied icon (256 by 256). The game's own are a diamond; anything works.</value>
+    <comment>Hint under the enchantment's Icon label</comment>
+  </data>
+  <data name="ITEMS_ENCH_ICON_RESET" xml:space="preserve">
+    <value>Use the copied enchantment's</value>
+    <comment>Button: drop the enchantment's own icon</comment>
+  </data>
 </root>

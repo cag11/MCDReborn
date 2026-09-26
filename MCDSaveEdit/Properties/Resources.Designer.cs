@@ -9327,5 +9327,23 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("ITEMS_ENCH_NUMBERS_RESET", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to A square PNG with a clear background, drawn over the copied icon (256 by 256). The game's own are a diamond; anything works..
+        /// </summary>
+        public static string ITEMS_ENCH_ICON_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_ICON_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Use the copied enchantment's.
+        /// </summary>
+        public static string ITEMS_ENCH_ICON_RESET {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_ICON_RESET", resourceCulture);
+            }
+        }
     }
 }

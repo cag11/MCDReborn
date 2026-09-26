@@ -158,6 +158,10 @@ namespace MCDSaveEdit.UI
             enchantmentNumbersLabel.Content = R.ITEMS_ENCH_NUMBERS;
             enchantmentNumbersHint.Text = R.ITEMS_ENCH_NUMBERS_HINT;
             enchantmentNumbersReset.Content = R.ITEMS_ENCH_NUMBERS_RESET;
+            enchantmentIconLabel.Content = R.ITEMS_ICON;
+            enchantmentIconHint.Text = R.ITEMS_ENCH_ICON_HINT;
+            enchantmentIconChoose.Content = R.ITEMS_ICON_CHOOSE;
+            enchantmentIconReset.Content = R.ITEMS_ENCH_ICON_RESET;
         }
 
         // ------------------------------------------------------------------ loading
@@ -409,7 +413,48 @@ namespace MCDSaveEdit.UI
             showEnchantmentSourceTexts();
             fillEnchantmentSources();
             showEnchantmentNumbers();
+            showEnchantmentIcon();
             updateButtons();
+        }
+
+        /// <summary>The design's own picture, else the copied enchantment's icon.</summary>
+        private void showEnchantmentIcon()
+        {
+            enchantmentIconPreview.Source = null;
+            if (_enchantment == null) { return; }
+            try
+            {
+                if (_enchantment.IconFile != null && File.Exists(_enchantment.IconFile))
+                {
+                    enchantmentIconPreview.Source = CustomSkins.imageFromPng(File.ReadAllBytes(_enchantment.IconFile));
+                }
+                else if (!string.IsNullOrEmpty(_enchantment.Source))
+                {
+                    enchantmentIconPreview.Source = enchantmentIcon(_enchantment.Source);
+                }
+            }
+            catch (Exception) { enchantmentIconPreview.Source = null; }
+            enchantmentIconReset.IsEnabled = _enchantment.IconFile != null;
+        }
+
+        private void enchantmentIconChoose_Click(object sender, RoutedEventArgs e)
+        {
+            if (_enchantment == null) { return; }
+            var dialog = new OpenFileDialog { Filter = "PNG|*.png" };
+            if (dialog.ShowDialog() != true) { return; }
+            try
+            {
+                _enchantment.IconFile = CustomItems.keepImage(_enchantment.Id, dialog.FileName);
+                showEnchantmentIcon();
+            }
+            catch (Exception problem) { statusLabel.Text = problem.Message; }
+        }
+
+        private void enchantmentIconReset_Click(object sender, RoutedEventArgs e)
+        {
+            if (_enchantment == null) { return; }
+            _enchantment.IconFile = null;
+            showEnchantmentIcon();
         }
 
         /// <summary>
@@ -553,6 +598,7 @@ namespace MCDSaveEdit.UI
             if (string.IsNullOrWhiteSpace(_enchantment.Name)) { enchantmentTitle.Text = R.enchantmentName(row.Id); }
             showEnchantmentSourceTexts();
             showEnchantmentNumbers();
+            showEnchantmentIcon();
             updateButtons();
         }
 
@@ -1145,6 +1191,7 @@ namespace MCDSaveEdit.UI
                     if (GamePlugin.gameFolder() == null) { statusLabel.Text = R.ITEMS_NEW_UNAVAILABLE; return; }
                     //Always a new id: it never takes the place of one the user already has.
                     enchantment.Id = CustomEnchantments.newId(_enchantments.Concat(_pendingEnchantments));
+                    CustomEnchantments.unpackIcon(dialog.FileName, enchantment);
                     await installEnchantments(_enchantments.Append(enchantment).ToList());
                     _enchantment = null;
                     select(enchantment.Id);
