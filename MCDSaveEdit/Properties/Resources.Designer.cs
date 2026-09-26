@@ -1672,7 +1672,7 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The Tower.
+        ///   Looks up a localized string similar to Tower.
         /// </summary>
         public static string THE_TOWER {
             get {

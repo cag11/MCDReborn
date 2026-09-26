@@ -163,7 +163,8 @@ namespace MCDSaveEdit.UI
             //Ours rather than the game's own "Storage Chest": twelve tabs only fit on one
             //row if the longest four are shortened, and this is one of them.
             chestTabItem.Header = R.CHEST_TAB;
-            towerTabItem.Header = R.getString("TheTower") ?? R.THE_TOWER;
+            //Ours rather than the game's "The Tower", to match the short names beside it.
+            towerTabItem.Header = R.THE_TOWER;
 
             //The side menu's groups, on the first page of each.
             Theme.Nav.SetGroup(inventoryTabItem, R.NAV_SAVE);

@@ -30,7 +30,7 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * Every save backs the file up first, keeping one timestamped `.bak` beside it
 * The enchantment picker opens on the gear type being enchanted, with **Melee / Armor / Ranged / Other** toggles
 * A loading screen that is a themed card with a vector mark, version and status line
-* **The Tower** tab: tower runs that you have started and saved will show here, allow modifying gear and floor progress
+* **Tower** tab: tower runs that you have started and saved will show here, allow modifying gear and floor progress
 * 36 new enchantments the game carries but never offers, under the **Other** toggle
 * Bulk Delete items on the inventory and storage chest tabs
 * **Difficulty Tab:** Change how hard the game is while it is running. How tough, how fast and how heavy the enemies are, and your own speed, roll cooldown, roll charges, gravity and attack speed
