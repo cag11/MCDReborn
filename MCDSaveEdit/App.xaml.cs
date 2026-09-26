@@ -10834,6 +10834,56 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_PACKOUT=<zip> - Export All into that file, then what it holds and the manifest as
+            //Import All reads it back. Installs nothing.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_PACKOUT=", StringComparison.Ordinal)))
+            {
+                var to = _startupArguments.First(a => a.StartsWith("PROBE_PACKOUT=", StringComparison.Ordinal))["PROBE_PACKOUT=".Length..].Trim('"');
+                try
+                {
+                    var made = Logic.ModPack.export(to);
+                    Console.WriteLine($"[pack] wrote {to}: {made.Paks} pak(s), app-made {string.Join(", ", made.AppPaks)}; {made.Items} items, {made.Enchantments} enchantments, {made.Mobs} mobs");
+                    using (var zip = System.IO.Compression.ZipFile.OpenRead(to))
+                    {
+                        foreach (var e in zip.Entries) { Console.WriteLine($"[pack]   {e.FullName} {e.Length}"); }
+                        foreach (var e in zip.Entries.Where(e => e.FullName.EndsWith(".json")))
+                        {
+                            using var reader = new StreamReader(e.Open());
+                            foreach (var line in reader.ReadToEnd().Split('\n').Where(l => l.Contains("{pack}") || l.Contains(":\\\\")))
+                            {
+                                Console.WriteLine($"[pack]   {e.Name}: {line.Trim()}");
+                            }
+                        }
+                    }
+                    var back = Logic.ModPack.read(to);
+                    Console.WriteLine($"[pack] read back: {(back == null ? "NOT A PACK" : $"{back.Paks} paks, designs {back.HasDesigns}")}");
+                }
+                catch (Exception problem) { Console.WriteLine($"[pack] failed: {problem}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_PACKIN=<zip> - Import All from that file, answering yes to every replace question.
+            //Changes what is installed: meant for a pack exported from this same machine.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_PACKIN=", StringComparison.Ordinal)))
+            {
+                var from = _startupArguments.First(a => a.StartsWith("PROBE_PACKIN=", StringComparison.Ordinal))["PROBE_PACKIN=".Length..].Trim('"');
+                try
+                {
+                    var pack = Logic.ModPack.read(from) ?? throw new InvalidOperationException("not a pack");
+                    var result = Logic.ModPack.install(from, pack, name => { Console.WriteLine($"[pack] replace {name}? yes"); return true; },
+                        (slot, there, coming) => { Console.WriteLine($"[pack] slot {slot} holds {there}, replace with {coming}? yes"); return true; });
+                    Console.WriteLine($"[pack] designs taken {result.DesignsTaken}, backup {result.Backup}");
+                    Console.WriteLine($"[pack] installed {result.Haul.Installed.Count}, replaced {result.Haul.Replaced.Count}, skipped {string.Join(", ", result.Haul.Skipped)}, rejected {string.Join(", ", result.Haul.Rejected)}");
+                    foreach (var note in result.Notes) { Console.WriteLine($"[pack] note {note}"); }
+                    foreach (var d in Logic.CustomMobs.load()) { Console.WriteLine($"[pack] mob {d.Id} {d.Name} model {d.Model?.File}"); }
+                    foreach (var d in Logic.CustomEnchantments.load()) { Console.WriteLine($"[pack] enchantment {d.Id} {d.Name} icon {d.IconFile}"); }
+                }
+                catch (Exception problem) { Console.WriteLine($"[pack] failed: {problem}"); }
+                Shutdown();
+                return;
+            }
+
             //PROBE_MOBDESIGNS - the saved mob designs, with any the installed plugin list holds but no
             //design does taken in, and the lines the next install would write. Read-only.
             if (_startupArguments.Contains("PROBE_MOBDESIGNS"))

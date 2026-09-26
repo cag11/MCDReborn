@@ -34,7 +34,7 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **Escalation Mode:** Enemies get worse the longer you stay in a level. A slim bar over the game says which of the nine stages you are in, how long until the next one, and what the multipliers are now. The clock restarts when you load a new level.
 * **Press J to throw every enemy in the level into the air**, with the enemy gravity slider deciding how long they stay there - at normal weight they reach 141 units, at a fortieth nearly 3000. The two go together: gravity does nothing to a mob standing on the floor
 * **Music Tab:** Play your own MP3 over any of the game's 112 music tracks, installed as a mod pak beside the game's own so removing it puts the original back
-* **Installed Mods Tab:** Every mod pak in one place. You can import and export multiple mods via a zip package.
+* **Installed Mods Tab:** Every mod pak in one place. **Export All** puts every mod, map, new item, enchantment and mob into one file, and **Import All** brings it all back on another PC, so a map with custom mobs arrives with its mobs.
 
 #### Custom Maps Feature
 * Exports the game missions as Minecraft worlds or allows you to build on them to create your own custom maps..Use the maps tab to do the export and imports.

@@ -2084,19 +2084,19 @@ The save file is not changed until you save it.</value>
     <comment>The short mark in the list</comment>
   </data>
   <data name="MODS_IMPORT_ZIP" xml:space="preserve">
-    <value>Import Zip</value>
+    <value>Import All</value>
     <comment>Install every mod in an archive</comment>
   </data>
   <data name="MODS_EXPORT_ZIP" xml:space="preserve">
-    <value>Export All as Zip</value>
+    <value>Export All</value>
     <comment>Pack every installed mod into one file</comment>
   </data>
   <data name="MODS_IMPORT_ZIP_WHY" xml:space="preserve">
-    <value>Installs every pak inside an archive, wherever in it they are - loose, in a folder, or in several. Anything that is not a pak is left alone. Zip and rar both open.</value>
+    <value>Brings in a pack made with Export All: its mods, and its new items, enchantments and mobs, rebuilt here so maps that use them work. A zip or rar of plain paks also works - every pak inside is installed, wherever it is.</value>
     <comment>What importing an archive does</comment>
   </data>
   <data name="MODS_EXPORT_ZIP_WHY" xml:space="preserve">
-    <value>Packs every mod listed here into one zip, for sending somebody. They can bring the whole thing back in with Import Zip.</value>
+    <value>Everything in one file for sending somebody: every mod listed here, your maps, and your new items, enchantments and mobs with their pictures and models. They bring it all in with Import All.</value>
     <comment>What exporting does</comment>
   </data>
   <data name="MODS_ZIP_INSTALLED" xml:space="preserve">
@@ -4293,5 +4293,31 @@ Delete it?</value>
   <data name="ITEMS_MOB_EXPORTED" xml:space="preserve">
     <value>Saved {0}. It holds the mob's source and name.</value>
     <comment>Status. {0} is the file name</comment>
+  </data>
+  <data name="MODS_PACK_REPLACE_DESIGNS" xml:space="preserve">
+    <value>This pack brings {0} item(s), {1} enchantment(s) and {2} mob(s). They replace the ones you have now - yours are copied into a backup folder first.
+
+Import it?</value>
+    <comment>Confirmation before a pack replaces the user's own designs</comment>
+  </data>
+  <data name="MODS_PACK_REPLACE_SLOT" xml:space="preserve">
+    <value>Map slot {0} already holds {1}. Replace it with {2}?</value>
+    <comment>{0} slot number, {1} the map there, {2} the pak coming in</comment>
+  </data>
+  <data name="MODS_PACK_WORKING" xml:space="preserve">
+    <value>Importing the pack...</value>
+    <comment>Status while importing</comment>
+  </data>
+  <data name="MODS_PACK_DESIGNS" xml:space="preserve">
+    <value>{0} item(s), {1} enchantment(s) and {2} mob(s) installed. Restart the game to see them.</value>
+    <comment>After a pack's designs went in</comment>
+  </data>
+  <data name="MODS_PACK_BACKUP" xml:space="preserve">
+    <value>Your previous ones are in {0}.</value>
+    <comment>Where the backup went</comment>
+  </data>
+  <data name="MODS_PACK_EXPORTED" xml:space="preserve">
+    <value>{0} mod(s), {1} item(s), {2} enchantment(s) and {3} mob(s) written to {4}.</value>
+    <comment>The export succeeded</comment>
   </data>
 </root>

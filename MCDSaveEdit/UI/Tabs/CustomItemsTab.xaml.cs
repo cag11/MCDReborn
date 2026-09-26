@@ -102,6 +102,15 @@ namespace MCDSaveEdit.UI
             editor.IsEnabled = false;
             installButton.IsEnabled = clearButton.IsEnabled = false;
             IsVisibleChanged += (_, _) => { if (IsVisible) { refresh(); } };
+            //A mod pack imported from the Mods tab replaces the designs underneath this tab.
+            ModPack.DesignsReplaced += () => Dispatcher.Invoke(() =>
+            {
+                _loaded = false;
+                _pending.Clear();
+                _pendingEnchantments.Clear();
+                _pendingMobs.Clear();
+                if (IsVisible) { refresh(); }
+            });
         }
 
         private void setStrings()

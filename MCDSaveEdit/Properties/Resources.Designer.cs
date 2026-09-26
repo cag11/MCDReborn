@@ -9489,5 +9489,59 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("ITEMS_MOB_EXPORTED", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to This pack brings {0} item(s), {1} enchantment(s) and {2} mob(s). They replace the ones you have now - yours are copied into a backup folder first..
+        /// </summary>
+        public static string MODS_PACK_REPLACE_DESIGNS {
+            get {
+                return ResourceManager.GetString("MODS_PACK_REPLACE_DESIGNS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Map slot {0} already holds {1}. Replace it with {2}?.
+        /// </summary>
+        public static string MODS_PACK_REPLACE_SLOT {
+            get {
+                return ResourceManager.GetString("MODS_PACK_REPLACE_SLOT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Importing the pack....
+        /// </summary>
+        public static string MODS_PACK_WORKING {
+            get {
+                return ResourceManager.GetString("MODS_PACK_WORKING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} item(s), {1} enchantment(s) and {2} mob(s) installed. Restart the game to see them..
+        /// </summary>
+        public static string MODS_PACK_DESIGNS {
+            get {
+                return ResourceManager.GetString("MODS_PACK_DESIGNS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your previous ones are in {0}..
+        /// </summary>
+        public static string MODS_PACK_BACKUP {
+            get {
+                return ResourceManager.GetString("MODS_PACK_BACKUP", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} mod(s), {1} item(s), {2} enchantment(s) and {3} mob(s) written to {4}..
+        /// </summary>
+        public static string MODS_PACK_EXPORTED {
+            get {
+                return ResourceManager.GetString("MODS_PACK_EXPORTED", resourceCulture);
+            }
+        }
     }
 }

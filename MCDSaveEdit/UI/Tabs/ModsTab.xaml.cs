@@ -195,12 +195,47 @@ namespace MCDSaveEdit.UI
             {
                 //The question about replacing is asked here rather than inside, because this is
                 //the half of the program with a window to ask it in.
-                var haul = ModArchive.install(dialog.FileName, name =>
+                bool replace(string name) =>
                     MessageBox.Show(R.formatCUSTOM_SKINS_PAK_REPLACE(name), R.MODS_TAB,
+                        MessageBoxButton.YesNo) == MessageBoxResult.Yes;
+
+                //A pack from Export All carries designs as well as paks; anything else is paks.
+                var pack = ModPack.read(dialog.FileName);
+                if (pack == null)
+                {
+                    var haul = ModArchive.install(dialog.FileName, replace);
+                    fillInstalled();
+                    MessageBox.Show(describe(haul), R.MODS_TAB);
+                    return;
+                }
+
+                if (pack.HasDesigns && ModPack.hasOwnDesigns()
+                    && MessageBox.Show(string.Format(R.MODS_PACK_REPLACE_DESIGNS, pack.Items, pack.Enchantments, pack.Mobs),
+                        R.MODS_TAB, MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                {
+                    return;
+                }
+
+                statusLabel.Text = R.MODS_PACK_WORKING;
+                var result = ModPack.install(dialog.FileName, pack, replace, (slot, there, coming) =>
+                    MessageBox.Show(string.Format(R.MODS_PACK_REPLACE_SLOT, slot, there, coming), R.MODS_TAB,
                         MessageBoxButton.YesNo) == MessageBoxResult.Yes);
 
                 fillInstalled();
-                MessageBox.Show(describe(haul), R.MODS_TAB);
+                var said = new List<string>();
+                if (result.DesignsTaken)
+                {
+                    said.Add(string.Format(R.MODS_PACK_DESIGNS, pack.Items, pack.Enchantments, pack.Mobs));
+                    if (result.Backup != null) { said.Add(string.Format(R.MODS_PACK_BACKUP, result.Backup)); }
+                }
+                if (result.Haul.Installed.Count + result.Haul.Replaced.Count + result.Haul.Skipped.Count
+                    + result.Haul.Rejected.Count > 0 || !result.DesignsTaken)
+                {
+                    said.Add(describe(result.Haul));
+                }
+                said.AddRange(result.Notes);
+                statusLabel.Text = string.Empty;
+                MessageBox.Show(string.Join(Environment.NewLine, said), R.MODS_TAB);
             }
             catch (Exception exception)
             {
@@ -240,7 +275,7 @@ namespace MCDSaveEdit.UI
             var dialog = new SaveFileDialog {
                 Filter = ModArchive.WRITE_FILTER,
                 Title = R.MODS_EXPORT_ZIP,
-                FileName = "MCDReborn mods.zip",
+                FileName = "MCDReborn mod pack.zip",
                 AddExtension = true,
                 DefaultExt = "zip",
             };
@@ -248,8 +283,9 @@ namespace MCDSaveEdit.UI
 
             try
             {
-                var many = ModArchive.writeAll(dialog.FileName);
-                MessageBox.Show(string.Format(R.MODS_ZIP_EXPORTED, many, dialog.FileName), R.MODS_TAB);
+                var pack = ModPack.export(dialog.FileName);
+                MessageBox.Show(string.Format(R.MODS_PACK_EXPORTED, pack.Paks,
+                    pack.Items, pack.Enchantments, pack.Mobs, dialog.FileName), R.MODS_TAB);
             }
             catch (Exception exception)
             {
@@ -502,7 +538,7 @@ namespace MCDSaveEdit.UI
             installedCountLabel.Text = mods.Count.ToString();
 
             //Nothing to pack is not an error worth a dialog, so the button says so by being off.
-            exportZipButton.IsEnabled = mods.Count > 0;
+            exportZipButton.IsEnabled = mods.Count > 0 || ModPack.hasOwnDesigns();
 
             if (mods.Count == 0)
             {
