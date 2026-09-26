@@ -120,6 +120,12 @@ namespace MCDSaveEdit.UI
             newArmorButton.Content = R.ITEMS_NEW_ARMOR;
             newArtifactButton.Content = R.ITEMS_NEW_ARTIFACT;
             pluginNote.Text = R.ITEMS_PLUGIN_KEEP;
+            skillsLabel.Content = R.ITEMS_SKILLS;
+            skillsHint.Text = R.ITEMS_SKILLS_HINT;
+            addSkillButton.Content = R.ITEMS_SKILL_ADD;
+            traitsResetButton.Content = R.ITEMS_TRAITS_RESET;
+            linesLabel.Content = R.ITEMS_LINES;
+            linesHint.Text = R.ITEMS_LINES_HINT;
         }
 
         // ------------------------------------------------------------------ loading
@@ -267,6 +273,7 @@ namespace MCDSaveEdit.UI
 
             fillSources();
             loadBehaviour();
+            showTraits();
             updatePreview();
             updateButtons();
         }
@@ -353,6 +360,7 @@ namespace MCDSaveEdit.UI
             //"swing 3 damage" to a weapon whose third swing is something else entirely.
             _working.Values.Clear();
             loadBehaviour();
+            showTraits();
             updatePreview();
             updateButtons();
         }
@@ -429,6 +437,119 @@ namespace MCDSaveEdit.UI
                 }
             }
             catch (Exception) { iconPreview.Source = null; }
+        }
+
+        // ------------------------------------------------------------------ skills and property lines
+
+        /// <summary>
+        /// A melee item's built-in skills and property lines, as the design will give them: its own
+        /// picks, else the copied weapon's (CustomItems.skillsOf / linesOf). The first change turns
+        /// the copied weapon's into the design's own, so a later change of source leaves them be.
+        /// </summary>
+        private void showTraits()
+        {
+            var melee = _slot?.Kind == CustomItems.Kind.Melee && _working != null;
+            traitsPanel.Visibility = melee ? Visibility.Visible : Visibility.Collapsed;
+            if (!melee) { return; }
+
+            var skills = CustomItems.skillsOf(_working!);
+            skillsList.Children.Clear();
+            if (skills.Count == 0)
+            {
+                skillsList.Children.Add(new TextBlock { Text = R.ITEMS_SKILLS_NONE, Foreground = Brushes.Gray, Margin = new Thickness(2, 0, 0, 0) });
+            }
+            for (var i = 0; i < skills.Count; i++)
+            {
+                var at = i;
+                var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3) };
+                row.Children.Add(new TextBlock { Text = skillName(skills[i].Skill), Width = 220, VerticalAlignment = VerticalAlignment.Center });
+                row.Children.Add(new TextBlock { Text = R.ITEMS_SKILL_LEVEL, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });
+                var level = new ComboBox { Width = 56, ItemsSource = new[] { 1, 2, 3 }, SelectedItem = Math.Clamp(skills[i].Level, 1, 3) };
+                level.SelectionChanged += (_, _) =>
+                {
+                    if (level.SelectedItem is not int chosen) { return; }
+                    ownSkills()[at].Level = chosen;
+                };
+                row.Children.Add(level);
+                var remove = new Button { Content = "✕", Padding = new Thickness(6, 0, 6, 0), Margin = new Thickness(8, 0, 0, 0), ToolTip = R.ITEMS_SKILL_REMOVE };
+                remove.Click += (_, _) =>
+                {
+                    ownSkills().RemoveAt(at);
+                    showTraits();
+                };
+                row.Children.Add(remove);
+                skillsList.Children.Add(row);
+            }
+
+            addSkillBox.ItemsSource = MeleeTraits.SKILLS
+                .Where(s => skills.All(k => k.Skill != s))
+                .Select(s => new ComboBoxItem { Content = skillName(s), Tag = s })
+                .OrderBy(i => (string)i.Content, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+
+            var lines = CustomItems.linesOf(_working!);
+            linesPanel.Children.Clear();
+            foreach (var key in MeleeTraits.LINES.Keys.OrderBy(lineName, StringComparer.CurrentCultureIgnoreCase))
+            {
+                var box = new CheckBox { Content = lineName(key), IsChecked = lines.Contains(key), Margin = new Thickness(0, 0, 14, 4), Tag = key };
+                box.Checked += line_Changed;
+                box.Unchecked += line_Changed;
+                linesPanel.Children.Add(box);
+            }
+        }
+
+        /// <summary>The design's own skills, made from the copied weapon's the first time one is changed.</summary>
+        private List<CustomItems.SkillPick> ownSkills()
+        {
+            _working!.Skills ??= CustomItems.skillsOf(_working);
+            return _working.Skills;
+        }
+
+        private void addSkillButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_working == null || addSkillBox.SelectedItem is not ComboBoxItem { Tag: string skill }) { return; }
+            ownSkills().Add(new CustomItems.SkillPick { Skill = skill, Level = 1 });
+            showTraits();
+        }
+
+        private void line_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_working == null || sender is not CheckBox { Tag: string key } box) { return; }
+            _working.Lines ??= CustomItems.linesOf(_working);
+            _working.Lines.Remove(key);
+            if (box.IsChecked == true) { _working.Lines.Add(key); }
+        }
+
+        private void traitsResetButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_working == null) { return; }
+            _working.Skills = null;
+            _working.Lines = null;
+            showTraits();
+        }
+
+        /// <summary>
+        /// An enchantment's name in the player's language. The game's melee variants carry a suffix
+        /// its text does not ("GravityMelee" is Gravity), so that is tried too.
+        /// </summary>
+        private static string skillName(string skill)
+        {
+            var name = R.enchantmentName(skill);
+            if (name != skill) { return name; }
+            if (skill.EndsWith("Melee", StringComparison.Ordinal))
+            {
+                var bare = skill.Substring(0, skill.Length - "Melee".Length);
+                var shorter = R.enchantmentName(bare);
+                if (shorter != bare) { return shorter; }
+            }
+            return skill;
+        }
+
+        /// <summary>A property line in the player's language: the game's own ItemType text, else its English.</summary>
+        private static string lineName(string key)
+        {
+            var name = R.itemName(key);
+            return name != key ? name : MeleeTraits.LINES[key];
         }
 
         // ------------------------------------------------------------------ behaviour

@@ -131,6 +131,22 @@
                         </Border>
                     </Grid>
 
+                    <!-- What it has built in: melee only, the one type read and tried. -->
+                    <StackPanel x:Name="traitsPanel" Visibility="Collapsed">
+                        <Label x:Name="skillsLabel" Content="*Skills*" Padding="0,12,0,2"/>
+                        <TextBlock x:Name="skillsHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="2,0,2,6"/>
+                        <StackPanel x:Name="skillsList" Margin="0,0,0,6"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <ComboBox x:Name="addSkillBox" Width="260" IsEditable="True" IsTextSearchEnabled="True"/>
+                            <Button x:Name="addSkillButton" Content="*Add*" Padding="8,2" Margin="6,0,0,0" Click="addSkillButton_Click"/>
+                            <Button x:Name="traitsResetButton" Content="*Use the copied weapon's*" Padding="8,2" Margin="12,0,0,0"
+                                    Click="traitsResetButton_Click"/>
+                        </StackPanel>
+                        <Label x:Name="linesLabel" Content="*Property lines*" Padding="0,10,0,2"/>
+                        <TextBlock x:Name="linesHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="2,0,2,6"/>
+                        <WrapPanel x:Name="linesPanel" Margin="0,0,0,4"/>
+                    </StackPanel>
+
                     <!-- What it does. -->
                     <Label x:Name="behaviourLabel" Content="*Behaviour*" Padding="0,12,0,2"/>
                     <TextBlock x:Name="behaviourHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap"

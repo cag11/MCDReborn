@@ -80,6 +80,7 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 * **Name it**: your own name and description, shown whatever language the game runs in
 * **Pick its icon**: keep the copied item's, use any other item's, or bring your own picture
 * **Give it your own 3D model**: custom weapons appear at the top of the **Weapons** tab marked ★. Import a `.glb` there and line it up
+* **Skills and properties**: give a melee weapon any skill another melee weapon has built in (Firebrand's burning, the Highland Axe's stun and 31 more), and pick its property lines
 * **Share it**: Export saves a custom item as one `.mcditem` file with its name, behaviour, icon and model inside; Import adds it as a new item on anyone's game
 
 #### Mob Import Feature

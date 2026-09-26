@@ -8967,5 +8967,86 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("WEAPON_SKINS_MODEL_GONE", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Skills.
+        /// </summary>
+        public static string ITEMS_SKILLS {
+            get {
+                return ResourceManager.GetString("ITEMS_SKILLS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Built-in enchantments, like Firebrand's burning. Each one adds its own line to the item's tooltip, and it works on top of any enchantments you put on the item..
+        /// </summary>
+        public static string ITEMS_SKILLS_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_SKILLS_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No skills.
+        /// </summary>
+        public static string ITEMS_SKILLS_NONE {
+            get {
+                return ResourceManager.GetString("ITEMS_SKILLS_NONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Level.
+        /// </summary>
+        public static string ITEMS_SKILL_LEVEL {
+            get {
+                return ResourceManager.GetString("ITEMS_SKILL_LEVEL", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Add.
+        /// </summary>
+        public static string ITEMS_SKILL_ADD {
+            get {
+                return ResourceManager.GetString("ITEMS_SKILL_ADD", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Remove this skill.
+        /// </summary>
+        public static string ITEMS_SKILL_REMOVE {
+            get {
+                return ResourceManager.GetString("ITEMS_SKILL_REMOVE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Use the copied weapon's.
+        /// </summary>
+        public static string ITEMS_TRAITS_RESET {
+            get {
+                return ResourceManager.GetString("ITEMS_TRAITS_RESET", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Property lines.
+        /// </summary>
+        public static string ITEMS_LINES {
+            get {
+                return ResourceManager.GetString("ITEMS_LINES", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The lines its tooltip shows under the name. They describe the moves; the moves themselves come from the weapon it copies..
+        /// </summary>
+        public static string ITEMS_LINES_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_LINES_HINT", resourceCulture);
+            }
+        }
     }
 }

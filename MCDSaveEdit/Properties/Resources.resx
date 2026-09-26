@@ -4058,4 +4058,40 @@ Delete it?</value>
     <value>A model is installed on this, but its file is gone, so the original is shown.</value>
     <comment>Weapons / Mob Import tab, when the kept copy of an installed model has been deleted</comment>
   </data>
+  <data name="ITEMS_SKILLS" xml:space="preserve">
+    <value>Skills</value>
+    <comment>Label above a melee item's built-in skills</comment>
+  </data>
+  <data name="ITEMS_SKILLS_HINT" xml:space="preserve">
+    <value>Built-in enchantments, like Firebrand's burning. Each one adds its own line to the item's tooltip, and it works on top of any enchantments you put on the item.</value>
+    <comment>Hint under the Skills label</comment>
+  </data>
+  <data name="ITEMS_SKILLS_NONE" xml:space="preserve">
+    <value>No skills</value>
+    <comment>Shown when a melee item has no built-in skills</comment>
+  </data>
+  <data name="ITEMS_SKILL_LEVEL" xml:space="preserve">
+    <value>Level</value>
+    <comment>Before the level of a built-in skill</comment>
+  </data>
+  <data name="ITEMS_SKILL_ADD" xml:space="preserve">
+    <value>Add</value>
+    <comment>Button that adds the chosen skill</comment>
+  </data>
+  <data name="ITEMS_SKILL_REMOVE" xml:space="preserve">
+    <value>Remove this skill</value>
+    <comment>Tooltip of the button that removes a skill</comment>
+  </data>
+  <data name="ITEMS_TRAITS_RESET" xml:space="preserve">
+    <value>Use the copied weapon's</value>
+    <comment>Button: back to the copied weapon's own skills and property lines</comment>
+  </data>
+  <data name="ITEMS_LINES" xml:space="preserve">
+    <value>Property lines</value>
+    <comment>Label above a melee item's property lines</comment>
+  </data>
+  <data name="ITEMS_LINES_HINT" xml:space="preserve">
+    <value>The lines its tooltip shows under the name. They describe the moves; the moves themselves come from the weapon it copies.</value>
+    <comment>Hint under the Property lines label</comment>
+  </data>
 </root>

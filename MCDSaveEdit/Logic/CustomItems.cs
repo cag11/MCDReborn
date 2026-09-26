@@ -133,6 +133,27 @@ namespace MCDSaveEdit.Logic
             catch (IOException) { }
         }
 
+        /// <summary>
+        /// The plugin's skills field: "5:1;9:1" (EEnchantmentTypeID, level), or "-" to keep the
+        /// copied weapon's. Only for melee, the one type whose skills have been read and tried.
+        /// </summary>
+        private static string skillsField(Design design)
+        {
+            if (design.PluginKind != Kind.Melee || design.Skills == null) { return "-"; }
+            return string.Join(";", design.Skills
+                .Where(s => MeleeTraits.ENCHANTMENT_IDS.ContainsKey(s.Skill))
+                .Select(s => $"{MeleeTraits.ENCHANTMENT_IDS[s.Skill]}:{Math.Clamp(s.Level, 1, 99)}"));
+        }
+
+        /// <summary>The plugin's lines field: "key=English|..." (the game's own ItemType keys), or "-".</summary>
+        private static string linesField(Design design)
+        {
+            if (design.PluginKind != Kind.Melee || design.Lines == null) { return "-"; }
+            return string.Join("|", design.Lines
+                .Where(MeleeTraits.LINES.ContainsKey)
+                .Select(k => k + "=" + MeleeTraits.LINES[k]));
+        }
+
         /// <summary>A custom item's slot. Its folder is beside its source's once that is chosen.</summary>
         public static Slot pluginSlot(string id, Kind kind, RegistryPatch.GameItem? source = null)
         {
@@ -190,7 +211,33 @@ namespace MCDSaveEdit.Logic
             /// kept in the app's folder, at that texture's size. Null keeps the copy's.
             /// </summary>
             public string? Texture { get; set; }
+            /// <summary>
+            /// A melee item's built-in skills (MeleeTraits.SKILLS), replacing the copied weapon's.
+            /// Null keeps the copied weapon's own; empty means none.
+            /// </summary>
+            public List<SkillPick>? Skills { get; set; }
+            /// <summary>A melee item's property lines, by ItemType key. Null keeps the copied weapon's.</summary>
+            public List<string>? Lines { get; set; }
         }
+
+        /// <summary>One built-in skill: an enchantment's name, as EEnchantmentTypeID spells it, and its level.</summary>
+        public sealed class SkillPick
+        {
+            public string Skill { get; set; } = "";
+            public int Level { get; set; } = 1;
+        }
+
+        /// <summary>The skills an item will have: its own when it gives them, else the copied weapon's.</summary>
+        public static List<SkillPick> skillsOf(Design design)
+            => design.Skills?.Select(s => new SkillPick { Skill = s.Skill, Level = s.Level }).ToList()
+                ?? (MeleeTraits.WEAPONS.TryGetValue(design.Source, out var own)
+                    ? own.skills.Select(s => new SkillPick { Skill = s.skill, Level = s.level }).ToList()
+                    : new List<SkillPick>());
+
+        /// <summary>The property lines an item will show: its own when it gives them, else the copied weapon's.</summary>
+        public static List<string> linesOf(Design design)
+            => design.Lines?.ToList()
+                ?? (MeleeTraits.WEAPONS.TryGetValue(design.Source, out var own) ? own.lines.ToList() : new List<string>());
 
         /// <summary>
         /// The Weapons tab's work on a custom item: an imported model and where the sliders put it,
@@ -384,6 +431,8 @@ namespace MCDSaveEdit.Logic
             Description = d.Description,
             PluginKind = d.PluginKind,
             Texture = d.Texture,
+            Skills = d.Skills?.Select(s => new SkillPick { Skill = s.Skill, Level = s.Level }).ToList(),
+            Lines = d.Lines?.ToList(),
             Model = d.Model == null ? null : new ModelEdit
             {
                 File = d.Model.File,
@@ -520,7 +569,8 @@ namespace MCDSaveEdit.Logic
                 var source = gameItem(design.Source) ?? throw new InvalidOperationException($"{design.Source} is not a game item.");
                 pluginItems.Add(new GamePlugin.Item(slot.Id, source.Id, slot.Folder,
                     string.IsNullOrWhiteSpace(design.Name) ? R.itemName(source.Id) : design.Name!,
-                    string.IsNullOrWhiteSpace(design.Description) ? R.itemDesc(source.Id) : design.Description!));
+                    string.IsNullOrWhiteSpace(design.Description) ? R.itemDesc(source.Id) : design.Description!,
+                    skillsField(design), linesField(design)));
             }
             if (pluginItems.Count > 0 && into == null && GamePlugin.gameFolder(paks) == null)
             {

@@ -10365,6 +10365,177 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_RECORDS[=<id>;<id>...] - the live item registry's records, read from outside the
+            //running game (ReadProcessMemory, never a debugger). The registry's address is the one
+            //the item plugin logged this run. For each melee weapon (or the ids named): the two
+            //lists that differ between a base weapon and its unique, at +0x1B8 and +0x1E8, element
+            //by element, with every dword that is a valid name index resolved. Read-only.
+            if (_startupArguments.Any(a => a == "PROBE_RECORDS" || a.StartsWith("PROBE_RECORDS=", StringComparison.Ordinal)))
+            {
+                var arg = _startupArguments.First(a => a.StartsWith("PROBE_RECORDS", StringComparison.Ordinal));
+                var wanted = arg.Contains('=') ? arg[(arg.IndexOf('=') + 1)..].Split(';', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.OrdinalIgnoreCase) : null;
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[rec] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    try
+                    {
+                        var names = new LiveEdit.NameTable(game);
+                        if (!names.find()) { Console.WriteLine("[rec] name table not found"); Shutdown(); return; }
+                        var log = Logic.GamePlugin.lastLog() ?? Array.Empty<string>();
+                        var line = log.LastOrDefault(l => l.Contains("registry at "));
+                        if (line == null) { Console.WriteLine("[rec] the plugin has not logged the registry this run"); Shutdown(); return; }
+                        var registry = new IntPtr(Convert.ToInt64(line.Substring(line.IndexOf("registry at ") + 12, 16), 16));
+                        long q(IntPtr at) => BitConverter.ToInt64(game.read(at, 8) ?? new byte[8], 0);
+                        int d(IntPtr at) => BitConverter.ToInt32(game.read(at, 4) ?? new byte[4], 0);
+                        var data = new IntPtr(q(registry + 0xA0));
+                        var count = d(registry + 0xA8);
+                        var melee = Logic.CustomItems.gameItems().Where(i => i.NativeParent == "MeleeWeaponGearItemInstance").Select(i => i.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                        Console.WriteLine($"[rec] registry {registry.ToInt64():x}, {count} records");
+                        string resolve(byte[] bytes)
+                        {
+                            var found = new List<string>();
+                            for (var i = 0; i + 4 <= bytes.Length; i += 4)
+                            {
+                                var index = BitConverter.ToInt32(bytes, i);
+                                if (index <= 0 || index > 4_000_000) { continue; }
+                                var n = names.nameOf(index);
+                                if (!string.IsNullOrEmpty(n) && n.Length < 80) { found.Add($"+{i:x}:{n}"); }
+                            }
+                            return string.Join(" ", found);
+                        }
+                        void list(IntPtr record, int at, string label, int stride)
+                        {
+                            var ptr = new IntPtr(q(record + at));
+                            var num = d(record + at + 8);
+                            if (ptr == IntPtr.Zero || num <= 0 || num > 64) { Console.WriteLine($"[rec]    {label}: empty"); return; }
+                            for (var i = 0; i < num; i++)
+                            {
+                                var el = game.read(ptr + i * stride, stride) ?? Array.Empty<byte>();
+                                Console.WriteLine($"[rec]    {label}[{i}] {BitConverter.ToString(el).Replace("-", " ").ToLowerInvariant()}");
+                                Console.WriteLine($"[rec]         names: {resolve(el)}");
+                            }
+                        }
+                        //EEnchantmentTypeID, read from the SDK dump's header, so ids print as names.
+                        var enums = new Dictionary<int, string>();
+                        var header = @"C:\Dumper-7\4.22.3-0+++UE4+Release-4.22-Dungeons\CppSDK\SDK\Dungeons_structs.hpp";
+                        if (System.IO.File.Exists(header))
+                        {
+                            var inEnum = false;
+                            foreach (var l in System.IO.File.ReadLines(header))
+                            {
+                                if (l.Contains("enum class EEnchantmentTypeID")) { inEnum = true; continue; }
+                                if (!inEnum) { continue; }
+                                if (l.StartsWith("};")) { break; }
+                                var m = System.Text.RegularExpressions.Regex.Match(l, @"^\s*(\w+)\s*=\s*(\d+)");
+                                if (m.Success) { enums[int.Parse(m.Groups[2].Value)] = m.Groups[1].Value; }
+                            }
+                        }
+                        //An FText's display string: ITextData* at +0, whose DisplayString (a shared FString) is at +8.
+                        string textOf(IntPtr text)
+                        {
+                            var data = new IntPtr(q(text));
+                            if (data == IntPtr.Zero) { return "(null)"; }
+                            var fstring = new IntPtr(q(data + 8));
+                            if (fstring == IntPtr.Zero) { return "(no string)"; }
+                            var chars = new IntPtr(q(fstring));
+                            var n = d(fstring + 8);
+                            if (chars == IntPtr.Zero || n <= 0 || n > 400) { return $"(string {n})"; }
+                            var bytes = game.read(chars, (n - 1) * 2) ?? Array.Empty<byte>();
+                            return System.Text.Encoding.Unicode.GetString(bytes);
+                        }
+                        for (var i = 0; i < count; i++)
+                        {
+                            var record = new IntPtr(q(data + i * 8));
+                            if (record == IntPtr.Zero) { continue; }
+                            var id = names.nameOf(d(record)) ?? "?";
+                            if (wanted != null ? !wanted.Contains(id) : !melee.Contains(id)) { continue; }
+                            Console.WriteLine($"[rec] === {id} at {record.ToInt64():x}");
+                            var bptr = new IntPtr(q(record + 0x1B8));
+                            var bnum = d(record + 0x1C0);
+                            for (var b = 0; bptr != IntPtr.Zero && b < bnum && b < 16; b++)
+                            {
+                                var el = game.read(bptr + b * 0x14, 0x14) ?? new byte[0x14];
+                                Console.WriteLine($"[rec]    built-in {(enums.TryGetValue(el[0], out var en) ? en : el[0].ToString())} level {BitConverter.ToInt32(el, 4)} category {el[8]} source {el[9]} invested {BitConverter.ToInt32(el, 12)} tail {el[16]:x2} {el[17]:x2} {el[18]:x2} {el[19]:x2}");
+                            }
+                            var tptr = new IntPtr(q(record + 0x70));
+                            var tnum = d(record + 0x78);
+                            Console.WriteLine($"[rec]    +0x70 list: {tnum} (max {d(record + 0x7C)}), +0x18 name \"{textOf(record + 0x18)}\", +0x58 flavour \"{textOf(record + 0x58)}\"");
+                            for (var t = 0; tptr != IntPtr.Zero && t < tnum && t < 16; t++)
+                            {
+                                Console.WriteLine($"[rec]    line \"{textOf(tptr + t * 0x30)}\" bytes {BitConverter.ToString(game.read(tptr + t * 0x30, 0x30) ?? Array.Empty<byte>()).Replace("-", " ").ToLowerInvariant()}");
+                            }
+                        }
+                    }
+                    catch (Exception e) { Console.WriteLine($"[rec] FAILED {e}"); }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_ITEMJSON=<id>;<id>... - each item's Instance blueprint as PakReader parses it, whole,
+            //into %TEMP%\MCDRebornItemJson\<id>.json. Read-only; for seeing everything an item's
+            //blueprint says about it, not only its numbers.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_ITEMJSON=", StringComparison.Ordinal)))
+            {
+                var ids = _startupArguments.First(a => a.StartsWith("PROBE_ITEMJSON=", StringComparison.Ordinal))["PROBE_ITEMJSON=".Length..].Trim('"').Split(';', StringSplitOptions.RemoveEmptyEntries);
+                var into = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "MCDRebornItemJson");
+                System.IO.Directory.CreateDirectory(into);
+                foreach (var id in ids)
+                {
+                    try
+                    {
+                        var item = Logic.CustomItems.gameItem(id);
+                        if (item == null) { Console.WriteLine($"[json] {id}: not a game item"); continue; }
+                        foreach (var part in new[] { item.Instance, item.Instance.Replace("Instance", "Storable"), item.Instance.Replace("Instance", "") })
+                        {
+                            var path = "/Dungeons/Content/" + item.Folder["/Game/".Length..] + "/" + part;
+                            var package = Logic.CustomSkins.index!.extractPackage(path);
+                            if (package == null) { Console.WriteLine($"[json] {id} {part}: unreadable"); continue; }
+                            var file = System.IO.Path.Combine(into, part + ".json");
+                            System.IO.File.WriteAllText(file, package.Value.JsonData);
+                            Console.WriteLine($"[json] {id} {part}: {new System.IO.FileInfo(file).Length} bytes -> {file}");
+                        }
+                    }
+                    catch (Exception e) { Console.WriteLine($"[json] {id} FAILED {e.Message}"); }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_LOCFIND=<regex>[;<namespace regex>] - every English Game.locres entry whose text
+            //(or key) matches, with its namespace and key. Read-only; for finding what the game calls
+            //something and where its text lives.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_LOCFIND=", StringComparison.Ordinal)))
+            {
+                var parts = _startupArguments.First(a => a.StartsWith("PROBE_LOCFIND=", StringComparison.Ordinal))["PROBE_LOCFIND=".Length..].Trim('"').Split(';');
+                var text = new System.Text.RegularExpressions.Regex(parts[0], System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                var space = parts.Length > 1 ? new System.Text.RegularExpressions.Regex(parts[1], System.Text.RegularExpressions.RegexOptions.IgnoreCase) : null;
+                try
+                {
+                    var index = Logic.CustomSkins.index!;
+                    var english = index.First(p => p.EndsWith("/Localization/Game/en/Game", StringComparison.OrdinalIgnoreCase));
+                    if (english.StartsWith("//", StringComparison.Ordinal)) { english = english.Substring(1); }
+                    var table = Logic.Locres.read(index.GetFile(english)!.Value.ToArray())!;
+                    var shown = 0;
+                    foreach (var ns in table.Namespaces)
+                    {
+                        if (space != null && !space.IsMatch(ns.Name)) { continue; }
+                        foreach (var entry in ns.Entries)
+                        {
+                            var value = table.get(ns.Name, entry.Key) ?? "";
+                            if (!text.IsMatch(value) && !text.IsMatch(entry.Key)) { continue; }
+                            Console.WriteLine($"[loc] {ns.Name} | {entry.Key} | {value.Replace("\n", " / ")}");
+                            if (++shown >= 400) { break; }
+                        }
+                    }
+                    Console.WriteLine($"[loc] {shown} shown");
+                }
+                catch (Exception e) { Console.WriteLine($"[loc] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
             //PROBE_INSTALLEDLOOK - what the Weapons tab opens a mesh with: each custom item's installed
             //look (model, placement, texture) from its design, and the stock-mesh memory
             //(MeshInstalls) remembered, recalled, and forgotten once its pak is gone. Writes only a
