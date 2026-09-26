@@ -108,8 +108,7 @@ namespace MCDSaveEdit.UI
             }
             catch (Exception problem)
             {
-                MessageBox.Show(problem.Message, R.ERROR, MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
+                Notices.error(problem.Message);
             }
 
             fillList();

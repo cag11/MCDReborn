@@ -21,6 +21,7 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * Five themes in the **View** menu (Dark, Light, Nether, End and Frost), swapped live and remembered between runs
 * A Windows 11 look in every theme: rounded controls, the Segoe UI Variable font, filled checkboxes, thin scrollbars and shadowed menus
 * A side menu with the pages grouped into **Save file**, **Create** and **Live game**, Mods at the bottom; on a narrow window it folds to icons and **☰** opens it over the page
+* A status bar showing the open save, whether the game is running, and what the item plugin holds; results and errors appear as notices in the corner instead of pop-ups
 * Item search across the whole inventory, filtering as you type, without covering the UI
 * A search box on every picker (items, armor, melee, ranged, artifacts, armor properties and enchantments), narrowing within whatever the filters already allow
 * A **Defaults** button fills in the properties an armor drops with in game; changing an armor's type no longer replaces them by itself

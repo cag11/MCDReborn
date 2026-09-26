@@ -36,6 +36,7 @@
     <SolidColorBrush x:Key="Brush.Positive"      Color="#FF5FBF4A"/>
     <SolidColorBrush x:Key="Brush.PositiveBright" Color="#FF74D65E"/>
     <SolidColorBrush x:Key="Brush.Danger"        Color="#FFD1495B"/>
+    <SolidColorBrush x:Key="Brush.Warning"       Color="#FFE8A33D"/>
 
     <!-- Scrollbars and other quiet chrome -->
     <SolidColorBrush x:Key="Brush.Thumb"         Color="#FF553E4C"/>

@@ -9570,5 +9570,86 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("NAV_LIVE", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Show in folder.
+        /// </summary>
+        public static string NOTICE_SHOW_FILE {
+            get {
+                return ResourceManager.GetString("NOTICE_SHOW_FILE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Close.
+        /// </summary>
+        public static string NOTICE_CLOSE {
+            get {
+                return ResourceManager.GetString("NOTICE_CLOSE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Copy.
+        /// </summary>
+        public static string NOTICE_COPY {
+            get {
+                return ResourceManager.GetString("NOTICE_COPY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No save open.
+        /// </summary>
+        public static string STATUS_NO_SAVE {
+            get {
+                return ResourceManager.GetString("STATUS_NO_SAVE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Game closed.
+        /// </summary>
+        public static string STATUS_GAME_CLOSED {
+            get {
+                return ResourceManager.GetString("STATUS_GAME_CLOSED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Game running - installs wait until it closes.
+        /// </summary>
+        public static string STATUS_GAME_RUNNING {
+            get {
+                return ResourceManager.GetString("STATUS_GAME_RUNNING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The game holds its files while it runs, so installing items, maps, skins and mods waits until it is closed. Camera and Difficulty work on the running game..
+        /// </summary>
+        public static string STATUS_GAME_WHY {
+            get {
+                return ResourceManager.GetString("STATUS_GAME_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Plugin: {0} item(s), {1} enchantment(s), {2} mob(s).
+        /// </summary>
+        public static string STATUS_PLUGIN {
+            get {
+                return ResourceManager.GetString("STATUS_PLUGIN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Plugin not installed.
+        /// </summary>
+        public static string STATUS_PLUGIN_NONE {
+            get {
+                return ResourceManager.GetString("STATUS_PLUGIN_NONE", resourceCulture);
+            }
+        }
     }
 }

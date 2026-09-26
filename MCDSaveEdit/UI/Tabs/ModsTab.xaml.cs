@@ -102,7 +102,7 @@ namespace MCDSaveEdit.UI
             if (!Logic.GameRunning.isUp) { return false; }
 
             statusLabel.Text = R.MODS_GAME_RUNNING;
-            MessageBox.Show(R.MODS_GAME_RUNNING, R.MODS_TAB);
+            Notices.warn(R.MODS_GAME_RUNNING);
             return true;
         }
 
@@ -157,19 +157,19 @@ namespace MCDSaveEdit.UI
                         R.formatCUSTOM_SKINS_PAK_REPLACE(name), R.MODS_TAB, MessageBoxButton.YesNo);
                     if (answer != MessageBoxResult.Yes) { continue; }
                     try { added.Add(CustomSkins.installPak(file, overwrite: true).Name); }
-                    catch (Exception retry) { MessageBox.Show(retry.Message, R.ERROR); }
+                    catch (Exception retry) { Notices.error(retry.Message); }
                 }
                 catch (Exception exception)
                 {
                     //Not a pak, the game holding the folder open, or an install needing elevation.
-                    MessageBox.Show(exception.Message, R.ERROR);
+                    Notices.error(exception.Message);
                 }
             }
 
             fillInstalled();
             if (added.Count > 0)
             {
-                MessageBox.Show(R.formatCUSTOM_SKINS_PAK_ADDED(string.Join(", ", added)), R.MODS_TAB);
+                Notices.done(R.formatCUSTOM_SKINS_PAK_ADDED(string.Join(", ", added)));
             }
         }
 
@@ -205,7 +205,7 @@ namespace MCDSaveEdit.UI
                 {
                     var haul = ModArchive.install(dialog.FileName, replace);
                     fillInstalled();
-                    MessageBox.Show(describe(haul), R.MODS_TAB);
+                    Notices.show(haul.Rejected.Count > 0 || haul.Skipped.Count > 0 ? Notices.Kind.Warning : Notices.Kind.Done, describe(haul));
                     return;
                 }
 
@@ -235,12 +235,12 @@ namespace MCDSaveEdit.UI
                 }
                 said.AddRange(result.Notes);
                 statusLabel.Text = string.Empty;
-                MessageBox.Show(string.Join(Environment.NewLine, said), R.MODS_TAB);
+                Notices.done(string.Join(Environment.NewLine, said));
             }
             catch (Exception exception)
             {
                 //Not an archive, an archive this cannot read, or the game holding the folder open.
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
             }
         }
 
@@ -284,12 +284,12 @@ namespace MCDSaveEdit.UI
             try
             {
                 var pack = ModPack.export(dialog.FileName);
-                MessageBox.Show(string.Format(R.MODS_PACK_EXPORTED, pack.Paks,
-                    pack.Items, pack.Enchantments, pack.Mobs, dialog.FileName), R.MODS_TAB);
+                Notices.doneWithFile(string.Format(R.MODS_PACK_EXPORTED, pack.Paks,
+                    pack.Items, pack.Enchantments, pack.Mobs, dialog.FileName), dialog.FileName);
             }
             catch (Exception exception)
             {
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
             }
         }
 
@@ -486,12 +486,12 @@ namespace MCDSaveEdit.UI
                 var folder = CustomSkins.ensureModsFolder();
                 if (!LinkLauncher.open(folder))
                 {
-                    MessageBox.Show(folder, R.MODS_OPEN_FOLDER);
+                    Notices.info(folder);
                 }
             }
             catch (Exception exception)
             {
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
             }
         }
 
@@ -615,7 +615,7 @@ namespace MCDSaveEdit.UI
             }
             catch (Exception exception)
             {
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
             }
         }
 

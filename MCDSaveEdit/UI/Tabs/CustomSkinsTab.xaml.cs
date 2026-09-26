@@ -292,11 +292,11 @@ namespace MCDSaveEdit.UI
                 {
                     CustomSkins.exportTexture(_selectedTexture!, dialog.FileName);
                 }
-                MessageBox.Show(R.formatCUSTOM_SKINS_EXPORTED(dialog.FileName), R.CUSTOM_SKINS_TAB);
+                Notices.doneWithFile(R.formatCUSTOM_SKINS_EXPORTED(dialog.FileName), dialog.FileName);
             }
             catch (Exception exception)
             {
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
             }
         }
 
@@ -323,12 +323,12 @@ namespace MCDSaveEdit.UI
                     //A link this long can defeat a badly registered browser. Handing it over on
                     //the clipboard beats a dead button with no explanation.
                     Clipboard.SetText(url);
-                    MessageBox.Show(R.CUSTOM_SKINS_LINK_COPIED, R.CUSTOM_SKINS_TAB);
+                    Notices.done(R.CUSTOM_SKINS_LINK_COPIED);
                 }
             }
             catch (Exception exception)
             {
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
             }
         }
 
@@ -340,7 +340,7 @@ namespace MCDSaveEdit.UI
 
             if (!Clipboard.ContainsText())
             {
-                MessageBox.Show(R.CUSTOM_SKINS_NOTHING_COPIED, R.CUSTOM_SKINS_TAB);
+                Notices.warn(R.CUSTOM_SKINS_NOTHING_COPIED);
                 return;
             }
 
@@ -353,7 +353,7 @@ namespace MCDSaveEdit.UI
             {
                 //Anything at all could be on the clipboard; that is not an error worth a stack
                 //trace, just the wrong thing copied.
-                MessageBox.Show(R.CUSTOM_SKINS_NOTHING_COPIED, R.CUSTOM_SKINS_TAB);
+                Notices.warn(R.CUSTOM_SKINS_NOTHING_COPIED);
                 return;
             }
 
@@ -375,7 +375,7 @@ namespace MCDSaveEdit.UI
             {
                 BitmapSource picture;
                 try { picture = CustomSkins.imageFromPng(System.IO.File.ReadAllBytes(dialog.FileName)); }
-                catch (Exception exception) { MessageBox.Show(exception.Message, R.ERROR); return; }
+                catch (Exception exception) { Notices.error(exception.Message); return; }
                 install(picture);
                 return;
             }
@@ -386,7 +386,7 @@ namespace MCDSaveEdit.UI
             }
             catch (Exception exception)
             {
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
             }
         }
 
@@ -397,7 +397,7 @@ namespace MCDSaveEdit.UI
                 if (_selectedCustom)
                 {
                     //Rebuilds the items pak, which the running game holds open.
-                    if (GameRunning.isUp) { MessageBox.Show(R.MODS_GAME_RUNNING, R.CUSTOM_SKINS_TAB); return; }
+                    if (GameRunning.isUp) { Notices.warn(R.MODS_GAME_RUNNING); return; }
                     install(CustomItems.setTexture(_selectedItem!, image));
                     return;
                 }
@@ -407,14 +407,14 @@ namespace MCDSaveEdit.UI
             {
                 //Writing into the game's folder can fail for reasons worth reading: the game is
                 //running, or the install needs elevation.
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
             }
         }
 
         private void unrecolourButton_Click(object sender, RoutedEventArgs e)
         {
             if (!_selectedCustom || _selectedItem == null) { return; }
-            if (GameRunning.isUp) { MessageBox.Show(R.MODS_GAME_RUNNING, R.CUSTOM_SKINS_TAB); return; }
+            if (GameRunning.isUp) { Notices.warn(R.MODS_GAME_RUNNING); return; }
             try
             {
                 CustomItems.setTexture(_selectedItem, null);
@@ -422,7 +422,7 @@ namespace MCDSaveEdit.UI
             }
             catch (Exception exception)
             {
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
             }
         }
 
@@ -431,7 +431,7 @@ namespace MCDSaveEdit.UI
             //The list of what is installed lives on its own tab now and refills when it is opened,
             //so there is nothing here to keep in step with.
             updateSelection();
-            MessageBox.Show(R.formatCUSTOM_SKINS_APPLIED(mod.Name), R.CUSTOM_SKINS_TAB);
+            Notices.done(R.formatCUSTOM_SKINS_APPLIED(mod.Name));
         }
 
         #endregion
@@ -471,7 +471,7 @@ namespace MCDSaveEdit.UI
             {
                 //Writing into the game's folder can fail: the game is running, or it needs
                 //elevation. Put the box back rather than leave it lying about the state.
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
                 refreshArmourBox();
             }
         }

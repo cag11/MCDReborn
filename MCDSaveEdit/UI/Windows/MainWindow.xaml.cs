@@ -35,6 +35,7 @@ namespace MCDSaveEdit.UI
             InitializeComponent();
             translateStaticStrings();
             Theme.Nav.attach(mainTabControl);
+            Notices.showIn(noticeHost);
 
             _model.showError = showError;
             gameFilesLocationMenuItem.Header = ImageResolver.instance.path ?? R.GAME_FILES_WINDOW_NO_CONTENT_BUTTON;
@@ -47,6 +48,10 @@ namespace MCDSaveEdit.UI
             {
                 gameFilesVersionMenuItem.Header = R.formatMCD_VERSION(detectedGameVersion);
             }
+            //A key with no version label reads "MCD " in the menu; the status bar names the game.
+            appStatus.setGame(ImageResolver.instance.path == null ? R.GAME_FILES_WINDOW_NO_CONTENT_BUTTON
+                : string.IsNullOrWhiteSpace(detectedGameVersion) ? "Minecraft Dungeons"
+                : R.formatMCD_VERSION(detectedGameVersion), ImageResolver.instance.path);
 
             buildThemeMenu();
             refreshThemeMenu(Theme.ThemeManager.current);
@@ -97,11 +102,13 @@ namespace MCDSaveEdit.UI
             if (_model.profileModel.filePath != null)
             {
                 Title = string.Format("{0} - {1}", R.APPLICATION_TITLE, Path.GetFileName(_model.profileModel.filePath));
+                appStatus.setSave(_model.profileModel.filePath);
                 saveMenuItem.IsEnabled = saveAsMenuItem.IsEnabled = true;
             }
             else
             {
                 Title = R.APPLICATION_TITLE;
+                appStatus.setSave(null);
                 saveMenuItem.IsEnabled = saveAsMenuItem.IsEnabled = false;
             }
         }
@@ -559,8 +566,8 @@ namespace MCDSaveEdit.UI
         private void showError(string message)
         {
             EventLogger.logEvent("showError", new Dictionary<string, object>() { { "message", message } });
-            MessageBox.Show(message, R.ERROR);
             closeBusyIndicator();
+            Notices.error(message);
         }
 
 #endregion

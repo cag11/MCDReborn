@@ -12242,6 +12242,28 @@ namespace MCDSaveEdit
                 this.MainWindow.UpdateLayout();
                 UI.Theme.WindowCapture.applySearch(this.MainWindow, _startupArguments, "itemSearchBox");
                 var toggledPath = UI.Theme.WindowCapture.toggledPathFromArguments(_startupArguments);
+                //SCREENSHOT_NOTICE=<Done|Info|Warning|Error>|<text>, any number of them: shot
+                //once they have finished coming in.
+                var notices = _startupArguments.Where(a => a.StartsWith("SCREENSHOT_NOTICE=")).ToList();
+                if (notices.Count > 0)
+                {
+                    foreach (var one in notices)
+                    {
+                        var bits = one.Substring("SCREENSHOT_NOTICE=".Length).Split('|', 2);
+                        if (bits.Length == 2 && Enum.TryParse<UI.Notices.Kind>(bits[0], out var kind))
+                        {
+                            UI.Notices.show(kind, bits[1], kind == UI.Notices.Kind.Done ? "Show in folder" : null, kind == UI.Notices.Kind.Done ? () => { } : null);
+                        }
+                    }
+                    var settle = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(900) };
+                    settle.Tick += (_, _) =>
+                    {
+                        settle.Stop();
+                        UI.Theme.WindowCapture.captureThenExit(this.MainWindow, screenshotPath!, toggledPath);
+                    };
+                    settle.Start();
+                    return;
+                }
                 UI.Theme.WindowCapture.captureThenExit(this.MainWindow, screenshotPath!, toggledPath);
             }
         }

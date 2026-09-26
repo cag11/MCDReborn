@@ -572,7 +572,7 @@ namespace MCDSaveEdit.UI
             {
                 if (_item == null)
                 {
-                    MessageBox.Show(R.ITEM_WAS_DELETED_ERROR_MESSAGE, R.ERROR);
+                    Notices.warn(R.ITEM_WAS_DELETED_ERROR_MESSAGE);
                     return;
                 }
                 else

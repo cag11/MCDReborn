@@ -57,12 +57,16 @@
             <MenuItem x:Name="updateMenuItem" Header="_Get New Version" Visibility="Collapsed" Click="updateMenuItem_Click"/>
         </Menu>
 
+        <!-- Which save, whether the game is running, what the plugin holds, which game. -->
+        <local:AppStatus x:Name="appStatus" DockPanel.Dock="Bottom"/>
+
+        <Grid>
         <!--
             The pages, as a side menu (Controls.xaml's NavTabControl, Nav.cs): what edits the
             save, what makes things for the game, what changes the game while it runs, and the
             mods at the foot. The group headings are set with the names, in translateStaticStrings.
         -->
-        <TabControl x:Name="mainTabControl" DockPanel.Dock="Bottom" Style="{StaticResource NavTabControl}">
+        <TabControl x:Name="mainTabControl" Style="{StaticResource NavTabControl}">
             <!-- Save file -->
             <TabItem x:Name="inventoryTabItem" theme:Nav.Icon="&#xE80A;" Header="*Inventory*" Selector.Selected="OnTabSelected">
                 <local:InventoryTab x:Name="inventoryTab"/>
@@ -119,6 +123,10 @@
             </TabItem>
 
         </TabControl>
+
+        <!-- Notices, over the page's lower right corner. -->
+        <local:NoticeHost x:Name="noticeHost" Panel.ZIndex="5"/>
+        </Grid>
 
     </DockPanel>
 </Window>

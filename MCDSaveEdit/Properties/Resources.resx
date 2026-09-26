@@ -4332,4 +4332,40 @@ Import it?</value>
     <value>Live game</value>
     <comment>Side menu group: pages that change the running game</comment>
   </data>
+  <data name="NOTICE_SHOW_FILE" xml:space="preserve">
+    <value>Show in folder</value>
+    <comment>Button on a notice about a file just written</comment>
+  </data>
+  <data name="NOTICE_CLOSE" xml:space="preserve">
+    <value>Close</value>
+    <comment>Tooltip of a notice's close button</comment>
+  </data>
+  <data name="NOTICE_COPY" xml:space="preserve">
+    <value>Copy</value>
+    <comment>Button on an error notice that copies its text</comment>
+  </data>
+  <data name="STATUS_NO_SAVE" xml:space="preserve">
+    <value>No save open</value>
+    <comment>Status bar, when no save file is open</comment>
+  </data>
+  <data name="STATUS_GAME_CLOSED" xml:space="preserve">
+    <value>Game closed</value>
+    <comment>Status bar</comment>
+  </data>
+  <data name="STATUS_GAME_RUNNING" xml:space="preserve">
+    <value>Game running - installs wait until it closes</value>
+    <comment>Status bar</comment>
+  </data>
+  <data name="STATUS_GAME_WHY" xml:space="preserve">
+    <value>The game holds its files while it runs, so installing items, maps, skins and mods waits until it is closed. Camera and Difficulty work on the running game.</value>
+    <comment>Tooltip on the game state in the status bar</comment>
+  </data>
+  <data name="STATUS_PLUGIN" xml:space="preserve">
+    <value>Plugin: {0} item(s), {1} enchantment(s), {2} mob(s)</value>
+    <comment>Status bar: what the item plugin will register</comment>
+  </data>
+  <data name="STATUS_PLUGIN_NONE" xml:space="preserve">
+    <value>Plugin not installed</value>
+    <comment>Status bar</comment>
+  </data>
 </root>
