@@ -31,7 +31,8 @@ namespace MCDSaveEdit.UI
     /// one fixed type and frame, and having two kinds of custom item confused more than it helped.
     ///
     /// New enchantments (CustomEnchantments) are listed here too, after the items, with an editor
-    /// of their own: they need no pak, only the plugin's list.
+    /// of their own: they need no pak, only the plugin's list. And new mobs (CustomMobs), after
+    /// the enchantments, likewise.
     /// </summary>
     public partial class CustomItemsTab : UserControl
     {
@@ -51,6 +52,14 @@ namespace MCDSaveEdit.UI
         private readonly List<CustomEnchantments.Design> _pendingEnchantments = new();
         /// <summary>The enchantment being edited, when one is chosen rather than an item.</summary>
         private CustomEnchantments.Design? _enchantment;
+
+        /// <summary>The mobs as installed, the new ones not installed yet, and the one being edited.</summary>
+        private List<CustomMobs.Design> _mobs = new();
+        private readonly List<CustomMobs.Design> _pendingMobs = new();
+        private CustomMobs.Design? _mob;
+
+        /// <summary>What a mob's row in the list carries, so it is told from an enchantment's.</summary>
+        public sealed record MobTag(string Id);
 
         /// <summary>The settings shown without "Show every value", with what the grid calls them.</summary>
         private static readonly Dictionary<string, Func<string>> SETTINGS = new()
@@ -155,6 +164,11 @@ namespace MCDSaveEdit.UI
             enchantmentCopyLabel.Content = R.ITEMS_COPY_FROM;
             enchantmentCopyHint.Text = R.ITEMS_ENCH_COPY_HINT;
             enchantmentSearchHint.Text = R.ITEMS_SEARCH;
+            newMobButton.Content = R.ITEMS_NEW_MOB;
+            mobNameLabel.Text = R.ITEMS_NAME;
+            mobTextHint.Text = R.ITEMS_MOB_TEXT_HINT;
+            mobCopyLabel.Content = R.ITEMS_COPY_FROM;
+            mobSearchHint.Text = R.ITEMS_SEARCH;
             enchantmentNumbersLabel.Content = R.ITEMS_ENCH_NUMBERS;
             enchantmentNumbersHint.Text = R.ITEMS_ENCH_NUMBERS_HINT;
             enchantmentNumbersReset.Content = R.ITEMS_ENCH_NUMBERS_RESET;
@@ -186,6 +200,7 @@ namespace MCDSaveEdit.UI
             await Task.Run(() => CustomItems.gameItems());
             _designs = CustomItems.load();
             _enchantments = CustomEnchantments.load();
+            _mobs = CustomMobs.load();
             statusLabel.Text = string.Empty;
             fillSlots();
             showPluginStatus();
@@ -213,7 +228,7 @@ namespace MCDSaveEdit.UI
                 var text = last.Length > 14 && last[2] == ':' ? last.Substring(14).Trim() : last;
                 pluginStatus.Text = string.Format(R.ITEMS_PLUGIN_LAST, text);
             }
-            else if (_designs.Any(d => CustomItems.isPluginId(d.Slot)) || _enchantments.Count > 0)
+            else if (_designs.Any(d => CustomItems.isPluginId(d.Slot)) || _enchantments.Count > 0 || _mobs.Count > 0)
             {
                 pluginStatus.Text = R.ITEMS_PLUGIN_NEVER;
             }
@@ -242,7 +257,7 @@ namespace MCDSaveEdit.UI
 
         private void fillSlots()
         {
-            var keep = _slot?.Id ?? _enchantment?.Id;
+            var keep = _slot?.Id ?? _enchantment?.Id ?? _mob?.Id;
             slotList.Items.Clear();
             foreach (var slot in allSlots())
             {
@@ -274,6 +289,26 @@ namespace MCDSaveEdit.UI
                 slotList.Items.Add(item);
                 if (design.Id == keep) { item.IsSelected = true; }
             }
+            //The mobs: installed, then new.
+            foreach (var design in _mobs.Concat(_pendingMobs.Where(p => _mobs.All(d => d.Id != p.Id))))
+            {
+                var saved = _mobs.Any(d => d.Id == design.Id);
+                var state = saved ? string.Format(R.ITEMS_SLOT_FILLED, CustomMobs.readable(design.Source)) : R.ITEMS_NEW_UNSAVED;
+                var text = new StackPanel { Margin = new Thickness(0, 3, 0, 3) };
+                text.Children.Add(new TextBlock { Text = mobDisplayName(design.Id), FontWeight = FontWeights.SemiBold });
+                text.Children.Add(new TextBlock { Text = $"{R.ITEMS_KIND_MOB} · {state}", FontSize = 11, Foreground = Brushes.Gray });
+                var item = new ListBoxItem { Content = text, Tag = new MobTag(design.Id) };
+                slotList.Items.Add(item);
+                if (design.Id == keep) { item.IsSelected = true; }
+            }
+        }
+
+        /// <summary>What a mob is called here: its name, else its source's, else - new - just that.</summary>
+        private string mobDisplayName(string id)
+        {
+            var design = _mobs.FirstOrDefault(d => d.Id == id) ?? _pendingMobs.FirstOrDefault(d => d.Id == id);
+            if (design == null || string.IsNullOrEmpty(design.Source)) { return string.IsNullOrWhiteSpace(design?.Name) ? R.ITEMS_MOB_NEW_TITLE : design!.Name!; }
+            return CustomMobs.nameOf(design);
         }
 
         /// <summary>What an enchantment is called here: its name, else its source's, else - new - just that.</summary>
@@ -297,13 +332,16 @@ namespace MCDSaveEdit.UI
 
         private void slotList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (slotList.SelectedItem is ListBoxItem { Tag: MobTag mobTag }) { showMob(mobTag.Id); return; }
             if (slotList.SelectedItem is ListBoxItem { Tag: string enchantmentId }) { showEnchantment(enchantmentId); return; }
             if (slotList.SelectedItem is not ListBoxItem { Tag: CustomItems.Slot slot }) { return; }
             if (_slot?.Id == slot.Id && _working != null) { return; }
             _slot = slot;
             _enchantment = null;
+            _mob = null;
             editor.Visibility = Visibility.Visible;
             enchantmentEditor.Visibility = Visibility.Collapsed;
+            mobEditor.Visibility = Visibility.Collapsed;
             clearButton.Content = R.ITEMS_DELETE;
 
             var saved = _designs.FirstOrDefault(d => d.Slot == slot.Id);
@@ -403,8 +441,10 @@ namespace MCDSaveEdit.UI
             _working = null;
             var saved = _enchantments.FirstOrDefault(d => d.Id == id) ?? _pendingEnchantments.FirstOrDefault(d => d.Id == id);
             _enchantment = saved == null ? new CustomEnchantments.Design { Id = id } : CustomEnchantments.copy(saved);
+            _mob = null;
 
             editor.Visibility = Visibility.Collapsed;
+            mobEditor.Visibility = Visibility.Collapsed;
             enchantmentEditor.Visibility = Visibility.Visible;
             clearButton.Content = R.ITEMS_ENCH_DELETE;
             enchantmentTitle.Text = enchantmentDisplayName(id);
@@ -963,12 +1003,14 @@ namespace MCDSaveEdit.UI
             for (var i = 0; i < original.Count; i++)
             {
                 var at = i;
+                var choices = summonable();
+                var chosen = i < current.Count ? current[i] : original[i];
                 var picker = new ComboBox { Width = 260, IsEditable = true, IsTextSearchEnabled = true, Margin = new Thickness(0, 0, 0, 3),
-                    ItemsSource = GearTraits.ENTITY_TYPES, SelectedItem = i < current.Count ? current[i] : original[i],
+                    ItemsSource = choices, SelectedItem = choices.FirstOrDefault(c => (string)c.Tag == chosen),
                     ToolTip = string.Format(R.ITEMS_COPIED_VALUE, original[i]) };
                 picker.SelectionChanged += (_, _) =>
                 {
-                    if (picker.SelectedItem is not string mob) { return; }
+                    if (picker.SelectedItem is not ComboBoxItem { Tag: string mob }) { return; }
                     _working.Summons ??= CustomItems.copiedSummons(_working);
                     while (_working.Summons.Count <= at) { _working.Summons.Add(original[_working.Summons.Count]); }
                     _working.Summons[at] = mob;
@@ -976,6 +1018,15 @@ namespace MCDSaveEdit.UI
                 summonsList.Children.Add(picker);
             }
         }
+
+        /// <summary>
+        /// What a summoning artifact can summon: MCD Reborn's own mobs first, by name and marked ✦,
+        /// then the game's. Each carries its EntityType name as its Tag.
+        /// </summary>
+        private static List<ComboBoxItem> summonable()
+            => GamePlugin.installedMobs().Select(m => new ComboBoxItem { Content = $"{m.Name}  ✦  ({m.Id})", Tag = m.Id })
+                .Concat(GearTraits.ENTITY_TYPES.Select(t => new ComboBoxItem { Content = t, Tag = t }))
+                .ToList();
 
         private void artifactNumber_Changed(object sender, TextChangedEventArgs e)
         {
@@ -1172,6 +1223,13 @@ namespace MCDSaveEdit.UI
 
         private void updateButtons()
         {
+            if (_mob != null)
+            {
+                installButton.IsEnabled = !string.IsNullOrEmpty(_mob.Source);
+                clearButton.IsEnabled = true;
+                exportButton.IsEnabled = _mobs.Any(d => d.Id == _mob.Id);
+                return;
+            }
             if (_enchantment != null)
             {
                 var installed = _enchantments.Any(d => d.Id == _enchantment.Id);
@@ -1188,6 +1246,7 @@ namespace MCDSaveEdit.UI
 
         private void exportButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_mob != null) { exportMob(); return; }
             if (_enchantment != null) { exportEnchantment(); return; }
             if (_slot == null) { return; }
             //From disk rather than from this tab: a model set in the Weapons tab is saved there.
@@ -1238,6 +1297,17 @@ namespace MCDSaveEdit.UI
 
             try
             {
+                //An exported mob, likewise, holds mob.json.
+                if (CustomMobs.readShared(dialog.FileName) is { } mob)
+                {
+                    if (GamePlugin.gameFolder() == null) { statusLabel.Text = R.ITEMS_NEW_UNAVAILABLE; return; }
+                    mob.Id = CustomMobs.newId(_mobs.Concat(_pendingMobs));
+                    await installMobs(_mobs.Append(mob).ToList());
+                    _mob = null;
+                    selectMob(mob.Id);
+                    statusLabel.Text = string.Format(R.ITEMS_IMPORTED, CustomMobs.nameOf(mob)) + "   " + statusLabel.Text;
+                    return;
+                }
                 //An exported enchantment is the same kind of file, holding enchantment.json.
                 if (CustomEnchantments.readShared(dialog.FileName) is { } enchantment)
                 {
@@ -1272,6 +1342,16 @@ namespace MCDSaveEdit.UI
 
         private async void installButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_mob != null)
+            {
+                if (string.IsNullOrEmpty(_mob.Source)) { statusLabel.Text = R.ITEMS_MOB_PICK_SOURCE; return; }
+                if (GameRunning.isUp) { MessageBox.Show(R.MODS_GAME_RUNNING, R.ITEMS_TAB); return; }
+                var working = _mob;
+                var mobs = _mobs.Where(d => d.Id != working.Id).ToList();
+                mobs.Add(CustomMobs.copy(working));
+                await installMobs(mobs);
+                return;
+            }
             if (_enchantment != null)
             {
                 if (string.IsNullOrEmpty(_enchantment.Source)) { statusLabel.Text = R.ITEMS_ENCH_PICK_SOURCE; return; }
@@ -1296,6 +1376,7 @@ namespace MCDSaveEdit.UI
 
         private async void clearButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_mob != null) { await deleteMob(_mob.Id); return; }
             if (_enchantment != null) { await deleteEnchantment(_enchantment.Id); return; }
             if (_slot == null) { return; }
             var gone = _slot.Id;
@@ -1345,10 +1426,167 @@ namespace MCDSaveEdit.UI
         private void closeEnchantment()
         {
             _enchantment = null;
+            _mob = null;
             enchantmentEditor.Visibility = Visibility.Collapsed;
+            mobEditor.Visibility = Visibility.Collapsed;
             editor.Visibility = Visibility.Visible;
             editor.IsEnabled = false;
             clearButton.Content = R.ITEMS_DELETE;
+        }
+
+        // ------------------------------------------------------------------ new mobs
+
+        private void newMobButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_loaded) { statusLabel.Text = R.ITEMS_NOT_READY; return; }
+            var design = new CustomMobs.Design { Id = CustomMobs.newId(_mobs.Concat(_pendingMobs)) };
+            _pendingMobs.Add(design);
+            _slot = null;
+            _working = null;
+            _enchantment = null;
+            _mob = null;
+            fillSlots();
+            selectMob(design.Id);
+        }
+
+        private void selectMob(string id)
+        {
+            foreach (ListBoxItem item in slotList.Items)
+            {
+                if (item.Tag is MobTag tag && tag.Id == id) { item.IsSelected = true; slotList.ScrollIntoView(item); }
+            }
+        }
+
+        /// <summary>A mob opened in its own editor, in place of the others.</summary>
+        private void showMob(string id)
+        {
+            if (_mob?.Id == id) { return; }
+            _slot = null;
+            _working = null;
+            _enchantment = null;
+            var saved = _mobs.FirstOrDefault(d => d.Id == id) ?? _pendingMobs.FirstOrDefault(d => d.Id == id);
+            _mob = saved == null ? new CustomMobs.Design { Id = id } : CustomMobs.copy(saved);
+
+            editor.Visibility = Visibility.Collapsed;
+            enchantmentEditor.Visibility = Visibility.Collapsed;
+            mobEditor.Visibility = Visibility.Visible;
+            clearButton.Content = R.ITEMS_MOB_DELETE;
+            mobTitle.Text = mobDisplayName(id);
+            mobDetail.Text = $"{id} · {R.ITEMS_KIND_MOB}";
+            mobCopyHint.Text = string.Format(R.ITEMS_MOB_COPY_HINT, CustomMobs.levelName(id));
+
+            _filling = true;
+            mobNameBox.Text = _mob.Name ?? string.Empty;
+            _filling = false;
+            showMobSourceName();
+            fillMobSources();
+            updateButtons();
+        }
+
+        private void showMobSourceName()
+            => mobNameBox.ToolTip = _mob == null || string.IsNullOrEmpty(_mob.Source) ? null : CustomMobs.readable(_mob.Source);
+
+        private void mobNameBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_filling || _mob == null) { return; }
+            _mob.Name = string.IsNullOrWhiteSpace(mobNameBox.Text) ? null : mobNameBox.Text.Trim();
+        }
+
+        private void mobSearchBox_TextChanged(object sender, TextChangedEventArgs e) => fillMobSources();
+
+        /// <summary>Every mob the game has a blueprint for, by a readable name.</summary>
+        private void fillMobSources()
+        {
+            if (_mob == null) { return; }
+            var wanted = mobSearchBox.Text?.Trim() ?? string.Empty;
+            mobSearchHint.Visibility = wanted.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
+            var shown = GameMobTypes.ALL
+                .Select(m => new { m.Name, Text = $"{CustomMobs.readable(m.Name)}   ({m.Name})" })
+                .Where(x => wanted.Length == 0 || x.Text.IndexOf(wanted, StringComparison.OrdinalIgnoreCase) >= 0)
+                .OrderBy(x => x.Text, StringComparer.CurrentCultureIgnoreCase)
+                .Select(x => new ListBoxItem { Content = x.Text, Tag = x.Name })
+                .ToList();
+            _filling = true;
+            mobSourceList.ItemsSource = shown;
+            mobSourceList.SelectedItem = shown.FirstOrDefault(i => (string)i.Tag == _mob.Source);
+            if (mobSourceList.SelectedItem != null) { mobSourceList.ScrollIntoView(mobSourceList.SelectedItem); }
+            _filling = false;
+        }
+
+        private void mobSourceList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_filling || _mob == null || mobSourceList.SelectedItem is not ListBoxItem { Tag: string source }) { return; }
+            _mob.Source = source;
+            if (string.IsNullOrWhiteSpace(_mob.Name)) { mobTitle.Text = CustomMobs.readable(source); }
+            showMobSourceName();
+            updateButtons();
+        }
+
+        /// <summary>
+        /// The mobs saved, and the New Items pak and the plugin's list rebuilt beside everything else
+        /// installed. The old list is put back if the install fails.
+        /// </summary>
+        private async Task installMobs(List<CustomMobs.Design> designs)
+        {
+            IsEnabled = false;
+            statusLabel.Text = R.ITEMS_WORKING;
+            var before = _mobs.Select(CustomMobs.copy).ToList();
+            try
+            {
+                CustomMobs.save(designs);
+                var built = await Task.Run(() => CustomItems.build(CustomItems.load()));
+                _mobs = designs.Select(CustomMobs.copy).ToList();
+                statusLabel.Text = string.Format(R.ITEMS_MOB_INSTALLED, designs.Count) + "   " + string.Join("  ", built.Notes);
+            }
+            catch (Exception problem)
+            {
+                CustomMobs.save(before);
+                statusLabel.Text = string.Format(R.ITEMS_FAILED, problem.Message);
+            }
+            finally
+            {
+                IsEnabled = true;
+                _pendingMobs.RemoveAll(p => _mobs.Any(d => d.Id == p.Id));
+                fillSlots();
+                updateButtons();
+                showPluginStatus();
+            }
+        }
+
+        private async Task deleteMob(string id)
+        {
+            if (_mobs.All(d => d.Id != id))
+            {
+                _pendingMobs.RemoveAll(p => p.Id == id);
+                closeEnchantment();
+                fillSlots();
+                return;
+            }
+            if (GameRunning.isUp) { MessageBox.Show(R.MODS_GAME_RUNNING, R.ITEMS_TAB); return; }
+            var ask = MessageBox.Show(string.Format(R.ITEMS_MOB_DELETE_WARN, mobDisplayName(id)), R.ITEMS_TAB,
+                MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (ask != MessageBoxResult.Yes) { return; }
+            closeEnchantment();
+            await installMobs(_mobs.Where(d => d.Id != id).ToList());
+        }
+
+        private void exportMob()
+        {
+            var design = _mobs.FirstOrDefault(d => d.Id == _mob?.Id);
+            if (design == null) { return; }
+            var dialog = new SaveFileDialog
+            {
+                FileName = CustomSkins.safeName(CustomMobs.nameOf(design)) + CustomItems.SHARE_EXTENSION,
+                Filter = $"{R.ITEMS_FILE_KIND}|*{CustomItems.SHARE_EXTENSION}",
+            };
+            if (dialog.ShowDialog() != true) { return; }
+            try
+            {
+                if (File.Exists(dialog.FileName)) { File.Delete(dialog.FileName); }
+                CustomMobs.export(design, dialog.FileName);
+                statusLabel.Text = string.Format(R.ITEMS_MOB_EXPORTED, Path.GetFileName(dialog.FileName));
+            }
+            catch (Exception problem) { statusLabel.Text = problem.Message; }
         }
 
         private async Task build(List<CustomItems.Design> designs, string? fresh = null)

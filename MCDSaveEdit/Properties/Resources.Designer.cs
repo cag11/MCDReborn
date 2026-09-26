@@ -9399,5 +9399,95 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("ITEMS_ENCH_SHINE_CHOOSE", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to New mob.
+        /// </summary>
+        public static string ITEMS_NEW_MOB {
+            get {
+                return ResourceManager.GetString("ITEMS_NEW_MOB", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Mob.
+        /// </summary>
+        public static string ITEMS_KIND_MOB {
+            get {
+                return ResourceManager.GetString("ITEMS_KIND_MOB", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to New mob.
+        /// </summary>
+        public static string ITEMS_MOB_NEW_TITLE {
+            get {
+                return ResourceManager.GetString("ITEMS_MOB_NEW_TITLE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Shown in every language. Leave it empty to use the copied mob's name..
+        /// </summary>
+        public static string ITEMS_MOB_TEXT_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_MOB_TEXT_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to It is the copied mob in every way - its model, its moves and its numbers - under a type and a name of its own. Summoning artifacts offer it among their summons, and a map's mob groups spawn it as {0}..
+        /// </summary>
+        public static string ITEMS_MOB_COPY_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_MOB_COPY_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pick a mob to copy first..
+        /// </summary>
+        public static string ITEMS_MOB_PICK_SOURCE {
+            get {
+                return ResourceManager.GetString("ITEMS_MOB_PICK_SOURCE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Delete this mob.
+        /// </summary>
+        public static string ITEMS_MOB_DELETE {
+            get {
+                return ResourceManager.GetString("ITEMS_MOB_DELETE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Take {0} out of every artifact's summons and every map first. Once it is deleted, the game no longer knows it..
+        /// </summary>
+        public static string ITEMS_MOB_DELETE_WARN {
+            get {
+                return ResourceManager.GetString("ITEMS_MOB_DELETE_WARN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Saved {0} mob(s). Restart the game, then summon them with an artifact or spawn them from a map..
+        /// </summary>
+        public static string ITEMS_MOB_INSTALLED {
+            get {
+                return ResourceManager.GetString("ITEMS_MOB_INSTALLED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Saved {0}. It holds the mob's source and name..
+        /// </summary>
+        public static string ITEMS_MOB_EXPORTED {
+            get {
+                return ResourceManager.GetString("ITEMS_MOB_EXPORTED", resourceCulture);
+            }
+        }
     }
 }

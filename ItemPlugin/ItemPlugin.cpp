@@ -85,6 +85,12 @@ namespace
     using LoadObject = void* (__fastcall*)(void* cls, void* outer, const wchar_t* name, const wchar_t* filename, uint32_t flags, void* sandbox,
         bool allowReconciliation, void* serializeContext);
     using Exec = void (__fastcall*)(void* context, void* stack, void** result);
+    using MobDefine = uint8_t* (__fastcall*)(int32_t type);
+    using MobName = uint8_t* (__fastcall*)(uint8_t* definition, const FText* name);
+    using MobParent = uint8_t* (__fastcall*)(uint8_t* definition, int32_t parent);
+    using MobRegistry = uint8_t* (__fastcall*)();
+    struct FStringRaw { const wchar_t* Data; int32_t Num; int32_t Max; };
+    using MobRegister = void (__fastcall*)(uint8_t* registry, int32_t type, const FStringRaw* path);
 
     // The item asset finder: the game's index from item id to the paths of its blueprints and
     // icons, built from the asset registry for every id in the item list AT THE TIME IT IS BUILT.
@@ -475,6 +481,367 @@ namespace
     {
         __try { out = *at; return true; }
         __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    }
+
+    // ---------------------------------------------------------------- mobs
+    //
+    // A mob is an EntityType: a Bedrock-style number, an id in the low byte and category flags
+    // above it (Zombie 0x30a20: id 0x20, monster and undead). Three things know about one:
+    //
+    //   its definition - a 0x78-byte record in a map keyed by the whole number, made by be5bb0
+    //       and named by a3e3d0, which every mob's own static function calls with its MobType
+    //       text ("mob_Zombie");
+    //   the mob registry - a function-local singleton (ad2c20 returns it, a88a10 builds it)
+    //       holding each type's blueprint and class path, filled by ad0a40(registry, type,
+    //       "Actors/.../BP_...Character") for 257 mobs. Built the first time anything asks, which
+    //       at the main menu nothing has yet;
+    //   the reflected enum EntityType, which cooked data names mobs through - a summoning
+    //       artifact's list says "EntityType::Skeleton".
+    //
+    // A new mob takes its source's flags with an id no type uses, so the game treats it as the
+    // same kind of creature and nothing keyed by the whole number collides.
+    struct Mob { std::string id; int32_t source = 0; std::wstring name; std::wstring blueprint; };
+
+    // "@mob \t id \t source EntityType (decimal) \t name \t blueprint relative to /Game/"
+    std::vector<Mob> readMobs()
+    {
+        std::vector<Mob> found;
+        FILE* file = _wfopen((g_folder + L"MCDRebornItems.txt").c_str(), L"rb");
+        if (!file) { return found; }
+        std::string all;
+        char buffer[4096];
+        size_t got;
+        while ((got = fread(buffer, 1, sizeof(buffer), file)) > 0) { all.append(buffer, got); }
+        fclose(file);
+        size_t start = 0;
+        while (start < all.size())
+        {
+            size_t end = all.find('\n', start);
+            if (end == std::string::npos) { end = all.size(); }
+            std::string line = all.substr(start, end - start);
+            start = end + 1;
+            if (!line.empty() && line.back() == '\r') { line.pop_back(); }
+            if (line.rfind("@mob\t", 0) != 0) { continue; }
+            std::vector<std::string> parts;
+            size_t from = 0;
+            for (;;)
+            {
+                size_t tab = line.find('\t', from);
+                parts.push_back(line.substr(from, tab == std::string::npos ? std::string::npos : tab - from));
+                if (tab == std::string::npos) { break; }
+                from = tab + 1;
+            }
+            if (parts.size() < 5) { say("skipped a mob line with %zu fields", parts.size()); continue; }
+            Mob m;
+            m.id = parts[1];
+            m.source = static_cast<int32_t>(strtol(parts[2].c_str(), nullptr, 0));
+            m.name = wide(parts[3]);
+            m.blueprint = wide(parts[4]);
+            found.push_back(m);
+        }
+        return found;
+    }
+
+    // Paths handed to the registry: it copies them, but they are kept for the life of the game.
+    std::vector<std::wstring> g_mobPaths;
+
+    // Each mob and the type it was given, named in the enum early, registered later.
+    struct NamedMob { Mob mob; int32_t type; };
+    std::vector<NamedMob> g_mobs;
+
+    // The early step: each mob's type chosen and named in EntityType the moment the engine makes
+    // the enum. Cooked data names mobs through it, and the game preloads items as it starts - the
+    // first test's summoning artifact was loaded before the name was there, and its entries fell
+    // back to its C++ class's sheep. The engine makes its enums before it loads any content.
+    void nameMobs(Game& game)
+    {
+        auto mobs = readMobs();
+        if (mobs.empty()) { return; }
+        uint8_t** holder = enumStatic("EntityType");
+        if (!holder) { say("mobs: the EntityType enum was not found; NOT added"); return; }
+        uint8_t* uenum = nullptr;
+        for (int wait = 0; wait < 60000 && !uenum; wait++)
+        {
+            if (!readPointer(holder, uenum) || !uenum) { uenum = nullptr; Sleep(5); }
+        }
+        if (!uenum) { say("mobs: the EntityType enum was never made; NOT added"); return; }
+        auto names = reinterpret_cast<TArrayRaw*>(uenum + 0x40);
+        // The enum's names go in as it is made: wait until its count stops moving.
+        for (int32_t last = -1, quiet = 0; quiet < 3; Sleep(5))
+        {
+            quiet = names->Num > 0 && names->Num == last ? quiet + 1 : 0;
+            last = names->Num;
+        }
+        bool used[256]{};
+        for (int32_t i = 0; i < names->Num; i++)
+        {
+            int64_t value; memcpy(&value, names->Data + static_cast<size_t>(i) * 16 + 8, 8);
+            used[value & 0xFF] = true;
+        }
+        int free = 0xFF;
+        for (const auto& m : mobs)
+        {
+            while (free > 0 && used[free]) { free--; }
+            if (free <= 0) { say("mobs: no EntityType id left for %s", m.id.c_str()); break; }
+            used[free] = true;
+            int32_t type = (m.source & ~0xFF) | free;
+            if (names->Num >= names->Max)
+            {
+                int32_t more = names->Max + 16;
+                auto bigger = static_cast<uint8_t*>(game.malloc(static_cast<size_t>(more) * 16));
+                memcpy(bigger, names->Data, static_cast<size_t>(names->Num) * 16);
+                names->Data = bigger;           // the old block is left as it is
+                names->Max = more;
+            }
+            FName full = name(game, "EntityType::" + m.id);
+            int64_t value = type;
+            memcpy(names->Data + static_cast<size_t>(names->Num) * 16, &full, 8);
+            memcpy(names->Data + static_cast<size_t>(names->Num) * 16 + 8, &value, 8);
+            names->Num++;
+            g_mobs.push_back({ m, type });
+            say("%s named in EntityType as 0x%X, a copy of 0x%X (enum of %d names)", m.id.c_str(), type, m.source, names->Num);
+        }
+    }
+
+    void nameMobsForLevels(Game& game);
+    void copyMobInfo();
+
+    // The later step: each named mob's definition and blueprint, in the registry the plugin
+    // builds itself - nothing needs them until something spawns.
+    void addMobs(Game& game)
+    {
+        if (g_mobs.empty()) { return; }
+
+        // The functions, from the mobs' own static functions (227 of them, all calling the same
+        // three) and the registry getter (the one place that builds it).
+        auto named = scan(parse("48 8D 4C 24 28 E8 ?? ?? ?? ?? 48 8B D8 B9 ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B C8 48 8B D3 E8 ?? ?? ?? ?? 48 89 05"));
+        if (named.empty()) { say("mobs: the mob definitions were not found; NOT added"); return; }
+        auto define = reinterpret_cast<MobDefine>(callTarget(named[0] + 18));
+        auto setName = reinterpret_cast<MobName>(callTarget(named[0] + 29));
+        for (uint8_t* at : named)
+        {
+            if (callTarget(at + 18) != reinterpret_cast<uint8_t*>(define) || callTarget(at + 29) != reinterpret_cast<uint8_t*>(setName))
+            {
+                say("mobs: the mob definitions are made two ways; NOT added"); return;
+            }
+        }
+        MobRegistry registryOf = nullptr;
+        uint8_t* builder = nullptr;
+        for (uint8_t* at : scan(parse("48 8D 1D ?? ?? ?? ?? 48 8B CB E8 ?? ?? ?? ?? 48 8D 0D ?? ?? ?? ?? E8")))
+        {
+            uint8_t* start = at - 0x54;
+            if (start[0] != 0x40 || start[1] != 0x53) { continue; }
+            // The builder registers its first mob within its first few hundred bytes.
+            uint8_t* candidate = callTarget(at + 10);
+            for (size_t i = 0; i < 0x200 && !registryOf; i++)
+            {
+                uint8_t* c = candidate + i;
+                // mov edx, <type> / mov rcx, rbx / call register
+                if (c[0] == 0xBA && c[5] == 0x48 && c[6] == 0x8B && c[7] == 0xCB && c[8] == 0xE8)
+                {
+                    registryOf = reinterpret_cast<MobRegistry>(start);
+                    builder = c + 8;
+                }
+            }
+        }
+        if (!registryOf) { say("mobs: the mob registry was not found; NOT added"); return; }
+        auto registerMob = reinterpret_cast<MobRegister>(callTarget(builder));
+        // The definition lookup (be7ce0): the register function's first call.
+        uint8_t* registerCode = reinterpret_cast<uint8_t*>(registerMob);
+        MobDefine lookup = registerCode[0x3B] == 0xE8 ? reinterpret_cast<MobDefine>(callTarget(registerCode + 0x3B)) : nullptr;
+
+        // A variant's definition points to its base mob (be9dc0: ZombieVariant1 -> Zombie,
+        // SpiderAncient -> Spider; 59 of them), as a small function object at +0x38 whose storage
+        // pointer is +0x70 and whose captured type is +0x40. The level spawner asks for it where
+        // summoning does not: a copy of ZombieVariant1 without it crashed arno on its first
+        // roam. So a copy gets its source's.
+        MobParent setParent = nullptr;
+        for (uint8_t* at : scan(parse("B9 ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B C8 BA ?? ?? ?? ?? E8 ?? ?? ?? ?? 48 8B C8 48 8B D3 E8")))
+        {
+            auto found = reinterpret_cast<MobParent>(callTarget(at + 18));
+            if (!setParent) { setParent = found; }
+            else if (found != setParent) { setParent = nullptr; say("mobs: base mobs are set two ways; NOT copied"); break; }
+        }
+
+        uint8_t* registry = registryOf();
+        say("mobs: registry at %p", registry);
+        for (const auto& [m, type] : g_mobs)
+        {
+            FText text{};
+            std::wstring key = L"mob_" + wide(m.id);
+            game.createText(&text, m.name.c_str(), L"MobType", key.c_str());
+            uint8_t* definition = define(type);
+            setName(definition, &text);
+            if (lookup && setParent)
+            {
+                uint8_t* source = lookup(m.source);
+                uint8_t* storage = nullptr;
+                if (source && readPointer(reinterpret_cast<uint8_t**>(source + 0x70), storage) && storage == source + 0x38)
+                {
+                    int32_t parent = 0;
+                    memcpy(&parent, source + 0x40, 4);
+                    setParent(definition, parent);
+                    say("%s: a variant of 0x%X, as its source is", m.id.c_str(), parent);
+                }
+            }
+
+            g_mobPaths.push_back(m.blueprint);
+            const std::wstring& path = g_mobPaths.back();
+            FStringRaw fpath{ path.c_str(), static_cast<int32_t>(path.size() + 1), static_cast<int32_t>(path.size() + 1) };
+            registerMob(registry, type, &fpath);
+            say("%s registered as EntityType 0x%X, blueprint %ls", m.id.c_str(), type, m.blueprint.c_str());
+        }
+        nameMobsForLevels(game);
+        copyMobInfo();
+    }
+
+    // Every mob type's info: its tags ("weak", "ranged", "caster", "illager"...) and four
+    // numbers, in a table the game builds at start-up (e056b0: e4d250(table, type, numbers,
+    // tags) for each) and hands out from a function-local singleton (e4bf10). A level's setup
+    // reads it for every mob type its groups name: with a new type missing from it, arno's setup
+    // failed quietly, the player was never logged in ("Couldn't spawn player"), and the music
+    // manager crashed in the transition map with no player controller. So a copy gets its
+    // source's info: an entry made by the game's own get-or-create (e49710), the numbers at +0x48
+    // copied, and each tag added by the game's own (cdcd10). The source's entry is found by
+    // walking the table, so a source without one is never given an empty one.
+    using MobInfoTable = uint8_t* (__fastcall*)();
+    using MobInfoEntry = uint8_t* (__fastcall*)(uint8_t* table, int32_t type);
+    using MobInfoTag = void (__fastcall*)(uint8_t* entry, const void* tag);
+
+    void copyMobInfo()
+    {
+        if (g_mobs.empty()) { return; }
+        MobInfoTable tableOf = nullptr;
+        MobInfoEntry entryOf = nullptr;
+        MobInfoTag addTag = nullptr;
+        for (uint8_t* at : scan(parse("48 8D 1D ?? ?? ?? ?? 48 8B CB E8 ?? ?? ?? ?? 48 8D 0D ?? ?? ?? ?? E8")))
+        {
+            uint8_t* start = at - 0x54;
+            if (start[0] != 0x40 || start[1] != 0x53) { continue; }
+            uint8_t* builder = callTarget(at + 10);
+            for (size_t i = 0; i < 0x400 && !tableOf; i++)
+            {
+                uint8_t* c = builder + i;
+                // mov edx, <type> / mov rcx, r15 / call insert
+                if (c[0] != 0xBA || c[5] != 0x49 || c[6] != 0x8B || c[7] != 0xCF || c[8] != 0xE8) { continue; }
+                uint8_t* insert = callTarget(c + 8);
+                if (insert[0x23] != 0xE8 || insert[0x46] != 0xE8 || insert[0x4B] != 0x48 || insert[0x4C] != 0x83 || insert[0x4D] != 0xC3 || insert[0x4E] != 0x20) { continue; }
+                tableOf = reinterpret_cast<MobInfoTable>(start);
+                entryOf = reinterpret_cast<MobInfoEntry>(callTarget(insert + 0x23));
+                addTag = reinterpret_cast<MobInfoTag>(callTarget(insert + 0x46));
+            }
+        }
+        if (!tableOf) { say("mobs: the mob info table was not found; NOT copied"); return; }
+        uint8_t* table = tableOf();
+        uint8_t* head = *reinterpret_cast<uint8_t**>(table + 8);
+        for (const auto& [m, type] : g_mobs)
+        {
+            uint8_t* source = nullptr;
+            for (uint8_t* node = *reinterpret_cast<uint8_t**>(head); node != head; node = *reinterpret_cast<uint8_t**>(node))
+            {
+                int32_t key; memcpy(&key, node + 0x10, 4);
+                if (key == m.source) { source = *reinterpret_cast<uint8_t**>(node + 0x18); break; }
+            }
+            if (!source) { say("%s: its source 0x%X has no mob info; the copy gets none", m.id.c_str(), m.source); continue; }
+            uint8_t* entry = entryOf(table, type);
+            memcpy(entry + 0x48, source + 0x48, 16);
+            auto begin = *reinterpret_cast<uint8_t**>(source);
+            auto end = *reinterpret_cast<uint8_t**>(source + 8);
+            std::string tags;
+            for (uint8_t* tag = begin; tag && tag < end; tag += 0x20)
+            {
+                addTag(entry, tag);
+                uint64_t size = 0, capacity = 0;
+                memcpy(&size, tag + 0x10, 8);
+                memcpy(&capacity, tag + 0x18, 8);
+                const char* text = capacity >= 16 ? *reinterpret_cast<const char* const*>(tag) : reinterpret_cast<const char*>(tag);
+                if (size < 64) { tags.append(text, size); tags += ' '; }
+            }
+            float numbers[4]; memcpy(numbers, entry + 0x48, 16);
+            say("%s: mob info copied from 0x%X - tags [ %s] numbers %g %g %g %g", m.id.c_str(), m.source, tags.c_str(), numbers[0], numbers[1], numbers[2], numbers[3]);
+        }
+    }
+
+    // An MSVC std::string written in place: short enough for its own 16-byte buffer, so nothing
+    // needs freeing - size at +0x10, capacity 15 at +0x18.
+    void shortString(uint8_t* at, const std::string& text)
+    {
+        memset(at, 0, 0x20);
+        memcpy(at, text.data(), text.size());
+        uint64_t size = text.size(), capacity = 15;
+        memcpy(at + 0x10, &size, 8);
+        memcpy(at + 0x18, &capacity, 8);
+    }
+
+    // The names levels spawn mobs by - a mob group's {"type": "zombie"} - are an MSVC
+    // unordered_map of EntityType to three strings ("minecraft" and two spellings), built at
+    // start-up (1a7220, e048c0). Name to type (e1eef0) walks its element list; type to name
+    // hashes the type (FNV-1a over its four bytes) into its buckets - and the level spawner asks
+    // that way too: with the names only on the list, a mob group of the new type crashed the
+    // level the moment it roamed, where the same blueprint under the game's own name did not.
+    //
+    // So a new mob goes in as the map's own constructor puts each entry in: a node of 0x78 bytes
+    // from the game's allocator - next, prev, the type at +0x10, the strings at +0x18, +0x38 and
+    // +0x58 - linked at the front of the list with the size bumped, then handed to the map's
+    // insert (dffe20: map, result, &key, node), which files it in its bucket and rehashes if it
+    // must. The map is found from the name lookup's walk; its constructor from the one place
+    // that constructs it; the insert from the constructor's loop.
+    using MapInsert = void* (__fastcall*)(void* map, void* result, const int32_t* key, uint8_t* node);
+
+    void nameMobsForLevels(Game& game)
+    {
+        // mov r14,[rip+list] / mov rbx,[r14] / cmp rbx,r14 - the name lookup's walk.
+        uint8_t* list = nullptr;
+        for (uint8_t* at : scan(parse("4C 8B 35 ?? ?? ?? ?? 49 8B 1E 49 3B DE")))
+        {
+            int32_t rel; memcpy(&rel, at + 3, 4);
+            uint8_t* found = at + 7 + rel;
+            if (!list) { list = found; }
+            else if (found != list) { say("mobs: level names are walked from two places; NOT named for levels"); return; }
+        }
+        if (!list) { say("mobs: the level names were not found; NOT named for levels"); return; }
+        uint8_t* map = list - 8;
+
+        // lea rcx,[rip+map] / call constructor - once in the game.
+        MapInsert insert = nullptr;
+        for (uint8_t* at : scan(parse("48 8D 0D ?? ?? ?? ?? E8")))
+        {
+            int32_t rel; memcpy(&rel, at + 3, 4);
+            if (at + 7 + rel != map) { continue; }
+            uint8_t* constructor = callTarget(at + 7);
+            // add r8,10 / mov r9,[r9] / lea rdx,[rsp+28] / mov rcx,r15 / call insert
+            static const uint8_t loop[] = { 0x49, 0x83, 0xC0, 0x10, 0x4D, 0x8B, 0x09, 0x48, 0x8D, 0x54, 0x24, 0x28, 0x49, 0x8B, 0xCF, 0xE8 };
+            for (size_t i = 0; i < 0x180 && !insert; i++)
+            {
+                if (memcmp(constructor + i, loop, sizeof(loop)) == 0) { insert = reinterpret_cast<MapInsert>(callTarget(constructor + i + 15)); }
+            }
+        }
+        if (!insert) { say("mobs: the level names' insert was not found; NOT named for levels"); return; }
+
+        auto head = *reinterpret_cast<uint8_t**>(map + 8);
+        auto size = reinterpret_cast<uint64_t*>(map + 0x10);
+        if (!head) { say("mobs: the level names are not built; NOT named for levels"); return; }
+        for (const auto& [m, type] : g_mobs)
+        {
+            std::string spelled = m.id;
+            for (auto& c : spelled) { c = static_cast<char>(tolower(static_cast<unsigned char>(c))); }
+            if (spelled.size() > 15) { say("%s: too long to name for levels", m.id.c_str()); continue; }
+            auto node = static_cast<uint8_t*>(game.malloc(0x78));
+            memset(node, 0, 0x78);
+            memcpy(node + 0x10, &type, 4);
+            shortString(node + 0x18, "minecraft");
+            shortString(node + 0x38, spelled);
+            shortString(node + 0x58, spelled);
+            uint8_t* first = *reinterpret_cast<uint8_t**>(head);
+            *reinterpret_cast<uint8_t**>(node) = first;
+            *reinterpret_cast<uint8_t**>(node + 8) = head;
+            *reinterpret_cast<uint8_t**>(first + 8) = node;
+            *reinterpret_cast<uint8_t**>(head) = node;
+            (*size)++;
+            uint8_t result[16]{};
+            insert(map, result, reinterpret_cast<const int32_t*>(node + 0x10), node);
+            say("%s named for levels as \"%s\" (%llu names)", m.id.c_str(), spelled.c_str(), static_cast<unsigned long long>(*size));
+        }
     }
 
     // ---------------------------------------------------------------- enchantment icons
@@ -1212,6 +1579,188 @@ namespace
         say("enchantments: %d of %zu own blueprint(s) in the enchantment finder at %p", found, g_blueprints.size(), finder);
     }
 
+    // ---------------------------------------------------------------- crash note
+    //
+    // When the game faults in its own code, the plugin writes down where and what it was working
+    // on, before the crash reporter takes over: for each register that points at a live UObject,
+    // its name, its class and its outers - a component's outer is the actor it belongs to. The
+    // minidump carries no heap, so this is the only way to say WHICH object a crash was in.
+    // Reads only, through SEH; it never handles the fault, so the game crashes exactly as it would.
+    uint8_t** g_names = nullptr;              // FName::GetNames' holder: its chunked entry table
+    uint8_t* g_imageStart = nullptr;
+    size_t g_imageSize = 0;
+    volatile LONG g_crashNotes = 0;
+
+    bool nameText(int32_t index, char* out, size_t size)
+    {
+        out[0] = 0;
+        uint8_t* table = nullptr;
+        if (!g_names || !readBlock(g_names, &table, 8) || !table || index <= 0) { return false; }
+        uint8_t* chunk = nullptr;
+        uint8_t* entry = nullptr;
+        if (!readBlock(table + static_cast<size_t>(index / 16384) * 8, &chunk, 8) || !chunk) { return false; }
+        if (!readBlock(chunk + static_cast<size_t>(index % 16384) * 8, &entry, 8) || !entry) { return false; }
+        int32_t header = 0;
+        if (!readBlock(entry + 8, &header, 4)) { return false; }
+        if (header & 1)
+        {
+            wchar_t wide[64]{};
+            if (!readBlock(entry + 0x0C, wide, sizeof(wide) - 2)) { return false; }
+            WideCharToMultiByte(CP_UTF8, 0, wide, -1, out, static_cast<int>(size), nullptr, nullptr);
+        }
+        else if (!readBlock(entry + 0x0C, out, size - 1)) { return false; }
+        out[size - 1] = 0;
+        return true;
+    }
+
+    // "Name (Class)" for a UObject, or false when the pointer is not one.
+    bool describe(uint8_t* object, char* out, size_t size)
+    {
+        uint8_t* vtable = nullptr;
+        uint8_t* cls = nullptr;
+        int32_t name[2]{}, clsName[2]{};
+        if (!object || !readBlock(object, &vtable, 8) || vtable < g_imageStart || vtable >= g_imageStart + g_imageSize) { return false; }
+        if (!readBlock(object + 0x10, &cls, 8) || !cls || !readBlock(object + 0x18, name, 8) || !readBlock(cls + 0x18, clsName, 8)) { return false; }
+        char a[96], b[96];
+        if (!nameText(name[0], a, sizeof(a)) || !nameText(clsName[0], b, sizeof(b))) { return false; }
+        if (name[1] > 0) { snprintf(out, size, "%s_%d (%s)", a, name[1] - 1, b); }
+        else { snprintf(out, size, "%s (%s)", a, b); }
+        return true;
+    }
+
+    volatile LONG g_throwNotes = 0;
+
+    // A C++ throw (MSVC's 0xE06D7363): its type name from the throw info, and - for anything
+    // shaped like std::exception, a vtable then the message pointer - its message. Logged as it
+    // is thrown, caught or not: code taken from Bedrock reports failures this way, and a level
+    // that fails to set up does so quietly otherwise.
+    void noteThrow(EXCEPTION_RECORD* r)
+    {
+        if (r->NumberParameters < 4 || InterlockedIncrement(&g_throwNotes) > 40) { return; }
+        auto object = reinterpret_cast<uint8_t*>(r->ExceptionInformation[1]);
+        auto info = reinterpret_cast<uint8_t*>(r->ExceptionInformation[2]);
+        auto base = reinterpret_cast<uint8_t*>(r->ExceptionInformation[3]);
+        // ThrowInfo +0x0C: catchable type array (rva) -> [0] count, [1] first type (rva) -> +4 type
+        // descriptor (rva) -> +0x10 its decorated name.
+        char type[128] = "?";
+        int32_t arrayRva = 0, firstRva = 0, descriptorRva = 0;
+        if (info && base && readBlock(info + 0x0C, &arrayRva, 4) && readBlock(base + arrayRva + 4, &firstRva, 4)
+            && readBlock(base + firstRva + 4, &descriptorRva, 4))
+        {
+            readBlock(base + descriptorRva + 0x10, type, sizeof(type) - 1);
+            type[sizeof(type) - 1] = 0;
+        }
+        char message[256] = "";
+        const char* what = nullptr;
+        if (object && readBlock(object + 8, &what, 8) && what)
+        {
+            if (!readBlock(what, message, sizeof(message) - 1)) { message[0] = 0; }
+            message[sizeof(message) - 1] = 0;
+            for (char* c = message; *c; c++) { if (static_cast<unsigned char>(*c) < 0x20 || static_cast<unsigned char>(*c) > 0x7E) { *c = 0; break; } }
+        }
+        auto from = static_cast<uint8_t*>(r->ExceptionAddress);
+        say("THROW NOTE: %s \"%s\" (thrown at %p)", type, message, from);
+    }
+
+    LONG CALLBACK crashNote(EXCEPTION_POINTERS* e)
+    {
+        if (e->ExceptionRecord->ExceptionCode == 0xE06D7363) { noteThrow(e->ExceptionRecord); return EXCEPTION_CONTINUE_SEARCH; }
+        if (e->ExceptionRecord->ExceptionCode != EXCEPTION_ACCESS_VIOLATION) { return EXCEPTION_CONTINUE_SEARCH; }
+        auto at = static_cast<uint8_t*>(e->ExceptionRecord->ExceptionAddress);
+        // Only the game's own code: the plugin's guarded reads fault on purpose.
+        if (at < g_imageStart || at >= g_imageStart + g_imageSize) { return EXCEPTION_CONTINUE_SEARCH; }
+        if (InterlockedIncrement(&g_crashNotes) > 3) { return EXCEPTION_CONTINUE_SEARCH; }
+        CONTEXT* c = e->ContextRecord;
+        say("CRASH NOTE: access violation at game+%llX reading %llX", static_cast<unsigned long long>(at - g_imageStart),
+            static_cast<unsigned long long>(e->ExceptionRecord->ExceptionInformation[1]));
+        const struct { const char* name; DWORD64 value; } registers[] = {
+            { "rcx", c->Rcx }, { "rdx", c->Rdx }, { "rbx", c->Rbx }, { "rsi", c->Rsi }, { "rdi", c->Rdi },
+            { "r12", c->R12 }, { "r13", c->R13 }, { "r14", c->R14 }, { "r15", c->R15 },
+        };
+        for (const auto& r : registers)
+        {
+            auto object = reinterpret_cast<uint8_t*>(r.value);
+            char line[160];
+            if (!describe(object, line, sizeof(line))) { continue; }
+            say("CRASH NOTE:   %s %p = %s", r.name, object, line);
+            uint8_t* outer = object;
+            for (int depth = 0; depth < 5; depth++)
+            {
+                if (!readBlock(outer + 0x20, &outer, 8) || !outer || !describe(outer, line, sizeof(line))) { break; }
+                say("CRASH NOTE:     in %s", line);
+            }
+        }
+        if (g_log) { fflush(g_log); }
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
+    // A world watch while custom mobs are being tried: once a second, which World objects exist,
+    // how many PlayerControllers and how many Zombie-variant characters - logged when that
+    // changes. It says whether a level was entered, whether the mob came, and what the game did
+    // before it left. Reads only.
+    DWORD WINAPI watchWorlds(LPVOID)
+    {
+        std::string last;
+        for (int tick = 0; tick < 3600; tick++)
+        {
+            Sleep(1000);
+            int32_t count = 0;
+            uint8_t** chunks = nullptr;
+            if (!g_game || !g_game->objectCount || !readBlock(g_game->objectCount, &count, 4) || !readBlock(g_game->objectChunks, &chunks, 8) || !chunks) { continue; }
+            std::string worlds;
+            int controllers = 0, zombies = 0;
+            // Each custom mob's own blueprint class: BP_CreeperBtCharacter_C and its objects.
+            std::vector<std::string> classes;
+            for (const auto& m : g_mobs)
+            {
+                std::string bp(m.mob.blueprint.begin(), m.mob.blueprint.end());
+                classes.push_back(bp.substr(bp.find_last_of('/') + 1) + "_C");
+            }
+            for (int32_t i = 0; i < count; i++)
+            {
+                uint8_t* chunk = nullptr;
+                uint8_t* object = nullptr;
+                if (!readBlock(chunks + (i >> 16), &chunk, 8) || !chunk) { continue; }
+                if (!readBlock(chunk + static_cast<size_t>(i & 0xFFFF) * 0x18, &object, 8) || !object) { continue; }
+                uint8_t* cls = nullptr;
+                int32_t clsName[2]{}, name[2]{};
+                if (!readBlock(object + 0x10, &cls, 8) || !cls || !readBlock(cls + 0x18, clsName, 8)) { continue; }
+                char c[96];
+                if (!nameText(clsName[0], c, sizeof(c))) { continue; }
+                if (strcmp(c, "World") == 0)
+                {
+                    char n[96];
+                    if (readBlock(object + 0x18, name, 8) && nameText(name[0], n, sizeof(n)) && strncmp(n, "Default__", 9) != 0) { worlds += n; worlds += " "; }
+                }
+                else if (strstr(c, "PlayerController") && strncmp(c, "Default__", 9) != 0) { controllers++; }
+                else
+                {
+                    for (const auto& one : classes) { if (one == c) { zombies++; break; } }
+                }
+            }
+            char line[512];
+            snprintf(line, sizeof(line), "worlds [ %s] player controllers %d, custom mobs' blueprint objects %d", worlds.c_str(), controllers, zombies);
+            if (last != line) { last = line; say("WATCH: %s", line); }
+        }
+        return 0;
+    }
+
+    void noteCrashes()
+    {
+        HMODULE exe = GetModuleHandleW(nullptr);
+        auto dos = reinterpret_cast<IMAGE_DOS_HEADER*>(exe);
+        auto nt = reinterpret_cast<IMAGE_NT_HEADERS*>(reinterpret_cast<uint8_t*>(exe) + dos->e_lfanew);
+        g_imageStart = reinterpret_cast<uint8_t*>(exe);
+        g_imageSize = nt->OptionalHeader.SizeOfImage;
+        // FName::GetNames: sub rsp,28 / mov rax,[rip+holder] / test rax,rax / jne / mov ecx,808h
+        auto getNames = scan(parse("48 83 EC 28 48 8B 05 ?? ?? ?? ?? 48 85 C0 75 ?? B9 08 08 00 00"));
+        if (getNames.size() != 1) { say("crash notes: the name table was not found"); return; }
+        int32_t rel; memcpy(&rel, getNames[0] + 7, 4);
+        g_names = reinterpret_cast<uint8_t**>(getNames[0] + 11 + rel);
+        AddVectoredExceptionHandler(1, crashNote);
+        say("crash notes: on");
+    }
+
     DWORD WINAPI run(LPVOID)
     {
         wchar_t path[MAX_PATH];
@@ -1227,12 +1776,22 @@ namespace
         // The game decrypts itself after it starts, so the patterns can be missing for a while.
         Game game;
         bool ready = false;
-        for (int attempt = 0; attempt < 120 && !ready; attempt++)
+        for (int attempt = 0; attempt < 600 && !ready; attempt++)
         {
             ready = find(game);
-            if (!ready) { Sleep(500); }
+            if (!ready) { Sleep(100); }
         }
         if (!ready) { say("the game's code was never found; nothing was changed"); return 0; }
+        noteCrashes();
+        nameMobs(game);
+        // The world watch (watchWorlds) found why custom mobs broke levels; it walks every object
+        // once a second, so it is only started when MCDRebornWatch.txt sits beside the plugin.
+        if (!g_mobs.empty() && game.objectCount && game.objectChunks && GetFileAttributesW((g_folder + L"MCDRebornWatch.txt").c_str()) != INVALID_FILE_ATTRIBUTES)
+        {
+            g_gameKept = game;
+            g_game = &g_gameKept;
+            CreateThread(nullptr, 0, watchWorlds, nullptr, 0, nullptr);
+        }
 
         // The registry is filled by the game's static blocks as it starts. Wait for all of them:
         // loaded with the game, this runs before they have, and a half-filled list is not one to
@@ -1267,6 +1826,7 @@ namespace
         }
         if (!ids.empty()) { refreshFinder(game, registry, ids); }
         say("done: %d item(s), registry now holds %d", added, count(registry));
+        addMobs(game);
         addEnchantments(game);
         fileEnchantmentBlueprints(game);
         return 0;

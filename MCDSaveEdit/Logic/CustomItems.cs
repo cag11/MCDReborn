@@ -207,9 +207,11 @@ namespace MCDSaveEdit.Logic
             var key = files.Keys.FirstOrDefault(k => k.EndsWith("/BP_" + slot.FolderId + "Instance.uasset", StringComparison.OrdinalIgnoreCase));
             if (key == null) { return; }
             var map = new Dictionary<string, string>(StringComparer.Ordinal);
+            //The game's EntityTypes, and MCD Reborn's own mobs, which the plugin names in the enum.
+            var known = new HashSet<string>(GearTraits.ENTITY_TYPES.Concat(GamePlugin.installedMobs().Select(m => m.Id)), StringComparer.Ordinal);
             for (var i = 0; i < original.Count && i < design.Summons.Count; i++)
             {
-                if (!GearTraits.ENTITY_TYPES.Contains(design.Summons[i])) { continue; }
+                if (!known.Contains(design.Summons[i])) { notes.Add($"{slot.Id}: {design.Summons[i]} is not a mob this game has; entry {i + 1} kept."); continue; }
                 map["EntityType::" + original[i]] = "EntityType::" + design.Summons[i];
             }
             var renamed = PackageRename.rename(files[key], text => map.TryGetValue(text, out var to) ? to : null, out var changed);

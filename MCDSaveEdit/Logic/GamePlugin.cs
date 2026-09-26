@@ -75,16 +75,17 @@ namespace MCDSaveEdit.Logic
         public static string install(IReadOnlyList<Item> items, string? paksFolder = null)
         {
             var enchantments = CustomEnchantments.forPlugin();
+            var mobs = CustomMobs.forPlugin();
             var folder = gameFolder(paksFolder)
                 ?? throw new InvalidOperationException("Items beyond the free slots need the Steam or Minecraft Launcher version of the game; this one's folder cannot take the plugin.");
             var dll = Path.Combine(folder, DLL_NAME);
             var list = Path.Combine(folder, ITEMS_NAME);
 
-            if (items.Count == 0 && enchantments.Count == 0)
+            if (items.Count == 0 && enchantments.Count == 0 && mobs.Count == 0)
             {
                 if (isOurs(dll)) { File.Delete(dll); }
                 if (File.Exists(list)) { File.Delete(list); }
-                return "The item plugin was removed: there are no custom items or enchantments.";
+                return "The item plugin was removed: there are no custom items, enchantments or mobs.";
             }
 
             if (File.Exists(dll) && !isOurs(dll))
@@ -109,10 +110,13 @@ namespace MCDSaveEdit.Logic
                 lines.AddRange(enchantments.Select(e => string.Join("\t", "@enchantment", e.Id, e.SourceType.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     clean(e.Name), clean(e.Description), clean(e.BuiltIn), clean(e.Effect), e.Blueprint, e.Icon)));
             }
+            if (mobs.Count > 0)
+            {
+                lines.Add("# @mob	id	source EntityType	name	blueprint under /Game/");
+                lines.AddRange(mobs.Select(m => string.Join("	", "@mob", m.Id, m.SourceType.ToString(System.Globalization.CultureInfo.InvariantCulture), clean(m.Name), m.Blueprint)));
+            }
             File.WriteAllLines(list, lines, new UTF8Encoding(false));
-            return enchantments.Count == 0
-                ? $"The item plugin will register {items.Count} item(s) the next time the game starts."
-                : $"The item plugin will register {items.Count} item(s) and {enchantments.Count} enchantment(s) the next time the game starts.";
+            return $"The item plugin will register {items.Count} item(s), {enchantments.Count} enchantment(s) and {mobs.Count} mob(s) the next time the game starts.";
         }
 
         /// <summary>
@@ -160,6 +164,29 @@ namespace MCDSaveEdit.Logic
 
         /// <summary>The enchantment a plugin enchantment copies, by name, for its icon; null for any other.</summary>
         public static string? sourceOf(string enchantmentId) => _sources.TryGetValue(enchantmentId, out var source) ? source : null;
+
+        /// <summary>One mob the plugin registers: a copy of the EntityType SourceType, under its own id and name.</summary>
+        public sealed record Mob(string Id, int SourceType, string Name, string Blueprint);
+
+        /// <summary>The "@mob" lines of the installed item list, as the plugin will read them.</summary>
+        public static List<Mob> installedMobs(string? paksFolder = null)
+        {
+            var found = new List<Mob>();
+            var folder = gameFolder(paksFolder);
+            var list = folder == null ? null : Path.Combine(folder, ITEMS_NAME);
+            if (list == null || !File.Exists(list)) { return found; }
+            string[] lines;
+            try { lines = File.ReadAllLines(list); }
+            catch (IOException) { return found; }
+            foreach (var line in lines)
+            {
+                if (!line.StartsWith("@mob	", StringComparison.Ordinal)) { continue; }
+                var parts = line.Split('	');
+                if (parts.Length < 5 || !int.TryParse(parts[2], out var source)) { continue; }
+                found.Add(new Mob(parts[1], source, parts[3], parts[4]));
+            }
+            return found;
+        }
 
         /// <summary>The "@enchantment" lines of the installed item list, as the plugin will read them.</summary>
         public static List<Enchantment> installedEnchantments(string? paksFolder = null)

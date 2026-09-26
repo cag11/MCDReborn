@@ -4252,4 +4252,46 @@ Delete it?</value>
     <value>Choose masks…</value>
     <comment>Button: pick a PNG of three shine masks</comment>
   </data>
+  <data name="ITEMS_NEW_MOB" xml:space="preserve">
+    <value>New mob</value>
+    <comment>Button</comment>
+  </data>
+  <data name="ITEMS_KIND_MOB" xml:space="preserve">
+    <value>Mob</value>
+    <comment>Type shown under a mob in the list</comment>
+  </data>
+  <data name="ITEMS_MOB_NEW_TITLE" xml:space="preserve">
+    <value>New mob</value>
+    <comment>Title of a new mob with no name yet</comment>
+  </data>
+  <data name="ITEMS_MOB_TEXT_HINT" xml:space="preserve">
+    <value>Shown in every language. Leave it empty to use the copied mob's name.</value>
+    <comment>Hint under the mob's name</comment>
+  </data>
+  <data name="ITEMS_MOB_COPY_HINT" xml:space="preserve">
+    <value>It is the copied mob in every way - its model, its moves and its numbers - under a type and a name of its own. Summoning artifacts offer it among their summons, and a map's mob groups spawn it as {0}.</value>
+    <comment>Hint above the mob list. {0} is the name maps use</comment>
+  </data>
+  <data name="ITEMS_MOB_PICK_SOURCE" xml:space="preserve">
+    <value>Pick a mob to copy first.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="ITEMS_MOB_DELETE" xml:space="preserve">
+    <value>Delete this mob</value>
+    <comment>Button</comment>
+  </data>
+  <data name="ITEMS_MOB_DELETE_WARN" xml:space="preserve">
+    <value>Take {0} out of every artifact's summons and every map first. Once it is deleted, the game no longer knows it.
+
+Delete it?</value>
+    <comment>Confirmation. {0} is the mob's name</comment>
+  </data>
+  <data name="ITEMS_MOB_INSTALLED" xml:space="preserve">
+    <value>Saved {0} mob(s). Restart the game, then summon them with an artifact or spawn them from a map.</value>
+    <comment>Status after installing mobs</comment>
+  </data>
+  <data name="ITEMS_MOB_EXPORTED" xml:space="preserve">
+    <value>Saved {0}. It holds the mob's source and name.</value>
+    <comment>Status. {0} is the file name</comment>
+  </data>
 </root>

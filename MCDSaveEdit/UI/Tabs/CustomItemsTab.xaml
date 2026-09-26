@@ -34,8 +34,10 @@
                 <StackPanel x:Name="moreNewButtons" Orientation="Horizontal" Margin="0,6,0,0">
                     <Button x:Name="newArtifactButton" Content="*New artifact*" Padding="8,4" Margin="0,0,6,0"
                             Click="newArtifactButton_Click"/>
-                    <Button x:Name="newEnchantmentButton" Content="*New enchantment*" Padding="8,4"
+                    <Button x:Name="newEnchantmentButton" Content="*New enchantment*" Padding="8,4" Margin="0,0,6,0"
                             Click="newEnchantmentButton_Click"/>
+                    <Button x:Name="newMobButton" Content="*New mob*" Padding="8,4"
+                            Click="newMobButton_Click"/>
                 </StackPanel>
                 <TextBlock x:Name="pluginStatus" Foreground="Gray" TextWrapping="Wrap" FontSize="11" Margin="2,6,2,0"/>
             </StackPanel>
@@ -319,6 +321,36 @@
                     </Grid>
                     <Button x:Name="enchantmentNumbersReset" Content="*Use the copied enchantment's*" Padding="8,2"
                             HorizontalAlignment="Left" Click="enchantmentNumbersReset_Click"/>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- A new mob: a copy of one of the game's under its own EntityType and name. -->
+            <ScrollViewer x:Name="mobEditor" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                <StackPanel Margin="0,0,6,0">
+                    <TextBlock x:Name="mobTitle" FontWeight="SemiBold" FontSize="15"/>
+                    <TextBlock x:Name="mobDetail" Foreground="Gray" FontSize="11" Margin="0,2,0,10" TextWrapping="Wrap"/>
+
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="mobNameLabel" VerticalAlignment="Center"/>
+                        <TextBox x:Name="mobNameBox" Grid.Column="1" Height="26" VerticalContentAlignment="Center"
+                                 TextChanged="mobNameBox_TextChanged"/>
+                    </Grid>
+                    <TextBlock x:Name="mobTextHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="100,0,2,10"/>
+
+                    <Label x:Name="mobCopyLabel" Content="*Copy from*" Padding="0,0,0,2"/>
+                    <TextBlock x:Name="mobCopyHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="2,0,2,6"/>
+                    <Grid Margin="0,0,0,4">
+                        <TextBox x:Name="mobSearchBox" Height="26" VerticalContentAlignment="Center"
+                                 TextChanged="mobSearchBox_TextChanged"/>
+                        <TextBlock x:Name="mobSearchHint" Text="Search…" Margin="9,0,0,0" Foreground="Gray"
+                                   IsHitTestVisible="False" VerticalAlignment="Center"/>
+                    </Grid>
+                    <ListBox x:Name="mobSourceList" Height="360" SelectionChanged="mobSourceList_SelectionChanged"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"/>
                 </StackPanel>
             </ScrollViewer>
             </Grid>
