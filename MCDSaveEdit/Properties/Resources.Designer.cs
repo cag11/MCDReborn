@@ -79,7 +79,7 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Recolor Gear.
+        ///   Looks up a localized string similar to Recolor.
         /// </summary>
         public static string CUSTOM_SKINS_TAB {
             get {
@@ -340,7 +340,7 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Custom Skins.
+        ///   Looks up a localized string similar to Skins.
         /// </summary>
         public static string HERO_TAB {
             get {

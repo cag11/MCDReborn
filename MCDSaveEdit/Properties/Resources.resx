@@ -126,7 +126,7 @@
     <comment>All files</comment>
   </data>
   <data name="CUSTOM_SKINS_TAB" xml:space="preserve">
-    <value>Recolor Gear</value>
+    <value>Recolor</value>
     <comment>Custom Skins</comment>
   </data>
   <data name="CUSTOM_SKINS_GEAR" xml:space="preserve">
@@ -254,7 +254,7 @@
     <comment>Armor defaults tooltip</comment>
   </data>
   <data name="HERO_TAB" xml:space="preserve">
-    <value>Custom Skins</value>
+    <value>Skins</value>
     <comment>Hero tab</comment>
   </data>
   <data name="HERO_HEROES" xml:space="preserve">
