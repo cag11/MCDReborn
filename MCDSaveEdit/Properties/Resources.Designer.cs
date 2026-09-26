@@ -9174,5 +9174,320 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("ITEMS_SUMMONS_HINT", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to New enchantment.
+        /// </summary>
+        public static string ITEMS_NEW_ENCHANTMENT {
+            get {
+                return ResourceManager.GetString("ITEMS_NEW_ENCHANTMENT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Enchantment.
+        /// </summary>
+        public static string ITEMS_KIND_ENCHANTMENT {
+            get {
+                return ResourceManager.GetString("ITEMS_KIND_ENCHANTMENT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to New enchantment.
+        /// </summary>
+        public static string ITEMS_ENCH_NEW_TITLE {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_NEW_TITLE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Built-in line.
+        /// </summary>
+        public static string ITEMS_ENCH_BUILTIN {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_BUILTIN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Effect.
+        /// </summary>
+        public static string ITEMS_ENCH_EFFECT {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_EFFECT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Leave a box empty to keep the copied enchantment's text, in the game's language. In the effect, {0} is where its number goes..
+        /// </summary>
+        public static string ITEMS_ENCH_TEXT_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_TEXT_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to It does what the copied enchantment does, at the same strength and with its icon, under an id and name of its own. Hidden ones are the enchantments the game never offers..
+        /// </summary>
+        public static string ITEMS_ENCH_COPY_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_COPY_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to hidden.
+        /// </summary>
+        public static string ITEMS_ENCH_HIDDEN {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_HIDDEN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pick an enchantment to copy first..
+        /// </summary>
+        public static string ITEMS_ENCH_PICK_SOURCE {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_PICK_SOURCE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Delete this enchantment.
+        /// </summary>
+        public static string ITEMS_ENCH_DELETE {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_DELETE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Take {0} off every item first. Once it is deleted, the game no longer knows it..
+        /// </summary>
+        public static string ITEMS_ENCH_DELETE_WARN {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_DELETE_WARN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Saved {0} enchantment(s). Restart the game, then put them on gear from the inventory..
+        /// </summary>
+        public static string ITEMS_ENCH_INSTALLED {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_INSTALLED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Saved {0}. It holds the enchantment's source and texts..
+        /// </summary>
+        public static string ITEMS_ENCH_EXPORTED {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_EXPORTED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Numbers.
+        /// </summary>
+        public static string ITEMS_ENCH_NUMBERS {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_NUMBERS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to What the copied enchantment's own code reads, with the game's value beside yours. Change any and it gets a blueprint of its own. Chances are 0 to 1, times in seconds, distances in centimetres (100 is one block)..
+        /// </summary>
+        public static string ITEMS_ENCH_NUMBERS_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_NUMBERS_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to This enchantment has no numbers of its own to change..
+        /// </summary>
+        public static string ITEMS_ENCH_NUMBERS_NONE {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_NUMBERS_NONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Use the copied enchantment's.
+        /// </summary>
+        public static string ITEMS_ENCH_NUMBERS_RESET {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_NUMBERS_RESET", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to A square PNG with a clear background, drawn over the copied icon (256 by 256). The game's own are a diamond; anything works..
+        /// </summary>
+        public static string ITEMS_ENCH_ICON_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_ICON_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Use the copied enchantment's.
+        /// </summary>
+        public static string ITEMS_ENCH_ICON_RESET {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_ICON_RESET", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Shine.
+        /// </summary>
+        public static string ITEMS_ENCH_SHINE {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_SHINE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The sheen that sweeps across the icon follows three masks, packed in red, green and blue. Made from your picture: blue is its whole shape, green its brighter half, red its brightest part with a glow. The preview shows the masks..
+        /// </summary>
+        public static string ITEMS_ENCH_SHINE_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_SHINE_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Made from the picture.
+        /// </summary>
+        public static string ITEMS_ENCH_SHINE_MADE {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_SHINE_MADE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to None.
+        /// </summary>
+        public static string ITEMS_ENCH_SHINE_NONE {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_SHINE_NONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to My own masks.
+        /// </summary>
+        public static string ITEMS_ENCH_SHINE_PICTURE {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_SHINE_PICTURE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Choose masks….
+        /// </summary>
+        public static string ITEMS_ENCH_SHINE_CHOOSE {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_SHINE_CHOOSE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to New mob.
+        /// </summary>
+        public static string ITEMS_NEW_MOB {
+            get {
+                return ResourceManager.GetString("ITEMS_NEW_MOB", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Mob.
+        /// </summary>
+        public static string ITEMS_KIND_MOB {
+            get {
+                return ResourceManager.GetString("ITEMS_KIND_MOB", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to New mob.
+        /// </summary>
+        public static string ITEMS_MOB_NEW_TITLE {
+            get {
+                return ResourceManager.GetString("ITEMS_MOB_NEW_TITLE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Shown in every language. Leave it empty to use the copied mob's name..
+        /// </summary>
+        public static string ITEMS_MOB_TEXT_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_MOB_TEXT_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to It is the copied mob in every way - its model, its moves and its numbers - under a type and a name of its own. Summoning artifacts offer it among their summons, and a map's mob groups spawn it as {0}..
+        /// </summary>
+        public static string ITEMS_MOB_COPY_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_MOB_COPY_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Pick a mob to copy first..
+        /// </summary>
+        public static string ITEMS_MOB_PICK_SOURCE {
+            get {
+                return ResourceManager.GetString("ITEMS_MOB_PICK_SOURCE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Delete this mob.
+        /// </summary>
+        public static string ITEMS_MOB_DELETE {
+            get {
+                return ResourceManager.GetString("ITEMS_MOB_DELETE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Take {0} out of every artifact's summons and every map first. Once it is deleted, the game no longer knows it..
+        /// </summary>
+        public static string ITEMS_MOB_DELETE_WARN {
+            get {
+                return ResourceManager.GetString("ITEMS_MOB_DELETE_WARN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Saved {0} mob(s). Restart the game, then summon them with an artifact or spawn them from a map..
+        /// </summary>
+        public static string ITEMS_MOB_INSTALLED {
+            get {
+                return ResourceManager.GetString("ITEMS_MOB_INSTALLED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Saved {0}. It holds the mob's source and name..
+        /// </summary>
+        public static string ITEMS_MOB_EXPORTED {
+            get {
+                return ResourceManager.GetString("ITEMS_MOB_EXPORTED", resourceCulture);
+            }
+        }
     }
 }

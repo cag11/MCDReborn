@@ -207,9 +207,11 @@ namespace MCDSaveEdit.Logic
             var key = files.Keys.FirstOrDefault(k => k.EndsWith("/BP_" + slot.FolderId + "Instance.uasset", StringComparison.OrdinalIgnoreCase));
             if (key == null) { return; }
             var map = new Dictionary<string, string>(StringComparer.Ordinal);
+            //The game's EntityTypes, and MCD Reborn's own mobs, which the plugin names in the enum.
+            var known = new HashSet<string>(GearTraits.ENTITY_TYPES.Concat(GamePlugin.installedMobs().Select(m => m.Id)), StringComparer.Ordinal);
             for (var i = 0; i < original.Count && i < design.Summons.Count; i++)
             {
-                if (!GearTraits.ENTITY_TYPES.Contains(design.Summons[i])) { continue; }
+                if (!known.Contains(design.Summons[i])) { notes.Add($"{slot.Id}: {design.Summons[i]} is not a mob this game has; entry {i + 1} kept."); continue; }
                 map["EntityType::" + original[i]] = "EntityType::" + design.Summons[i];
             }
             var renamed = PackageRename.rename(files[key], text => map.TryGetValue(text, out var to) ? to : null, out var changed);
@@ -674,6 +676,23 @@ namespace MCDSaveEdit.Logic
             throw new InvalidOperationException($"{source.Id} is not under Actors/Equipment or Actors/Items.");
         }
 
+        /// <summary>What the plugin is told about each design, as its item list spells it.</summary>
+        public static List<GamePlugin.Item> pluginItems(IEnumerable<Design> designs)
+        {
+            var found = new List<GamePlugin.Item>();
+            foreach (var design in designs)
+            {
+                var slot = slotOf(design);
+                if (!slot.Plugin) { continue; }
+                var source = gameItem(design.Source) ?? throw new InvalidOperationException($"{design.Source} is not a game item.");
+                found.Add(new GamePlugin.Item(slot.Id, source.Id, slot.Folder,
+                    string.IsNullOrWhiteSpace(design.Name) ? R.itemName(source.Id) : design.Name!,
+                    string.IsNullOrWhiteSpace(design.Description) ? R.itemDesc(source.Id) : design.Description!,
+                    skillsField(design), linesField(design), armorField(design), numbersField(design)));
+            }
+            return found;
+        }
+
         public static Built build(IReadOnlyList<Design> designs, string? into = null, IReadOnlyList<Extra>? extras = null)
         {
             extras ??= Array.Empty<Extra>();
@@ -681,7 +700,13 @@ namespace MCDSaveEdit.Logic
             var paks = CustomSkins.paksFolder ?? throw new InvalidOperationException("The game's paks folder is not known.");
             var pakPath = into ?? Path.Combine(paks, CustomSkins.MOD_PREFIX + MOD_NAME + "_P.pak");
 
-            if (designs.Count == 0 && extras.Count == 0)
+            //New enchantments with numbers of their own bring a copied blueprint, which the game
+            //finds through the same registry - so they go in this pak too.
+            var enchantments = into == null ? CustomEnchantments.load().Where(CustomEnchantments.hasBlueprint).ToList() : new List<CustomEnchantments.Design>();
+            //And new mobs with a look of their own bring copies of their blueprints and mesh.
+            var mobs = into == null ? CustomMobs.load().Where(CustomMobs.hasLook).ToList() : new List<CustomMobs.Design>();
+
+            if (designs.Count == 0 && extras.Count == 0 && enchantments.Count == 0 && mobs.Count == 0)
             {
                 if (File.Exists(pakPath)) { File.Delete(pakPath); }
                 result.Notes.Add("No custom items: the pak was removed.");
@@ -691,17 +716,7 @@ namespace MCDSaveEdit.Logic
 
             //Checked before anything is written: a plugin item with no plugin to register it is an
             //id the game does not know.
-            var pluginItems = new List<GamePlugin.Item>();
-            foreach (var design in designs)
-            {
-                var slot = slotOf(design);
-                if (!slot.Plugin) { continue; }
-                var source = gameItem(design.Source) ?? throw new InvalidOperationException($"{design.Source} is not a game item.");
-                pluginItems.Add(new GamePlugin.Item(slot.Id, source.Id, slot.Folder,
-                    string.IsNullOrWhiteSpace(design.Name) ? R.itemName(source.Id) : design.Name!,
-                    string.IsNullOrWhiteSpace(design.Description) ? R.itemDesc(source.Id) : design.Description!,
-                    skillsField(design), linesField(design), armorField(design), numbersField(design)));
-            }
+            var pluginItems = CustomItems.pluginItems(designs);
             if (pluginItems.Count > 0 && into == null && GamePlugin.gameFolder(paks) == null)
             {
                 throw new InvalidOperationException("Items beyond the free slots need the Steam or Minecraft Launcher version of the game.");
@@ -741,6 +756,20 @@ namespace MCDSaveEdit.Logic
                 copies.Add((made.GameFrom, made.Rename));
                 result.Items++;
                 result.Notes.Add($"{extra.Id}: a copy of {source.Id} in {extraFolder(source, extra.Id)}.");
+            }
+
+            foreach (var enchantment in enchantments)
+            {
+                var (files, made) = CustomEnchantments.files(enchantment, result.Notes);
+                entries.AddRange(files);
+                copies.Add((made.GameFrom, made.Rename));
+            }
+
+            foreach (var mob in mobs)
+            {
+                var (files, made) = CustomMobs.lookFiles(mob, result.Notes);
+                entries.AddRange(files);
+                copies.Add((made.GameFrom, made.Rename));
             }
 
 
@@ -1293,7 +1322,7 @@ namespace MCDSaveEdit.Logic
         /// Every mip of one texture replaced by the picture at that mip's size. The pixels are found
         /// where they are - in the .uexp or the .ubulk - and must be found exactly once.
         /// </summary>
-        private static string? repaint(byte[] uasset, byte[] uexp, byte[]? ubulk, BitmapSource picture,
+        internal static string? repaint(byte[] uasset, byte[] uexp, byte[]? ubulk, BitmapSource picture,
             out byte[] newUexp, out byte[]? newBulk)
         {
             newUexp = uexp;

@@ -4150,4 +4150,148 @@ Delete it?</value>
     <value>One is picked at random each time. Any creature of the game's can be chosen; one that is normally hostile may not come out friendly.</value>
     <comment>Hint under the Summons label</comment>
   </data>
+  <data name="ITEMS_NEW_ENCHANTMENT" xml:space="preserve">
+    <value>New enchantment</value>
+    <comment>Button</comment>
+  </data>
+  <data name="ITEMS_KIND_ENCHANTMENT" xml:space="preserve">
+    <value>Enchantment</value>
+    <comment>Type shown under an enchantment in the list</comment>
+  </data>
+  <data name="ITEMS_ENCH_NEW_TITLE" xml:space="preserve">
+    <value>New enchantment</value>
+    <comment>Title of a new enchantment with no name yet</comment>
+  </data>
+  <data name="ITEMS_ENCH_BUILTIN" xml:space="preserve">
+    <value>Built-in line</value>
+    <comment>Label: the line an item shows when the enchantment is built into it</comment>
+  </data>
+  <data name="ITEMS_ENCH_EFFECT" xml:space="preserve">
+    <value>Effect</value>
+    <comment>Label: the number line under the enchantment, such as '{0} damage per second'</comment>
+  </data>
+  <data name="ITEMS_ENCH_TEXT_HINT" xml:space="preserve">
+    <value>Leave a box empty to keep the copied enchantment's text, in the game's language. In the effect, {0} is where its number goes.</value>
+    <comment>Hint under the enchantment's texts</comment>
+  </data>
+  <data name="ITEMS_ENCH_COPY_HINT" xml:space="preserve">
+    <value>It does what the copied enchantment does, at the same strength and with its icon, under an id and name of its own. Hidden ones are the enchantments the game never offers.</value>
+    <comment>Hint above the enchantment list</comment>
+  </data>
+  <data name="ITEMS_ENCH_HIDDEN" xml:space="preserve">
+    <value>hidden</value>
+    <comment>Marks an enchantment the game never offers, in the list to copy from</comment>
+  </data>
+  <data name="ITEMS_ENCH_PICK_SOURCE" xml:space="preserve">
+    <value>Pick an enchantment to copy first.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="ITEMS_ENCH_DELETE" xml:space="preserve">
+    <value>Delete this enchantment</value>
+    <comment>Button</comment>
+  </data>
+  <data name="ITEMS_ENCH_DELETE_WARN" xml:space="preserve">
+    <value>Take {0} off every item first. Once it is deleted, the game no longer knows it.
+
+Delete it?</value>
+    <comment>Confirmation. {0} is the enchantment's name</comment>
+  </data>
+  <data name="ITEMS_ENCH_INSTALLED" xml:space="preserve">
+    <value>Saved {0} enchantment(s). Restart the game, then put them on gear from the inventory.</value>
+    <comment>Status after installing enchantments</comment>
+  </data>
+  <data name="ITEMS_ENCH_EXPORTED" xml:space="preserve">
+    <value>Saved {0}. It holds the enchantment's source and texts.</value>
+    <comment>Status. {0} is the file name</comment>
+  </data>
+  <data name="ITEMS_ENCH_NUMBERS" xml:space="preserve">
+    <value>Numbers</value>
+    <comment>Label above an enchantment's numbers</comment>
+  </data>
+  <data name="ITEMS_ENCH_NUMBERS_HINT" xml:space="preserve">
+    <value>What the copied enchantment's own code reads, with the game's value beside yours. Change any and it gets a blueprint of its own. Chances are 0 to 1, times in seconds, distances in centimetres (100 is one block).</value>
+    <comment>Hint under the Numbers label</comment>
+  </data>
+  <data name="ITEMS_ENCH_NUMBERS_NONE" xml:space="preserve">
+    <value>This enchantment has no numbers of its own to change.</value>
+    <comment>Shown instead of the numbers</comment>
+  </data>
+  <data name="ITEMS_ENCH_NUMBERS_RESET" xml:space="preserve">
+    <value>Use the copied enchantment's</value>
+    <comment>Button: drop the enchantment's own numbers</comment>
+  </data>
+  <data name="ITEMS_ENCH_ICON_HINT" xml:space="preserve">
+    <value>A square PNG with a clear background, drawn over the copied icon (256 by 256). The game's own are a diamond; anything works.</value>
+    <comment>Hint under the enchantment's Icon label</comment>
+  </data>
+  <data name="ITEMS_ENCH_ICON_RESET" xml:space="preserve">
+    <value>Use the copied enchantment's</value>
+    <comment>Button: drop the enchantment's own icon</comment>
+  </data>
+  <data name="ITEMS_ENCH_SHINE" xml:space="preserve">
+    <value>Shine</value>
+    <comment>Label: the animated sheen across an enchantment's own icon</comment>
+  </data>
+  <data name="ITEMS_ENCH_SHINE_HINT" xml:space="preserve">
+    <value>The sheen that sweeps across the icon follows three masks, packed in red, green and blue. Made from your picture: blue is its whole shape, green its brighter half, red its brightest part with a glow. The preview shows the masks.</value>
+    <comment>Hint under the Shine label</comment>
+  </data>
+  <data name="ITEMS_ENCH_SHINE_MADE" xml:space="preserve">
+    <value>Made from the picture</value>
+    <comment>Shine choice</comment>
+  </data>
+  <data name="ITEMS_ENCH_SHINE_NONE" xml:space="preserve">
+    <value>None</value>
+    <comment>Shine choice</comment>
+  </data>
+  <data name="ITEMS_ENCH_SHINE_PICTURE" xml:space="preserve">
+    <value>My own masks</value>
+    <comment>Shine choice</comment>
+  </data>
+  <data name="ITEMS_ENCH_SHINE_CHOOSE" xml:space="preserve">
+    <value>Choose masks…</value>
+    <comment>Button: pick a PNG of three shine masks</comment>
+  </data>
+  <data name="ITEMS_NEW_MOB" xml:space="preserve">
+    <value>New mob</value>
+    <comment>Button</comment>
+  </data>
+  <data name="ITEMS_KIND_MOB" xml:space="preserve">
+    <value>Mob</value>
+    <comment>Type shown under a mob in the list</comment>
+  </data>
+  <data name="ITEMS_MOB_NEW_TITLE" xml:space="preserve">
+    <value>New mob</value>
+    <comment>Title of a new mob with no name yet</comment>
+  </data>
+  <data name="ITEMS_MOB_TEXT_HINT" xml:space="preserve">
+    <value>Shown in every language. Leave it empty to use the copied mob's name.</value>
+    <comment>Hint under the mob's name</comment>
+  </data>
+  <data name="ITEMS_MOB_COPY_HINT" xml:space="preserve">
+    <value>It is the copied mob in every way - its model, its moves and its numbers - under a type and a name of its own. Summoning artifacts offer it among their summons, and a map's mob groups spawn it as {0}.</value>
+    <comment>Hint above the mob list. {0} is the name maps use</comment>
+  </data>
+  <data name="ITEMS_MOB_PICK_SOURCE" xml:space="preserve">
+    <value>Pick a mob to copy first.</value>
+    <comment>Status</comment>
+  </data>
+  <data name="ITEMS_MOB_DELETE" xml:space="preserve">
+    <value>Delete this mob</value>
+    <comment>Button</comment>
+  </data>
+  <data name="ITEMS_MOB_DELETE_WARN" xml:space="preserve">
+    <value>Take {0} out of every artifact's summons and every map first. Once it is deleted, the game no longer knows it.
+
+Delete it?</value>
+    <comment>Confirmation. {0} is the mob's name</comment>
+  </data>
+  <data name="ITEMS_MOB_INSTALLED" xml:space="preserve">
+    <value>Saved {0} mob(s). Restart the game, then summon them with an artifact or spawn them from a map.</value>
+    <comment>Status after installing mobs</comment>
+  </data>
+  <data name="ITEMS_MOB_EXPORTED" xml:space="preserve">
+    <value>Saved {0}. It holds the mob's source and name.</value>
+    <comment>Status. {0} is the file name</comment>
+  </data>
 </root>

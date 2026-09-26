@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace LiveEdit
@@ -351,6 +351,9 @@ namespace LiveEdit
         }
 
         /// <summary>What an object's class is called - "Class", "ScriptStruct", "Function".</summary>
+        /// <summary>An FName's text, from its index: for names read out of a struct rather than off an object.</summary>
+        public string? nameAt(int index) => _names.nameOf(index);
+
         public string? kindOf(long obj) => nameOf(deref(obj, CLASS_AT).ToInt64());
 
         /// <summary>What it lives inside, which for a class is its package.</summary>

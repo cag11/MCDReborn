@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 #nullable enable
 
@@ -146,6 +147,71 @@ namespace MCDSaveEdit.Logic
             }
 
             return bytes;
+        }
+
+        /// <summary>
+        /// <paramref name="uasset"/> with <paramref name="names"/> added to the end of its name
+        /// table - those it lacks - and every offset after the table moved. Null when it is not a
+        /// package this understands. Existing names keep their indexes, so nothing that refers to
+        /// one needs changing.
+        /// </summary>
+        public static byte[]? withNames(byte[] uasset, IEnumerable<string> names)
+        {
+            var summary = read(uasset);
+            if (summary == null) { return null; }
+            var have = new HashSet<string>(CookedProperties.readNamesOf(uasset), StringComparer.Ordinal);
+            var missing = names.Where(n => have.Add(n)).ToList();
+            if (missing.Count == 0) { return uasset; }
+
+            var nameCount = BitConverter.ToInt32(uasset, summary.NameCountAt);
+            var at = BitConverter.ToInt32(uasset, summary.NameCountAt + 4);
+            for (var i = 0; i < nameCount; i++)
+            {
+                var length = BitConverter.ToInt32(uasset, at);
+                at += 4 + (length < 0 ? -length * 2 : length) + 4;
+            }
+
+            var table = new MemoryStream();
+            var writer = new BinaryWriter(table);
+            foreach (var spelled in missing)
+            {
+                writer.Write(spelled.Length + 1);
+                writer.Write(Encoding.ASCII.GetBytes(spelled));
+                writer.Write((byte)0);
+                writer.Write(NewContent.nonCaseHash(spelled));
+                writer.Write(NewContent.caseHash(spelled));
+            }
+            writer.Flush();
+            var made = splice(uasset, summary, at, 0, table.ToArray());
+            BitConverter.GetBytes(nameCount + missing.Count).CopyTo(made, summary.NameCountAt);
+            return made;
+        }
+
+        /// <summary>
+        /// Records that export <paramref name="index"/> grew by <paramref name="delta"/> bytes of
+        /// data in the .uexp: its SerialSize, the SerialOffset of every export whose data lies
+        /// after it, and BulkDataStartOffset. The header's own length does not change.
+        /// </summary>
+        public static bool exportGrew(byte[] uasset, int index, int delta)
+        {
+            var summary = read(uasset);
+            if (summary == null) { return false; }
+            var exports = BitConverter.ToInt32(uasset, summary.ExportCountAt);
+            var table = BitConverter.ToInt32(uasset, summary.ExportOffsetAt);
+            const int ENTRY = 104;
+            if (index < 0 || index >= exports) { return false; }
+            var entry = table + index * ENTRY;
+            var mine = BitConverter.ToInt64(uasset, entry + 36);
+            BitConverter.GetBytes(BitConverter.ToInt64(uasset, entry + 28) + delta).CopyTo(uasset, entry + 28);
+            for (var i = 0; i < exports; i++)
+            {
+                var serial = table + i * ENTRY + 36;
+                var value = BitConverter.ToInt64(uasset, serial);
+                if (value > mine) { BitConverter.GetBytes(value + delta).CopyTo(uasset, serial); }
+            }
+            var bulk = BitConverter.ToInt64(uasset, summary.BulkDataStartAt);
+            if (bulk > mine) { BitConverter.GetBytes(bulk + delta).CopyTo(uasset, summary.BulkDataStartAt); }
+            return true;
         }
 
         /// <summary>The name indexes, out of <paramref name="candidates"/>, that some native class import is named by.</summary>

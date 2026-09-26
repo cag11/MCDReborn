@@ -240,6 +240,8 @@ namespace MCDSaveEdit.Services
             //After the count above, which is about what the game drew. These have no icon by
             //definition, so they are added once the looking is done rather than during it.
             Data.HiddenEnchantments.register();
+            //And the enchantments MCD Reborn's plugin adds to the game.
+            Logic.GamePlugin.registerEnchantments(path);
             Console.WriteLine($"Added {Data.HiddenEnchantments.ids.Count()} enchantments the game never offers");
 
             //And whatever installed mods add, so a new enchantment or item can be put on
@@ -359,6 +361,12 @@ namespace MCDSaveEdit.Services
                 return imageSource("/Dungeons/Content/UI/Materials/MissionSelectMap/marker/locked_node");
             }
 
+            //MCD Reborn's own: a picture of its own, else the icon of the one it copies, as in the game.
+            if (Logic.CustomEnchantments.iconForApp(enchantmentId) is { } mine) { return mine; }
+            if (!_enchantments.ContainsKey(enchantmentId) && Logic.GamePlugin.sourceOf(enchantmentId) is { } source)
+            {
+                enchantmentId = source;
+            }
             if (_enchantments.TryGetValue(enchantmentId, out string fullPath))
             {
                 var image = imageSource(fullPath);

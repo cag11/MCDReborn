@@ -312,9 +312,9 @@ namespace MCDSaveEdit.UI
         /// </summary>
         private (GlbModel? model, MeshEdit.Transform transform, System.Windows.Media.Imaging.BitmapSource? texture, string label)? recall(string assetPath)
         {
-            if (CustomItems.isCopied(assetPath))
+            if (CustomItems.isCopied(assetPath) || CustomMobs.isCopied(assetPath))
             {
-                var look = CustomItems.installedLook(assetPath);
+                var look = CustomItems.isCopied(assetPath) ? CustomItems.installedLook(assetPath) : CustomMobs.installedLook(assetPath);
                 if (look == null) { return null; }
                 if (look.ModelMissing) { return (null, MeshEdit.Transform.none, null, R.WEAPON_SKINS_MODEL_GONE); }
                 return (look.Model, look.Transform, look.Texture,
@@ -796,7 +796,8 @@ namespace MCDSaveEdit.UI
             //A glow on its own is a change worth writing, even where the shape is untouched. So is
             //taking a custom item's model off: nothing in hand and nothing moved puts its copy back
             //to the mesh it was copied with.
-            var revert = CustomItems.isCopied(_selected.AssetPath) && CustomItems.installedLook(_selected.AssetPath) != null;
+            var revert = (CustomItems.isCopied(_selected.AssetPath) && CustomItems.installedLook(_selected.AssetPath) != null)
+                || (CustomMobs.isCopied(_selected.AssetPath) && CustomMobs.installedLook(_selected.AssetPath) != null);
             if (_imported == null && glow == null && !revert && (transform.isNothing || !_catalogue.canReshape))
             {
                 statusLabel.Text = _catalogue.nothingToDo;
@@ -813,7 +814,7 @@ namespace MCDSaveEdit.UI
                     + (lit.Count > 0 ? " " + string.Format(R.WEAPON_SKINS_GLOW_LIT, lit.Count) : string.Empty);
 
                 //So the tab can open this mesh the way it was left. A custom item keeps it in its design.
-                if (!CustomItems.isCopied(_selected.AssetPath))
+                if (!CustomItems.isCopied(_selected.AssetPath) && !CustomMobs.isCopied(_selected.AssetPath))
                 {
                     MeshInstalls.remember(Catalogue, _selected.AssetPath, _imported, transform, mod.Path);
                 }

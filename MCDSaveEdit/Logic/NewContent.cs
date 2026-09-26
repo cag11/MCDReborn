@@ -70,8 +70,13 @@ namespace MCDSaveEdit.Logic
         /// its name table is its parent, `/Script/Dungeons.Stunning`, the C++ class that does the
         /// work. Renaming that would point the copy at a class that does not exist.
         /// </remarks>
+        /// <param name="include">
+        /// Which of the folder's packages to copy, by name; null copies them all. What is left out
+        /// is not renamed anywhere, so the copies keep pointing at the game's own - a mob's copied
+        /// mesh keeps the game's skeleton, and with it every animation.
+        /// </param>
         public static Made? cloneFolder(string sourceFolder, string newId, bool ownsBareId = false,
-            IReadOnlyDictionary<string, string>? alsoRename = null)
+            IReadOnlyDictionary<string, string>? alsoRename = null, Func<string, bool>? include = null)
         {
             var paks = CustomSkins.index;
             if (paks == null) { return null; }
@@ -99,7 +104,8 @@ namespace MCDSaveEdit.Logic
                 if (rest.Length == 0 || rest.Contains('/')) { continue; }   //subfolders stay behind
 
                 var dot = rest.IndexOf('.');
-                packages.Add(dot >= 0 ? rest.Substring(0, dot) : rest);
+                var package = dot >= 0 ? rest.Substring(0, dot) : rest;
+                if (include == null || include(package)) { packages.Add(package); }
             }
 
             if (packages.Count == 0) { return null; }

@@ -10365,6 +10365,777 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_ENCHDESIGNS - the saved enchantment designs, with any the installed plugin list
+            //holds but no design does taken in, and the lines the next install would write.
+            //Read-only: nothing is saved or installed.
+            if (_startupArguments.Contains("PROBE_ENCHDESIGNS"))
+            {
+                try
+                {
+                    foreach (var d in Logic.CustomEnchantments.load())
+                    {
+                        Console.WriteLine($"[enchd] design {d.Id} copy of {d.Source}: name {d.Name ?? "-"} | desc {d.Description ?? "-"} | builtin {d.BuiltIn ?? "-"} | effect {d.Effect ?? "-"}");
+                    }
+                    foreach (var e in Logic.CustomEnchantments.forPlugin())
+                    {
+                        Console.WriteLine($"[enchd] plugin line {e.Id} {e.SourceType} {e.Name} | {e.Description} | {e.BuiltIn} | {e.Effect}");
+                    }
+                    Console.WriteLine($"[enchd] next id would be {Logic.CustomEnchantments.PREFIX}.. (not taken)");
+                }
+                catch (Exception e) { Console.WriteLine($"[enchd] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_ENCHNUMBERS - every enchantment's numbers, from the running game: the classes
+            //PreloadEnchantments loaded (image+0x44ef670, by EEnchantmentTypeID), each one's chain
+            //of parents, the float / int / bool / byte properties each class in it declares, and
+            //their values on the blueprint's default object. Into %TEMP%\mcd-ench-numbers.txt,
+            //tab-separated: id, enchantment, class, declaring class, property, kind, offset, value.
+            //ReadProcessMemory only. Needs the game at the main menu.
+            if (_startupArguments.Contains("PROBE_ENCHNUMBERS"))
+            {
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[enchn] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    try
+                    {
+                        var reflect = LiveEdit.Reflect.open(game, s => Console.WriteLine($"[enchn] {s}"));
+                        if (reflect == null) { Console.WriteLine("[enchn] reflection not found"); Shutdown(); return; }
+                        var image = game.image(out _);
+                        long q(long at) => BitConverter.ToInt64(game.read(new IntPtr(at), 8) ?? new byte[8], 0);
+                        var classes = q((image + 0x44ef670).ToInt64());
+                        var count = BitConverter.ToInt32(game.read(image + 0x44ef678, 4) ?? new byte[4], 0);
+                        Console.WriteLine($"[enchn] classes array {classes:x}, {count} entries, {reflect.Count} objects");
+                        var names = Logic.GearTraits.ENCHANTMENT_IDS.ToDictionary(p => p.Value, p => p.Key);
+                        var lines = new List<string>();
+                        var bases = new HashSet<string>();
+                        for (var id = 1; id < count; id++)
+                        {
+                            var klass = q(classes + id * 8);
+                            var enchantment = names.TryGetValue(id, out var n) ? n : "?";
+                            if (klass == 0) { lines.Add($"{id}\t{enchantment}\t(not loaded)"); continue; }
+                            var className = reflect.nameOf(klass) ?? "?";
+                            var cdo = reflect.find("Default__" + className);
+                            var chain = reflect.chainOf(klass);
+                            Console.WriteLine($"[enchn] {id} {enchantment}: {string.Join(" < ", chain)}  cdo {cdo:x}");
+                            //Up the chain to UObject; the shared base's own fields are listed once.
+                            for (var at = klass; at != 0; at = q(at + 0x40))
+                            {
+                                var declaring = reflect.nameOf(at) ?? "?";
+                                if (declaring == "Object") { break; }
+                                foreach (var field in reflect.fieldsOf(at))
+                                {
+                                    if (field.Kind is not ("FloatProperty" or "IntProperty" or "BoolProperty" or "ByteProperty")) { continue; }
+                                    if (field.Count != 1) { continue; }
+                                    string value;
+                                    if (cdo == 0) { value = "?"; }
+                                    else if (field.Kind == "FloatProperty")
+                                    {
+                                        var raw = game.read(new IntPtr(cdo + field.Offset), 4);
+                                        value = raw == null ? "?" : BitConverter.ToSingle(raw, 0).ToString("R", System.Globalization.CultureInfo.InvariantCulture);
+                                    }
+                                    else if (field.Kind == "BoolProperty")
+                                    {
+                                        var raw = game.read(new IntPtr(cdo + field.Offset + field.BoolByte), 1);
+                                        value = raw == null ? "?" : ((raw[0] & field.BoolMask) != 0 ? "true" : "false");
+                                    }
+                                    else { value = reflect.valueOf(cdo, field.Name) ?? "?"; }
+                                    lines.Add($"{id}\t{enchantment}\t{className}\t{declaring}\t{field.Name}\t{field.Kind}\t{field.Offset:x}\t{value}\t{field.Flags:x}");
+                                }
+                            }
+                        }
+                        //The enchantment finder: its map (+0xd8, 0x60 an entry: key FName, then a map of
+                        //path name -> soft path, 0x28 an entry) and its path table (+0x78, 0x20 an entry:
+                        //path name, owner). What a lookup for Fire Aspect finds, spelled out.
+                        string fname(long at)
+                        {
+                            var raw = game.read(new IntPtr(at), 8);
+                            if (raw == null) { return "?"; }
+                            var said = reflect.nameAt(BitConverter.ToInt32(raw, 0)) ?? "?";
+                            var number = BitConverter.ToInt32(raw, 4);
+                            return number > 0 ? said + "_" + (number - 1) : said;
+                        }
+                        foreach (var (finder, kind, outer) in reflect.findAll("EnchantmentAssetFinder"))
+                        {
+                            Console.WriteLine($"[enchn] finder {finder:x} ({kind}, in {outer})");
+                            var map = q(finder + 0xd8);
+                            var entries = BitConverter.ToInt32(game.read(new IntPtr(finder + 0xe0), 4) ?? new byte[4], 0);
+                            Console.WriteLine($"[enchn]   map {map:x}, {entries} entries");
+                            for (var i = 0; i < entries && i < 400; i++)
+                            {
+                                var key = fname(map + i * 0x60);
+                                if (key != "FireAspect" && key != "Chains" && i > 2) { continue; }
+                                var inner = q(map + i * 0x60 + 8);
+                                var innerCount = BitConverter.ToInt32(game.read(new IntPtr(map + i * 0x60 + 16), 4) ?? new byte[4], 0);
+                                Console.WriteLine($"[enchn]   [{i}] {key}: {innerCount} paths");
+                                for (var j = 0; j < innerCount && j < 8; j++)
+                                {
+                                    var e = inner + j * 0x28;
+                                    var sub = game.read(new IntPtr(q(e + 16)), 160);
+                                    var subText = sub == null ? "" : System.Text.Encoding.Unicode.GetString(sub).Split(' ')[0];
+                                    Console.WriteLine($"[enchn]     {fname(e)} -> {fname(e + 8)} {subText}");
+                                }
+                            }
+                            var paths = q(finder + 0x78);
+                            var pathCount = BitConverter.ToInt32(game.read(new IntPtr(finder + 0x80), 4) ?? new byte[4], 0);
+                            Console.WriteLine($"[enchn]   path table {paths:x}, {pathCount} rows");
+                            for (var i = 0; i < pathCount && i < 2000; i++)
+                            {
+                                var owner = fname(paths + i * 0x20 + 8);
+                                if (owner != "FireAspect" && i > 3) { continue; }
+                                Console.WriteLine($"[enchn]     row {i}: {fname(paths + i * 0x20)} owner {owner} +10 {q(paths + i * 0x20 + 0x10):x} +18 {q(paths + i * 0x20 + 0x18):x}");
+                            }
+                        }
+                        var into = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "mcd-ench-numbers.txt");
+                        System.IO.File.WriteAllLines(into, lines);
+                        Console.WriteLine($"[enchn] {lines.Count} lines into {into}");
+                    }
+                    catch (Exception e) { Console.WriteLine($"[enchn] FAILED {e}"); }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_EXPORTS=<pak path>[;<pak path>...] - a package's names and exports, and the
+            //bytes of every Default__ export. Read-only; for seeing what a default object holds
+            //before writing into one.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_EXPORTS=", StringComparison.Ordinal)))
+            {
+                foreach (var path in _startupArguments.First(a => a.StartsWith("PROBE_EXPORTS=", StringComparison.Ordinal))["PROBE_EXPORTS=".Length..].Trim('"').Split(';'))
+                {
+                    try
+                    {
+                        var package = Logic.CustomSkins.index!.extractPackage(path);
+                        if (package == null) { Console.WriteLine($"[exp] {path}: not found"); continue; }
+                        var uasset = package.Value.UAsset.ToArray();
+                        var uexp = package.Value.UExp.ToArray();
+                        var read = Logic.CookedEdit.read(uasset, uexp);
+                        Console.WriteLine($"[exp] {path}: header {uasset.Length}, data {uexp.Length}, {read.Names.Count} names");
+                        Console.WriteLine($"[exp]   names: {string.Join(", ", read.Names)}");
+                        foreach (var export in read.Exports)
+                        {
+                            Console.WriteLine($"[exp]   export {export.Name} ({export.ClassName}) at {export.At} size {export.Size}");
+                            if (!export.Name.StartsWith("Default__", StringComparison.Ordinal)) { continue; }
+                            for (var r = 0; r < export.Size; r += 16)
+                            {
+                                Console.WriteLine($"[exp]     {r:x3}: {BitConverter.ToString(uexp, (int)export.At + r, Math.Min(16, export.Size - r)).Replace("-", " ").ToLowerInvariant()}");
+                            }
+                        }
+                    }
+                    catch (Exception e) { Console.WriteLine($"[exp] {path}: FAILED {e.Message}"); }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_ENCHBLUEPRINT - a copy of Fire Aspect with damagePerSecond 300 and fireDuration 10
+            //and Chains with ChainRange 3000 and BaseMobChainAmount 6, built in memory, and each
+            //copied blueprint read back two ways: this project's tag reader and PakReader's whole
+            //parse. Nothing is written or installed.
+            if (_startupArguments.Contains("PROBE_ENCHBLUEPRINT"))
+            {
+                foreach (var design in new[]
+                {
+                    new Logic.CustomEnchantments.Design { Id = "MCDR_Ench90", Source = "FireAspect", Numbers = new() { ["damagePerSecond"] = 300, ["fireDuration"] = 10 } },
+                    new Logic.CustomEnchantments.Design { Id = "MCDR_Ench91", Source = "Chains", Numbers = new() { ["ChainRange"] = 3000, ["BaseMobChainAmount"] = 6 } },
+                    new Logic.CustomEnchantments.Design { Id = "MCDR_Ench92", Source = "Heavyweight", Numbers = new() { [Logic.EnchantmentNumbers.NUMBERS["Heavyweight"][0].Property] = 1 } },
+                    //An icon of its own, from PROBE_ENCHICON=<png>: painted, then decoded back into %TEMP%.
+                    new Logic.CustomEnchantments.Design { Id = "MCDR_Ench93", Source = "Chains",
+                        IconFile = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_ENCHICON=", StringComparison.Ordinal))?["PROBE_ENCHICON=".Length..].Trim('"') },
+                })
+                {
+                    try
+                    {
+                        var notes = new List<string>();
+                        var (files, made) = Logic.CustomEnchantments.files(design, notes);
+                        foreach (var note in notes) { Console.WriteLine($"[enchbp] {note}"); }
+                        Console.WriteLine($"[enchbp] {design.Id}: {files.Count} files: {string.Join(", ", files.Select(f => f.Path).Where(p => p.EndsWith(".uasset")))}");
+                        var bp = Logic.CustomEnchantments.blueprintName(design);
+                        var uasset = files.First(f => f.Path.EndsWith("/" + bp + ".uasset")).Data;
+                        var uexp = files.First(f => f.Path.EndsWith("/" + bp + ".uexp")).Data;
+                        foreach (var v in Logic.CookedProperties.readAll(uasset, uexp))
+                        {
+                            var text = v.Type == "FloatProperty" ? BitConverter.ToSingle(uexp, v.At).ToString(System.Globalization.CultureInfo.InvariantCulture)
+                                : v.Type == "IntProperty" ? BitConverter.ToInt32(uexp, v.At).ToString() : "";
+                            Console.WriteLine($"[enchbp]   tag {v} = {text}");
+                        }
+                        var package = new PakReader.Pak.PakPackage(new ArraySegment<byte>(uasset), new ArraySegment<byte>(uexp), null);
+                        var json = package.JsonData.Replace("\r", "").Replace("\n", " ");
+                        while (json.Contains("  ")) { json = json.Replace("  ", " "); }
+                        Console.WriteLine($"[enchbp]   parsed: {json.Substring(0, Math.Min(900, json.Length))}");
+                        Console.WriteLine($"[enchbp]   names: {string.Join(", ", Logic.CookedProperties.readNamesOf(uasset))}");
+                        if (Logic.CustomEnchantments.hasIcon(design) && Logic.CustomEnchantments.iconObjects(design) is { } icon)
+                        {
+                            Console.WriteLine($"[enchbp]   icon objects: {icon.texture} | {icon.material}");
+                            var name = icon.texture[(icon.texture.LastIndexOf('.') + 1)..];
+                            byte[]? part(string extension) => files.FirstOrDefault(f => f.Path.EndsWith("/" + name + extension, StringComparison.OrdinalIgnoreCase))?.Data;
+                            var bulk = part(".ubulk");
+                            ArraySegment<byte>? bulkSegment = bulk == null ? (ArraySegment<byte>?)null : new ArraySegment<byte>(bulk);
+                            var painted = new PakReader.Pak.PakPackage(new ArraySegment<byte>(part(".uasset")!), new ArraySegment<byte>(part(".uexp")!),
+                                bulkSegment).GetExport<PakReader.Parsers.Class.UTexture2D>()?.Image;
+                            var shown = painted == null ? null : Services.PakIndexExtensions.bitmapImageFromSKImage(painted);
+                            if (shown != null)
+                            {
+                                var into = System.IO.Path.Combine(System.IO.Path.GetTempPath(), design.Id + "_icon.png");
+                                var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                                encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(shown));
+                                using (var stream = System.IO.File.Create(into)) { encoder.Save(stream); }
+                                Console.WriteLine($"[enchbp]   painted icon read back: {shown.PixelWidth}x{shown.PixelHeight} -> {into}");
+                            }
+                            var line = Logic.GamePlugin.installedEnchantments().Count;
+                        }
+                        var registry = Logic.RegistryPatch.readGameRegistry(Logic.CustomSkins.paksFolder!);
+                        var added = 0;
+                        var patched = registry == null ? null : Logic.RegistryPatch.withClones(registry,
+                            new List<(string, Func<string, string?>)> { (made.GameFrom, made.Rename) }, out added);
+                        Console.WriteLine($"[enchbp]   registry: {(patched == null ? "NOT patched" : $"{added} entries added from {made.GameFrom}")}");
+                    }
+                    catch (Exception e) { Console.WriteLine($"[enchbp] {design.Id} FAILED {e}"); }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_SHINE=<png>;<out png> - the sheen masks EnchantmentShine makes from a picture,
+            //written out for looking at. Read-only.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_SHINE=", StringComparison.Ordinal)))
+            {
+                var parts = _startupArguments.First(a => a.StartsWith("PROBE_SHINE=", StringComparison.Ordinal))["PROBE_SHINE=".Length..].Trim('"').Split(';');
+                var made = Logic.EnchantmentShine.from(Logic.CustomSkins.imageFromPng(System.IO.File.ReadAllBytes(parts[0])));
+                var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(made));
+                using (var stream = System.IO.File.Create(parts[1])) { encoder.Save(stream); }
+                Console.WriteLine($"[shine] {parts[1]}");
+                Shutdown();
+                return;
+            }
+
+            //PROBE_JSON=<pak path>[;<pak path>...] - any package as PakReader parses it, whole, into
+            //%TEMP%\MCDRebornJson\<name>.json. Read-only.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_JSON=", StringComparison.Ordinal)))
+            {
+                var into = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "MCDRebornJson");
+                System.IO.Directory.CreateDirectory(into);
+                foreach (var path in _startupArguments.First(a => a.StartsWith("PROBE_JSON=", StringComparison.Ordinal))["PROBE_JSON=".Length..].Trim('"').Split(';'))
+                {
+                    try
+                    {
+                        var package = Logic.CustomSkins.index!.extractPackage(path);
+                        if (package == null) { Console.WriteLine($"[json] {path}: not found"); continue; }
+                        var file = System.IO.Path.Combine(into, path[(path.LastIndexOf('/') + 1)..] + ".json");
+                        System.IO.File.WriteAllText(file, package.Value.JsonData);
+                        Console.WriteLine($"[json] {path} -> {file}");
+                    }
+                    catch (Exception e) { Console.WriteLine($"[json] {path}: FAILED {e.Message}"); }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_MOBS - the mob registry (image+0x44f0210, built by a88a10: a map of EntityType to
+            //blueprint path at +0x00, of EntityType to class path at +0x50, the types at +0xa0) and
+            //the definitions map (image+0x421ed10, EntityType -> 0x78-byte definition), with
+            //Zombie's (0x30a20) entries spelled out. ReadProcessMemory only.
+            if (_startupArguments.Contains("PROBE_MOBS"))
+            {
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[mobs] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    try
+                    {
+                        var image = game.image(out _).ToInt64();
+                        long q(long at) => BitConverter.ToInt64(game.read(new IntPtr(at), 8) ?? new byte[8], 0);
+                        int d(long at) => BitConverter.ToInt32(game.read(new IntPtr(at), 4) ?? new byte[4], 0);
+                        string hex(long at, int n) => BitConverter.ToString(game.read(new IntPtr(at), n) ?? Array.Empty<byte>()).Replace("-", " ").ToLowerInvariant();
+                        string wide(long at, int max = 200)
+                        {
+                            var chars = q(at); var n = d(at + 8);
+                            if (chars == 0 || n <= 0 || n > max) { return $"(fstring {chars:x} {n})"; }
+                            return System.Text.Encoding.Unicode.GetString(game.read(new IntPtr(chars), (n - 1) * 2) ?? Array.Empty<byte>());
+                        }
+                        var registry = image + 0x44f0210;
+                        Console.WriteLine($"[mobs] registry {registry:x}:");
+                        for (var r = 0; r < 0xc0; r += 16) { Console.WriteLine($"[mobs]   {r:x2}: {hex(registry + r, 16)}"); }
+                        foreach (var (at, label) in new[] { (registry, "paths"), (registry + 0x50, "classes") })
+                        {
+                            var data = q(at); var num = d(at + 8); var max = d(at + 12);
+                            Console.WriteLine($"[mobs] {label}: data {data:x} num {num} max {max}");
+                            for (var i = 0; i < num && i < 400; i++)
+                            {
+                                //Guess an element of 0x28: int key, pad, then an FSoftObjectPath (FName, FString).
+                                foreach (var size in new[] { 0x28, 0x30 })
+                                {
+                                    var e = data + i * size;
+                                    if (d(e) == 0x30a20) { Console.WriteLine($"[mobs]   Zombie at [{i}] if {size:x}-byte: {hex(e, size)}  sub {wide(e + 0x10)}"); }
+                                }
+                            }
+                        }
+                        var begin = q(registry + 0xa0); var end = q(registry + 0xa8);
+                        Console.WriteLine($"[mobs] types vector: {(end - begin) / 4} entries");
+                        var defs = image + 0x421ed10;
+                        var ddata = q(defs); var dnum = d(defs + 8);
+                        Console.WriteLine($"[mobs] definitions: data {ddata:x} num {dnum}");
+                        for (var i = 0; i < dnum && i < 1000; i++)
+                        {
+                            var e = ddata + i * 0x18;
+                            if (d(e) != 0x30a20) { continue; }
+                            var def = q(e + 8);
+                            Console.WriteLine($"[mobs]   Zombie definition at {def:x}:");
+                            for (var r = 0; r < 0x78; r += 16) { Console.WriteLine($"[mobs]     {r:x2}: {hex(def + r, Math.Min(16, 0x78 - r))}"); }
+                            var textData = q(def + 8);
+                            Console.WriteLine($"[mobs]     name: {(textData == 0 ? "-" : wide(q(textData + 8) == 0 ? 0 : textData + 8))}");
+                        }
+                    }
+                    catch (Exception e) { Console.WriteLine($"[mobs] FAILED {e}"); }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_SUMMONLIST=<object name>[;...] - a live object's MobsToChooseFrom, as the game
+            //loaded it: each entry's value and the EntityType name it stands for. Default: every
+            //loaded Default__BP_MCDR_Item*Instance_C and every object of a class whose name has
+            //RainbowGrass. ReadProcessMemory only.
+            if (_startupArguments.Any(a => a == "PROBE_SUMMONLIST" || a.StartsWith("PROBE_SUMMONLIST=", StringComparison.Ordinal)))
+            {
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[summon] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    try
+                    {
+                        var reflect = LiveEdit.Reflect.open(game, s => { });
+                        if (reflect == null) { Console.WriteLine("[summon] no reflection"); Shutdown(); return; }
+                        var entityEnum = reflect.find("EntityType", "Enum");
+                        var names = entityEnum == 0 ? new List<(string name, long value)>() : reflect.valuesOf(entityEnum);
+                        Console.WriteLine($"[summon] EntityType has {names.Count} names; MCDR_Mob01 = {names.FirstOrDefault(n => n.name.EndsWith("MCDR_Mob01")).value:x}");
+                        for (var i = 0; i < reflect.Count; i++)
+                        {
+                            var obj = reflect.objectAt(i);
+                            if (obj == 0) { continue; }
+                            var name = reflect.nameOf(obj) ?? "";
+                            if (!(name.Contains("MCDR_Item") && name.Contains("Instance")) && !name.Contains("RainbowGrass")) { continue; }
+                            for (var klass = BitConverter.ToInt64(game.read(new IntPtr(obj + 0x10), 8) ?? new byte[8], 0); klass != 0;
+                                 klass = BitConverter.ToInt64(game.read(new IntPtr(klass + 0x40), 8) ?? new byte[8], 0))
+                            {
+                                var field = reflect.fieldsOf(klass).FirstOrDefault(f => f.Name == "MobsToChooseFrom");
+                                if (field == null) { continue; }
+                                var head = game.read(new IntPtr(obj + field.Offset), 16) ?? new byte[16];
+                                var data = BitConverter.ToInt64(head, 0); var num = BitConverter.ToInt32(head, 8);
+                                var values = new List<string>();
+                                for (var k = 0; k < num && k < 16; k++)
+                                {
+                                    var v = BitConverter.ToInt32(game.read(new IntPtr(data + k * 4), 4) ?? new byte[4], 0);
+                                    values.Add($"{v:x} ({names.FirstOrDefault(n => n.value == v).name ?? "?"})");
+                                }
+                                Console.WriteLine($"[summon] {name} ({reflect.kindOf(obj)}): {field.Kind} of {field.Of}, {num}: {string.Join(", ", values)}");
+                                break;
+                            }
+                        }
+                    }
+                    catch (Exception e) { Console.WriteLine($"[summon] FAILED {e}"); }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_PAKJSON=<pak file>;<path suffix> - a package inside one of MCD Reborn's own paks,
+            //as PakReader parses it, into %TEMP%\MCDRebornJson. Read-only.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_PAKJSON=", StringComparison.Ordinal)))
+            {
+                var parts = _startupArguments.First(a => a.StartsWith("PROBE_PAKJSON=", StringComparison.Ordinal))["PROBE_PAKJSON=".Length..].Trim('"').Split(';');
+                try
+                {
+                    var inside = Logic.ModPak.read(parts[0]).ToDictionary(f => f.Path, f => f.Data, StringComparer.OrdinalIgnoreCase);
+                    var key = inside.Keys.First(k => k.EndsWith(parts[1] + ".uasset", StringComparison.OrdinalIgnoreCase));
+                    var stem = key[..^".uasset".Length];
+                    var package = new PakReader.Pak.PakPackage(new ArraySegment<byte>(inside[key]), new ArraySegment<byte>(inside[stem + ".uexp"]), null);
+                    var into = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "MCDRebornJson");
+                    System.IO.Directory.CreateDirectory(into);
+                    var file = System.IO.Path.Combine(into, parts[1].Replace('/', '_') + ".pak.json");
+                    System.IO.File.WriteAllText(file, package.JsonData);
+                    Console.WriteLine($"[pakjson] {key} -> {file}");
+                    Console.WriteLine($"[pakjson] names: {string.Join(", ", Logic.CookedProperties.readNamesOf(inside[key]).Where(n => n.StartsWith("EntityType")))}");
+                }
+                catch (Exception e) { Console.WriteLine($"[pakjson] FAILED {e.Message}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_MOBNAMES - the level-name table (image+0x4539570, an MSVC unordered_map; its element
+            //list's head at +8, size at +0x10): the first nodes and the list's tail, each node's
+            //type at +0x10 and its three strings at +0x18 / +0x38 / +0x58. ReadProcessMemory only.
+            if (_startupArguments.Contains("PROBE_MOBNAMES"))
+            {
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[names] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var image = game.image(out _).ToInt64();
+                    long q(long at) => BitConverter.ToInt64(game.read(new IntPtr(at), 8) ?? new byte[8], 0);
+                    string text(long at)
+                    {
+                        var size = q(at + 0x10); var capacity = q(at + 0x18);
+                        if (size < 0 || size > 200) { return $"(size {size})"; }
+                        var from = capacity >= 16 ? q(at) : at;
+                        return System.Text.Encoding.ASCII.GetString(game.read(new IntPtr(from), (int)size) ?? Array.Empty<byte>()) + $" [{size}/{capacity}]";
+                    }
+                    var head = q(image + 0x4539578);
+                    Console.WriteLine($"[names] head {head:x}, size {q(image + 0x4539580)}");
+                    void show(long node, string label)
+                        => Console.WriteLine($"[names] {label} {node:x}: next {q(node):x} prev {q(node + 8):x} type {BitConverter.ToInt32(game.read(new IntPtr(node + 0x10), 4) ?? new byte[4], 0):x} | {text(node + 0x18)} | {text(node + 0x38)} | {text(node + 0x58)}");
+                    var node = q(head);
+                    for (var i = 0; i < 3 && node != head; i++, node = q(node)) { show(node, $"[{i}]"); }
+                    show(q(head + 8), "tail");
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_MOBINFO - the mob info table (image+0x453b000, an MSVC unordered_map of EntityType to
+            //an entry: tags as a vector of strings at +0, four numbers at +0x48): how many types it
+            //holds, and Creeper's, ZombieVariant1's and the custom mobs' entries. ReadProcessMemory only.
+            if (_startupArguments.Contains("PROBE_MOBINFO"))
+            {
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[info] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var image = game.image(out _).ToInt64();
+                    long q(long at) => BitConverter.ToInt64(game.read(new IntPtr(at), 8) ?? new byte[8], 0);
+                    int d(long at) => BitConverter.ToInt32(game.read(new IntPtr(at), 4) ?? new byte[4], 0);
+                    string text(long at)
+                    {
+                        var size = q(at + 0x10); var capacity = q(at + 0x18);
+                        if (size < 0 || size > 64) { return "?"; }
+                        return System.Text.Encoding.ASCII.GetString(game.read(new IntPtr(capacity >= 16 ? q(at) : at), (int)size) ?? Array.Empty<byte>());
+                    }
+                    var table = image + 0x453b000;
+                    var head = q(table + 8);
+                    Console.WriteLine($"[info] table {table:x}, head {head:x}, {q(table + 0x10)} types");
+                    var wanted = new[] { 0xa21, 0x30a6f, 0x30a20, 0xaf8, 0x30af8 };
+                    var n = 0;
+                    for (var node = q(head); node != head && node != 0 && n < 2000; node = q(node), n++)
+                    {
+                        var key = d(node + 0x10);
+                        if (!wanted.Contains(key)) { continue; }
+                        var entry = q(node + 0x18);
+                        var tags = new List<string>();
+                        for (var t = q(entry); t != 0 && t < q(entry + 8); t += 0x20) { tags.Add(text(t)); }
+                        var numbers = game.read(new IntPtr(entry + 0x48), 16) ?? new byte[16];
+                        Console.WriteLine($"[info] {key:x}: tags [{string.Join(", ", tags)}] numbers {BitConverter.ToSingle(numbers, 0)} {BitConverter.ToSingle(numbers, 4)} {BitConverter.ToSingle(numbers, 8)} {BitConverter.ToSingle(numbers, 12)}");
+                    }
+                    Console.WriteLine($"[info] walked {n} nodes");
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_MOBDESIGNS - the saved mob designs, with any the installed plugin list holds but no
+            //design does taken in, and the lines the next install would write. Read-only.
+            if (_startupArguments.Contains("PROBE_MOBDESIGNS"))
+            {
+                foreach (var d in Logic.CustomMobs.load()) { Console.WriteLine($"[mobd] design {d.Id} copy of {d.Source}: {Logic.CustomMobs.nameOf(d)} (maps: {Logic.CustomMobs.levelName(d.Id)})"); }
+                foreach (var m in Logic.CustomMobs.forPlugin()) { Console.WriteLine($"[mobd] plugin line {m.Id} {m.SourceType:x} {m.Name} {m.Blueprint}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_MOBLOOK=<mob id>;<glb> - a custom mob's copy for a look of its own: what it holds,
+            //what the copied blueprint now names, its own blueprint path, and the look built with the
+            //model on. Nothing is saved or installed.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_MOBLOOK=", StringComparison.Ordinal)))
+            {
+                var parts = _startupArguments.First(a => a.StartsWith("PROBE_MOBLOOK=", StringComparison.Ordinal))["PROBE_MOBLOOK=".Length..].Trim('"').Split(';');
+                try
+                {
+                    var design = Logic.CustomMobs.load().First(d => d.Id == parts[0]);
+                    var source = Logic.CustomMobs.sourceOf(design)!;
+                    var made = Logic.CustomMobs.copyOf(design)!;
+                    Console.WriteLine($"[look] {design.Id} copy of {design.Source}: {made.Entries.Count} files from {made.GameFrom}");
+                    foreach (var e in made.Entries.Where(e => e.Path.EndsWith(".uasset"))) { Console.WriteLine($"[look]   {e.Path}"); }
+                    Console.WriteLine($"[look] own blueprint: {Logic.CustomMobs.ownBlueprint(design, source)}");
+                    var bp = made.Entries.First(e => e.Path.EndsWith(Logic.CustomMobs.ownBlueprint(design, source).Substring(Logic.CustomMobs.ownBlueprint(design, source).LastIndexOf('/')) + ".uasset"));
+                    Console.WriteLine($"[look] its names: {string.Join(", ", Logic.CookedProperties.readNamesOf(bp.Data).Where(n => n.StartsWith("/Game")))}");
+                    foreach (var mesh in Logic.CustomMobs.meshesOf(made)) { Console.WriteLine($"[look] mesh {mesh}, previewable: {Logic.CustomMobs.copiedPackage(mesh) != null}"); }
+                    design.Model = Logic.CustomItems.ModelEdit.of(Logic.MeshEdit.Transform.none, parts[1]);
+                    var notes = new List<string>();
+                    var (files, _) = Logic.CustomMobs.lookFiles(design, notes);
+                    foreach (var note in notes) { Console.WriteLine($"[look] {note}"); }
+                    foreach (var mesh in Logic.CustomMobs.meshesOf(made))
+                    {
+                        var stem = mesh.TrimStart('/');
+                        var reread = Logic.CookedSkeletalMesh.open(files.First(f => f.Path == stem + ".uasset").Data, files.First(f => f.Path == stem + ".uexp").Data, out var why);
+                        Console.WriteLine($"[look] rebuilt {stem}: {(reread == null ? "does NOT reopen: " + why : $"reopens, {reread.VertexCount} vertices")}");
+                    }
+                }
+                catch (Exception e) { Console.WriteLine($"[look] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_CLONEWHY=<cooked folder> - for each package directly in the folder: whether it
+            //extracts, its name table's first /Game names, and whether PackageRename reads it.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_CLONEWHY=", StringComparison.Ordinal)))
+            {
+                var folder = _startupArguments.First(a => a.StartsWith("PROBE_CLONEWHY=", StringComparison.Ordinal))["PROBE_CLONEWHY=".Length..].Trim('"').TrimEnd('/');
+                var want = folder.Replace("/Dungeons/Content/", string.Empty).TrimStart('/') + "/";
+                foreach (var entry in Logic.CustomSkins.index!.AllEntries())
+                {
+                    var at = entry.Key.IndexOf(want, StringComparison.OrdinalIgnoreCase);
+                    if (at < 0) { continue; }
+                    var rest = entry.Key.Substring(at + want.Length);
+                    if (rest.Length == 0 || rest.Contains('/')) { continue; }
+                    string line;
+                    try
+                    {
+                        var package = Logic.CustomSkins.index!.extractPackage(folder + "/" + rest);
+                        if (package == null) { line = "does not extract"; }
+                        else
+                        {
+                            var bytes = package.Value.UAsset.ToArray();
+                            var renamed = Logic.PackageRename.rename(bytes, t => null, out _);
+                            line = $"extracts, {bytes.Length} bytes, rename {(renamed == null ? "REFUSES it" : "reads it")}, names: {string.Join(" | ", Logic.CookedProperties.readNamesOf(bytes).Where(n => n.StartsWith("/Game")).Take(3))}";
+                        }
+                    }
+                    catch (Exception e) { line = "throws " + e.Message; }
+                    Console.WriteLine($"[why] {entry.Key} -> {line}");
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_CLASSCOUNT[=<substring>;...] - live objects counted by class, for classes whose
+            //name holds one of the substrings (default Skeleton, Zombie, Creeper, MCDR). Default
+            //objects are left out. ReadProcessMemory only.
+            if (_startupArguments.Any(a => a == "PROBE_CLASSCOUNT" || a.StartsWith("PROBE_CLASSCOUNT=", StringComparison.Ordinal)))
+            {
+                var arg = _startupArguments.First(a => a.StartsWith("PROBE_CLASSCOUNT", StringComparison.Ordinal));
+                var wanted = arg.Contains('=') ? arg[(arg.IndexOf('=') + 1)..].Split(';') : new[] { "Skeleton", "Zombie", "Creeper", "MCDR" };
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[count] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, s => { });
+                    if (reflect == null) { Console.WriteLine("[count] no reflection"); Shutdown(); return; }
+                    var counts = new SortedDictionary<string, int>(StringComparer.Ordinal);
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var obj = reflect.objectAt(i);
+                        if (obj == 0) { continue; }
+                        var kind = reflect.kindOf(obj) ?? "";
+                        if (!kind.EndsWith("Character_C", StringComparison.Ordinal) || !wanted.Any(w => kind.Contains(w, StringComparison.OrdinalIgnoreCase))) { continue; }
+                        if ((reflect.nameOf(obj) ?? "").StartsWith("Default__", StringComparison.Ordinal)) { continue; }
+                        counts[kind] = counts.TryGetValue(kind, out var n) ? n + 1 : 1;
+                    }
+                    foreach (var (kind, n) in counts) { Console.WriteLine($"[count] {n,4}  {kind}"); }
+                    Console.WriteLine($"[count] {counts.Count} classes");
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_MOBSTATE - one live character of each class whose name holds Zombie, Skeleton or
+            //MCDR: every native property of its class chain (not the blueprint's own), and the same
+            //for its Controller, into %TEMP%\mcd-mobstate.txt, so a custom mob and a game mob can be
+            //set side by side. ReadProcessMemory only.
+            if (_startupArguments.Contains("PROBE_MOBSTATE"))
+            {
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[state] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, s => { });
+                    if (reflect == null) { Console.WriteLine("[state] no reflection"); Shutdown(); return; }
+                    long q(long at) => BitConverter.ToInt64(game.read(new IntPtr(at), 8) ?? new byte[8], 0);
+                    var lines = new List<string>();
+                    void dump(long obj, string label)
+                    {
+                        var klass = q(obj + 0x10);
+                        lines.Add($"== {label}: {reflect.nameOf(obj)} ({reflect.kindOf(obj)}) at {obj:x}");
+                        for (var at = klass; at != 0; at = q(at + 0x40))
+                        {
+                            var cls = reflect.nameOf(at) ?? "?";
+                            if (cls == "Object" || cls == "Actor" || cls == "Pawn" && label.StartsWith("controller")) { break; }
+                            if (cls.EndsWith("_C", StringComparison.Ordinal)) { continue; }
+                            foreach (var f in reflect.fieldsOf(at))
+                            {
+                                string value;
+                                if (f.Kind is "ObjectProperty" or "ClassProperty" or "WeakObjectProperty")
+                                {
+                                    var p = q(obj + f.Offset);
+                                    value = p == 0 ? "null" : $"{reflect.nameOf(p)} ({reflect.kindOf(p)})";
+                                }
+                                else if (f.Kind is "EnumProperty" or "IntProperty")
+                                {
+                                    value = BitConverter.ToInt32(game.read(new IntPtr(obj + f.Offset), 4) ?? new byte[4], 0).ToString("x");
+                                }
+                                else { value = reflect.valueOf(obj, f.Name) ?? "?"; }
+                                lines.Add($"   {cls}.{f.Name} [{f.Kind}] = {value}");
+                            }
+                        }
+                    }
+                    var seen = new HashSet<string>();
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var obj = reflect.objectAt(i);
+                        if (obj == 0) { continue; }
+                        var kind = reflect.kindOf(obj) ?? "";
+                        if (!kind.EndsWith("Character_C", StringComparison.Ordinal)) { continue; }
+                        if (!(kind.Contains("Zombie") || kind.Contains("Skeleton") || kind.Contains("MCDR"))) { continue; }
+                        if ((reflect.nameOf(obj) ?? "").StartsWith("Default__", StringComparison.Ordinal) || !seen.Add(kind)) { continue; }
+                        dump(obj, "character");
+                        var controllerField = 0L;
+                        foreach (var at2 in new[] { "Controller" })
+                        {
+                            for (var k = q(obj + 0x10); k != 0 && controllerField == 0; k = q(k + 0x40))
+                            {
+                                var f = reflect.fieldsOf(k).FirstOrDefault(x => x.Name == at2);
+                                if (f != null) { controllerField = q(obj + f.Offset); }
+                            }
+                        }
+                        if (controllerField != 0) { dump(controllerField, "controller of " + kind); }
+                        else { lines.Add($"== controller of {kind}: NONE"); }
+                    }
+                    var into = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "mcd-mobstate.txt");
+                    System.IO.File.WriteAllLines(into, lines);
+                    Console.WriteLine($"[state] {seen.Count} classes, {lines.Count} lines into {into}");
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_ENCHANTS[=<id>;<id>...] - the live enchantment definition table: the global at
+            //image+0x44ef680 that each enchantment's static block fills by id (a79ee0). Its shape,
+            //how many ids are set, and for the ids named (default Fire Aspect 5 and Fire Trail 111)
+            //the 0x140-byte definition, with every pointer tried as an FText and an FString.
+            //ReadProcessMemory only.
+            if (_startupArguments.Any(a => a == "PROBE_ENCHANTS" || a.StartsWith("PROBE_ENCHANTS=", StringComparison.Ordinal)))
+            {
+                var arg = _startupArguments.First(a => a.StartsWith("PROBE_ENCHANTS", StringComparison.Ordinal));
+                var ids = arg.Contains('=') ? arg[(arg.IndexOf('=') + 1)..].Split(';').Select(int.Parse).ToList() : new List<int> { 5, 111 };
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[ench] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    try
+                    {
+                        var image = game.image(out _);
+                        long q(IntPtr at) => BitConverter.ToInt64(game.read(at, 8) ?? new byte[8], 0);
+                        int d(IntPtr at) => BitConverter.ToInt32(game.read(at, 4) ?? new byte[4], 0);
+                        string fstring(IntPtr at)
+                        {
+                            var chars = new IntPtr(q(at)); var n = d(at + 8);
+                            if (chars == IntPtr.Zero || n <= 0 || n > 400) { return ""; }
+                            var bytes = game.read(chars, (n - 1) * 2);
+                            return bytes == null ? "" : System.Text.Encoding.Unicode.GetString(bytes);
+                        }
+                        string ftext(IntPtr at)
+                        {
+                            var data = new IntPtr(q(at));
+                            if (data == IntPtr.Zero) { return ""; }
+                            var s = new IntPtr(q(data + 8));
+                            return s == IntPtr.Zero ? "" : fstring(s);
+                        }
+                        //The enum the save spells enchantments with: where it is and what its names array holds.
+                        var reflect = LiveEdit.Reflect.open(game);
+                        if (reflect != null)
+                        {
+                            var e = reflect.find("EEnchantmentTypeID", "Enum");
+                            var values = e == 0 ? new List<(string name, long value)>() : reflect.valuesOf(e);
+                            var header = e == 0 ? Array.Empty<byte>() : game.read(new IntPtr(e + 0x40), 16) ?? Array.Empty<byte>();
+                            Console.WriteLine($"[ench] enum EEnchantmentTypeID at {e:x}: {values.Count} names; names array (enum+0x40) {BitConverter.ToString(header).Replace("-", " ").ToLowerInvariant()}");
+                            Console.WriteLine($"[ench]   first {string.Join(", ", values.Take(3))}; last {string.Join(", ", values.Skip(Math.Max(0, values.Count - 3)))}");
+                        }
+                        //The arrays beside the definition table, likewise indexed by id (icons, materials...).
+                        foreach (var at in new[] { 0x44ef620, 0x44ef638, 0x44ef650, 0x44ef668, 0x44ef680, 0x44ef698, 0x44ef6b0 })
+                        {
+                            var h = game.read(image + at, 16) ?? new byte[16];
+                            var data = BitConverter.ToInt64(h, 0); var num = BitConverter.ToInt32(h, 8); var max = BitConverter.ToInt32(h, 12);
+                            var five = data == 0 ? 0 : q(new IntPtr(data + 5 * 8));
+                            Console.WriteLine($"[ench] image+{at:x}: data {data:x} num {num} max {max}; [5] = {five:x}, [164] = {(data == 0 || max <= 164 ? 0 : q(new IntPtr(data + 164 * 8))):x}");
+                        }
+                        var global = image + 0x44ef680;
+                        var head = game.read(global, 0x20) ?? Array.Empty<byte>();
+                        Console.WriteLine($"[ench] global +0x44ef680: {BitConverter.ToString(head).Replace("-", " ").ToLowerInvariant()}");
+                        var table = new IntPtr(q(global));
+                        var set = 0; var last = -1;
+                        for (var i = 0; i < 256; i++) { if (q(table + i * 8) != 0) { set++; last = i; } }
+                        Console.WriteLine($"[ench] table {table.ToInt64():x}: {set} ids set of the first 256, last {last}");
+                        var names = new LiveEdit.NameTable(game);
+                        var namesFound = names.find();
+                        foreach (var id in ids)
+                        {
+                            var def = new IntPtr(q(table + id * 8));
+                            Console.WriteLine($"[ench] === id {id} at {def.ToInt64():x}");
+                            if (def == IntPtr.Zero) { continue; }
+                            if (namesFound)
+                            {
+                                foreach (var off in new[] { 0x120, 0x128, 0x130 })
+                                {
+                                    Console.WriteLine($"[ench]   +{off:x3} name \"{names.nameOf(d(def + off))}\"");
+                                }
+                            }
+                            //The list at +0x08: its first entries, raw and as ASCII.
+                            var lptr = new IntPtr(q(def + 8)); var lnum = d(def + 0x10);
+                            if (lptr != IntPtr.Zero && lnum > 0 && lnum < 64)
+                            {
+                                var lb = game.read(lptr, Math.Min(64, lnum * 16)) ?? Array.Empty<byte>();
+                                Console.WriteLine($"[ench]   +008 list {lnum}: {BitConverter.ToString(lb).Replace("-", " ").ToLowerInvariant()}");
+                                Console.WriteLine($"[ench]        names: {string.Join(" ", Enumerable.Range(0, lb.Length / 4).Select(k => names.nameOf(BitConverter.ToInt32(lb, k * 4))).Where(n => !string.IsNullOrEmpty(n) && n.Length < 80))}");
+                            }
+                            var bytes = game.read(def, 0x140) ?? Array.Empty<byte>();
+                            for (var r = 0; r < bytes.Length; r += 16)
+                            {
+                                Console.WriteLine($"[ench]   {r:x3}: {BitConverter.ToString(bytes, r, Math.Min(16, bytes.Length - r)).Replace("-", " ").ToLowerInvariant()}");
+                            }
+                            for (var r = 0; r + 8 <= bytes.Length; r += 8)
+                            {
+                                var p = BitConverter.ToInt64(bytes, r);
+                                if (p < 0x10000000000 || p > 0x7fffffffffff) { continue; }
+                                var t = ftext(def + r); var s = fstring(def + r);
+                                if (t.Length > 0 || s.Length > 0) { Console.WriteLine($"[ench]   +{r:x3} text \"{t}\" string \"{s}\""); }
+                            }
+                        }
+                    }
+                    catch (Exception e) { Console.WriteLine($"[ench] FAILED {e}"); }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_FIND=<path regex>[;<name regex>] - every package in the game's paks whose path
+            //matches; with a name regex, only those whose name table has a match, printing the
+            //matching names. Read-only; for finding which asset holds something by name.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_FIND=", StringComparison.Ordinal)))
+            {
+                var parts = _startupArguments.First(a => a.StartsWith("PROBE_FIND=", StringComparison.Ordinal))["PROBE_FIND=".Length..].Trim('"').Split(';');
+                var path = new System.Text.RegularExpressions.Regex(parts[0], System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                var name = parts.Length > 1 ? new System.Text.RegularExpressions.Regex(parts[1]) : null;
+                var shown = 0;
+                foreach (var entry in Logic.CustomSkins.index!.Select(p => "/" + p.TrimStart('/')).Distinct())
+                {
+                    if (!path.IsMatch(entry) || entry.EndsWith(".uexp") || entry.EndsWith(".ubulk")) { continue; }
+                    if (name == null) { Console.WriteLine($"[find] {entry}"); if (++shown > 300) { break; } continue; }
+                    try
+                    {
+                        var package = Logic.CustomSkins.index!.extractPackage(entry);
+                        if (package == null) { continue; }
+                        var hits = Logic.CookedProperties.readNamesOf(package.Value.UAsset.ToArray()).Where(n => name.IsMatch(n)).ToList();
+                        if (hits.Count == 0) { continue; }
+                        Console.WriteLine($"[find] {entry}: {hits.Count} - {string.Join(", ", hits.Take(12))}");
+                        if (++shown > 100) { break; }
+                    }
+                    catch (Exception) { }
+                }
+                Console.WriteLine($"[find] {shown} shown");
+                Shutdown();
+                return;
+            }
+
             //PROBE_SUMMONS - a copy of Enchanted Grass told to summon a Skeleton, a Zombie and a Wolf,
             //built into a pak that is NOT installed, and its Instance read back: the summon list
             //must name the new mobs, and the package must still parse.

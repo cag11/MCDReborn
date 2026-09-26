@@ -3192,6 +3192,12 @@ namespace MCDSaveEdit.UI
                 //up blank however the value is set - which is exactly what these rows were doing.
                 //Every mob the game has is in the list anyway, so there is nothing to type.
                 var pick = new ComboBox { Height = 24 };
+                //MCD Reborn's own mobs first, by the lowercase name the plugin gives levels, marked and
+                //followed by their own name; only the part before the mark is written.
+                var installedMobs = Logic.GamePlugin.installedMobs();
+                var custom = installedMobs.Select(m => m.Id.ToLowerInvariant()).ToList();
+                string customLabel(string id) => id + "  ✦  " + (installedMobs.FirstOrDefault(m => m.Id.ToLowerInvariant() == id)?.Name ?? string.Empty);
+                foreach (var mob in custom) { pick.Items.Add(customLabel(mob)); }
                 foreach (var mob in GameMobs.ALL)
                 {
                     pick.Items.Add(mob.Boss ? mob.Id + "  ★" : mob.Id);
@@ -3210,8 +3216,8 @@ namespace MCDSaveEdit.UI
                 //survives templating; Text is only a fallback for a mob the game never lists, and
                 //it waits for Loaded before trying.
                 var listed = GameMobs.ALL.FirstOrDefault(one => one.Id == name);
-                var label = listed == null
-                    ? name
+                var label = custom.Contains(name) ? customLabel(name)
+                    : listed == null ? name
                     : (listed.Boss ? listed.Id + "  ★" : listed.Id);
 
                 //A mob the game does not list still has to be shown, or editing a group would
@@ -3221,7 +3227,7 @@ namespace MCDSaveEdit.UI
 
                 pick.SelectionChanged += (_, _) =>
                 {
-                    var wanted = (pick.SelectedItem as string)?.Replace("★", string.Empty).Trim();
+                    var wanted = (pick.SelectedItem as string)?.Split('✦')[0].Replace("★", string.Empty).Trim();
                     if (string.IsNullOrEmpty(wanted) || wanted == name) { return; }
 
                     if (types[index] is JsonObject asObject) { asObject["type"] = wanted; }
