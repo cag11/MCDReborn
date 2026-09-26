@@ -10844,6 +10844,70 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_MOBLOOK=<mob id>;<glb> - a custom mob's copy for a look of its own: what it holds,
+            //what the copied blueprint now names, its own blueprint path, and the look built with the
+            //model on. Nothing is saved or installed.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_MOBLOOK=", StringComparison.Ordinal)))
+            {
+                var parts = _startupArguments.First(a => a.StartsWith("PROBE_MOBLOOK=", StringComparison.Ordinal))["PROBE_MOBLOOK=".Length..].Trim('"').Split(';');
+                try
+                {
+                    var design = Logic.CustomMobs.load().First(d => d.Id == parts[0]);
+                    var source = Logic.CustomMobs.sourceOf(design)!;
+                    var made = Logic.CustomMobs.copyOf(design)!;
+                    Console.WriteLine($"[look] {design.Id} copy of {design.Source}: {made.Entries.Count} files from {made.GameFrom}");
+                    foreach (var e in made.Entries.Where(e => e.Path.EndsWith(".uasset"))) { Console.WriteLine($"[look]   {e.Path}"); }
+                    Console.WriteLine($"[look] own blueprint: {Logic.CustomMobs.ownBlueprint(design, source)}");
+                    var bp = made.Entries.First(e => e.Path.EndsWith(Logic.CustomMobs.ownBlueprint(design, source).Substring(Logic.CustomMobs.ownBlueprint(design, source).LastIndexOf('/')) + ".uasset"));
+                    Console.WriteLine($"[look] its names: {string.Join(", ", Logic.CookedProperties.readNamesOf(bp.Data).Where(n => n.StartsWith("/Game")))}");
+                    foreach (var mesh in Logic.CustomMobs.meshesOf(made)) { Console.WriteLine($"[look] mesh {mesh}, previewable: {Logic.CustomMobs.copiedPackage(mesh) != null}"); }
+                    design.Model = Logic.CustomItems.ModelEdit.of(Logic.MeshEdit.Transform.none, parts[1]);
+                    var notes = new List<string>();
+                    var (files, _) = Logic.CustomMobs.lookFiles(design, notes);
+                    foreach (var note in notes) { Console.WriteLine($"[look] {note}"); }
+                    foreach (var mesh in Logic.CustomMobs.meshesOf(made))
+                    {
+                        var stem = mesh.TrimStart('/');
+                        var reread = Logic.CookedSkeletalMesh.open(files.First(f => f.Path == stem + ".uasset").Data, files.First(f => f.Path == stem + ".uexp").Data, out var why);
+                        Console.WriteLine($"[look] rebuilt {stem}: {(reread == null ? "does NOT reopen: " + why : $"reopens, {reread.VertexCount} vertices")}");
+                    }
+                }
+                catch (Exception e) { Console.WriteLine($"[look] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_CLONEWHY=<cooked folder> - for each package directly in the folder: whether it
+            //extracts, its name table's first /Game names, and whether PackageRename reads it.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_CLONEWHY=", StringComparison.Ordinal)))
+            {
+                var folder = _startupArguments.First(a => a.StartsWith("PROBE_CLONEWHY=", StringComparison.Ordinal))["PROBE_CLONEWHY=".Length..].Trim('"').TrimEnd('/');
+                var want = folder.Replace("/Dungeons/Content/", string.Empty).TrimStart('/') + "/";
+                foreach (var entry in Logic.CustomSkins.index!.AllEntries())
+                {
+                    var at = entry.Key.IndexOf(want, StringComparison.OrdinalIgnoreCase);
+                    if (at < 0) { continue; }
+                    var rest = entry.Key.Substring(at + want.Length);
+                    if (rest.Length == 0 || rest.Contains('/')) { continue; }
+                    string line;
+                    try
+                    {
+                        var package = Logic.CustomSkins.index!.extractPackage(folder + "/" + rest);
+                        if (package == null) { line = "does not extract"; }
+                        else
+                        {
+                            var bytes = package.Value.UAsset.ToArray();
+                            var renamed = Logic.PackageRename.rename(bytes, t => null, out _);
+                            line = $"extracts, {bytes.Length} bytes, rename {(renamed == null ? "REFUSES it" : "reads it")}, names: {string.Join(" | ", Logic.CookedProperties.readNamesOf(bytes).Where(n => n.StartsWith("/Game")).Take(3))}";
+                        }
+                    }
+                    catch (Exception e) { line = "throws " + e.Message; }
+                    Console.WriteLine($"[why] {entry.Key} -> {line}");
+                }
+                Shutdown();
+                return;
+            }
+
             //PROBE_ENCHANTS[=<id>;<id>...] - the live enchantment definition table: the global at
             //image+0x44ef680 that each enchantment's static block fills by id (a79ee0). Its shape,
             //how many ids are set, and for the ids named (default Fire Aspect 5 and Fire Trail 111)

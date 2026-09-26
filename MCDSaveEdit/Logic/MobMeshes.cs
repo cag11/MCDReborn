@@ -42,6 +42,16 @@ namespace MCDSaveEdit.Logic
         /// </summary>
         public static IReadOnlyList<MeshEntry> all()
         {
+            //Custom mobs first, and never cached with the rest: they come and go with the New Items
+            //tab. Each is its own copy of its source's mesh, so a model on it leaves the source be.
+            var custom = CustomMobs.meshesForWorkshop()
+                .Select(m => new MeshEntry(m.assetPath, CREATURES, "★ " + m.name, R.ITEMS_TAB))
+                .ToList();
+            return custom.Count == 0 ? gameMeshes() : custom.Concat(gameMeshes()).ToList();
+        }
+
+        private static IReadOnlyList<MeshEntry> gameMeshes()
+        {
             if (_catalogue != null) { return _catalogue; }
 
             var paks = CustomSkins.index;
@@ -147,6 +157,9 @@ namespace MCDSaveEdit.Logic
         public static CustomSkins.InstalledMod import(string assetPath, GlbModel model,
             MeshEdit.Transform transform, string modName, IEnumerable<PakWriter.Entry>? extra = null)
         {
+            //A custom mob keeps its model in its own design, built into the New Items pak.
+            if (CustomMobs.isCopied(assetPath)) { return CustomMobs.setModel(assetPath, model, transform); }
+
             var package = readPackage(assetPath)
                 ?? throw new InvalidOperationException($"Could not read {assetPath}.");
 
@@ -185,6 +198,7 @@ namespace MCDSaveEdit.Logic
 
         public static BitmapSource? textureFor(string meshAssetPath)
         {
+            if (CustomMobs.isCopied(meshAssetPath)) { return CustomMobs.copiedTexture(meshAssetPath); }
             var texture = CustomSkins.textureBeside(meshAssetPath);
             if (texture == null) { return null; }
 
@@ -194,6 +208,9 @@ namespace MCDSaveEdit.Logic
 
         private static PakPackage? readPackage(string assetPath)
         {
+            //A custom mob's copy is in no pak the index reads; it lives in memory until built.
+            if (CustomMobs.copiedPackage(assetPath) is { } copied) { return copied; }
+
             var paks = CustomSkins.index;
             if (paks == null) { return null; }
 
@@ -252,6 +269,13 @@ namespace MCDSaveEdit.Logic
             //bones leaves a mesh that comes apart the moment it walks. Replacing is offered and
             //reshaping is not, which is the honest way round.
             public override bool canReshape => false;
+
+            //The one reshape a custom mob takes: none at all, which takes its model off again.
+            public override CustomSkins.InstalledMod reshape(string assetPath, MeshEdit.Transform transform,
+                string modName, IEnumerable<PakWriter.Entry>? extra = null)
+                => CustomMobs.isCopied(assetPath)
+                    ? CustomMobs.setModel(assetPath, null, MeshEdit.Transform.none)
+                    : throw new NotSupportedException();
 
             public override IReadOnlyList<string> groups() => new[] { CREATURES, PROPS };
 

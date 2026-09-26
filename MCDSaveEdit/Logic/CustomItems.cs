@@ -703,8 +703,10 @@ namespace MCDSaveEdit.Logic
             //New enchantments with numbers of their own bring a copied blueprint, which the game
             //finds through the same registry - so they go in this pak too.
             var enchantments = into == null ? CustomEnchantments.load().Where(CustomEnchantments.hasBlueprint).ToList() : new List<CustomEnchantments.Design>();
+            //And new mobs with a look of their own bring copies of their blueprints and mesh.
+            var mobs = into == null ? CustomMobs.load().Where(CustomMobs.hasLook).ToList() : new List<CustomMobs.Design>();
 
-            if (designs.Count == 0 && extras.Count == 0 && enchantments.Count == 0)
+            if (designs.Count == 0 && extras.Count == 0 && enchantments.Count == 0 && mobs.Count == 0)
             {
                 if (File.Exists(pakPath)) { File.Delete(pakPath); }
                 result.Notes.Add("No custom items: the pak was removed.");
@@ -759,6 +761,13 @@ namespace MCDSaveEdit.Logic
             foreach (var enchantment in enchantments)
             {
                 var (files, made) = CustomEnchantments.files(enchantment, result.Notes);
+                entries.AddRange(files);
+                copies.Add((made.GameFrom, made.Rename));
+            }
+
+            foreach (var mob in mobs)
+            {
+                var (files, made) = CustomMobs.lookFiles(mob, result.Notes);
                 entries.AddRange(files);
                 copies.Add((made.GameFrom, made.Rename));
             }
