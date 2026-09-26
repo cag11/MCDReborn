@@ -4368,4 +4368,20 @@ Import it?</value>
     <value>Plugin not installed</value>
     <comment>Status bar</comment>
   </data>
+  <data name="STATS_APOC_PLUS" xml:space="preserve">
+    <value>Apocalypse +26 to +35</value>
+    <comment>Checkbox on the Difficulty tab</comment>
+  </data>
+  <data name="STATS_APOC_PLUS_WHY" xml:space="preserve">
+    <value>Ten more Apocalypse+ levels in the mission screen. Each one keeps getting harder the way +1 to +25 do, and drops stronger gear. They open like the others, by winning boss missions: 8 at +25 open up to +28, 9 at +28 up to +31, 10 at +31 up to +35. Takes effect the next time the game starts, and needs the Steam or Minecraft Launcher version.</value>
+    <comment>Explanation under the checkbox</comment>
+  </data>
+  <data name="STATS_APOC_PLUS_DONE" xml:space="preserve">
+    <value>Apocalypse +26 to +35 are installed. Start the game and slide past +25 on the mission screen.</value>
+    <comment>Notice after turning it on</comment>
+  </data>
+  <data name="STATS_APOC_PLUS_REMOVED" xml:space="preserve">
+    <value>Removed. The game stops at +25 again from its next start.</value>
+    <comment>Notice after turning it off</comment>
+  </data>
 </root>

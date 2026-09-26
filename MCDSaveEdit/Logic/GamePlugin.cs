@@ -81,7 +81,8 @@ namespace MCDSaveEdit.Logic
             var dll = Path.Combine(folder, DLL_NAME);
             var list = Path.Combine(folder, ITEMS_NAME);
 
-            if (items.Count == 0 && enchantments.Count == 0 && mobs.Count == 0)
+            var struggles = ApocalypsePlus.isOn;
+            if (items.Count == 0 && enchantments.Count == 0 && mobs.Count == 0 && !struggles)
             {
                 if (isOurs(dll)) { File.Delete(dll); }
                 if (File.Exists(list)) { File.Delete(list); }
@@ -115,8 +116,14 @@ namespace MCDSaveEdit.Logic
                 lines.Add("# @mob	id	source EntityType	name	blueprint under /Game/");
                 lines.AddRange(mobs.Select(m => string.Join("	", "@mob", m.Id, m.SourceType.ToString(System.Globalization.CultureInfo.InvariantCulture), clean(m.Name), m.Blueprint)));
             }
+            if (struggles)
+            {
+                lines.Add("# @struggle	highest Apocalypse+ level - past 25 the game's own step from +24 to +25 is carried on");
+                lines.Add("@struggle	" + ApocalypsePlus.TOP.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            }
             File.WriteAllLines(list, lines, new UTF8Encoding(false));
-            return $"The item plugin will register {items.Count} item(s), {enchantments.Count} enchantment(s) and {mobs.Count} mob(s) the next time the game starts.";
+            return $"The item plugin will register {items.Count} item(s), {enchantments.Count} enchantment(s) and {mobs.Count} mob(s)"
+                + (struggles ? $", and Apocalypse+ up to +{ApocalypsePlus.TOP}," : "") + " the next time the game starts.";
         }
 
         /// <summary>
