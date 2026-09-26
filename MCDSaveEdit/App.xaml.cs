@@ -10393,8 +10393,11 @@ namespace MCDSaveEdit
                         //"@ranged" / "@armor" read that type's items instead of melee's.
                         var parent = wanted != null && wanted.Contains("@ranged") ? "RangedWeaponGearItemInstance"
                             : wanted != null && wanted.Contains("@armor") ? "ArmorGearItemInstance" : "MeleeWeaponGearItemInstance";
+                        var artifacts = wanted != null && wanted.Contains("@artifact");
                         if (wanted != null && wanted.Any(w => w.StartsWith("@"))) { wanted = null; }
-                        var melee = Logic.CustomItems.gameItems().Where(i => i.NativeParent == parent).Select(i => i.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                        var melee = artifacts
+                            ? Logic.CustomItems.gameItems().Where(i => MCDSaveEdit.Services.ItemDatabase.artifacts.Contains(i.Id)).Select(i => i.Id).ToHashSet(StringComparer.OrdinalIgnoreCase)
+                            : Logic.CustomItems.gameItems().Where(i => i.NativeParent == parent).Select(i => i.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
                         Console.WriteLine($"[rec] registry {registry.ToInt64():x}, {count} records");
                         string resolve(byte[] bytes)
                         {
@@ -10435,6 +10438,19 @@ namespace MCDSaveEdit
                                 if (m.Success) { enums[int.Parse(m.Groups[2].Value)] = m.Groups[1].Value; }
                             }
                         }
+                        var armorEnums = new Dictionary<int, string>();
+                        if (System.IO.File.Exists(header))
+                        {
+                            var inArmor = false;
+                            foreach (var l in System.IO.File.ReadLines(header))
+                            {
+                                if (l.Contains("enum class EArmorPropertyID")) { inArmor = true; continue; }
+                                if (!inArmor) { continue; }
+                                if (l.StartsWith("};")) { break; }
+                                var m = System.Text.RegularExpressions.Regex.Match(l, @"^\s*(\w+)\s*=\s*(\d+)");
+                                if (m.Success) { armorEnums[int.Parse(m.Groups[2].Value)] = m.Groups[1].Value; }
+                            }
+                        }
                         //An FText's display string: ITextData* at +0, whose DisplayString (a shared FString) is at +8.
                         string textOf(IntPtr text)
                         {
@@ -10461,6 +10477,47 @@ namespace MCDSaveEdit
                             {
                                 var el = game.read(bptr + b * 0x14, 0x14) ?? new byte[0x14];
                                 Console.WriteLine($"[rec]    built-in {(enums.TryGetValue(el[0], out var en) ? en : el[0].ToString())} level {BitConverter.ToInt32(el, 4)} category {el[8]} source {el[9]} invested {BitConverter.ToInt32(el, 12)} tail {el[16]:x2} {el[17]:x2} {el[18]:x2} {el[19]:x2}");
+                            }
+                            //The whole record, every 4 bytes that reads as a plausible float, with its offset.
+                            if (Environment.GetEnvironmentVariable("MCDR_FLOATS") == "1")
+                            {
+                                var all = game.read(record, 0x230) ?? Array.Empty<byte>();
+                                var found = new List<string>();
+                                for (var off = 0; off + 4 <= all.Length; off += 4)
+                                {
+                                    var f = BitConverter.ToSingle(all, off);
+                                    if (float.IsFinite(f) && Math.Abs(f) >= 0.01f && Math.Abs(f) <= 100000f && Math.Abs(f - MathF.Round(f, 2)) < 1e-4f)
+                                    {
+                                        found.Add($"+{off:x}={f:0.##}");
+                                    }
+                                }
+                                Console.WriteLine($"[rec]    floats {string.Join(" ", found)}");
+                            }
+                            //Every list-shaped field in the record (pointer, then 0 < count <= capacity <= 64),
+                            //with its first entries: for types whose layout is not known yet.
+                            if (Environment.GetEnvironmentVariable("MCDR_ALLLISTS") == "1")
+                            {
+                                for (var off = 0; off + 16 <= 0x230; off += 8)
+                                {
+                                    var ptr = q(record + off);
+                                    var num = d(record + off + 8);
+                                    var max = d(record + off + 12);
+                                    if (ptr < 0x10000000000 || ptr > 0x7fffffffffff || num <= 0 || num > max || max > 64) { continue; }
+                                    var first = game.read(new IntPtr(ptr), 0x40) ?? Array.Empty<byte>();
+                                    Console.WriteLine($"[rec]    list +0x{off:x}: {num}/{max}  {BitConverter.ToString(first).Replace("-", " ").ToLowerInvariant()}");
+                                    Console.WriteLine($"[rec]         names: {resolve(first)}   as text: \"{textOf(new IntPtr(ptr))}\"");
+                                }
+                            }
+                            //An armour's default properties: EArmorPropertyID and EItemRarity, two bytes each.
+                            if (parent == "ArmorGearItemInstance")
+                            {
+                                var aptr = new IntPtr(q(record + 0x1A8));
+                                var anum = d(record + 0x1B0);
+                                for (var a = 0; aptr != IntPtr.Zero && a < anum && a < 16; a++)
+                                {
+                                    var el = game.read(aptr + a * 2, 2) ?? new byte[2];
+                                    Console.WriteLine($"[rec]    property {(armorEnums.TryGetValue(el[0], out var an) ? an : el[0].ToString())} rarity {el[1]}");
+                                }
                             }
                             var tptr = new IntPtr(q(record + 0x70));
                             var tnum = d(record + 0x78);

@@ -4,10 +4,11 @@
 namespace MCDSaveEdit.Logic
 {
     /// <summary>
-    /// What a weapon is beyond its blueprint: its built-in skills and its property lines.
+    /// What a piece of gear is beyond its blueprint: its built-in skills, its property lines, and for
+    /// an armor the armor properties it comes with.
     ///
     /// Both live in the item's compiled registry record, read off the running game
-    /// (PROBE_RECORDS, 2026-09-26; melee, then ranged with =@ranged) - no pak reaches them, and
+    /// (PROBE_RECORDS, 2026-09-26; melee, then =@ranged and =@armor) - no pak reaches them, and
     /// the item plugin writes a custom item's own (ItemPlugin: record +0x1B8, built-in
     /// enchantments; +0x70, property lines).
     ///
@@ -18,12 +19,16 @@ namespace MCDSaveEdit.Logic
     ///     Crossbow's unique has Piercing 3. Some bows' own mechanic is a built-in too: the Wind
     ///     Bow's pull, the Slow Bow's, the Hunting Bow's pet.
     ///   - A property line is tooltip text, "Dual Wield" or "Strong Charged Attacks". It describes
-    ///     the weapon; what it does comes from the weapon an item is a copy of.
+    ///     the weapon; what it does comes from the weapon an item is a copy of. Armor has none.
+    ///   - Armor has built-in skills too (Frost Armor's Chilling 2, Gilded Glory's Death Barter), and
+    ///     its default armor properties at record +0x1A8: EArmorPropertyID and EItemRarity, two
+    ///     bytes each, a unique's own first. An owned armor's properties are the ones in the save;
+    ///     these are what it drops with, and what the inventory's Defaults button gives it.
     ///
     /// Generated from that read, and from EEnchantmentTypeID in the Dumper-7 SDK dump. Regenerate
     /// after a game update that adds weapons.
     /// </summary>
-    public static class WeaponTraits
+    public static class GearTraits
     {
         /// <summary>EEnchantmentTypeID: the number the game stores for each enchantment.</summary>
         public static readonly IReadOnlyDictionary<string, int> ENCHANTMENT_IDS = new Dictionary<string, int>
@@ -194,7 +199,7 @@ namespace MCDSaveEdit.Logic
         /// <summary>Every skill a weapon of each type has built in in the game: what a custom one can pick.</summary>
         public static readonly IReadOnlyDictionary<CustomItems.Kind, IReadOnlyList<string>> SKILLS = new Dictionary<CustomItems.Kind, IReadOnlyList<string>>
         {
-            [CustomItems.Kind.Melee] = new[]
+            [CustomItems.Kind.Melee] = new string[]
             {
                 "Backstabber",
                 "BaneOfIllagers",
@@ -230,7 +235,7 @@ namespace MCDSaveEdit.Logic
                 "VoidTouchedMelee",
                 "Weakening",
             },
-            [CustomItems.Kind.Ranged] = new[]
+            [CustomItems.Kind.Ranged] = new string[]
             {
                 "Accelerating",
                 "BonusShot",
@@ -263,6 +268,32 @@ namespace MCDSaveEdit.Logic
                 "WildRage",
                 "WindBowEnchantment",
             },
+            [CustomItems.Kind.Armor] = new string[]
+            {
+                "Acrobat",
+                "BagOfSouls",
+                "BardIdle",
+                "BardUnique1Idle",
+                "Burning",
+                "Chilling",
+                "DeathBarter",
+                "Deflecting",
+                "EmeraldDivination",
+                "FireTrail",
+                "Flee",
+                "FoodReserves",
+                "MultiDodge",
+                "PotionFortification",
+                "ShulkerSentry",
+                "Snowing",
+                "SurpriseGift",
+                "Swiftfooted",
+                "ThriveUnderPressure",
+                "VoidBlast",
+            },
+            [CustomItems.Kind.Artifact] = new string[]
+            {
+            },
         };
 
         /// <summary>Every property line a weapon of each type shows in the game, by its ItemType key, with its English.</summary>
@@ -290,6 +321,16 @@ namespace MCDSaveEdit.Logic
                 ["turbo_punches"] = "Turbo Punches",
                 ["powerful_combo"] = "Very powerful combo",
             },
+            [CustomItems.Kind.Armor] = new Dictionary<string, string>
+            {
+            },
+            [CustomItems.Kind.Artifact] = new Dictionary<string, string>
+            {
+                ["roll_trigger"] = "Activates Rolling Triggers",
+                ["grapple vines"] = "Briefly entangles mobs",
+                ["poison grapple vines"] = "Poisons entangled mobs",
+                ["stuns_mobs_ice"] = "Stuns Mobs for 2 seconds",
+            },
             [CustomItems.Kind.Ranged] = new Dictionary<string, string>
             {
                 ["bubbled_when_charged"] = "Bubble damage",
@@ -308,7 +349,7 @@ namespace MCDSaveEdit.Logic
             },
         };
 
-        /// <summary>Each game weapon's own built-in skills (name, level) and property lines (keys), melee and ranged.</summary>
+        /// <summary>Each game weapon's and armor's own built-in skills (name, level) and property lines (keys).</summary>
         public static readonly IReadOnlyDictionary<string, (IReadOnlyList<(string skill, int level)> skills, IReadOnlyList<string> lines)> WEAPONS =
             new Dictionary<string, (IReadOnlyList<(string, int)>, IReadOnlyList<string>)>(System.StringComparer.OrdinalIgnoreCase)
         {
@@ -467,6 +508,337 @@ namespace MCDSaveEdit.Logic
             ["WindBow"] = (new (string, int)[] { ("WindBowEnchantment", 1) }, new string[] { }),
             ["WindBow_Unique1"] = (new (string, int)[] { ("WindBowEnchantment", 1), ("Ricochet", 1) }, new string[] { }),
             ["WindBow_Unique2"] = (new (string, int)[] { ("WindBowEnchantment", 1), ("RollCharge", 1) }, new string[] { }),
+            //Armor
+            ["ArchersStrappings"] = (new (string, int)[] { }, new string[] { }),
+            ["ArchersStrappings_Unique1"] = (new (string, int)[] { }, new string[] { }),
+            ["AssassinArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["AssassinArmor_Unique1"] = (new (string, int)[] { }, new string[] { }),
+            ["BardsGarb"] = (new (string, int)[] { ("BardIdle", 1) }, new string[] { }),
+            ["BardsGarb_Unique1"] = (new (string, int)[] { ("BardUnique1Idle", 1) }, new string[] { }),
+            ["BattleRobe"] = (new (string, int)[] { }, new string[] { }),
+            ["BattleRobe_Unique1"] = (new (string, int)[] { }, new string[] { }),
+            ["BeenestArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["BeenestArmor_Unique1"] = (new (string, int)[] { }, new string[] { }),
+            ["ChampionsArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["ChampionsArmor_Unique1"] = (new (string, int)[] { }, new string[] { }),
+            ["ClimbingGear"] = (new (string, int)[] { }, new string[] { }),
+            ["ClimbingGear_Unique1"] = (new (string, int)[] { }, new string[] { }),
+            ["ClimbingGear_Unique2"] = (new (string, int)[] { ("MultiDodge", 1) }, new string[] { }),
+            ["CowardsArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["DarkArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["DarkArmor_Unique1"] = (new (string, int)[] { }, new string[] { }),
+            ["EmeraldArmor"] = (new (string, int)[] { ("EmeraldDivination", 1) }, new string[] { }),
+            ["EmeraldArmor_Unique1"] = (new (string, int)[] { ("EmeraldDivination", 1) }, new string[] { }),
+            ["EmeraldArmor_Unique2"] = (new (string, int)[] { ("EmeraldDivination", 1), ("DeathBarter", 1) }, new string[] { }),
+            ["EndRobes"] = (new (string, int)[] { }, new string[] { }),
+            ["EndRobes_Unique1"] = (new (string, int)[] { ("VoidBlast", 1) }, new string[] { }),
+            ["EvocationRobe"] = (new (string, int)[] { }, new string[] { }),
+            ["EvocationRobe_Unique1"] = (new (string, int)[] { ("Burning", 1) }, new string[] { }),
+            ["EvocationRobe_Unique2"] = (new (string, int)[] { ("BagOfSouls", 1) }, new string[] { }),
+            ["FullPlateArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["FullPlateArmor_Spooky2"] = (new (string, int)[] { }, new string[] { }),
+            ["FullPlateArmor_Unique1"] = (new (string, int)[] { }, new string[] { }),
+            ["GhostArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["GhostArmor_Spooky2"] = (new (string, int)[] { ("FireTrail", 1) }, new string[] { }),
+            ["GhostArmor_Unique1"] = (new (string, int)[] { ("FireTrail", 1) }, new string[] { }),
+            ["GrimArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["GrimArmor_Spooky2"] = (new (string, int)[] { }, new string[] { }),
+            ["GrimArmor_Unique1"] = (new (string, int)[] { }, new string[] { }),
+            ["MercenaryArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["MercenaryArmor_Spooky1"] = (new (string, int)[] { }, new string[] { }),
+            ["MercenaryArmor_Spooky2"] = (new (string, int)[] { }, new string[] { }),
+            ["MercenaryArmor_Unique1"] = (new (string, int)[] { }, new string[] { }),
+            ["MysteryArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["NatureArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["NatureArmor_Unique1"] = (new (string, int)[] { ("FoodReserves", 1) }, new string[] { }),
+            ["OcelotArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["OcelotArmor_Unique1"] = (new (string, int)[] { }, new string[] { }),
+            ["PhantomArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["PhantomArmor_Unique1"] = (new (string, int)[] { ("Snowing", 1) }, new string[] { }),
+            ["PiglinArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["PiglinArmor_Unique1"] = (new (string, int)[] { ("SurpriseGift", 1) }, new string[] { }),
+            ["ReinforcedMail"] = (new (string, int)[] { }, new string[] { }),
+            ["ReinforcedMail_Unique1"] = (new (string, int)[] { ("PotionFortification", 1) }, new string[] { }),
+            ["ScaleMail"] = (new (string, int)[] { }, new string[] { }),
+            ["ScaleMail_Unique1"] = (new (string, int)[] { ("Swiftfooted", 1) }, new string[] { }),
+            ["ShulkerArmor"] = (new (string, int)[] { ("Deflecting", 1), ("ThriveUnderPressure", 1) }, new string[] { }),
+            ["ShulkerArmor_Unique1"] = (new (string, int)[] { ("Deflecting", 1), ("ThriveUnderPressure", 1), ("ShulkerSentry", 1) }, new string[] { }),
+            ["SnowArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["SnowArmor_Unique1"] = (new (string, int)[] { ("Chilling", 2) }, new string[] { }),
+            ["SoulRobe"] = (new (string, int)[] { }, new string[] { }),
+            ["SoulRobe_Unique1"] = (new (string, int)[] { }, new string[] { }),
+            ["SpelunkersArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["SpelunkersArmor_Unique1"] = (new (string, int)[] { }, new string[] { }),
+            ["SpelunkersArmor_Year1"] = (new (string, int)[] { }, new string[] { }),
+            ["SproutArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["SproutArmor_Unique1"] = (new (string, int)[] { ("Acrobat", 1) }, new string[] { }),
+            ["SquidArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["SquidArmor_Unique1"] = (new (string, int)[] { }, new string[] { }),
+            ["TurtleArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["TurtleArmor_Unique1"] = (new (string, int)[] { ("Flee", 1) }, new string[] { }),
+            ["WolfArmor"] = (new (string, int)[] { }, new string[] { }),
+            ["WolfArmor_Unique1"] = (new (string, int)[] { }, new string[] { }),
+            ["WolfArmor_Unique2"] = (new (string, int)[] { ("Acrobat", 1) }, new string[] { }),
+            ["WolfArmor_Winter1"] = (new (string, int)[] { }, new string[] { }),
+            //Artifact
+            ["BeeNest"] = (new (string, int)[] { }, new string[] { }),
+            ["BootsOfSwiftness"] = (new (string, int)[] { }, new string[] { }),
+            ["ChargedRedstoneMines"] = (new (string, int)[] { }, new string[] { }),
+            ["CorruptedBeacon"] = (new (string, int)[] { }, new string[] { }),
+            ["CorruptedBeacon_Spooky1"] = (new (string, int)[] { }, new string[] { }),
+            ["CorruptedSeeds"] = (new (string, int)[] { }, new string[] { "grapple vines", "poison grapple vines" }),
+            ["DeathCapMushroom"] = (new (string, int)[] { }, new string[] { }),
+            ["EnchantersTome"] = (new (string, int)[] { }, new string[] { }),
+            ["FireworksArrowItem"] = (new (string, int)[] { }, new string[] { }),
+            ["FishingRod"] = (new (string, int)[] { }, new string[] { }),
+            ["FlamingQuiver"] = (new (string, int)[] { }, new string[] { }),
+            ["GhostCloak"] = (new (string, int)[] { }, new string[] { }),
+            ["GolemKit"] = (new (string, int)[] { }, new string[] { }),
+            ["GongOfWeakening"] = (new (string, int)[] { }, new string[] { }),
+            ["GuardianEye"] = (new (string, int)[] { }, new string[] { }),
+            ["Harvester"] = (new (string, int)[] { }, new string[] { }),
+            ["HeavyHarpoonQuiver"] = (new (string, int)[] { }, new string[] { }),
+            ["IceWand"] = (new (string, int)[] { }, new string[] { "stuns_mobs_ice" }),
+            ["IronHideAmulet"] = (new (string, int)[] { }, new string[] { }),
+            ["LightFeather"] = (new (string, int)[] { }, new string[] { "roll_trigger" }),
+            ["LightningRod"] = (new (string, int)[] { }, new string[] { }),
+            ["LostEvocation"] = (new (string, int)[] { }, new string[] { }),
+            ["LoveMedallion"] = (new (string, int)[] { }, new string[] { }),
+            ["MobMasher"] = (new (string, int)[] { }, new string[] { }),
+            ["NetherWartSporeGrenade"] = (new (string, int)[] { }, new string[] { }),
+            ["RainbowGrass"] = (new (string, int)[] { }, new string[] { }),
+            ["SatchelOfNeed"] = (new (string, int)[] { }, new string[] { }),
+            ["SatchelOfNourishment"] = (new (string, int)[] { }, new string[] { }),
+            ["SatchelOfTheElements"] = (new (string, int)[] { }, new string[] { }),
+            ["ShadowSplinter"] = (new (string, int)[] { }, new string[] { }),
+            ["ShockPowder"] = (new (string, int)[] { }, new string[] { }),
+            ["SoulHealer"] = (new (string, int)[] { }, new string[] { }),
+            ["SoulLantern"] = (new (string, int)[] { }, new string[] { }),
+            ["SoulTotemOfCasting"] = (new (string, int)[] { }, new string[] { }),
+            ["SpinWheel"] = (new (string, int)[] { }, new string[] { }),
+            ["TastyBone"] = (new (string, int)[] { }, new string[] { }),
+            ["ThunderingQuiver"] = (new (string, int)[] { }, new string[] { }),
+            ["TomeOfDuplication"] = (new (string, int)[] { }, new string[] { }),
+            ["TormentQuiver"] = (new (string, int)[] { }, new string[] { }),
+            ["TotemOfRegeneration"] = (new (string, int)[] { }, new string[] { }),
+            ["TotemOfShielding"] = (new (string, int)[] { }, new string[] { }),
+            ["UpdraftTome"] = (new (string, int)[] { }, new string[] { }),
+            ["VoidQuiver"] = (new (string, int)[] { }, new string[] { }),
+            ["WindHorn"] = (new (string, int)[] { }, new string[] { }),
+            ["WonderfulWheat"] = (new (string, int)[] { }, new string[] { }),
+        };
+
+        /// <summary>
+        /// Each game artifact's numbers, plain floats in its record: soul cost (+0x94), cooldown in
+        /// seconds (+0x98), and duration in seconds (+0x9C). 0 where it has none.
+        /// </summary>
+        public static readonly IReadOnlyDictionary<string, (double souls, double cooldown, double duration)> ARTIFACT_NUMBERS =
+            new Dictionary<string, (double, double, double)>(System.StringComparer.OrdinalIgnoreCase)
+        {
+            ["BeeNest"] = (0, 23, 16),
+            ["BootsOfSwiftness"] = (0, 5, 1.5),
+            ["ChargedRedstoneMines"] = (0, 12, 0),
+            ["CorruptedBeacon"] = (2, 2.5, 0),
+            ["CorruptedBeacon_Spooky1"] = (2, 2.5, 0),
+            ["CorruptedSeeds"] = (0, 10, 3),
+            ["DeathCapMushroom"] = (0, 30, 8),
+            ["EnchantersTome"] = (0, 15, 8),
+            ["FireworksArrowItem"] = (0, 30, 10),
+            ["FishingRod"] = (0, 1.5, 0),
+            ["FlamingQuiver"] = (0, 30, 0),
+            ["GhostCloak"] = (0, 6, 1.5),
+            ["GolemKit"] = (0, 30, 0),
+            ["GongOfWeakening"] = (0, 20, 5),
+            ["GuardianEye"] = (0, 22, 4),
+            ["Harvester"] = (40, 4, 0),
+            ["HeavyHarpoonQuiver"] = (0, 30, 0),
+            ["IceWand"] = (0, 15, 5),
+            ["IronHideAmulet"] = (0, 25, 8),
+            ["LightFeather"] = (0, 3, 0),
+            ["LightningRod"] = (15, 2, 0),
+            ["LostEvocation"] = (0, 30, 0),
+            ["LoveMedallion"] = (0, 30, 0),
+            ["MobMasher"] = (0, 10, 15),
+            ["NetherWartSporeGrenade"] = (0, 6, 0),
+            ["RainbowGrass"] = (0, 30, 0),
+            ["SatchelOfNeed"] = (0, 25, 0),
+            ["SatchelOfNourishment"] = (0, 16, 0),
+            ["SatchelOfTheElements"] = (0, 10, 0),
+            ["ShadowSplinter"] = (0.33, 5, 10),
+            ["ShockPowder"] = (0, 15, 3),
+            ["SoulHealer"] = (50, 5, 0),
+            ["SoulLantern"] = (60, 5, 30),
+            ["SoulTotemOfCasting"] = (70, 10, 5),
+            ["SpinWheel"] = (0, 5, 0),
+            ["TastyBone"] = (0, 30, 0),
+            ["ThunderingQuiver"] = (0, 30, 0),
+            ["TomeOfDuplication"] = (40, 10, 0),
+            ["TormentQuiver"] = (30, 6, 0),
+            ["TotemOfRegeneration"] = (0, 25, 10),
+            ["TotemOfShielding"] = (0, 20, 5),
+            ["UpdraftTome"] = (0, 10, 0),
+            ["VoidQuiver"] = (0, 25, 0),
+            ["WindHorn"] = (0, 10, 0),
+            ["WonderfulWheat"] = (0, 30, 0),
+        };
+
+        /// <summary>EArmorPropertyID: the number the game stores for each armor property.</summary>
+        public static readonly IReadOnlyDictionary<string, int> ARMOR_PROPERTY_IDS = new Dictionary<string, int>
+        {
+            ["SoulGatheringBoost"] = 1,
+            ["SuperbDamageAbsorption"] = 2,
+            ["MissChance"] = 3,
+            ["TeleportChance"] = 4,
+            ["ItemDamageBoost"] = 5,
+            ["ItemCooldownDecrease"] = 6,
+            ["AllyDamageBoost"] = 7,
+            ["IncreasedArrowBundleSize"] = 8,
+            ["MeleeDamageBoost"] = 9,
+            ["MeleeAttackSpeedBoost"] = 10,
+            ["RangedDamageBoost"] = 11,
+            ["LifeStealAura"] = 12,
+            ["MoveSpeedAura"] = 13,
+            ["PetBat"] = 14,
+            ["AreaHeal"] = 15,
+            ["MoveSpeedReduction"] = 16,
+            ["IncreasedMobTargeting"] = 17,
+            ["PotionCooldownDecrease"] = 18,
+            ["DodgeCooldownIncrease"] = 19,
+            ["DodgeSpeedIncrease"] = 20,
+            ["DodgeInvulnerability"] = 21,
+            ["DamageAbsorption"] = 22,
+            ["SlowResistance"] = 23,
+            ["DodgeGhostForm"] = 24,
+            ["Beekeeper"] = 25,
+            ["DodgeRoot"] = 26,
+            ["Heavyweight"] = 27,
+            ["EnvironmentalProtection"] = 28,
+            ["EmeraldShield"] = 29,
+            ["ItemCooldownReset"] = 30,
+            ["SquidRollQuick"] = 31,
+            ["SquidRollLimited"] = 32,
+            ["HealingAura"] = 33,
+            ["FallResistance"] = 34,
+            ["SquidRoll"] = 35,
+            ["Resonant"] = 36,
+            ["ImmunityBoost"] = 37,
+            ["InstantTransmission"] = 38,
+            ["Last"] = 39,
+        };
+
+        /// <summary>Every armor property an armor in the game comes with: what a custom one can pick.</summary>
+        public static readonly IReadOnlyList<string> ARMOR_PROPERTIES = new[]
+        {
+            "AllyDamageBoost",
+            "AreaHeal",
+            "Beekeeper",
+            "DodgeCooldownIncrease",
+            "DodgeGhostForm",
+            "DodgeInvulnerability",
+            "DodgeRoot",
+            "DodgeSpeedIncrease",
+            "EmeraldShield",
+            "EnvironmentalProtection",
+            "HealingAura",
+            "Heavyweight",
+            "ImmunityBoost",
+            "IncreasedArrowBundleSize",
+            "IncreasedMobTargeting",
+            "InstantTransmission",
+            "ItemCooldownDecrease",
+            "ItemCooldownReset",
+            "ItemDamageBoost",
+            "LifeStealAura",
+            "MeleeAttackSpeedBoost",
+            "MeleeDamageBoost",
+            "MissChance",
+            "MoveSpeedAura",
+            "PetBat",
+            "PotionCooldownDecrease",
+            "RangedDamageBoost",
+            "Resonant",
+            "SlowResistance",
+            "SoulGatheringBoost",
+            "SquidRollLimited",
+            "SquidRollQuick",
+            "SuperbDamageAbsorption",
+        };
+
+        /// <summary>Each game armor's default properties (id, rarity: 0 common, 2 unique), in the game's order.</summary>
+        public static readonly IReadOnlyDictionary<string, IReadOnlyList<(string property, int rarity)>> ARMOR_DEFAULTS =
+            new Dictionary<string, IReadOnlyList<(string, int)>>(System.StringComparer.OrdinalIgnoreCase)
+        {
+            ["ArchersStrappings"] = new (string, int)[] { ("IncreasedArrowBundleSize", 0), ("RangedDamageBoost", 0) },
+            ["ArchersStrappings_Unique1"] = new (string, int)[] { ("MoveSpeedAura", 2), ("IncreasedArrowBundleSize", 0), ("RangedDamageBoost", 0) },
+            ["AssassinArmor"] = new (string, int)[] { ("MeleeAttackSpeedBoost", 0) },
+            ["AssassinArmor_Unique1"] = new (string, int)[] { ("LifeStealAura", 2), ("MeleeAttackSpeedBoost", 0) },
+            ["BardsGarb"] = new (string, int)[] { ("AreaHeal", 0), ("Resonant", 0) },
+            ["BardsGarb_Unique1"] = new (string, int)[] { ("ImmunityBoost", 2), ("AreaHeal", 0), ("Resonant", 0) },
+            ["BattleRobe"] = new (string, int)[] { ("ItemCooldownDecrease", 0), ("MeleeDamageBoost", 0) },
+            ["BattleRobe_Unique1"] = new (string, int)[] { ("ItemDamageBoost", 2), ("ItemCooldownDecrease", 0), ("MeleeDamageBoost", 0) },
+            ["BeenestArmor"] = new (string, int)[] { ("Beekeeper", 0), ("AreaHeal", 0) },
+            ["BeenestArmor_Unique1"] = new (string, int)[] { ("SuperbDamageAbsorption", 2), ("Beekeeper", 0), ("AreaHeal", 0) },
+            ["ChampionsArmor"] = new (string, int)[] { ("SuperbDamageAbsorption", 0), ("IncreasedMobTargeting", 0), ("PotionCooldownDecrease", 0) },
+            ["ChampionsArmor_Unique1"] = new (string, int)[] { ("AreaHeal", 2), ("SuperbDamageAbsorption", 0), ("IncreasedMobTargeting", 0), ("PotionCooldownDecrease", 0) },
+            ["ClimbingGear"] = new (string, int)[] { ("ItemCooldownDecrease", 0), ("Heavyweight", 0) },
+            ["ClimbingGear_Unique1"] = new (string, int)[] { ("EnvironmentalProtection", 2), ("SlowResistance", 2), ("ItemCooldownDecrease", 0), ("Heavyweight", 0) },
+            ["ClimbingGear_Unique2"] = new (string, int)[] { ("ItemCooldownDecrease", 0), ("Heavyweight", 0) },
+            ["CowardsArmor"] = new (string, int)[] { ("ItemCooldownDecrease", 0), ("IncreasedArrowBundleSize", 0) },
+            ["DarkArmor"] = new (string, int)[] { ("SoulGatheringBoost", 0), ("SuperbDamageAbsorption", 0) },
+            ["DarkArmor_Unique1"] = new (string, int)[] { ("AllyDamageBoost", 2), ("SoulGatheringBoost", 0), ("SuperbDamageAbsorption", 0) },
+            ["EmeraldArmor"] = new (string, int)[] { ("MeleeAttackSpeedBoost", 0) },
+            ["EmeraldArmor_Unique1"] = new (string, int)[] { ("EmeraldShield", 2), ("MeleeAttackSpeedBoost", 0) },
+            ["EmeraldArmor_Unique2"] = new (string, int)[] { ("MeleeAttackSpeedBoost", 0) },
+            ["EndRobes"] = new (string, int)[] { ("InstantTransmission", 0), ("SoulGatheringBoost", 0) },
+            ["EndRobes_Unique1"] = new (string, int)[] { ("InstantTransmission", 0), ("SoulGatheringBoost", 0) },
+            ["EvocationRobe"] = new (string, int)[] { ("ItemCooldownDecrease", 0), ("MoveSpeedAura", 0) },
+            ["EvocationRobe_Unique1"] = new (string, int)[] { ("ItemCooldownDecrease", 0), ("MoveSpeedAura", 0) },
+            ["EvocationRobe_Unique2"] = new (string, int)[] { ("ItemCooldownDecrease", 0), ("MoveSpeedAura", 0) },
+            ["FullPlateArmor"] = new (string, int)[] { ("MissChance", 0), ("SuperbDamageAbsorption", 0), ("DodgeCooldownIncrease", 0) },
+            ["FullPlateArmor_Spooky2"] = new (string, int)[] { ("MeleeDamageBoost", 2), ("MissChance", 0), ("SuperbDamageAbsorption", 0), ("DodgeCooldownIncrease", 0) },
+            ["FullPlateArmor_Unique1"] = new (string, int)[] { ("MeleeDamageBoost", 2), ("MissChance", 0), ("SuperbDamageAbsorption", 0), ("DodgeCooldownIncrease", 0) },
+            ["GhostArmor"] = new (string, int)[] { ("DodgeGhostForm", 0), ("MissChance", 0) },
+            ["GhostArmor_Spooky2"] = new (string, int)[] { ("DodgeGhostForm", 0), ("MissChance", 0) },
+            ["GhostArmor_Unique1"] = new (string, int)[] { ("DodgeGhostForm", 0), ("MissChance", 0) },
+            ["GrimArmor"] = new (string, int)[] { ("SoulGatheringBoost", 0), ("LifeStealAura", 0) },
+            ["GrimArmor_Spooky2"] = new (string, int)[] { ("SuperbDamageAbsorption", 2), ("SoulGatheringBoost", 0), ("LifeStealAura", 0) },
+            ["GrimArmor_Unique1"] = new (string, int)[] { ("SuperbDamageAbsorption", 2), ("SoulGatheringBoost", 0), ("LifeStealAura", 0) },
+            ["MercenaryArmor"] = new (string, int)[] { ("SuperbDamageAbsorption", 0), ("AllyDamageBoost", 0) },
+            ["MercenaryArmor_Spooky1"] = new (string, int)[] { ("MeleeAttackSpeedBoost", 2), ("SuperbDamageAbsorption", 0), ("AllyDamageBoost", 0) },
+            ["MercenaryArmor_Spooky2"] = new (string, int)[] { ("MeleeAttackSpeedBoost", 2), ("SuperbDamageAbsorption", 0), ("AllyDamageBoost", 0) },
+            ["MercenaryArmor_Unique1"] = new (string, int)[] { ("MeleeAttackSpeedBoost", 2), ("SuperbDamageAbsorption", 0), ("AllyDamageBoost", 0) },
+            ["MysteryArmor"] = new (string, int)[] { },
+            ["NatureArmor"] = new (string, int)[] { ("ItemCooldownReset", 0), ("AreaHeal", 0) },
+            ["NatureArmor_Unique1"] = new (string, int)[] { ("ItemCooldownReset", 0), ("AreaHeal", 0) },
+            ["OcelotArmor"] = new (string, int)[] { ("DodgeSpeedIncrease", 0), ("SuperbDamageAbsorption", 0) },
+            ["OcelotArmor_Unique1"] = new (string, int)[] { ("DodgeInvulnerability", 2), ("DodgeSpeedIncrease", 0), ("SuperbDamageAbsorption", 0) },
+            ["PhantomArmor"] = new (string, int)[] { ("SoulGatheringBoost", 0), ("RangedDamageBoost", 0) },
+            ["PhantomArmor_Unique1"] = new (string, int)[] { ("SoulGatheringBoost", 0), ("RangedDamageBoost", 0) },
+            ["PiglinArmor"] = new (string, int)[] { ("ItemCooldownReset", 0), ("ItemDamageBoost", 0) },
+            ["PiglinArmor_Unique1"] = new (string, int)[] { ("ItemCooldownReset", 0), ("ItemDamageBoost", 0) },
+            ["ReinforcedMail"] = new (string, int)[] { ("SuperbDamageAbsorption", 0), ("MissChance", 0), ("DodgeCooldownIncrease", 0) },
+            ["ReinforcedMail_Unique1"] = new (string, int)[] { ("SuperbDamageAbsorption", 0), ("MissChance", 0), ("DodgeCooldownIncrease", 0) },
+            ["ScaleMail"] = new (string, int)[] { ("SuperbDamageAbsorption", 0), ("MeleeDamageBoost", 0) },
+            ["ScaleMail_Unique1"] = new (string, int)[] { ("SuperbDamageAbsorption", 0), ("MeleeDamageBoost", 0) },
+            ["ShulkerArmor"] = new (string, int)[] { ("IncreasedMobTargeting", 0) },
+            ["ShulkerArmor_Unique1"] = new (string, int)[] { ("IncreasedMobTargeting", 0) },
+            ["SnowArmor"] = new (string, int)[] { ("SuperbDamageAbsorption", 0), ("SlowResistance", 0) },
+            ["SnowArmor_Unique1"] = new (string, int)[] { ("SuperbDamageAbsorption", 0), ("SlowResistance", 0) },
+            ["SoulRobe"] = new (string, int)[] { ("SoulGatheringBoost", 0), ("ItemDamageBoost", 0) },
+            ["SoulRobe_Unique1"] = new (string, int)[] { ("MissChance", 2), ("SoulGatheringBoost", 0), ("ItemDamageBoost", 0) },
+            ["SpelunkersArmor"] = new (string, int)[] { ("AllyDamageBoost", 0), ("PetBat", 0) },
+            ["SpelunkersArmor_Unique1"] = new (string, int)[] { ("ItemDamageBoost", 2), ("AllyDamageBoost", 0), ("PetBat", 0) },
+            ["SpelunkersArmor_Year1"] = new (string, int)[] { ("ItemDamageBoost", 2), ("AllyDamageBoost", 0), ("PetBat", 0) },
+            ["SproutArmor"] = new (string, int)[] { ("AreaHeal", 0), ("DodgeRoot", 0) },
+            ["SproutArmor_Unique1"] = new (string, int)[] { ("AreaHeal", 0), ("DodgeRoot", 0) },
+            ["SquidArmor"] = new (string, int)[] { ("MoveSpeedAura", 0), ("SquidRollLimited", 0) },
+            ["SquidArmor_Unique1"] = new (string, int)[] { ("DodgeInvulnerability", 2), ("SquidRollQuick", 0), ("MoveSpeedAura", 0) },
+            ["TurtleArmor"] = new (string, int)[] { ("SuperbDamageAbsorption", 0), ("HealingAura", 0) },
+            ["TurtleArmor_Unique1"] = new (string, int)[] { ("SuperbDamageAbsorption", 0), ("HealingAura", 0) },
+            ["WolfArmor"] = new (string, int)[] { ("AllyDamageBoost", 0), ("AreaHeal", 0) },
+            ["WolfArmor_Unique1"] = new (string, int)[] { ("MissChance", 2), ("AllyDamageBoost", 0), ("AreaHeal", 0) },
+            ["WolfArmor_Unique2"] = new (string, int)[] { ("AllyDamageBoost", 0), ("AreaHeal", 0) },
+            ["WolfArmor_Winter1"] = new (string, int)[] { ("MissChance", 2), ("AllyDamageBoost", 0), ("AreaHeal", 0) },
         };
     }
 }

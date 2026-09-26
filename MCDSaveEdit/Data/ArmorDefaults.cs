@@ -1,4 +1,4 @@
-using MCDSaveEdit.Save.Models.Enums;
+﻿using MCDSaveEdit.Save.Models.Enums;
 using MCDSaveEdit.Save.Models.Profiles;
 using System;
 using System.Collections.Generic;
@@ -135,12 +135,12 @@ namespace MCDSaveEdit.Data
                 ["SproutArmor"]              = props(("AreaHeal", C), ("DodgeRoot", C)),
                 ["SproutArmor_Unique1"]      = props(("AreaHeal", C), ("DodgeRoot", C)),
 
-                //SquidRollLimited over SquidRollQuick: the game has two ids and the wiki gives
-                //both squid armors the same "release an ink cloud when rolling", so which is
-                //which cannot be told apart from the outside. Neither appears in any save on
-                //hand to settle it.
+                //The game has two ids and the wiki gives both squid armors the same "release an
+                //ink cloud when rolling". The game's own item records settle it (PROBE_RECORDS=@armor,
+                //2026-09-26): the plain one has SquidRollLimited, the Glow Squid SquidRollQuick. The
+                //other 69 armors here matched those records exactly.
                 ["SquidArmor"]               = props(("SquidRollLimited", C), ("MoveSpeedAura", C)),
-                ["SquidArmor_Unique1"]       = props(("DodgeInvulnerability", U), ("SquidRollLimited", C), ("MoveSpeedAura", C)),
+                ["SquidArmor_Unique1"]       = props(("DodgeInvulnerability", U), ("SquidRollQuick", C), ("MoveSpeedAura", C)),
 
                 //HealingAura for "+25% healing boost" by elimination - AreaHeal is confirmed as
                 //"health potions heal nearby allies", and nothing else is left for a heal boost.
@@ -168,6 +168,11 @@ namespace MCDSaveEdit.Data
         public static Armorproperty[]? forItemType(string? itemType)
         {
             if (itemType == null) { return null; }
+            //A custom armor's are its design's, or those of the armor it copies.
+            if (Logic.CustomItems.armorDefaultsFor(itemType) is { } custom)
+            {
+                return custom.Select(x => new Armorproperty { Id = x.Property, Rarity = x.Rarity == 2 ? Rarity.Unique : Rarity.Common }).ToArray();
+            }
             if (!DEFAULTS.TryGetValue(itemType, out var entries)) { return null; }
 
             //New instances every time: these go onto an item and are edited from there.

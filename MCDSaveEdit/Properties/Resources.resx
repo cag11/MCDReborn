@@ -4083,7 +4083,7 @@ Delete it?</value>
     <comment>Tooltip of the button that removes a skill</comment>
   </data>
   <data name="ITEMS_TRAITS_RESET" xml:space="preserve">
-    <value>Use the copied weapon's</value>
+    <value>Use the copied item's</value>
     <comment>Button: back to the copied weapon's own skills and property lines</comment>
   </data>
   <data name="ITEMS_LINES" xml:space="preserve">
@@ -4093,5 +4093,53 @@ Delete it?</value>
   <data name="ITEMS_LINES_HINT" xml:space="preserve">
     <value>The lines its tooltip shows under the name. They describe the moves; the moves themselves come from the weapon it copies.</value>
     <comment>Hint under the Property lines label</comment>
+  </data>
+  <data name="ITEMS_ARMOR_PROPERTIES" xml:space="preserve">
+    <value>Armor properties</value>
+    <comment>Label above a custom armor's default armor properties</comment>
+  </data>
+  <data name="ITEMS_ARMOR_PROPERTIES_HINT" xml:space="preserve">
+    <value>What the armor comes with: the inventory's Defaults button gives it these. A unique armor leads with its gold, unique one. Each character's copy keeps the properties in its save, which the inventory edits.</value>
+    <comment>Hint under the Armor properties label</comment>
+  </data>
+  <data name="ITEMS_ARMOR_PROPERTIES_NONE" xml:space="preserve">
+    <value>No armor properties</value>
+    <comment>Shown when a custom armor has none</comment>
+  </data>
+  <data name="ITEMS_RARITY_COMMON" xml:space="preserve">
+    <value>Common</value>
+    <comment>Armor property rarity</comment>
+  </data>
+  <data name="ITEMS_RARITY_UNIQUE" xml:space="preserve">
+    <value>Unique</value>
+    <comment>Armor property rarity</comment>
+  </data>
+  <data name="ITEMS_ARTIFACT" xml:space="preserve">
+    <value>Artifact</value>
+    <comment>Label above a custom artifact's numbers</comment>
+  </data>
+  <data name="ITEMS_ARTIFACT_HINT" xml:space="preserve">
+    <value>Leave a box empty to keep the copied artifact's own.</value>
+    <comment>Hint under the Artifact label</comment>
+  </data>
+  <data name="ITEMS_ARTIFACT_OWN" xml:space="preserve">
+    <value>The copied one has: cooldown {0}s, duration {1}s, soul cost {2}.</value>
+    <comment>Appended to the artifact hint. {0}-{2} are numbers; 0 where it has none</comment>
+  </data>
+  <data name="ITEMS_COOLDOWN" xml:space="preserve">
+    <value>Cooldown (s)</value>
+    <comment>Artifact number</comment>
+  </data>
+  <data name="ITEMS_DURATION" xml:space="preserve">
+    <value>Duration (s)</value>
+    <comment>Artifact number</comment>
+  </data>
+  <data name="ITEMS_SOUL_COST" xml:space="preserve">
+    <value>Soul cost</value>
+    <comment>Artifact number</comment>
+  </data>
+  <data name="ITEMS_COPIED_VALUE" xml:space="preserve">
+    <value>The copied artifact's: {0}</value>
+    <comment>Tooltip of an artifact number box</comment>
   </data>
 </root>

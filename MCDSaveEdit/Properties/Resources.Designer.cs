@@ -9023,7 +9023,7 @@ namespace MCDSaveEdit.Properties {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Use the copied weapon's.
+        ///   Looks up a localized string similar to Use the copied item's.
         /// </summary>
         public static string ITEMS_TRAITS_RESET {
             get {
@@ -9046,6 +9046,114 @@ namespace MCDSaveEdit.Properties {
         public static string ITEMS_LINES_HINT {
             get {
                 return ResourceManager.GetString("ITEMS_LINES_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Armor properties.
+        /// </summary>
+        public static string ITEMS_ARMOR_PROPERTIES {
+            get {
+                return ResourceManager.GetString("ITEMS_ARMOR_PROPERTIES", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to What the armor comes with: the inventory's Defaults button gives it these. A unique armor leads with its gold, unique one. Each character's copy keeps the properties in its save, which the inventory edits..
+        /// </summary>
+        public static string ITEMS_ARMOR_PROPERTIES_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_ARMOR_PROPERTIES_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No armor properties.
+        /// </summary>
+        public static string ITEMS_ARMOR_PROPERTIES_NONE {
+            get {
+                return ResourceManager.GetString("ITEMS_ARMOR_PROPERTIES_NONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Common.
+        /// </summary>
+        public static string ITEMS_RARITY_COMMON {
+            get {
+                return ResourceManager.GetString("ITEMS_RARITY_COMMON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Unique.
+        /// </summary>
+        public static string ITEMS_RARITY_UNIQUE {
+            get {
+                return ResourceManager.GetString("ITEMS_RARITY_UNIQUE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Artifact.
+        /// </summary>
+        public static string ITEMS_ARTIFACT {
+            get {
+                return ResourceManager.GetString("ITEMS_ARTIFACT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Leave a box empty to keep the copied artifact's own..
+        /// </summary>
+        public static string ITEMS_ARTIFACT_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_ARTIFACT_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The copied one has: cooldown {0}s, duration {1}s, soul cost {2}..
+        /// </summary>
+        public static string ITEMS_ARTIFACT_OWN {
+            get {
+                return ResourceManager.GetString("ITEMS_ARTIFACT_OWN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Cooldown (s).
+        /// </summary>
+        public static string ITEMS_COOLDOWN {
+            get {
+                return ResourceManager.GetString("ITEMS_COOLDOWN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Duration (s).
+        /// </summary>
+        public static string ITEMS_DURATION {
+            get {
+                return ResourceManager.GetString("ITEMS_DURATION", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Soul cost.
+        /// </summary>
+        public static string ITEMS_SOUL_COST {
+            get {
+                return ResourceManager.GetString("ITEMS_SOUL_COST", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The copied artifact's: {0}.
+        /// </summary>
+        public static string ITEMS_COPIED_VALUE {
+            get {
+                return ResourceManager.GetString("ITEMS_COPIED_VALUE", resourceCulture);
             }
         }
     }

@@ -126,6 +126,14 @@ namespace MCDSaveEdit.UI
             traitsResetButton.Content = R.ITEMS_TRAITS_RESET;
             linesLabel.Content = R.ITEMS_LINES;
             linesHint.Text = R.ITEMS_LINES_HINT;
+            armorPropertiesLabel.Content = R.ITEMS_ARMOR_PROPERTIES;
+            armorPropertiesHint.Text = R.ITEMS_ARMOR_PROPERTIES_HINT;
+            addArmorPropertyButton.Content = R.ITEMS_SKILL_ADD;
+            artifactLabel.Content = R.ITEMS_ARTIFACT;
+            artifactHint.Text = R.ITEMS_ARTIFACT_HINT;
+            cooldownLabel.Text = R.ITEMS_COOLDOWN;
+            durationLabel.Text = R.ITEMS_DURATION;
+            soulCostLabel.Text = R.ITEMS_SOUL_COST;
         }
 
         // ------------------------------------------------------------------ loading
@@ -453,6 +461,9 @@ namespace MCDSaveEdit.UI
             traitsPanel.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
             if (!shown) { return; }
             var kind = _slot!.Kind;
+            //Each section only where the type has one: artifacts have no skills, armor no lines.
+            skillsSection.Visibility = GearTraits.SKILLS[kind].Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            showArtifactNumbers(kind);
 
             var skills = CustomItems.skillsOf(_working!);
             skillsList.Children.Clear();
@@ -485,7 +496,7 @@ namespace MCDSaveEdit.UI
                 skillsList.Children.Add(row);
             }
 
-            addSkillBox.ItemsSource = WeaponTraits.SKILLS[kind]
+            addSkillBox.ItemsSource = GearTraits.SKILLS[kind]
                 .Where(s => skills.All(k => k.Skill != s))
                 .Select(s => new ComboBoxItem { Content = skillName(s), Tag = s })
                 .OrderBy(i => (string)i.Content, StringComparer.CurrentCultureIgnoreCase)
@@ -493,7 +504,10 @@ namespace MCDSaveEdit.UI
 
             var lines = CustomItems.linesOf(_working!);
             linesPanel.Children.Clear();
-            var catalogue = WeaponTraits.LINES[kind];
+            showArmorProperties(kind);
+            var catalogue = GearTraits.LINES[kind];
+            //Armor has no property lines: its tooltip lists its armor properties instead.
+            linesSection.Visibility = catalogue.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
             foreach (var key in catalogue.Keys.OrderBy(k => lineName(k, catalogue), StringComparer.CurrentCultureIgnoreCase))
             {
                 var box = new CheckBox { Content = lineName(key, catalogue), IsChecked = lines.Contains(key), Margin = new Thickness(0, 0, 14, 4), Tag = key };
@@ -530,7 +544,100 @@ namespace MCDSaveEdit.UI
             if (_working == null) { return; }
             _working.Skills = null;
             _working.Lines = null;
+            _working.ArmorProperties = null;
+            _working.Cooldown = null;
+            _working.Duration = null;
+            _working.SoulCost = null;
             showTraits();
+        }
+
+        /// <summary>
+        /// An artifact's cooldown, duration and soul cost: what the design gives, blank where it keeps
+        /// the copied artifact's - whose own number is shown under each box.
+        /// </summary>
+        private void showArtifactNumbers(CustomItems.Kind kind)
+        {
+            var artifact = kind == CustomItems.Kind.Artifact && _working != null;
+            artifactSection.Visibility = artifact ? Visibility.Visible : Visibility.Collapsed;
+            if (!artifact) { return; }
+            var own = CustomItems.artifactNumbersOf(_working!);
+            string shown(double? value) => value is { } v ? format(v) : string.Empty;
+            _filling = true;
+            cooldownBox.Text = shown(_working!.Cooldown);
+            durationBox.Text = shown(_working.Duration);
+            soulCostBox.Text = shown(_working.SoulCost);
+            _filling = false;
+            cooldownBox.ToolTip = string.Format(R.ITEMS_COPIED_VALUE, format(own.cooldown));
+            durationBox.ToolTip = string.Format(R.ITEMS_COPIED_VALUE, format(own.duration));
+            soulCostBox.ToolTip = string.Format(R.ITEMS_COPIED_VALUE, format(own.souls));
+            artifactHint.Text = R.ITEMS_ARTIFACT_HINT + " " + string.Format(R.ITEMS_ARTIFACT_OWN,
+                format(own.cooldown), format(own.duration), format(own.souls));
+        }
+
+        private void artifactNumber_Changed(object sender, TextChangedEventArgs e)
+        {
+            if (_filling || _working == null) { return; }
+            double? read(TextBox box) => tryParse(box.Text, out var v) && v >= 0 ? v : null;
+            _working.Cooldown = read(cooldownBox);
+            _working.Duration = read(durationBox);
+            _working.SoulCost = read(soulCostBox);
+        }
+
+        /// <summary>
+        /// An armor's default armor properties, as the design will give them: its own picks, else
+        /// the copied armor's. Each has a rarity: common, or unique for the gold line a unique
+        /// armor leads with.
+        /// </summary>
+        private void showArmorProperties(CustomItems.Kind kind)
+        {
+            var armour = kind == CustomItems.Kind.Armor;
+            armorSection.Visibility = armour ? Visibility.Visible : Visibility.Collapsed;
+            if (!armour || _working == null) { return; }
+
+            var properties = CustomItems.armorPropertiesOf(_working);
+            armorPropertiesList.Children.Clear();
+            if (properties.Count == 0)
+            {
+                armorPropertiesList.Children.Add(new TextBlock { Text = R.ITEMS_ARMOR_PROPERTIES_NONE, Foreground = Brushes.Gray, Margin = new Thickness(2, 0, 0, 0) });
+            }
+            for (var i = 0; i < properties.Count; i++)
+            {
+                var at = i;
+                var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3) };
+                row.Children.Add(new TextBlock { Text = R.armorProperty(properties[i].Property), Width = 260, VerticalAlignment = VerticalAlignment.Center,
+                    ToolTip = R.armorPropertyDescription(properties[i].Property) });
+                var rarity = new ComboBox { Width = 110, ItemsSource = new[] { R.ITEMS_RARITY_COMMON, R.ITEMS_RARITY_UNIQUE },
+                    SelectedIndex = properties[i].Rarity == 2 ? 1 : 0 };
+                rarity.SelectionChanged += (_, _) => { ownArmorProperties()[at].Rarity = rarity.SelectedIndex == 1 ? 2 : 0; };
+                row.Children.Add(rarity);
+                var remove = new Button { Content = "✕", Padding = new Thickness(6, 0, 6, 0), Margin = new Thickness(8, 0, 0, 0), ToolTip = R.ITEMS_SKILL_REMOVE };
+                remove.Click += (_, _) =>
+                {
+                    ownArmorProperties().RemoveAt(at);
+                    showArmorProperties(kind);
+                };
+                row.Children.Add(remove);
+                armorPropertiesList.Children.Add(row);
+            }
+
+            addArmorPropertyBox.ItemsSource = GearTraits.ARMOR_PROPERTIES
+                .Where(p => properties.All(k => k.Property != p))
+                .Select(p => new ComboBoxItem { Content = R.armorProperty(p), Tag = p, ToolTip = R.armorPropertyDescription(p) })
+                .OrderBy(i => (string)i.Content, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+        }
+
+        private List<CustomItems.ArmorPick> ownArmorProperties()
+        {
+            _working!.ArmorProperties ??= CustomItems.armorPropertiesOf(_working);
+            return _working.ArmorProperties;
+        }
+
+        private void addArmorPropertyButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_working == null || addArmorPropertyBox.SelectedItem is not ComboBoxItem { Tag: string property }) { return; }
+            ownArmorProperties().Add(new CustomItems.ArmorPick { Property = property, Rarity = 0 });
+            showArmorProperties(CustomItems.Kind.Armor);
         }
 
         /// <summary>

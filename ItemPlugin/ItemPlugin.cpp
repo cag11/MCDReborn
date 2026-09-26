@@ -65,6 +65,12 @@ namespace
     constexpr size_t LINE_SIZE = 0x30;
     constexpr size_t BUILTINS_AT = 0x1B8;
     constexpr size_t BUILTIN_SIZE = 0x14;
+    //  - an armor's default armor properties: EArmorPropertyID and EItemRarity, two bytes each, a
+    //    unique's own first. What it drops with; an owned armor's are the ones in the save.
+    constexpr size_t ARMOR_PROPERTIES_AT = 0x1A8;
+    //  - an artifact's numbers, plain floats: soul cost, cooldown and duration in seconds. The only
+    //    offsets the numbers field may write; anything else in it is refused.
+    constexpr size_t ARTIFACT_NUMBERS[] = { 0x94, 0x98, 0x9C };
 
     using FNameCtor = FName* (__fastcall*)(FName* self, const char* name, int findType);
     using CreateText = FText* (__fastcall*)(FText* out, const wchar_t* source, const wchar_t* space, const wchar_t* key);
@@ -266,6 +272,9 @@ namespace
         std::vector<std::pair<int, int>> skills;                       // enchantment type id, level
         bool hasLines = false;
         std::vector<std::pair<std::wstring, std::wstring>> lines;      // text key, English text
+        bool hasArmorProperties = false;
+        std::vector<std::pair<int, int>> armorProperties;              // EArmorPropertyID, EItemRarity
+        std::vector<std::pair<size_t, float>> numbers;                 // record offset, value
     };
 
     std::wstring wide(const std::string& utf8)
@@ -342,6 +351,42 @@ namespace
                     size_t equals = one.find('=');
                     if (equals == std::string::npos || equals == 0) { continue; }
                     item.lines.push_back({ wide(one.substr(0, equals)), wide(one.substr(equals + 1)) });
+                }
+            }
+            // Armor properties: "3:2;7:0" - EArmorPropertyID and rarity (0 common, 2 unique).
+            if (parts.size() > 7 && parts[7] != "-")
+            {
+                item.hasArmorProperties = true;
+                size_t at = 0;
+                while (at < parts[7].size())
+                {
+                    size_t semi = parts[7].find(';', at);
+                    std::string one = parts[7].substr(at, semi == std::string::npos ? std::string::npos : semi - at);
+                    at = semi == std::string::npos ? parts[7].size() : semi + 1;
+                    size_t colon = one.find(':');
+                    if (colon == std::string::npos) { continue; }
+                    int property = atoi(one.substr(0, colon).c_str());
+                    int rarity = atoi(one.substr(colon + 1).c_str());
+                    if (property > 0 && property < 256 && rarity >= 0 && rarity < 3) { item.armorProperties.push_back({ property, rarity }); }
+                }
+            }
+            // Numbers: "98=10;9c=8" - a record offset in hex and a float, for an artifact's own.
+            if (parts.size() > 8 && parts[8] != "-")
+            {
+                size_t at = 0;
+                while (at < parts[8].size())
+                {
+                    size_t semi = parts[8].find(';', at);
+                    std::string one = parts[8].substr(at, semi == std::string::npos ? std::string::npos : semi - at);
+                    at = semi == std::string::npos ? parts[8].size() : semi + 1;
+                    size_t equals = one.find('=');
+                    if (equals == std::string::npos) { continue; }
+                    size_t offset = strtoul(one.substr(0, equals).c_str(), nullptr, 16);
+                    float value = static_cast<float>(atof(one.substr(equals + 1).c_str()));
+                    bool allowed = false;
+                    for (size_t known : ARTIFACT_NUMBERS) { allowed = allowed || known == offset; }
+                    if (allowed && value >= 0 && value < 100000) { item.numbers.push_back({ offset, value }); }
+                    else { say("%s: refused number at +%zx", item.id.c_str(), offset); }
                 }
             }
             items.push_back(item);
@@ -426,6 +471,30 @@ namespace
             memcpy(record + LINES_AT, &list, sizeof(list));
             say("%s: %zu property line(s)", item.id.c_str(), n);
         }
+
+        if (item.hasArmorProperties)
+        {
+            size_t n = item.armorProperties.size();
+            TArrayRaw list{ nullptr, 0, 0 };
+            if (n > 0)
+            {
+                auto data = static_cast<uint8_t*>(game.malloc(n * 2));
+                for (size_t i = 0; i < n; i++)
+                {
+                    data[i * 2] = static_cast<uint8_t>(item.armorProperties[i].first);
+                    data[i * 2 + 1] = static_cast<uint8_t>(item.armorProperties[i].second);
+                }
+                list = TArrayRaw{ data, static_cast<int32_t>(n), static_cast<int32_t>(n) };
+            }
+            memcpy(record + ARMOR_PROPERTIES_AT, &list, sizeof(list));
+            say("%s: %zu armor propert%s", item.id.c_str(), n, n == 1 ? "y" : "ies");
+        }
+
+        for (const auto& number : item.numbers)
+        {
+            memcpy(record + number.first, &number.second, sizeof(float));
+        }
+        if (!item.numbers.empty()) { say("%s: %zu number(s) set", item.id.c_str(), item.numbers.size()); }
 
         const std::string fid = item.folder.substr(item.folder.find_last_of('/') + 1);
         const std::string paths[6] = {

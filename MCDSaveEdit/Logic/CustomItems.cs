@@ -133,8 +133,8 @@ namespace MCDSaveEdit.Logic
             catch (IOException) { }
         }
 
-        /// <summary>Whether items of this type have skills and property lines to pick: the weapons, whose records have been read.</summary>
-        public static bool hasTraits(Kind kind) => WeaponTraits.SKILLS.ContainsKey(kind);
+        /// <summary>Whether items of this type have skills to pick: weapons and armor, whose records have been read.</summary>
+        public static bool hasTraits(Kind kind) => GearTraits.SKILLS.ContainsKey(kind);
 
         /// <summary>
         /// The plugin's skills field: "5:1;9:1" (EEnchantmentTypeID, level), or "-" to keep the
@@ -144,15 +144,43 @@ namespace MCDSaveEdit.Logic
         {
             if (design.PluginKind is not { } kind || !hasTraits(kind) || design.Skills == null) { return "-"; }
             return string.Join(";", design.Skills
-                .Where(s => WeaponTraits.ENCHANTMENT_IDS.ContainsKey(s.Skill))
-                .Select(s => $"{WeaponTraits.ENCHANTMENT_IDS[s.Skill]}:{Math.Clamp(s.Level, 1, 99)}"));
+                .Where(s => GearTraits.ENCHANTMENT_IDS.ContainsKey(s.Skill))
+                .Select(s => $"{GearTraits.ENCHANTMENT_IDS[s.Skill]}:{Math.Clamp(s.Level, 1, 99)}"));
+        }
+
+        /// <summary>
+        /// The plugin's numbers field for an artifact: "98=10;9c=8;94=40" - record offsets of its
+        /// cooldown, duration and soul cost, with the values given. "-" when it gives none.
+        /// </summary>
+        private static string numbersField(Design design)
+        {
+            if (design.PluginKind != Kind.Artifact) { return "-"; }
+            var given = new List<string>();
+            string one(double value) => Math.Max(0, value).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+            if (design.Cooldown is { } cooldown) { given.Add("98=" + one(cooldown)); }
+            if (design.Duration is { } duration) { given.Add("9c=" + one(duration)); }
+            if (design.SoulCost is { } souls) { given.Add("94=" + one(souls)); }
+            return given.Count == 0 ? "-" : string.Join(";", given);
+        }
+
+        /// <summary>The copied artifact's own numbers: soul cost, cooldown, duration.</summary>
+        public static (double souls, double cooldown, double duration) artifactNumbersOf(Design design)
+            => GearTraits.ARTIFACT_NUMBERS.TryGetValue(design.Source, out var own) ? own : (0, 0, 0);
+
+        /// <summary>The plugin's armor properties field: "3:2;7:0" (EArmorPropertyID, rarity), or "-".</summary>
+        private static string armorField(Design design)
+        {
+            if (design.PluginKind != Kind.Armor || design.ArmorProperties == null) { return "-"; }
+            return string.Join(";", design.ArmorProperties
+                .Where(p => GearTraits.ARMOR_PROPERTY_IDS.ContainsKey(p.Property))
+                .Select(p => $"{GearTraits.ARMOR_PROPERTY_IDS[p.Property]}:{(p.Rarity == 2 ? 2 : 0)}"));
         }
 
         /// <summary>The plugin's lines field: "key=English|..." (the game's own ItemType keys), or "-".</summary>
         private static string linesField(Design design)
         {
             if (design.PluginKind is not { } kind || !hasTraits(kind) || design.Lines == null) { return "-"; }
-            var lines = WeaponTraits.LINES[kind];
+            var lines = GearTraits.LINES[kind];
             return string.Join("|", design.Lines
                 .Where(lines.ContainsKey)
                 .Select(k => k + "=" + lines[k]));
@@ -216,12 +244,45 @@ namespace MCDSaveEdit.Logic
             /// </summary>
             public string? Texture { get; set; }
             /// <summary>
-            /// A weapon's built-in skills (WeaponTraits.SKILLS), replacing the copied weapon's.
+            /// A weapon's built-in skills (GearTraits.SKILLS), replacing the copied weapon's.
             /// Null keeps the copied weapon's own; empty means none.
             /// </summary>
             public List<SkillPick>? Skills { get; set; }
             /// <summary>A weapon's property lines, by ItemType key. Null keeps the copied weapon's.</summary>
             public List<string>? Lines { get; set; }
+            /// <summary>
+            /// An armor's default armor properties (GearTraits.ARMOR_PROPERTIES), replacing the copied
+            /// armor's. Null keeps the copied armor's. An owned armor's are the ones in the save;
+            /// these are what the inventory's Defaults button gives it.
+            /// </summary>
+            public List<ArmorPick>? ArmorProperties { get; set; }
+            /// <summary>An artifact's cooldown in seconds. Null keeps the copied artifact's.</summary>
+            public double? Cooldown { get; set; }
+            /// <summary>An artifact's duration in seconds. Null keeps the copied artifact's.</summary>
+            public double? Duration { get; set; }
+            /// <summary>An artifact's soul cost. Null keeps the copied artifact's.</summary>
+            public double? SoulCost { get; set; }
+        }
+
+        /// <summary>One armor property: its id, as EArmorPropertyID and the save spell it, and its rarity (0 common, 2 unique).</summary>
+        public sealed class ArmorPick
+        {
+            public string Property { get; set; } = "";
+            public int Rarity { get; set; }
+        }
+
+        /// <summary>The armor properties an armor comes with: its own when it gives them, else the copied armor's.</summary>
+        public static List<ArmorPick> armorPropertiesOf(Design design)
+            => design.ArmorProperties?.Select(p => new ArmorPick { Property = p.Property, Rarity = p.Rarity }).ToList()
+                ?? (GearTraits.ARMOR_DEFAULTS.TryGetValue(design.Source, out var own)
+                    ? own.Select(p => new ArmorPick { Property = p.property, Rarity = p.rarity }).ToList()
+                    : new List<ArmorPick>());
+
+        /// <summary>A custom armor's default properties, for the inventory's Defaults button; null for anything else.</summary>
+        public static List<ArmorPick>? armorDefaultsFor(string itemId)
+        {
+            var design = _saved.FirstOrDefault(d => string.Equals(d.Slot, itemId, StringComparison.OrdinalIgnoreCase));
+            return design?.PluginKind == Kind.Armor ? armorPropertiesOf(design) : null;
         }
 
         /// <summary>One built-in skill: an enchantment's name, as EEnchantmentTypeID spells it, and its level.</summary>
@@ -234,14 +295,14 @@ namespace MCDSaveEdit.Logic
         /// <summary>The skills an item will have: its own when it gives them, else the copied weapon's.</summary>
         public static List<SkillPick> skillsOf(Design design)
             => design.Skills?.Select(s => new SkillPick { Skill = s.Skill, Level = s.Level }).ToList()
-                ?? (WeaponTraits.WEAPONS.TryGetValue(design.Source, out var own)
+                ?? (GearTraits.WEAPONS.TryGetValue(design.Source, out var own)
                     ? own.skills.Select(s => new SkillPick { Skill = s.skill, Level = s.level }).ToList()
                     : new List<SkillPick>());
 
         /// <summary>The property lines an item will show: its own when it gives them, else the copied weapon's.</summary>
         public static List<string> linesOf(Design design)
             => design.Lines?.ToList()
-                ?? (WeaponTraits.WEAPONS.TryGetValue(design.Source, out var own) ? own.lines.ToList() : new List<string>());
+                ?? (GearTraits.WEAPONS.TryGetValue(design.Source, out var own) ? own.lines.ToList() : new List<string>());
 
         /// <summary>
         /// The Weapons tab's work on a custom item: an imported model and where the sliders put it,
@@ -437,6 +498,10 @@ namespace MCDSaveEdit.Logic
             Texture = d.Texture,
             Skills = d.Skills?.Select(s => new SkillPick { Skill = s.Skill, Level = s.Level }).ToList(),
             Lines = d.Lines?.ToList(),
+            ArmorProperties = d.ArmorProperties?.Select(p => new ArmorPick { Property = p.Property, Rarity = p.Rarity }).ToList(),
+            Cooldown = d.Cooldown,
+            Duration = d.Duration,
+            SoulCost = d.SoulCost,
             Model = d.Model == null ? null : new ModelEdit
             {
                 File = d.Model.File,
@@ -574,7 +639,7 @@ namespace MCDSaveEdit.Logic
                 pluginItems.Add(new GamePlugin.Item(slot.Id, source.Id, slot.Folder,
                     string.IsNullOrWhiteSpace(design.Name) ? R.itemName(source.Id) : design.Name!,
                     string.IsNullOrWhiteSpace(design.Description) ? R.itemDesc(source.Id) : design.Description!,
-                    skillsField(design), linesField(design)));
+                    skillsField(design), linesField(design), armorField(design), numbersField(design)));
             }
             if (pluginItems.Count > 0 && into == null && GamePlugin.gameFolder(paks) == null)
             {
