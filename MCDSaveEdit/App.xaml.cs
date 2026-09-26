@@ -10852,6 +10852,148 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_EQUIPMAP - each live EquipmentComponent's gear power (+0x144), its "built" flag
+            //(+0x198) and the drop-power ceiling map at +0x148: every entry's key, difficulty, threat,
+            //Apocalypse+ level and power ranges. Read-only, external ReadProcessMemory.
+            if (_startupArguments.Contains("PROBE_EQUIPMAP"))
+            {
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[equip] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, step => { });
+                    if (reflect == null) { Console.WriteLine("[equip] no reflection data"); Shutdown(); return; }
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var at = reflect.objectAt(i);
+                        if (at == 0 || reflect.kindOf(at) != "EquipmentComponent") { continue; }
+                        var body = game.read(new IntPtr(at), 0x1A0);
+                        if (body == null) { continue; }
+                        var power = BitConverter.ToInt32(body, 0x144);
+                        var built = body[0x198];
+                        var data = BitConverter.ToInt64(body, 0x148);
+                        var num = BitConverter.ToInt32(body, 0x150);
+                        Console.WriteLine($"[equip] {reflect.nameOf(at)} in {reflect.outerOf(at)} at {at:x}: gear power {power}, built {built}, map {data:x} x{num}");
+                        if (data == 0 || num <= 0 || num > 16) { continue; }
+                        var entries = game.read(new IntPtr(data), num * 0xD0);
+                        if (entries == null) { continue; }
+                        for (var e = 0; e < num; e++)
+                        {
+                            var o = e * 0xD0;
+                            var ctx = o + 8;
+                            var ranges = string.Join(" ", Enumerable.Range(0, 8).Select(k => BitConverter.ToSingle(entries, ctx + 0x94 + 4 * k).ToString("0.00")));
+                            Console.WriteLine($"[equip]   key {entries[o]}: ctx+0 {BitConverter.ToInt32(entries, ctx):x} | bytes 8..f {BitConverter.ToString(entries, ctx + 8, 8)} | ranges {ranges} | fractions {BitConverter.ToSingle(entries, ctx + 0xB8):0.00} {BitConverter.ToSingle(entries, ctx + 0xBC):0.00}");
+                        }
+                    }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_SAVEDIFF=<a.dat>;<b.dat> - every JSON value that differs between two saves. Read-only.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_SAVEDIFF=", StringComparison.Ordinal)))
+            {
+                var bits = _startupArguments.First(a => a.StartsWith("PROBE_SAVEDIFF=", StringComparison.Ordinal))["PROBE_SAVEDIFF=".Length..].Trim('"').Split(';');
+                try
+                {
+                    System.Text.Json.Nodes.JsonNode plainOf(string path) => System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        using var file = File.OpenRead(path);
+                        if (!DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file)) { throw new InvalidOperationException("not an encrypted save"); }
+                        using var plain = await Logic.FileProcessHelper.Decrypt(file) ?? throw new InvalidOperationException("could not decrypt");
+                        var text = new StreamReader(plain).ReadToEnd();
+                        var end = text.LastIndexOf('}');
+                        return System.Text.Json.Nodes.JsonNode.Parse(text.Substring(0, end + 1))!;
+                    }).GetAwaiter().GetResult();
+                    var a = plainOf(bits[0]);
+                    var b = plainOf(bits[1]);
+                    var differences = 0;
+                    void walk(string at, System.Text.Json.Nodes.JsonNode? x, System.Text.Json.Nodes.JsonNode? y)
+                    {
+                        if (x is System.Text.Json.Nodes.JsonObject ox && y is System.Text.Json.Nodes.JsonObject oy)
+                        {
+                            foreach (var key in ox.Select(k => k.Key).Union(oy.Select(k => k.Key)))
+                            {
+                                walk(at + "." + key, ox.ContainsKey(key) ? ox[key] : null, oy.ContainsKey(key) ? oy[key] : null);
+                            }
+                            if (!ox.Any() && !oy.Any()) { }
+                            return;
+                        }
+                        if (x is System.Text.Json.Nodes.JsonArray ax && y is System.Text.Json.Nodes.JsonArray ay)
+                        {
+                            for (var i = 0; i < Math.Max(ax.Count, ay.Count); i++) { walk($"{at}[{i}]", i < ax.Count ? ax[i] : null, i < ay.Count ? ay[i] : null); }
+                            return;
+                        }
+                        var sx = x?.ToJsonString(); var sy = y?.ToJsonString();
+                        if (sx == sy) { return; }
+                        //Numbers written differently but equal are the same value.
+                        if (x is System.Text.Json.Nodes.JsonValue vx && y is System.Text.Json.Nodes.JsonValue vy
+                            && double.TryParse(sx, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var dx)
+                            && double.TryParse(sy, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var dy)
+                            && Math.Abs(dx - dy) <= Math.Abs(dx) * 1e-6) { return; }
+                        differences++;
+                        if (differences <= 40) { Console.WriteLine($"[savediff] {at}: {sx ?? "(missing)"} -> {sy ?? "(missing)"}"); }
+                    }
+                    walk("$", a, b);
+                    Console.WriteLine($"[savediff] {differences} difference(s)");
+                }
+                catch (Exception problem) { Console.WriteLine($"[savediff] failed: {problem.Message}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_SETSTRUGGLE=<.dat>;<mission>=<level>[,...] - raises the Apocalypse+ level a character
+            //has completed on the missions named, and nothing else. Backs the save up first, the way
+            //the app's own Save does, and reads it back afterwards.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_SETSTRUGGLE=", StringComparison.Ordinal)))
+            {
+                var bits = _startupArguments.First(a => a.StartsWith("PROBE_SETSTRUGGLE=", StringComparison.Ordinal))["PROBE_SETSTRUGGLE=".Length..].Trim('"').Split(';');
+                var path = bits[0];
+                try
+                {
+                    if (Logic.GameRunning.isUp) { throw new InvalidOperationException("the game is running"); }
+                    System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        async Task<MCDSaveEdit.Save.Models.Profiles.ProfileSaveFile> load()
+                        {
+                            using var file = File.OpenRead(path);
+                            if (!DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file)) { throw new InvalidOperationException("not an encrypted save"); }
+                            using var plain = await Logic.FileProcessHelper.Decrypt(file) ?? throw new InvalidOperationException("could not decrypt");
+                            return await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Read(plain) ?? throw new InvalidOperationException("could not parse");
+                        }
+                        var profile = await load();
+                        foreach (var pair in bits[1].Split(','))
+                        {
+                            var kv = pair.Split('=');
+                            var level = int.Parse(kv[1]);
+                            if (!profile.Progress.TryGetValue(kv[0], out var progress)) { Console.WriteLine($"[setstruggle] {kv[0]}: not in the save, left alone"); continue; }
+                            if (progress.CompletedDifficulty != "Difficulty_3" || progress.CompletedThreatLevel != "Threat_7")
+                            {
+                                Console.WriteLine($"[setstruggle] {kv[0]}: not completed on Apocalypse threat 7, left alone");
+                                continue;
+                            }
+                            Console.WriteLine($"[setstruggle] {kv[0]}: +{progress.CompletedEndlessStruggle} -> +{level}");
+                            progress.CompletedEndlessStruggle = Math.Max(progress.CompletedEndlessStruggle, level);
+                        }
+                        Console.WriteLine($"[setstruggle] backup: {Logic.SaveBackup.backup(path)}");
+                        using var json = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Write(profile);
+                        json.Seek(0, SeekOrigin.Begin);
+                        using var sealedFile = await Logic.FileProcessHelper.Encrypt(json) ?? throw new InvalidOperationException("could not encrypt");
+                        using (var output = File.Create(path)) { await sealedFile.CopyToAsync(output); }
+                        var again = await load();
+                        foreach (var pair in bits[1].Split(','))
+                        {
+                            var name = pair.Split('=')[0];
+                            if (again.Progress.TryGetValue(name, out var p)) { Console.WriteLine($"[setstruggle] read back {name}: +{p.CompletedEndlessStruggle}"); }
+                        }
+                        Console.WriteLine($"[setstruggle] {again.Progress.Count} missions, {again.Items.Length} items after the write");
+                    }).GetAwaiter().GetResult();
+                }
+                catch (Exception problem) { Console.WriteLine($"[setstruggle] failed: {problem}"); }
+                Shutdown();
+                return;
+            }
+
             //PROBE_SAVESTRUGGLE=<.dat> - each mission's completed difficulty, threat and Apocalypse+
             //level in a character save, and the highest of them. Read-only.
             if (_startupArguments.Any(a => a.StartsWith("PROBE_SAVESTRUGGLE=", StringComparison.Ordinal)))

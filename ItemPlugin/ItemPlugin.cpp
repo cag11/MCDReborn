@@ -1821,6 +1821,120 @@ namespace
         }
     }
 
+    // Drop power has a ceiling of its own: the difficulty your gear qualifies for. Every player's
+    // EquipmentComponent keeps, at +0x148, a map of four power ranges built at that difficulty
+    // (bccdf0 tries each Apocalypse+ level from 0 and keeps the highest your gear covers). Drops
+    // take the lower of it and the level played for the bottom of their range, and only 10% past
+    // it for the top - so it holds a +30 run's drops near +25. The loop that fills it stops at 25,
+    // a literal in code, which cannot be changed (the copy protection breaks the game over any
+    // code write).
+    //
+    // The map itself is data. An entry at the old top - Apocalypse, threat 7, +25 - means gear
+    // that qualifies for everything the game had; it is lifted to the new top by moving its ranges
+    // the way the game's own formula moves power per level (1/19 of global threat, times 10.4824),
+    // so drops follow the level played again. Gear below +25 keeps the game's catch-up untouched.
+    // The game rebuilds the map when gear changes, so it is looked at every two seconds.
+    //
+    // Offsets: gear power +0x144, the map +0x148 (entries of 0xD0: key, then the range context),
+    // built flag +0x198. They are private - no reflection data names them - so each entry is
+    // checked for Apocalypse / threat 7 / +25 before anything is written.
+    constexpr size_t EQUIP_MAP = 0x148;
+    constexpr size_t EQUIP_BUILT = 0x198;
+    constexpr size_t MAP_ENTRY = 0xD0;
+    constexpr size_t RANGES_AT = 0x94;               // in the context: four (min, max) power ranges
+    constexpr float POWER_PER_LEVEL = 10.4824f / 19.0f;
+    uint8_t* g_equipmentClass = nullptr;
+
+    // The live objects of one class.
+    std::vector<uint8_t*> objectsOf(Game& game, uint8_t* cls)
+    {
+        std::vector<uint8_t*> found;
+        int32_t count = *game.objectCount;
+        uint8_t** chunks = *game.objectChunks;
+        for (int32_t i = 0; i < count; i++)
+        {
+            uint8_t* chunk = nullptr;
+            if (!readBlock(chunks + (i >> 16), &chunk, 8) || !chunk) { continue; }
+            uint8_t* object = nullptr;
+            if (!readBlock(chunk + static_cast<size_t>(i & 0xFFFF) * 0x18, &object, 8) || !object) { continue; }
+            uint8_t* its = nullptr;
+            if (readBlock(object + 0x10, &its, 8) && its == cls) { found.push_back(object); }
+        }
+        return found;
+    }
+
+    uint8_t* findClass(Game& game, const char* className)
+    {
+        FName wanted = name(game, className);
+        FName classWord = name(game, "Class");
+        int32_t count = *game.objectCount;
+        uint8_t** chunks = *game.objectChunks;
+        for (int32_t i = 0; i < count; i++)
+        {
+            uint8_t* chunk = nullptr;
+            if (!readBlock(chunks + (i >> 16), &chunk, 8) || !chunk) { continue; }
+            uint8_t* object = nullptr;
+            if (!readBlock(chunk + static_cast<size_t>(i & 0xFFFF) * 0x18, &object, 8) || !object) { continue; }
+            FName its{};
+            if (!readBlock(object + 0x18, &its, 8) || its.Index != wanted.Index || its.Number != wanted.Number) { continue; }
+            uint8_t* kind = nullptr;
+            FName kindName{};
+            if (readBlock(object + 0x10, &kind, 8) && kind && readBlock(kind + 0x18, &kindName, 8)
+                && kindName.Index == classWord.Index) { return object; }
+        }
+        return nullptr;
+    }
+
+    // One component: each entry still at +25 moved to the top. Returns how many were lifted.
+    int liftCeiling(uint8_t* component)
+    {
+        uint8_t built = 0;
+        TArrayRaw map{};
+        if (!readBlock(component + EQUIP_BUILT, &built, 1) || !built) { return 0; }
+        if (!readBlock(component + EQUIP_MAP, &map, sizeof(map)) || !map.Data || map.Num <= 0 || map.Num > 16) { return 0; }
+        int lifted = 0;
+        const float move = POWER_PER_LEVEL * static_cast<float>(g_struggleTop - GAME_STRUGGLES);
+        for (int32_t e = 0; e < map.Num; e++)
+        {
+            uint8_t* context = map.Data + e * MAP_ENTRY + 8;
+            uint8_t difficulty[8]{};
+            if (!readBlock(context + 8, difficulty, sizeof(difficulty))) { continue; }
+            int32_t level; memcpy(&level, difficulty + 4, 4);
+            if (difficulty[0] != 3 || difficulty[1] != 7 || level != GAME_STRUGGLES) { continue; }
+            float ranges[8];
+            if (!readBlock(context + RANGES_AT, ranges, sizeof(ranges))) { continue; }
+            bool sane = true;
+            for (float v : ranges) { if (!(v > 1.0f && v < 100.0f)) { sane = false; } }
+            if (!sane) { continue; }
+            for (float& v : ranges) { v += move; }
+            memcpy(context + RANGES_AT, ranges, sizeof(ranges));
+            memcpy(context + 12, &g_struggleTop, 4);
+            lifted++;
+        }
+        return lifted;
+    }
+
+    DWORD WINAPI watchCeilings(LPVOID)
+    {
+        for (;;)
+        {
+            Sleep(2000);
+            int lifted = 0;
+            for (uint8_t* component : objectsOf(g_gameKept, g_equipmentClass)) { lifted += liftCeiling(component); }
+            if (lifted) { say("apocalypse+: lifted %d drop power ceiling(s) from +25 to +%d", lifted, g_struggleTop); }
+        }
+    }
+
+    void startCeilingWatch(Game& game)
+    {
+        g_equipmentClass = findClass(game, "EquipmentComponent");
+        if (!g_equipmentClass) { say("apocalypse+: the EquipmentComponent class was not found; drops stay near +25"); return; }
+        g_gameKept = game;
+        g_game = &g_gameKept;
+        CreateThread(nullptr, 0, watchCeilings, nullptr, 0, nullptr);
+        say("apocalypse+: watching drop power ceilings (class %p)", g_equipmentClass);
+    }
+
     void extendStruggles(Game& game)
     {
         g_struggleTop = readStruggleTop();
@@ -1883,6 +1997,7 @@ namespace
         }
         say("apocalypse+: the mission screen offers levels up to +%d", g_struggleTop);
         addUnlockTiers();
+        startCeilingWatch(game);
     }
 
     // ---------------------------------------------------------------- crash note
