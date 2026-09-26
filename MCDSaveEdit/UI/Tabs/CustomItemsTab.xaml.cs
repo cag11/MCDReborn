@@ -162,6 +162,12 @@ namespace MCDSaveEdit.UI
             enchantmentIconHint.Text = R.ITEMS_ENCH_ICON_HINT;
             enchantmentIconChoose.Content = R.ITEMS_ICON_CHOOSE;
             enchantmentIconReset.Content = R.ITEMS_ENCH_ICON_RESET;
+            enchantmentShineLabel.Text = R.ITEMS_ENCH_SHINE;
+            enchantmentShineHint.Text = R.ITEMS_ENCH_SHINE_HINT;
+            shineMade.Content = R.ITEMS_ENCH_SHINE_MADE;
+            shineNone.Content = R.ITEMS_ENCH_SHINE_NONE;
+            shinePicture.Content = R.ITEMS_ENCH_SHINE_PICTURE;
+            shineChoose.Content = R.ITEMS_ENCH_SHINE_CHOOSE;
         }
 
         // ------------------------------------------------------------------ loading
@@ -435,6 +441,53 @@ namespace MCDSaveEdit.UI
             }
             catch (Exception) { enchantmentIconPreview.Source = null; }
             enchantmentIconReset.IsEnabled = _enchantment.IconFile != null;
+            showShine();
+        }
+
+        /// <summary>The sheen's masks, as they will be packed - only for an icon of its own.</summary>
+        private void showShine()
+        {
+            var own = _enchantment != null && CustomEnchantments.hasIcon(_enchantment);
+            enchantmentShineSection.Visibility = own ? Visibility.Visible : Visibility.Collapsed;
+            enchantmentShinePreview.Source = null;
+            if (!own) { return; }
+            _filling = true;
+            shineMade.IsChecked = _enchantment!.Shine == CustomEnchantments.ShineMode.Made;
+            shineNone.IsChecked = _enchantment.Shine == CustomEnchantments.ShineMode.None;
+            shinePicture.IsChecked = _enchantment.Shine == CustomEnchantments.ShineMode.Picture;
+            _filling = false;
+            try
+            {
+                var picture = CustomSkins.imageFromPng(File.ReadAllBytes(_enchantment.IconFile!));
+                enchantmentShinePreview.Source = CustomEnchantments.shineOf(_enchantment, picture);
+            }
+            catch (Exception) { enchantmentShinePreview.Source = null; }
+        }
+
+        private void shine_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_filling || _enchantment == null) { return; }
+            _enchantment.Shine = shineNone.IsChecked == true ? CustomEnchantments.ShineMode.None
+                : shinePicture.IsChecked == true && _enchantment.ShineFile != null ? CustomEnchantments.ShineMode.Picture
+                : CustomEnchantments.ShineMode.Made;
+            if (shinePicture.IsChecked == true && _enchantment.ShineFile == null) { shineChoose_Click(sender, e); return; }
+            showShine();
+        }
+
+        private void shineChoose_Click(object sender, RoutedEventArgs e)
+        {
+            if (_enchantment == null) { return; }
+            var dialog = new OpenFileDialog { Filter = "PNG|*.png" };
+            if (dialog.ShowDialog() == true)
+            {
+                try
+                {
+                    _enchantment.ShineFile = CustomItems.keepImage(_enchantment.Id + ".shine", dialog.FileName);
+                    _enchantment.Shine = CustomEnchantments.ShineMode.Picture;
+                }
+                catch (Exception problem) { statusLabel.Text = problem.Message; }
+            }
+            showShine();
         }
 
         private void enchantmentIconChoose_Click(object sender, RoutedEventArgs e)

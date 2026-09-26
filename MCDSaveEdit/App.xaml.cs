@@ -10598,6 +10598,20 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_SHINE=<png>;<out png> - the sheen masks EnchantmentShine makes from a picture,
+            //written out for looking at. Read-only.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_SHINE=", StringComparison.Ordinal)))
+            {
+                var parts = _startupArguments.First(a => a.StartsWith("PROBE_SHINE=", StringComparison.Ordinal))["PROBE_SHINE=".Length..].Trim('"').Split(';');
+                var made = Logic.EnchantmentShine.from(Logic.CustomSkins.imageFromPng(System.IO.File.ReadAllBytes(parts[0])));
+                var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(made));
+                using (var stream = System.IO.File.Create(parts[1])) { encoder.Save(stream); }
+                Console.WriteLine($"[shine] {parts[1]}");
+                Shutdown();
+                return;
+            }
+
             //PROBE_ENCHANTS[=<id>;<id>...] - the live enchantment definition table: the global at
             //image+0x44ef680 that each enchantment's static block fills by id (a79ee0). Its shape,
             //how many ids are set, and for the ids named (default Fire Aspect 5 and Fire Trail 111)

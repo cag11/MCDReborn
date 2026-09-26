@@ -4228,4 +4228,28 @@ Delete it?</value>
     <value>Use the copied enchantment's</value>
     <comment>Button: drop the enchantment's own icon</comment>
   </data>
+  <data name="ITEMS_ENCH_SHINE" xml:space="preserve">
+    <value>Shine</value>
+    <comment>Label: the animated sheen across an enchantment's own icon</comment>
+  </data>
+  <data name="ITEMS_ENCH_SHINE_HINT" xml:space="preserve">
+    <value>The sheen that sweeps across the icon follows three masks, packed in red, green and blue. Made from your picture: blue is its whole shape, green its brighter half, red its brightest part with a glow. The preview shows the masks.</value>
+    <comment>Hint under the Shine label</comment>
+  </data>
+  <data name="ITEMS_ENCH_SHINE_MADE" xml:space="preserve">
+    <value>Made from the picture</value>
+    <comment>Shine choice</comment>
+  </data>
+  <data name="ITEMS_ENCH_SHINE_NONE" xml:space="preserve">
+    <value>None</value>
+    <comment>Shine choice</comment>
+  </data>
+  <data name="ITEMS_ENCH_SHINE_PICTURE" xml:space="preserve">
+    <value>My own masks</value>
+    <comment>Shine choice</comment>
+  </data>
+  <data name="ITEMS_ENCH_SHINE_CHOOSE" xml:space="preserve">
+    <value>Choose masks…</value>
+    <comment>Button: pick a PNG of three shine masks</comment>
+  </data>
 </root>

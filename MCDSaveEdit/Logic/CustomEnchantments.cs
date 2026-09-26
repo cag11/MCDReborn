@@ -49,13 +49,22 @@ namespace MCDSaveEdit.Logic
             /// Null keeps the source's.
             /// </summary>
             public string? IconFile { get; set; }
+            /// <summary>The sheen across its own icon (EnchantmentShine). Only with an icon of its own.</summary>
+            public ShineMode Shine { get; set; } = ShineMode.Made;
+            /// <summary>For ShineMode.Picture: a PNG of three masks, kept in the app's folder.</summary>
+            public string? ShineFile { get; set; }
         }
+
+        /// <summary>Made from the icon, none at all, or the user's own three masks.</summary>
+        public enum ShineMode { Made, None, Picture }
 
         public static Design copy(Design d) => new Design
         {
             Id = d.Id, Source = d.Source, Name = d.Name, Description = d.Description, BuiltIn = d.BuiltIn, Effect = d.Effect,
             Numbers = new Dictionary<string, double>(d.Numbers ?? new Dictionary<string, double>()),
             IconFile = d.IconFile,
+            Shine = d.Shine,
+            ShineFile = d.ShineFile,
         };
 
         // ------------------------------------------------------------------ its own blueprint
@@ -177,6 +186,20 @@ namespace MCDSaveEdit.Logic
             return (entries, made);
         }
 
+        /// <summary>
+        /// The sheen's three masks for a design with its own icon: made from the picture, none, or
+        /// the user's own - which, missing, falls back to made.
+        /// </summary>
+        public static System.Windows.Media.Imaging.BitmapSource shineOf(Design d, System.Windows.Media.Imaging.BitmapSource picture)
+        {
+            if (d.Shine == ShineMode.None) { return EnchantmentShine.none(); }
+            if (d.Shine == ShineMode.Picture && d.ShineFile != null && File.Exists(d.ShineFile))
+            {
+                return CustomSkins.imageFromPng(File.ReadAllBytes(d.ShineFile));
+            }
+            return EnchantmentShine.from(picture);
+        }
+
         /// <summary>The design's picture over the copy's icon texture, every mip at its own size.</summary>
         private static void paintIcon(Design d, List<PakWriter.Entry> entries, List<string> notes)
         {
@@ -193,6 +216,20 @@ namespace MCDSaveEdit.Logic
             entries[data] = new PakWriter.Entry(entries[data].Path, uexp);
             if (bulk >= 0 && ubulk != null) { entries[bulk] = new PakWriter.Entry(entries[bulk].Path, ubulk); }
             notes.Add($"{d.Id}: its own icon.");
+
+            //The sheen's masks, beside it: T_<id>Shine_Icon.
+            var shineAsset = entries.FindIndex(e => e.Path.EndsWith("Shine_Icon.uasset", StringComparison.OrdinalIgnoreCase)
+                && System.IO.Path.GetFileName(e.Path).StartsWith("T_", StringComparison.OrdinalIgnoreCase));
+            if (shineAsset < 0) { notes.Add($"{d.Id}: {d.Source} has no shine to follow the icon."); return; }
+            var stem = entries[shineAsset].Path.Substring(0, entries[shineAsset].Path.Length - ".uasset".Length);
+            int shineFind(string extension) => entries.FindIndex(e => e.Path.Equals(stem + extension, StringComparison.OrdinalIgnoreCase));
+            int shineData = shineFind(".uexp"), shineBulk = shineFind(".ubulk");
+            if (shineData < 0) { return; }
+            why = CustomItems.repaint(entries[shineAsset].Data, entries[shineData].Data, shineBulk < 0 ? null : entries[shineBulk].Data,
+                shineOf(d, picture), out var shineUexp, out var shineUbulk);
+            if (why != null) { notes.Add($"{d.Id}: its shine was not made - {why}."); return; }
+            entries[shineData] = new PakWriter.Entry(entries[shineData].Path, shineUexp);
+            if (shineBulk >= 0 && shineUbulk != null) { entries[shineBulk] = new PakWriter.Entry(entries[shineBulk].Path, shineUbulk); }
         }
 
         public static bool isOurs(string? id) => id != null && id.StartsWith(PREFIX, StringComparison.OrdinalIgnoreCase);
@@ -344,20 +381,33 @@ namespace MCDSaveEdit.Logic
                 var png = File.ReadAllBytes(design.IconFile!);
                 picture.Write(png, 0, png.Length);
             }
+            shared.ShineFile = null;
+            if (design.Shine == ShineMode.Picture && design.ShineFile != null && File.Exists(design.ShineFile))
+            {
+                using var masks = zip.CreateEntry("shine.png").Open();
+                var png = File.ReadAllBytes(design.ShineFile);
+                masks.Write(png, 0, png.Length);
+            }
         }
 
         /// <summary>An imported design's picture, out of its file and kept under its new id.</summary>
         public static void unpackIcon(string path, Design design)
         {
-            if (design.IconFile == null) { return; }
             design.IconFile = null;
+            design.ShineFile = null;
             using var zip = System.IO.Compression.ZipFile.OpenRead(path);
-            var entry = zip.GetEntry("icon.png");
-            if (entry == null) { return; }
-            var kept = Path.Combine(CustomItems.folder, design.Id + ".png");
-            using (var from = entry.Open())
-            using (var to = File.Create(kept)) { from.CopyTo(to); }
-            design.IconFile = kept;
+            string? unpack(string name, string keptAs)
+            {
+                var entry = zip.GetEntry(name);
+                if (entry == null) { return null; }
+                var kept = Path.Combine(CustomItems.folder, keptAs);
+                using (var from = entry.Open())
+                using (var to = File.Create(kept)) { from.CopyTo(to); }
+                return kept;
+            }
+            design.IconFile = unpack("icon.png", design.Id + ".png");
+            design.ShineFile = unpack("shine.png", design.Id + ".shine.png");
+            if (design.Shine == ShineMode.Picture && design.ShineFile == null) { design.Shine = ShineMode.Made; }
         }
 
         /// <summary>The enchantment in an exported file, or null when the file holds an item instead.</summary>

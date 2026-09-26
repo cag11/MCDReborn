@@ -9345,5 +9345,59 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("ITEMS_ENCH_ICON_RESET", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Shine.
+        /// </summary>
+        public static string ITEMS_ENCH_SHINE {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_SHINE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The sheen that sweeps across the icon follows three masks, packed in red, green and blue. Made from your picture: blue is its whole shape, green its brighter half, red its brightest part with a glow. The preview shows the masks..
+        /// </summary>
+        public static string ITEMS_ENCH_SHINE_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_SHINE_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Made from the picture.
+        /// </summary>
+        public static string ITEMS_ENCH_SHINE_MADE {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_SHINE_MADE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to None.
+        /// </summary>
+        public static string ITEMS_ENCH_SHINE_NONE {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_SHINE_NONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to My own masks.
+        /// </summary>
+        public static string ITEMS_ENCH_SHINE_PICTURE {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_SHINE_PICTURE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Choose masks….
+        /// </summary>
+        public static string ITEMS_ENCH_SHINE_CHOOSE {
+            get {
+                return ResourceManager.GetString("ITEMS_ENCH_SHINE_CHOOSE", resourceCulture);
+            }
+        }
     }
 }
