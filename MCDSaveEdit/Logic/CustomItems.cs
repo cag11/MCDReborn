@@ -133,6 +133,114 @@ namespace MCDSaveEdit.Logic
             catch (IOException) { }
         }
 
+        /// <summary>Whether items of this type have skills to pick: weapons and armor, whose records have been read.</summary>
+        public static bool hasTraits(Kind kind) => GearTraits.SKILLS.ContainsKey(kind);
+
+        /// <summary>
+        /// The plugin's skills field: "5:1;9:1" (EEnchantmentTypeID, level), or "-" to keep the
+        /// copied weapon's.
+        /// </summary>
+        private static string skillsField(Design design)
+        {
+            if (design.PluginKind is not { } kind || !hasTraits(kind) || design.Skills == null) { return "-"; }
+            return string.Join(";", design.Skills
+                .Where(s => GearTraits.ENCHANTMENT_IDS.ContainsKey(s.Skill))
+                .Select(s => $"{GearTraits.ENCHANTMENT_IDS[s.Skill]}:{Math.Clamp(s.Level, 1, 99)}"));
+        }
+
+        /// <summary>
+        /// The plugin's numbers field for an artifact: "98=10;9c=8;94=40" - record offsets of its
+        /// cooldown, duration and soul cost, with the values given. "-" when it gives none.
+        /// </summary>
+        private static string numbersField(Design design)
+        {
+            if (design.PluginKind != Kind.Artifact) { return "-"; }
+            var given = new List<string>();
+            string one(double value) => Math.Max(0, value).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+            if (design.Cooldown is { } cooldown) { given.Add("98=" + one(cooldown)); }
+            if (design.Duration is { } duration) { given.Add("9c=" + one(duration)); }
+            if (design.SoulCost is { } souls) { given.Add("94=" + one(souls)); }
+            return given.Count == 0 ? "-" : string.Join(";", given);
+        }
+
+        /// <summary>
+        /// What a summoning artifact's copy summons as copied: the MobsToChooseFrom list of a
+        /// RandomMobSummonItem Instance, in order, as EntityType names. Empty for any other item.
+        /// The list is data - EntityType::SheepFireRed and its two siblings are entries of the
+        /// Instance's name table - so pointing an entry at another mob is a rename of that name.
+        /// </summary>
+        public static List<string> copiedSummons(Design design)
+        {
+            try
+            {
+                var (slot, made) = copyOf(design);
+                var files = made.Entries.ToDictionary(e => e.Path, e => e.Data, StringComparer.OrdinalIgnoreCase);
+                var key = files.Keys.FirstOrDefault(k => k.EndsWith("/BP_" + slot.FolderId + "Instance.uasset", StringComparison.OrdinalIgnoreCase));
+                if (key == null) { return new List<string>(); }
+                var stem = key.Substring(0, key.Length - ".uasset".Length);
+                var json = packageOf(files[key], files[stem + ".uexp"], null).JsonData;
+                using var document = JsonDocument.Parse(json);
+                foreach (var export in document.RootElement.EnumerateArray())
+                {
+                    if (!export.TryGetProperty("ExportValue", out var value) || value.ValueKind != JsonValueKind.Object) { continue; }
+                    if (!value.TryGetProperty("MobsToChooseFrom", out var mobs) || mobs.ValueKind != JsonValueKind.Array) { continue; }
+                    return mobs.EnumerateArray()
+                        .Select(m => m.TryGetProperty("MobType", out var t) ? t.GetString() ?? "" : "")
+                        .Select(t => t.StartsWith("EntityType::", StringComparison.Ordinal) ? t.Substring("EntityType::".Length) : t)
+                        .ToList();
+                }
+            }
+            catch (Exception) { }
+            return new List<string>();
+        }
+
+        /// <summary>
+        /// The design's summons, written over the copy's: each entry's EntityType name renamed in the
+        /// Instance's name table, so the list's values name other mobs. Two entries may name the
+        /// same mob.
+        /// </summary>
+        private static void applySummons(Dictionary<string, byte[]> files, Slot slot, Design design, List<string> notes)
+        {
+            if (design.Summons == null) { return; }
+            var original = copiedSummons(design);
+            if (original.Count == 0) { notes.Add($"{slot.Id}: it summons nothing that can be changed."); return; }
+            var key = files.Keys.FirstOrDefault(k => k.EndsWith("/BP_" + slot.FolderId + "Instance.uasset", StringComparison.OrdinalIgnoreCase));
+            if (key == null) { return; }
+            var map = new Dictionary<string, string>(StringComparer.Ordinal);
+            for (var i = 0; i < original.Count && i < design.Summons.Count; i++)
+            {
+                if (!GearTraits.ENTITY_TYPES.Contains(design.Summons[i])) { continue; }
+                map["EntityType::" + original[i]] = "EntityType::" + design.Summons[i];
+            }
+            var renamed = PackageRename.rename(files[key], text => map.TryGetValue(text, out var to) ? to : null, out var changed);
+            if (renamed == null) { notes.Add($"{slot.Id}: its summons could not be changed."); return; }
+            files[key] = renamed;
+            notes.Add($"{slot.Id}: summons {string.Join(", ", design.Summons)}.");
+        }
+
+        /// <summary>The copied artifact's own numbers: soul cost, cooldown, duration.</summary>
+        public static (double souls, double cooldown, double duration) artifactNumbersOf(Design design)
+            => GearTraits.ARTIFACT_NUMBERS.TryGetValue(design.Source, out var own) ? own : (0, 0, 0);
+
+        /// <summary>The plugin's armor properties field: "3:2;7:0" (EArmorPropertyID, rarity), or "-".</summary>
+        private static string armorField(Design design)
+        {
+            if (design.PluginKind != Kind.Armor || design.ArmorProperties == null) { return "-"; }
+            return string.Join(";", design.ArmorProperties
+                .Where(p => GearTraits.ARMOR_PROPERTY_IDS.ContainsKey(p.Property))
+                .Select(p => $"{GearTraits.ARMOR_PROPERTY_IDS[p.Property]}:{(p.Rarity == 2 ? 2 : 0)}"));
+        }
+
+        /// <summary>The plugin's lines field: "key=English|..." (the game's own ItemType keys), or "-".</summary>
+        private static string linesField(Design design)
+        {
+            if (design.PluginKind is not { } kind || !hasTraits(kind) || design.Lines == null) { return "-"; }
+            var lines = GearTraits.LINES[kind];
+            return string.Join("|", design.Lines
+                .Where(lines.ContainsKey)
+                .Select(k => k + "=" + lines[k]));
+        }
+
         /// <summary>A custom item's slot. Its folder is beside its source's once that is chosen.</summary>
         public static Slot pluginSlot(string id, Kind kind, RegistryPatch.GameItem? source = null)
         {
@@ -185,7 +293,76 @@ namespace MCDSaveEdit.Logic
             public ModelEdit? Model { get; set; }
             /// <summary>For an item beyond the free slots (MCDR_ItemNN): its type. Null for a free slot, whose type is fixed.</summary>
             public Kind? PluginKind { get; set; }
+            /// <summary>
+            /// Artwork from the Recolor Gear tab, painted over the copy's own colour texture: a PNG
+            /// kept in the app's folder, at that texture's size. Null keeps the copy's.
+            /// </summary>
+            public string? Texture { get; set; }
+            /// <summary>
+            /// A weapon's built-in skills (GearTraits.SKILLS), replacing the copied weapon's.
+            /// Null keeps the copied weapon's own; empty means none.
+            /// </summary>
+            public List<SkillPick>? Skills { get; set; }
+            /// <summary>A weapon's property lines, by ItemType key. Null keeps the copied weapon's.</summary>
+            public List<string>? Lines { get; set; }
+            /// <summary>
+            /// An armor's default armor properties (GearTraits.ARMOR_PROPERTIES), replacing the copied
+            /// armor's. Null keeps the copied armor's. An owned armor's are the ones in the save;
+            /// these are what the inventory's Defaults button gives it.
+            /// </summary>
+            public List<ArmorPick>? ArmorProperties { get; set; }
+            /// <summary>An artifact's cooldown in seconds. Null keeps the copied artifact's.</summary>
+            public double? Cooldown { get; set; }
+            /// <summary>An artifact's duration in seconds. Null keeps the copied artifact's.</summary>
+            public double? Duration { get; set; }
+            /// <summary>An artifact's soul cost. Null keeps the copied artifact's.</summary>
+            public double? SoulCost { get; set; }
+            /// <summary>
+            /// What a summoning artifact summons, one EntityType per entry of the copied one's list
+            /// (Enchanted Grass: three sheep). Null keeps the copied artifact's.
+            /// </summary>
+            public List<string>? Summons { get; set; }
         }
+
+        /// <summary>One armor property: its id, as EArmorPropertyID and the save spell it, and its rarity (0 common, 2 unique).</summary>
+        public sealed class ArmorPick
+        {
+            public string Property { get; set; } = "";
+            public int Rarity { get; set; }
+        }
+
+        /// <summary>The armor properties an armor comes with: its own when it gives them, else the copied armor's.</summary>
+        public static List<ArmorPick> armorPropertiesOf(Design design)
+            => design.ArmorProperties?.Select(p => new ArmorPick { Property = p.Property, Rarity = p.Rarity }).ToList()
+                ?? (GearTraits.ARMOR_DEFAULTS.TryGetValue(design.Source, out var own)
+                    ? own.Select(p => new ArmorPick { Property = p.property, Rarity = p.rarity }).ToList()
+                    : new List<ArmorPick>());
+
+        /// <summary>A custom armor's default properties, for the inventory's Defaults button; null for anything else.</summary>
+        public static List<ArmorPick>? armorDefaultsFor(string itemId)
+        {
+            var design = _saved.FirstOrDefault(d => string.Equals(d.Slot, itemId, StringComparison.OrdinalIgnoreCase));
+            return design?.PluginKind == Kind.Armor ? armorPropertiesOf(design) : null;
+        }
+
+        /// <summary>One built-in skill: an enchantment's name, as EEnchantmentTypeID spells it, and its level.</summary>
+        public sealed class SkillPick
+        {
+            public string Skill { get; set; } = "";
+            public int Level { get; set; } = 1;
+        }
+
+        /// <summary>The skills an item will have: its own when it gives them, else the copied weapon's.</summary>
+        public static List<SkillPick> skillsOf(Design design)
+            => design.Skills?.Select(s => new SkillPick { Skill = s.Skill, Level = s.Level }).ToList()
+                ?? (GearTraits.WEAPONS.TryGetValue(design.Source, out var own)
+                    ? own.skills.Select(s => new SkillPick { Skill = s.skill, Level = s.level }).ToList()
+                    : new List<SkillPick>());
+
+        /// <summary>The property lines an item will show: its own when it gives them, else the copied weapon's.</summary>
+        public static List<string> linesOf(Design design)
+            => design.Lines?.ToList()
+                ?? (GearTraits.WEAPONS.TryGetValue(design.Source, out var own) ? own.lines.ToList() : new List<string>());
 
         /// <summary>
         /// The Weapons tab's work on a custom item: an imported model and where the sliders put it,
@@ -263,6 +440,8 @@ namespace MCDSaveEdit.Logic
             var shared = copy(design);
             //Which id it had here means nothing on another machine; the kind says what it is.
             shared.IconFile = null;
+            var hasTexture = design.Texture != null && File.Exists(design.Texture);
+            shared.Texture = hasTexture ? "texture.png" : null;
             if (shared.Model != null) { shared.Model.File = null; }
 
             using var zip = System.IO.Compression.ZipFile.Open(path, System.IO.Compression.ZipArchiveMode.Create);
@@ -287,6 +466,7 @@ namespace MCDSaveEdit.Logic
             {
                 add("model.glb", File.ReadAllBytes(design.Model.File));
             }
+            if (hasTexture) { add("texture.png", File.ReadAllBytes(design.Texture!)); }
         }
 
         /// <summary>What an exported file holds, read without putting it anywhere yet.</summary>
@@ -344,6 +524,12 @@ namespace MCDSaveEdit.Logic
                     File.WriteAllBytes(design.IconFile, png);
                 }
             }
+            if (design.Texture != null)
+            {
+                var png = read("texture.png");
+                design.Texture = png == null ? null : Path.Combine(folder, slot.Id + ".texture.png");
+                if (png != null) { File.WriteAllBytes(design.Texture!, png); }
+            }
             if (design.Model != null && shared.HasModel)
             {
                 var glb = read("model.glb");
@@ -369,6 +555,14 @@ namespace MCDSaveEdit.Logic
             Name = d.Name,
             Description = d.Description,
             PluginKind = d.PluginKind,
+            Texture = d.Texture,
+            Skills = d.Skills?.Select(s => new SkillPick { Skill = s.Skill, Level = s.Level }).ToList(),
+            Lines = d.Lines?.ToList(),
+            ArmorProperties = d.ArmorProperties?.Select(p => new ArmorPick { Property = p.Property, Rarity = p.Rarity }).ToList(),
+            Cooldown = d.Cooldown,
+            Duration = d.Duration,
+            SoulCost = d.SoulCost,
+            Summons = d.Summons?.ToList(),
             Model = d.Model == null ? null : new ModelEdit
             {
                 File = d.Model.File,
@@ -505,7 +699,8 @@ namespace MCDSaveEdit.Logic
                 var source = gameItem(design.Source) ?? throw new InvalidOperationException($"{design.Source} is not a game item.");
                 pluginItems.Add(new GamePlugin.Item(slot.Id, source.Id, slot.Folder,
                     string.IsNullOrWhiteSpace(design.Name) ? R.itemName(source.Id) : design.Name!,
-                    string.IsNullOrWhiteSpace(design.Description) ? R.itemDesc(source.Id) : design.Description!));
+                    string.IsNullOrWhiteSpace(design.Description) ? R.itemDesc(source.Id) : design.Description!,
+                    skillsField(design), linesField(design), armorField(design), numbersField(design)));
             }
             if (pluginItems.Count > 0 && into == null && GamePlugin.gameFolder(paks) == null)
             {
@@ -526,8 +721,10 @@ namespace MCDSaveEdit.Logic
                 var files = made.Entries.ToDictionary(e => e.Path, e => (byte[])e.Data.Clone(), StringComparer.OrdinalIgnoreCase);
 
                 applyBehaviour(files, slot, design, result.Notes);
+                applySummons(files, slot, design, result.Notes);
                 applyIcons(files, slot, design, result.Notes);
                 applyModel(files, slot, design, result.Notes);
+                applyTexture(files, slot, design, result.Notes);
 
                 entries.AddRange(files.Select(f => new PakWriter.Entry(f.Key, f.Value)));
                 copies.Add((made.GameFrom, made.Rename));
@@ -680,6 +877,27 @@ namespace MCDSaveEdit.Logic
             }
         }
 
+        /// <summary>
+        /// The Recolor Gear tab's artwork over the copy's colour texture - after the model, whose own
+        /// texture it then replaces, as a recolour of a stock item would.
+        /// </summary>
+        private static void applyTexture(Dictionary<string, byte[]> files, Slot slot, Design design, List<string> notes)
+        {
+            if (design.Texture == null) { return; }
+            if (!File.Exists(design.Texture)) { notes.Add($"{slot.Id}: its recolour file is gone, the copy's own texture kept."); return; }
+            var texture = colourTextureOf(files, slot);
+            if (texture == null) { notes.Add($"{slot.Id}: no colour texture to recolour."); return; }
+
+            var stem = texture.Substring(0, texture.Length - ".uasset".Length);
+            files.TryGetValue(stem + ".ubulk", out var ubulk);
+            var why = repaint(files[texture], files[stem + ".uexp"], ubulk, CustomSkins.imageFromPng(File.ReadAllBytes(design.Texture)),
+                out var uexp, out var bulk);
+            if (why != null) { notes.Add($"{slot.Id}: the recolour was not applied - {why}."); return; }
+            files[stem + ".uexp"] = uexp;
+            if (bulk != null) { files[stem + ".ubulk"] = bulk; }
+            notes.Add($"{slot.Id}: recoloured.");
+        }
+
         /// <summary>The copy's weapon texture: its colour map, the shortest name that is not an icon.</summary>
         private static string? colourTextureOf(Dictionary<string, byte[]> files, Slot slot)
             => files.Keys
@@ -806,7 +1024,131 @@ namespace MCDSaveEdit.Logic
                 kept = Path.Combine(folder, design.Slot + ".glb");
                 File.WriteAllBytes(kept, model.Source);
             }
-            design.Model = ModelEdit.of(transform, kept);
+            //Nothing imported and nothing moved is the Weapons tab's "Clear model" then Install:
+            //the copy goes back to the mesh it was copied with.
+            design.Model = model == null && transform.isNothing ? null : ModelEdit.of(transform, kept);
+            var built = build(designs);
+            save(designs);
+            showInApp();
+            return new CustomSkins.InstalledMod(built.PakPath ?? throw new InvalidOperationException("Nothing was built."));
+        }
+
+        /// <summary>A custom item's look as the Weapons tab installed it, for opening the tab the way it was left.</summary>
+        public sealed record InstalledLook(GlbModel? Model, MeshEdit.Transform Transform, BitmapSource? Texture, string Name, bool ModelMissing);
+
+        /// <summary>
+        /// What the Weapons tab put on this copied mesh, or null when it has nothing: the model
+        /// (read back from the .glb the design keeps), its placement, and the texture the item wears.
+        /// A model whose file has gone comes back as a placement alone, with ModelMissing said.
+        /// </summary>
+        public static InstalledLook? installedLook(string meshAssetPath)
+        {
+            var design = designOfMesh(meshAssetPath);
+            if (design?.Model == null) { return null; }
+            var name = string.IsNullOrWhiteSpace(design.Name) ? R.itemName(design.Slot) : design.Name!;
+            var file = design.Model.File;
+            if (file == null) { return new InstalledLook(null, design.Model.transform, null, name, false); }
+            if (!File.Exists(file)) { return new InstalledLook(null, MeshEdit.Transform.none, null, name, true); }
+            try
+            {
+                return new InstalledLook(GlbModel.read(file), design.Model.transform, colourTexture(design.Slot), name, false);
+            }
+            catch (Exception) { return new InstalledLook(null, MeshEdit.Transform.none, null, name, true); }
+        }
+
+        private static Design? designOfMesh(string meshAssetPath)
+        {
+            var wanted = meshAssetPath.TrimStart('/') + ".uasset";
+            return _saved.FirstOrDefault(d =>
+            {
+                try { return copyOf(d).made.Entries.Any(e => string.Equals(e.Path, wanted, StringComparison.OrdinalIgnoreCase)); }
+                catch (Exception) { return false; }
+            });
+        }
+
+        // ------------------------------------------------------------------ the Recolor Gear tab
+
+        /// <summary>Whether this id is one of the user's custom items, as last saved.</summary>
+        public static bool isCustom(string itemId) => _saved.Any(d => string.Equals(d.Slot, itemId, StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>Whether a custom item wears a recolour of the user's.</summary>
+        public static bool isRecoloured(string itemId)
+            => _saved.Any(d => string.Equals(d.Slot, itemId, StringComparison.OrdinalIgnoreCase) && d.Texture != null);
+
+        /// <summary>The user's custom items of one type, for the Recolor Gear tab to list first.</summary>
+        public static IReadOnlyList<string> customIdsOf(Kind kind)
+            => _saved.Where(d => d.PluginKind == kind && !string.IsNullOrEmpty(d.Source)).Select(d => d.Slot).ToList();
+
+        /// <summary>
+        /// The colour texture a custom item wears now, in the order the build lays them down: the
+        /// user's recolour, else an imported model's own texture at the copy's size, else the
+        /// copy's own. Its files are in the items pak, which the app's index of the game leaves
+        /// out, so the Recolor Gear tab asks here instead.
+        /// </summary>
+        public static BitmapSource? colourTexture(string itemId)
+        {
+            var design = _saved.FirstOrDefault(d => string.Equals(d.Slot, itemId, StringComparison.OrdinalIgnoreCase));
+            if (design == null) { return null; }
+            try
+            {
+                if (design.Texture != null && File.Exists(design.Texture)) { return CustomSkins.imageFromPng(File.ReadAllBytes(design.Texture)); }
+                var own = copiedColourTexture(design);
+                if (own != null && design.Model?.File is { } glb && File.Exists(glb) && GlbModel.read(glb).BaseColourPng is { } png)
+                {
+                    var w = own.PixelWidth;
+                    var h = own.PixelHeight;
+                    return BitmapSource.Create(w, h, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null,
+                        CustomSkins.pixelsAt(CustomSkins.imageFromPng(png), w, h), w * 4);
+                }
+                return own;
+            }
+            catch (Exception) { return null; }
+        }
+
+        private static BitmapSource? copiedColourTexture(Design design)
+        {
+            var (slot, made) = copyOf(design);
+            var files = made.Entries.ToDictionary(e => e.Path, e => e.Data, StringComparer.OrdinalIgnoreCase);
+            var texture = colourTextureOf(files, slot);
+            if (texture == null) { return null; }
+            var stem = texture.Substring(0, texture.Length - ".uasset".Length);
+            files.TryGetValue(stem + ".ubulk", out var ubulk);
+            var image = packageOf(files[texture], files[stem + ".uexp"], ubulk).GetExport<UTexture2D>()?.Image;
+            return image == null ? null : Services.PakIndexExtensions.bitmapImageFromSKImage(image);
+        }
+
+        /// <summary>
+        /// What Apply does in the Recolor Gear tab for a custom item: the picture goes into the
+        /// item's design and the items pak is rebuilt. A pak of its own would have to override a
+        /// file the items pak also supplies, and which of two paks wins is decided by how their
+        /// names sort. The picture must be the copy's texture's own size, as for any recolour.
+        /// </summary>
+        /// <param name="image">The new picture, or null to go back to the copy's own texture.</param>
+        public static CustomSkins.InstalledMod setTexture(string itemId, BitmapSource? image)
+        {
+            var designs = load();
+            var design = designs.FirstOrDefault(d => string.Equals(d.Slot, itemId, StringComparison.OrdinalIgnoreCase))
+                ?? throw new InvalidOperationException($"{itemId} is not a custom item.");
+            if (image == null)
+            {
+                design.Texture = null;
+            }
+            else
+            {
+                var own = copiedColourTexture(design) ?? throw new InvalidOperationException($"{itemId} has no colour texture to recolour.");
+                if (image.PixelWidth != own.PixelWidth || image.PixelHeight != own.PixelHeight)
+                {
+                    throw new InvalidOperationException(
+                        $"That image is {image.PixelWidth}×{image.PixelHeight}; this texture is {own.PixelWidth}×{own.PixelHeight}.");
+                }
+
+                var kept = Path.Combine(folder, design.Slot + ".texture.png");
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(image));
+                using (var file = File.Create(kept)) { encoder.Save(file); }
+                design.Texture = kept;
+            }
+
             var built = build(designs);
             save(designs);
             showInApp();

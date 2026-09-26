@@ -131,6 +131,56 @@
                         </Border>
                     </Grid>
 
+                    <!-- What it has built in: melee only, the one type read and tried. -->
+                    <StackPanel x:Name="traitsPanel" Visibility="Collapsed">
+                        <StackPanel x:Name="skillsSection">
+                            <Label x:Name="skillsLabel" Content="*Skills*" Padding="0,12,0,2"/>
+                            <TextBlock x:Name="skillsHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="2,0,2,6"/>
+                            <StackPanel x:Name="skillsList" Margin="0,0,0,6"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <ComboBox x:Name="addSkillBox" Width="260" IsEditable="True" IsTextSearchEnabled="True"/>
+                                <Button x:Name="addSkillButton" Content="*Add*" Padding="8,2" Margin="6,0,0,0" Click="addSkillButton_Click"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <!-- An artifact's own numbers, from its record. -->
+                        <StackPanel x:Name="artifactSection">
+                            <Label x:Name="artifactLabel" Content="*Artifact*" Padding="0,12,0,2"/>
+                            <TextBlock x:Name="artifactHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="2,0,2,6"/>
+                            <WrapPanel Margin="0,0,0,4">
+                                <TextBlock x:Name="cooldownLabel" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBox x:Name="cooldownBox" Width="70" Margin="0,0,16,0" TextChanged="artifactNumber_Changed"/>
+                                <TextBlock x:Name="durationLabel" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBox x:Name="durationBox" Width="70" Margin="0,0,16,0" TextChanged="artifactNumber_Changed"/>
+                                <TextBlock x:Name="soulCostLabel" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBox x:Name="soulCostBox" Width="70" TextChanged="artifactNumber_Changed"/>
+                            </WrapPanel>
+                            <!-- A summoning artifact's creatures, one per entry of the copied list. -->
+                            <StackPanel x:Name="summonsSection">
+                                <TextBlock x:Name="summonsLabel" Margin="0,8,0,2"/>
+                                <TextBlock x:Name="summonsHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="2,0,2,6"/>
+                                <StackPanel x:Name="summonsList"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel x:Name="linesSection">
+                            <Label x:Name="linesLabel" Content="*Property lines*" Padding="0,10,0,2"/>
+                            <TextBlock x:Name="linesHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="2,0,2,6"/>
+                            <WrapPanel x:Name="linesPanel" Margin="0,0,0,4"/>
+                        </StackPanel>
+                        <!-- An armor's default armor properties. -->
+                        <StackPanel x:Name="armorSection">
+                            <Label x:Name="armorPropertiesLabel" Content="*Armor properties*" Padding="0,10,0,2"/>
+                            <TextBlock x:Name="armorPropertiesHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="2,0,2,6"/>
+                            <StackPanel x:Name="armorPropertiesList" Margin="0,0,0,6"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <ComboBox x:Name="addArmorPropertyBox" Width="260" IsEditable="True" IsTextSearchEnabled="True"/>
+                                <Button x:Name="addArmorPropertyButton" Content="*Add*" Padding="8,2" Margin="6,0,0,0"
+                                        Click="addArmorPropertyButton_Click"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <Button x:Name="traitsResetButton" Content="*Use the copied item's*" Padding="8,2" Margin="0,6,0,0"
+                                HorizontalAlignment="Left" Click="traitsResetButton_Click"/>
+                    </StackPanel>
+
                     <!-- What it does. -->
                     <Label x:Name="behaviourLabel" Content="*Behaviour*" Padding="0,12,0,2"/>
                     <TextBlock x:Name="behaviourHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap"

@@ -63,6 +63,7 @@ https://github.com/user-attachments/assets/509496fd-7186-4422-a639-9d10272be407
 
 #### Recolor Gear Feature
 * **Recolor Gear**: put your own artwork on a piece of gear, installed as a mod pak beside the game's own; the originals are never modified and Remove undoes it completely
+* **Your own items too**: custom items from the New Items tab are listed first, marked ★. Their recolour becomes part of the item itself, and **Remove recolour** puts back the look of the item it copies
 * Armor, melee, ranged, artifacts, **capes, pets, enchantment icons and the interface and HUD**, picked one category at a time
 * The texture travels to [mcddesigner.vercel.app](https://mcddesigner.vercel.app/) and back. Find, upload and download again
 
@@ -72,12 +73,14 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 * **Import your own model** onto any weapon and projectiles: export a `.glb` from Blender (File -> Export -> glTF Binary) and the weapon comes out wearing it, mesh and texture together, weapons installed as a mod pak beside the game's own so deleting it undoes everything
 * Two things worth knowing before you model: this game's weapon textures are tiny - often 32 square - and your artwork is scaled to whatever the one you are replacing uses, so fine detail cannot survive. And an **enchanted** weapon wears the game's purple glint over whatever it is; on a dark model that is most of what you will see, so export brighter than feels right
 * **Or just reshape the game's own model**: resize from a tenth up to **8x**, move and rotate it - a claymore at half size, a dagger the length of a spear, or something absurd
+* **Pick up where you left off**: select a weapon or creature you installed a model on, and the tab shows your model where you placed it, ready to adjust and install again. Your own ★ items show their model too, and **Clear model** then **Install** puts a ★ item back to the weapon it copied
 
 #### New Items Feature
 * **Brand-new items, as many as you like**: **New melee item**, **New ranged item**, **New armour** and **New artifact** make a copy of any of the game's items as a separate item. 
 * **Name it**: your own name and description, shown whatever language the game runs in
 * **Pick its icon**: keep the copied item's, use any other item's, or bring your own picture
 * **Give it your own 3D model**: custom weapons appear at the top of the **Weapons** tab marked ★. Import a `.glb` there and line it up
+* **Skills and properties**: give a weapon or armor any skill another of its kind has built in, set an artifact's cooldown, duration and soul cost or change artifact behavior
 * **Share it**: Export saves a custom item as one `.mcditem` file with its name, behaviour, icon and model inside; Import adds it as a new item on anyone's game
 
 #### Mob Import Feature

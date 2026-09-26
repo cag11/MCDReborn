@@ -120,6 +120,22 @@ namespace MCDSaveEdit.UI
             newArmorButton.Content = R.ITEMS_NEW_ARMOR;
             newArtifactButton.Content = R.ITEMS_NEW_ARTIFACT;
             pluginNote.Text = R.ITEMS_PLUGIN_KEEP;
+            skillsLabel.Content = R.ITEMS_SKILLS;
+            skillsHint.Text = R.ITEMS_SKILLS_HINT;
+            addSkillButton.Content = R.ITEMS_SKILL_ADD;
+            traitsResetButton.Content = R.ITEMS_TRAITS_RESET;
+            linesLabel.Content = R.ITEMS_LINES;
+            linesHint.Text = R.ITEMS_LINES_HINT;
+            armorPropertiesLabel.Content = R.ITEMS_ARMOR_PROPERTIES;
+            armorPropertiesHint.Text = R.ITEMS_ARMOR_PROPERTIES_HINT;
+            addArmorPropertyButton.Content = R.ITEMS_SKILL_ADD;
+            artifactLabel.Content = R.ITEMS_ARTIFACT;
+            artifactHint.Text = R.ITEMS_ARTIFACT_HINT;
+            cooldownLabel.Text = R.ITEMS_COOLDOWN;
+            durationLabel.Text = R.ITEMS_DURATION;
+            soulCostLabel.Text = R.ITEMS_SOUL_COST;
+            summonsLabel.Text = R.ITEMS_SUMMONS;
+            summonsHint.Text = R.ITEMS_SUMMONS_HINT;
         }
 
         // ------------------------------------------------------------------ loading
@@ -267,6 +283,7 @@ namespace MCDSaveEdit.UI
 
             fillSources();
             loadBehaviour();
+            showTraits();
             updatePreview();
             updateButtons();
         }
@@ -353,6 +370,7 @@ namespace MCDSaveEdit.UI
             //"swing 3 damage" to a weapon whose third swing is something else entirely.
             _working.Values.Clear();
             loadBehaviour();
+            showTraits();
             updatePreview();
             updateButtons();
         }
@@ -429,6 +447,255 @@ namespace MCDSaveEdit.UI
                 }
             }
             catch (Exception) { iconPreview.Source = null; }
+        }
+
+        // ------------------------------------------------------------------ skills and property lines
+
+        /// <summary>
+        /// A weapon's built-in skills and property lines, as the design will give them: its own
+        /// picks, else the copied weapon's (CustomItems.skillsOf / linesOf). The first change turns
+        /// the copied weapon's into the design's own, so a later change of source leaves them be.
+        /// Each type offers what its own weapons have: a bow is not offered a melee enchantment.
+        /// </summary>
+        private void showTraits()
+        {
+            var shown = _slot != null && _working != null && CustomItems.hasTraits(_slot.Kind);
+            traitsPanel.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+            if (!shown) { return; }
+            var kind = _slot!.Kind;
+            //Each section only where the type has one: artifacts have no skills, armor no lines.
+            skillsSection.Visibility = GearTraits.SKILLS[kind].Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            showArtifactNumbers(kind);
+
+            var skills = CustomItems.skillsOf(_working!);
+            skillsList.Children.Clear();
+            if (skills.Count == 0)
+            {
+                skillsList.Children.Add(new TextBlock { Text = R.ITEMS_SKILLS_NONE, Foreground = Brushes.Gray, Margin = new Thickness(2, 0, 0, 0) });
+            }
+            for (var i = 0; i < skills.Count; i++)
+            {
+                var at = i;
+                var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3) };
+                row.Children.Add(new TextBlock { Text = skillName(skills[i].Skill), Width = 220, VerticalAlignment = VerticalAlignment.Center });
+                row.Children.Add(new TextBlock { Text = R.ITEMS_SKILL_LEVEL, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });
+                //1 to 3 as enchantments go, and 99: every Trickbow's Ricochet is 99, its "always".
+                var levels = new[] { 1, 2, 3, 99 }.Union(new[] { skills[i].Level }).OrderBy(l => l).ToList();
+                var level = new ComboBox { Width = 56, ItemsSource = levels, SelectedItem = skills[i].Level };
+                level.SelectionChanged += (_, _) =>
+                {
+                    if (level.SelectedItem is not int chosen) { return; }
+                    ownSkills()[at].Level = chosen;
+                };
+                row.Children.Add(level);
+                var remove = new Button { Content = "✕", Padding = new Thickness(6, 0, 6, 0), Margin = new Thickness(8, 0, 0, 0), ToolTip = R.ITEMS_SKILL_REMOVE };
+                remove.Click += (_, _) =>
+                {
+                    ownSkills().RemoveAt(at);
+                    showTraits();
+                };
+                row.Children.Add(remove);
+                skillsList.Children.Add(row);
+            }
+
+            addSkillBox.ItemsSource = GearTraits.SKILLS[kind]
+                .Where(s => skills.All(k => k.Skill != s))
+                .Select(s => new ComboBoxItem { Content = skillName(s), Tag = s })
+                .OrderBy(i => (string)i.Content, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+
+            var lines = CustomItems.linesOf(_working!);
+            linesPanel.Children.Clear();
+            showArmorProperties(kind);
+            var catalogue = GearTraits.LINES[kind];
+            //Armor has no property lines: its tooltip lists its armor properties instead.
+            linesSection.Visibility = catalogue.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            foreach (var key in catalogue.Keys.OrderBy(k => lineName(k, catalogue), StringComparer.CurrentCultureIgnoreCase))
+            {
+                var box = new CheckBox { Content = lineName(key, catalogue), IsChecked = lines.Contains(key), Margin = new Thickness(0, 0, 14, 4), Tag = key };
+                box.Checked += line_Changed;
+                box.Unchecked += line_Changed;
+                linesPanel.Children.Add(box);
+            }
+        }
+
+        /// <summary>The design's own skills, made from the copied weapon's the first time one is changed.</summary>
+        private List<CustomItems.SkillPick> ownSkills()
+        {
+            _working!.Skills ??= CustomItems.skillsOf(_working);
+            return _working.Skills;
+        }
+
+        private void addSkillButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_working == null || addSkillBox.SelectedItem is not ComboBoxItem { Tag: string skill }) { return; }
+            ownSkills().Add(new CustomItems.SkillPick { Skill = skill, Level = 1 });
+            showTraits();
+        }
+
+        private void line_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_working == null || sender is not CheckBox { Tag: string key } box) { return; }
+            _working.Lines ??= CustomItems.linesOf(_working);
+            _working.Lines.Remove(key);
+            if (box.IsChecked == true) { _working.Lines.Add(key); }
+        }
+
+        private void traitsResetButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_working == null) { return; }
+            _working.Skills = null;
+            _working.Lines = null;
+            _working.ArmorProperties = null;
+            _working.Cooldown = null;
+            _working.Duration = null;
+            _working.SoulCost = null;
+            _working.Summons = null;
+            showTraits();
+        }
+
+        /// <summary>
+        /// An artifact's cooldown, duration and soul cost: what the design gives, blank where it keeps
+        /// the copied artifact's - whose own number is shown under each box.
+        /// </summary>
+        private void showArtifactNumbers(CustomItems.Kind kind)
+        {
+            var artifact = kind == CustomItems.Kind.Artifact && _working != null;
+            artifactSection.Visibility = artifact ? Visibility.Visible : Visibility.Collapsed;
+            if (!artifact) { return; }
+            var own = CustomItems.artifactNumbersOf(_working!);
+            string shown(double? value) => value is { } v ? format(v) : string.Empty;
+            _filling = true;
+            cooldownBox.Text = shown(_working!.Cooldown);
+            durationBox.Text = shown(_working.Duration);
+            soulCostBox.Text = shown(_working.SoulCost);
+            _filling = false;
+            cooldownBox.ToolTip = string.Format(R.ITEMS_COPIED_VALUE, format(own.cooldown));
+            durationBox.ToolTip = string.Format(R.ITEMS_COPIED_VALUE, format(own.duration));
+            soulCostBox.ToolTip = string.Format(R.ITEMS_COPIED_VALUE, format(own.souls));
+            artifactHint.Text = R.ITEMS_ARTIFACT_HINT + " " + string.Format(R.ITEMS_ARTIFACT_OWN,
+                format(own.cooldown), format(own.duration), format(own.souls));
+            showSummons();
+        }
+
+        /// <summary>
+        /// A summoning artifact's creatures: one picker per entry of the copied one's list, over
+        /// every EntityType the game has. Only for artifacts built on RandomMobSummonItem.
+        /// </summary>
+        private void showSummons()
+        {
+            var original = _working == null ? new List<string>() : CustomItems.copiedSummons(_working);
+            summonsSection.Visibility = original.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            summonsList.Children.Clear();
+            if (original.Count == 0) { return; }
+            var current = _working!.Summons ?? original;
+            for (var i = 0; i < original.Count; i++)
+            {
+                var at = i;
+                var picker = new ComboBox { Width = 260, IsEditable = true, IsTextSearchEnabled = true, Margin = new Thickness(0, 0, 0, 3),
+                    ItemsSource = GearTraits.ENTITY_TYPES, SelectedItem = i < current.Count ? current[i] : original[i],
+                    ToolTip = string.Format(R.ITEMS_COPIED_VALUE, original[i]) };
+                picker.SelectionChanged += (_, _) =>
+                {
+                    if (picker.SelectedItem is not string mob) { return; }
+                    _working.Summons ??= CustomItems.copiedSummons(_working);
+                    while (_working.Summons.Count <= at) { _working.Summons.Add(original[_working.Summons.Count]); }
+                    _working.Summons[at] = mob;
+                };
+                summonsList.Children.Add(picker);
+            }
+        }
+
+        private void artifactNumber_Changed(object sender, TextChangedEventArgs e)
+        {
+            if (_filling || _working == null) { return; }
+            double? read(TextBox box) => tryParse(box.Text, out var v) && v >= 0 ? v : null;
+            _working.Cooldown = read(cooldownBox);
+            _working.Duration = read(durationBox);
+            _working.SoulCost = read(soulCostBox);
+        }
+
+        /// <summary>
+        /// An armor's default armor properties, as the design will give them: its own picks, else
+        /// the copied armor's. Each has a rarity: common, or unique for the gold line a unique
+        /// armor leads with.
+        /// </summary>
+        private void showArmorProperties(CustomItems.Kind kind)
+        {
+            var armour = kind == CustomItems.Kind.Armor;
+            armorSection.Visibility = armour ? Visibility.Visible : Visibility.Collapsed;
+            if (!armour || _working == null) { return; }
+
+            var properties = CustomItems.armorPropertiesOf(_working);
+            armorPropertiesList.Children.Clear();
+            if (properties.Count == 0)
+            {
+                armorPropertiesList.Children.Add(new TextBlock { Text = R.ITEMS_ARMOR_PROPERTIES_NONE, Foreground = Brushes.Gray, Margin = new Thickness(2, 0, 0, 0) });
+            }
+            for (var i = 0; i < properties.Count; i++)
+            {
+                var at = i;
+                var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3) };
+                row.Children.Add(new TextBlock { Text = R.armorProperty(properties[i].Property), Width = 260, VerticalAlignment = VerticalAlignment.Center,
+                    ToolTip = R.armorPropertyDescription(properties[i].Property) });
+                var rarity = new ComboBox { Width = 110, ItemsSource = new[] { R.ITEMS_RARITY_COMMON, R.ITEMS_RARITY_UNIQUE },
+                    SelectedIndex = properties[i].Rarity == 2 ? 1 : 0 };
+                rarity.SelectionChanged += (_, _) => { ownArmorProperties()[at].Rarity = rarity.SelectedIndex == 1 ? 2 : 0; };
+                row.Children.Add(rarity);
+                var remove = new Button { Content = "✕", Padding = new Thickness(6, 0, 6, 0), Margin = new Thickness(8, 0, 0, 0), ToolTip = R.ITEMS_SKILL_REMOVE };
+                remove.Click += (_, _) =>
+                {
+                    ownArmorProperties().RemoveAt(at);
+                    showArmorProperties(kind);
+                };
+                row.Children.Add(remove);
+                armorPropertiesList.Children.Add(row);
+            }
+
+            addArmorPropertyBox.ItemsSource = GearTraits.ARMOR_PROPERTIES
+                .Where(p => properties.All(k => k.Property != p))
+                .Select(p => new ComboBoxItem { Content = R.armorProperty(p), Tag = p, ToolTip = R.armorPropertyDescription(p) })
+                .OrderBy(i => (string)i.Content, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+        }
+
+        private List<CustomItems.ArmorPick> ownArmorProperties()
+        {
+            _working!.ArmorProperties ??= CustomItems.armorPropertiesOf(_working);
+            return _working.ArmorProperties;
+        }
+
+        private void addArmorPropertyButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_working == null || addArmorPropertyBox.SelectedItem is not ComboBoxItem { Tag: string property }) { return; }
+            ownArmorProperties().Add(new CustomItems.ArmorPick { Property = property, Rarity = 0 });
+            showArmorProperties(CustomItems.Kind.Armor);
+        }
+
+        /// <summary>
+        /// An enchantment's name in the player's language. The game's melee and ranged variants
+        /// carry a suffix its text does not ("GravityMelee" is Gravity, "PoisonedRanged" is
+        /// Poisoned), so that is tried too.
+        /// </summary>
+        private static string skillName(string skill)
+        {
+            var name = R.enchantmentName(skill);
+            if (name != skill) { return name; }
+            foreach (var suffix in new[] { "Melee", "Ranged" })
+            {
+                if (!skill.EndsWith(suffix, StringComparison.Ordinal)) { continue; }
+                var bare = skill.Substring(0, skill.Length - suffix.Length);
+                var shorter = R.enchantmentName(bare);
+                if (shorter != bare) { return shorter; }
+            }
+            return skill;
+        }
+
+        /// <summary>A property line in the player's language: the game's own ItemType text, else its English.</summary>
+        private static string lineName(string key, IReadOnlyDictionary<string, string> catalogue)
+        {
+            var name = R.itemName(key);
+            return name != key ? name : catalogue[key];
         }
 
         // ------------------------------------------------------------------ behaviour
@@ -635,17 +902,20 @@ namespace MCDSaveEdit.UI
 
         private async Task build(List<CustomItems.Design> designs, string? fresh = null)
         {
-            //A model is set from the Weapons tab, which saves straight to disk. What this tab holds
-            //may predate it, so the model on disk wins - unless the item is now a copy of something
-            //else, whose mesh the old placement was never made for.
+            //A model is set from the Weapons tab and a recolour from the Recolor Gear tab, both
+            //saved straight to disk. What this tab holds may predate them, so the disk wins - unless
+            //the item is now a copy of something else, which neither was made for.
             var onDisk = CustomItems.load();
             foreach (var design in designs)
             {
                 //An imported item brings its own model; the slot's old one is not it.
                 if (design.Slot == fresh) { continue; }
                 var saved = onDisk.FirstOrDefault(d => d.Slot == design.Slot);
-                design.Model = saved != null && string.Equals(saved.Source, design.Source, StringComparison.OrdinalIgnoreCase)
-                    ? saved.Model : null;
+                var sameSource = saved != null && string.Equals(saved.Source, design.Source, StringComparison.OrdinalIgnoreCase);
+                design.Model = sameSource ? saved!.Model : null;
+                //The Recolor Gear tab's picture, saved the same way; it fits only the texture it
+                //was made for.
+                design.Texture = sameSource ? saved!.Texture : null;
             }
 
             IsEnabled = false;

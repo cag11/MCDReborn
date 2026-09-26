@@ -66,6 +66,10 @@
                         FontSize="12" Click="exportButton_Click"/>
                 <Button x:Name="applyButton" Content="*Apply PNG*" Padding="8,3"
                         FontSize="12" Click="applyButton_Click"/>
+                <!-- A custom item's recolour is part of the item, not a pak of its own that the
+                     Installed Mods tab could remove, so it is undone here. -->
+                <Button x:Name="unrecolourButton" Content="*Remove recolour*" Padding="8,3" Margin="12,0,0,0"
+                        FontSize="12" Visibility="Collapsed" Click="unrecolourButton_Click"/>
             </StackPanel>
 
             <!-- The same switch as the Custom Skins tab, backed by the same pak. -->

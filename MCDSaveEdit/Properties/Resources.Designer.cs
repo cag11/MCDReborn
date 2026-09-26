@@ -8931,5 +8931,248 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("ITEMS_BEHAVIOUR_ARTIFACT", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Remove recolour.
+        /// </summary>
+        public static string CUSTOM_SKINS_UNRECOLOUR {
+            get {
+                return ResourceManager.GetString("CUSTOM_SKINS_UNRECOLOUR", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Showing what is installed on this: {0}. Move it and press Install to change it, or Clear model to start again..
+        /// </summary>
+        public static string WEAPON_SKINS_INSTALLED_MODEL {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_INSTALLED_MODEL", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Showing the reshape installed on this. Move it and press Install to change it..
+        /// </summary>
+        public static string WEAPON_SKINS_INSTALLED_SHAPE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_INSTALLED_SHAPE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to A model is installed on this, but its file is gone, so the original is shown..
+        /// </summary>
+        public static string WEAPON_SKINS_MODEL_GONE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_MODEL_GONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Skills.
+        /// </summary>
+        public static string ITEMS_SKILLS {
+            get {
+                return ResourceManager.GetString("ITEMS_SKILLS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Built-in enchantments, like Firebrand's burning. Each one adds its own line to the item's tooltip, and it works on top of any enchantments you put on the item..
+        /// </summary>
+        public static string ITEMS_SKILLS_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_SKILLS_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No skills.
+        /// </summary>
+        public static string ITEMS_SKILLS_NONE {
+            get {
+                return ResourceManager.GetString("ITEMS_SKILLS_NONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Level.
+        /// </summary>
+        public static string ITEMS_SKILL_LEVEL {
+            get {
+                return ResourceManager.GetString("ITEMS_SKILL_LEVEL", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Add.
+        /// </summary>
+        public static string ITEMS_SKILL_ADD {
+            get {
+                return ResourceManager.GetString("ITEMS_SKILL_ADD", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Remove this skill.
+        /// </summary>
+        public static string ITEMS_SKILL_REMOVE {
+            get {
+                return ResourceManager.GetString("ITEMS_SKILL_REMOVE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Use the copied item's.
+        /// </summary>
+        public static string ITEMS_TRAITS_RESET {
+            get {
+                return ResourceManager.GetString("ITEMS_TRAITS_RESET", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Property lines.
+        /// </summary>
+        public static string ITEMS_LINES {
+            get {
+                return ResourceManager.GetString("ITEMS_LINES", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The lines its tooltip shows under the name. They describe the moves; the moves themselves come from the weapon it copies..
+        /// </summary>
+        public static string ITEMS_LINES_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_LINES_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Armor properties.
+        /// </summary>
+        public static string ITEMS_ARMOR_PROPERTIES {
+            get {
+                return ResourceManager.GetString("ITEMS_ARMOR_PROPERTIES", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to What the armor comes with: the inventory's Defaults button gives it these. A unique armor leads with its gold, unique one. Each character's copy keeps the properties in its save, which the inventory edits..
+        /// </summary>
+        public static string ITEMS_ARMOR_PROPERTIES_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_ARMOR_PROPERTIES_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No armor properties.
+        /// </summary>
+        public static string ITEMS_ARMOR_PROPERTIES_NONE {
+            get {
+                return ResourceManager.GetString("ITEMS_ARMOR_PROPERTIES_NONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Common.
+        /// </summary>
+        public static string ITEMS_RARITY_COMMON {
+            get {
+                return ResourceManager.GetString("ITEMS_RARITY_COMMON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Unique.
+        /// </summary>
+        public static string ITEMS_RARITY_UNIQUE {
+            get {
+                return ResourceManager.GetString("ITEMS_RARITY_UNIQUE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Artifact.
+        /// </summary>
+        public static string ITEMS_ARTIFACT {
+            get {
+                return ResourceManager.GetString("ITEMS_ARTIFACT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Leave a box empty to keep the copied artifact's own..
+        /// </summary>
+        public static string ITEMS_ARTIFACT_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_ARTIFACT_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The copied one has: cooldown {0}s, duration {1}s, soul cost {2}..
+        /// </summary>
+        public static string ITEMS_ARTIFACT_OWN {
+            get {
+                return ResourceManager.GetString("ITEMS_ARTIFACT_OWN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Cooldown (s).
+        /// </summary>
+        public static string ITEMS_COOLDOWN {
+            get {
+                return ResourceManager.GetString("ITEMS_COOLDOWN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Duration (s).
+        /// </summary>
+        public static string ITEMS_DURATION {
+            get {
+                return ResourceManager.GetString("ITEMS_DURATION", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Soul cost.
+        /// </summary>
+        public static string ITEMS_SOUL_COST {
+            get {
+                return ResourceManager.GetString("ITEMS_SOUL_COST", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The copied artifact's: {0}.
+        /// </summary>
+        public static string ITEMS_COPIED_VALUE {
+            get {
+                return ResourceManager.GetString("ITEMS_COPIED_VALUE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Summons.
+        /// </summary>
+        public static string ITEMS_SUMMONS {
+            get {
+                return ResourceManager.GetString("ITEMS_SUMMONS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to One is picked at random each time. Any creature of the game's can be chosen; one that is normally hostile may not come out friendly..
+        /// </summary>
+        public static string ITEMS_SUMMONS_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_SUMMONS_HINT", resourceCulture);
+            }
+        }
     }
 }

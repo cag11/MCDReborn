@@ -10365,6 +10365,372 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_SUMMONS - a copy of Enchanted Grass told to summon a Skeleton, a Zombie and a Wolf,
+            //built into a pak that is NOT installed, and its Instance read back: the summon list
+            //must name the new mobs, and the package must still parse.
+            if (_startupArguments.Contains("PROBE_SUMMONS"))
+            {
+                try
+                {
+                    var design = new Logic.CustomItems.Design
+                    {
+                        Slot = "MCDR_ProbeSummon", Source = "RainbowGrass", PluginKind = Logic.CustomItems.Kind.Artifact,
+                        Summons = new List<string> { "Skeleton", "Zombie", "Wolf" },
+                    };
+                    Console.WriteLine($"[summon] copied list: {string.Join(", ", Logic.CustomItems.copiedSummons(design))}");
+                    var pak = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "MCDReborn_ProbeSummon_P.pak");
+                    var built = Logic.CustomItems.build(new List<Logic.CustomItems.Design> { design }, pak);
+                    foreach (var note in built.Notes) { Console.WriteLine($"[summon] {note}"); }
+                    var inside = Logic.ModPak.read(pak).ToDictionary(f => f.Path, f => f.Data, StringComparer.OrdinalIgnoreCase);
+                    var key = inside.Keys.First(k => k.EndsWith("/BP_MCDR_ProbeSummonInstance.uasset", StringComparison.OrdinalIgnoreCase));
+                    var package = new PakReader.Pak.PakPackage(new ArraySegment<byte>(inside[key]), new ArraySegment<byte>(inside[key[..^7] + ".uexp"]), null);
+                    var json = package.JsonData;
+                    var at = json.IndexOf("MobsToChooseFrom", StringComparison.Ordinal);
+                    Console.WriteLine($"[summon] read back: {(at < 0 ? "NO LIST" : json.Substring(at, Math.Min(260, json.Length - at)).Replace("\n", " ").Replace("  ", ""))}");
+                    System.IO.File.Delete(pak);
+                }
+                catch (Exception e) { Console.WriteLine($"[summon] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_RECORDS[=<id>;<id>...] - the live item registry's records, read from outside the
+            //running game (ReadProcessMemory, never a debugger). The registry's address is the one
+            //the item plugin logged this run. For each melee weapon (or the ids named): the two
+            //lists that differ between a base weapon and its unique, at +0x1B8 and +0x1E8, element
+            //by element, with every dword that is a valid name index resolved. Read-only.
+            if (_startupArguments.Any(a => a == "PROBE_RECORDS" || a.StartsWith("PROBE_RECORDS=", StringComparison.Ordinal)))
+            {
+                var arg = _startupArguments.First(a => a.StartsWith("PROBE_RECORDS", StringComparison.Ordinal));
+                var wanted = arg.Contains('=') ? arg[(arg.IndexOf('=') + 1)..].Split(';', StringSplitOptions.RemoveEmptyEntries).ToHashSet(StringComparer.OrdinalIgnoreCase) : null;
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[rec] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    try
+                    {
+                        var names = new LiveEdit.NameTable(game);
+                        if (!names.find()) { Console.WriteLine("[rec] name table not found"); Shutdown(); return; }
+                        var log = Logic.GamePlugin.lastLog() ?? Array.Empty<string>();
+                        var line = log.LastOrDefault(l => l.Contains("registry at "));
+                        if (line == null) { Console.WriteLine("[rec] the plugin has not logged the registry this run"); Shutdown(); return; }
+                        var registry = new IntPtr(Convert.ToInt64(line.Substring(line.IndexOf("registry at ") + 12, 16), 16));
+                        long q(IntPtr at) => BitConverter.ToInt64(game.read(at, 8) ?? new byte[8], 0);
+                        int d(IntPtr at) => BitConverter.ToInt32(game.read(at, 4) ?? new byte[4], 0);
+                        var data = new IntPtr(q(registry + 0xA0));
+                        var count = d(registry + 0xA8);
+                        //"@ranged" / "@armor" read that type's items instead of melee's.
+                        var parent = wanted != null && wanted.Contains("@ranged") ? "RangedWeaponGearItemInstance"
+                            : wanted != null && wanted.Contains("@armor") ? "ArmorGearItemInstance" : "MeleeWeaponGearItemInstance";
+                        var artifacts = wanted != null && wanted.Contains("@artifact");
+                        if (wanted != null && wanted.Any(w => w.StartsWith("@"))) { wanted = null; }
+                        var melee = artifacts
+                            ? Logic.CustomItems.gameItems().Where(i => MCDSaveEdit.Services.ItemDatabase.artifacts.Contains(i.Id)).Select(i => i.Id).ToHashSet(StringComparer.OrdinalIgnoreCase)
+                            : Logic.CustomItems.gameItems().Where(i => i.NativeParent == parent).Select(i => i.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                        Console.WriteLine($"[rec] registry {registry.ToInt64():x}, {count} records");
+                        string resolve(byte[] bytes)
+                        {
+                            var found = new List<string>();
+                            for (var i = 0; i + 4 <= bytes.Length; i += 4)
+                            {
+                                var index = BitConverter.ToInt32(bytes, i);
+                                if (index <= 0 || index > 4_000_000) { continue; }
+                                var n = names.nameOf(index);
+                                if (!string.IsNullOrEmpty(n) && n.Length < 80) { found.Add($"+{i:x}:{n}"); }
+                            }
+                            return string.Join(" ", found);
+                        }
+                        void list(IntPtr record, int at, string label, int stride)
+                        {
+                            var ptr = new IntPtr(q(record + at));
+                            var num = d(record + at + 8);
+                            if (ptr == IntPtr.Zero || num <= 0 || num > 64) { Console.WriteLine($"[rec]    {label}: empty"); return; }
+                            for (var i = 0; i < num; i++)
+                            {
+                                var el = game.read(ptr + i * stride, stride) ?? Array.Empty<byte>();
+                                Console.WriteLine($"[rec]    {label}[{i}] {BitConverter.ToString(el).Replace("-", " ").ToLowerInvariant()}");
+                                Console.WriteLine($"[rec]         names: {resolve(el)}");
+                            }
+                        }
+                        //EEnchantmentTypeID, read from the SDK dump's header, so ids print as names.
+                        var enums = new Dictionary<int, string>();
+                        var header = @"C:\Dumper-7\4.22.3-0+++UE4+Release-4.22-Dungeons\CppSDK\SDK\Dungeons_structs.hpp";
+                        if (System.IO.File.Exists(header))
+                        {
+                            var inEnum = false;
+                            foreach (var l in System.IO.File.ReadLines(header))
+                            {
+                                if (l.Contains("enum class EEnchantmentTypeID")) { inEnum = true; continue; }
+                                if (!inEnum) { continue; }
+                                if (l.StartsWith("};")) { break; }
+                                var m = System.Text.RegularExpressions.Regex.Match(l, @"^\s*(\w+)\s*=\s*(\d+)");
+                                if (m.Success) { enums[int.Parse(m.Groups[2].Value)] = m.Groups[1].Value; }
+                            }
+                        }
+                        var armorEnums = new Dictionary<int, string>();
+                        if (System.IO.File.Exists(header))
+                        {
+                            var inArmor = false;
+                            foreach (var l in System.IO.File.ReadLines(header))
+                            {
+                                if (l.Contains("enum class EArmorPropertyID")) { inArmor = true; continue; }
+                                if (!inArmor) { continue; }
+                                if (l.StartsWith("};")) { break; }
+                                var m = System.Text.RegularExpressions.Regex.Match(l, @"^\s*(\w+)\s*=\s*(\d+)");
+                                if (m.Success) { armorEnums[int.Parse(m.Groups[2].Value)] = m.Groups[1].Value; }
+                            }
+                        }
+                        //An FText's display string: ITextData* at +0, whose DisplayString (a shared FString) is at +8.
+                        string textOf(IntPtr text)
+                        {
+                            var data = new IntPtr(q(text));
+                            if (data == IntPtr.Zero) { return "(null)"; }
+                            var fstring = new IntPtr(q(data + 8));
+                            if (fstring == IntPtr.Zero) { return "(no string)"; }
+                            var chars = new IntPtr(q(fstring));
+                            var n = d(fstring + 8);
+                            if (chars == IntPtr.Zero || n <= 0 || n > 400) { return $"(string {n})"; }
+                            var bytes = game.read(chars, (n - 1) * 2) ?? Array.Empty<byte>();
+                            return System.Text.Encoding.Unicode.GetString(bytes);
+                        }
+                        for (var i = 0; i < count; i++)
+                        {
+                            var record = new IntPtr(q(data + i * 8));
+                            if (record == IntPtr.Zero) { continue; }
+                            var id = names.nameOf(d(record)) ?? "?";
+                            if (wanted != null ? !wanted.Contains(id) : !melee.Contains(id)) { continue; }
+                            Console.WriteLine($"[rec] === {id} at {record.ToInt64():x}");
+                            var bptr = new IntPtr(q(record + 0x1B8));
+                            var bnum = d(record + 0x1C0);
+                            for (var b = 0; bptr != IntPtr.Zero && b < bnum && b < 16; b++)
+                            {
+                                var el = game.read(bptr + b * 0x14, 0x14) ?? new byte[0x14];
+                                Console.WriteLine($"[rec]    built-in {(enums.TryGetValue(el[0], out var en) ? en : el[0].ToString())} level {BitConverter.ToInt32(el, 4)} category {el[8]} source {el[9]} invested {BitConverter.ToInt32(el, 12)} tail {el[16]:x2} {el[17]:x2} {el[18]:x2} {el[19]:x2}");
+                            }
+                            //The whole record, every 4 bytes that reads as a plausible float, with its offset.
+                            if (Environment.GetEnvironmentVariable("MCDR_FLOATS") == "1")
+                            {
+                                var all = game.read(record, 0x230) ?? Array.Empty<byte>();
+                                var found = new List<string>();
+                                for (var off = 0; off + 4 <= all.Length; off += 4)
+                                {
+                                    var f = BitConverter.ToSingle(all, off);
+                                    if (float.IsFinite(f) && Math.Abs(f) >= 0.01f && Math.Abs(f) <= 100000f && Math.Abs(f - MathF.Round(f, 2)) < 1e-4f)
+                                    {
+                                        found.Add($"+{off:x}={f:0.##}");
+                                    }
+                                }
+                                Console.WriteLine($"[rec]    floats {string.Join(" ", found)}");
+                            }
+                            //Every list-shaped field in the record (pointer, then 0 < count <= capacity <= 64),
+                            //with its first entries: for types whose layout is not known yet.
+                            if (Environment.GetEnvironmentVariable("MCDR_ALLLISTS") == "1")
+                            {
+                                for (var off = 0; off + 16 <= 0x230; off += 8)
+                                {
+                                    var ptr = q(record + off);
+                                    var num = d(record + off + 8);
+                                    var max = d(record + off + 12);
+                                    if (ptr < 0x10000000000 || ptr > 0x7fffffffffff || num <= 0 || num > max || max > 64) { continue; }
+                                    var first = game.read(new IntPtr(ptr), 0x40) ?? Array.Empty<byte>();
+                                    Console.WriteLine($"[rec]    list +0x{off:x}: {num}/{max}  {BitConverter.ToString(first).Replace("-", " ").ToLowerInvariant()}");
+                                    Console.WriteLine($"[rec]         names: {resolve(first)}   as text: \"{textOf(new IntPtr(ptr))}\"");
+                                }
+                            }
+                            //An armour's default properties: EArmorPropertyID and EItemRarity, two bytes each.
+                            if (parent == "ArmorGearItemInstance")
+                            {
+                                var aptr = new IntPtr(q(record + 0x1A8));
+                                var anum = d(record + 0x1B0);
+                                for (var a = 0; aptr != IntPtr.Zero && a < anum && a < 16; a++)
+                                {
+                                    var el = game.read(aptr + a * 2, 2) ?? new byte[2];
+                                    Console.WriteLine($"[rec]    property {(armorEnums.TryGetValue(el[0], out var an) ? an : el[0].ToString())} rarity {el[1]}");
+                                }
+                            }
+                            var tptr = new IntPtr(q(record + 0x70));
+                            var tnum = d(record + 0x78);
+                            Console.WriteLine($"[rec]    +0x70 list: {tnum} (max {d(record + 0x7C)}), +0x18 name \"{textOf(record + 0x18)}\", +0x58 flavour \"{textOf(record + 0x58)}\"");
+                            for (var t = 0; tptr != IntPtr.Zero && t < tnum && t < 16; t++)
+                            {
+                                Console.WriteLine($"[rec]    line \"{textOf(tptr + t * 0x30)}\" bytes {BitConverter.ToString(game.read(tptr + t * 0x30, 0x30) ?? Array.Empty<byte>()).Replace("-", " ").ToLowerInvariant()}");
+                            }
+                        }
+                    }
+                    catch (Exception e) { Console.WriteLine($"[rec] FAILED {e}"); }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_ITEMJSON=<id>;<id>... - each item's Instance blueprint as PakReader parses it, whole,
+            //into %TEMP%\MCDRebornItemJson\<id>.json. Read-only; for seeing everything an item's
+            //blueprint says about it, not only its numbers.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_ITEMJSON=", StringComparison.Ordinal)))
+            {
+                var ids = _startupArguments.First(a => a.StartsWith("PROBE_ITEMJSON=", StringComparison.Ordinal))["PROBE_ITEMJSON=".Length..].Trim('"').Split(';', StringSplitOptions.RemoveEmptyEntries);
+                var into = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "MCDRebornItemJson");
+                System.IO.Directory.CreateDirectory(into);
+                foreach (var id in ids)
+                {
+                    try
+                    {
+                        var item = Logic.CustomItems.gameItem(id);
+                        if (item == null) { Console.WriteLine($"[json] {id}: not a game item"); continue; }
+                        foreach (var part in new[] { item.Instance, item.Instance.Replace("Instance", "Storable"), item.Instance.Replace("Instance", "") })
+                        {
+                            var path = "/Dungeons/Content/" + item.Folder["/Game/".Length..] + "/" + part;
+                            var package = Logic.CustomSkins.index!.extractPackage(path);
+                            if (package == null) { Console.WriteLine($"[json] {id} {part}: unreadable"); continue; }
+                            var file = System.IO.Path.Combine(into, part + ".json");
+                            System.IO.File.WriteAllText(file, package.Value.JsonData);
+                            Console.WriteLine($"[json] {id} {part}: {new System.IO.FileInfo(file).Length} bytes -> {file}");
+                        }
+                    }
+                    catch (Exception e) { Console.WriteLine($"[json] {id} FAILED {e.Message}"); }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_LOCFIND=<regex>[;<namespace regex>] - every English Game.locres entry whose text
+            //(or key) matches, with its namespace and key. Read-only; for finding what the game calls
+            //something and where its text lives.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_LOCFIND=", StringComparison.Ordinal)))
+            {
+                var parts = _startupArguments.First(a => a.StartsWith("PROBE_LOCFIND=", StringComparison.Ordinal))["PROBE_LOCFIND=".Length..].Trim('"').Split(';');
+                var text = new System.Text.RegularExpressions.Regex(parts[0], System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                var space = parts.Length > 1 ? new System.Text.RegularExpressions.Regex(parts[1], System.Text.RegularExpressions.RegexOptions.IgnoreCase) : null;
+                try
+                {
+                    var index = Logic.CustomSkins.index!;
+                    var english = index.First(p => p.EndsWith("/Localization/Game/en/Game", StringComparison.OrdinalIgnoreCase));
+                    if (english.StartsWith("//", StringComparison.Ordinal)) { english = english.Substring(1); }
+                    var table = Logic.Locres.read(index.GetFile(english)!.Value.ToArray())!;
+                    var shown = 0;
+                    foreach (var ns in table.Namespaces)
+                    {
+                        if (space != null && !space.IsMatch(ns.Name)) { continue; }
+                        foreach (var entry in ns.Entries)
+                        {
+                            var value = table.get(ns.Name, entry.Key) ?? "";
+                            if (!text.IsMatch(value) && !text.IsMatch(entry.Key)) { continue; }
+                            Console.WriteLine($"[loc] {ns.Name} | {entry.Key} | {value.Replace("\n", " / ")}");
+                            if (++shown >= 400) { break; }
+                        }
+                    }
+                    Console.WriteLine($"[loc] {shown} shown");
+                }
+                catch (Exception e) { Console.WriteLine($"[loc] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_INSTALLEDLOOK - what the Weapons tab opens a mesh with: each custom item's installed
+            //look (model, placement, texture) from its design, and the stock-mesh memory
+            //(MeshInstalls) remembered, recalled, and forgotten once its pak is gone. Writes only a
+            //test record, which it removes.
+            if (_startupArguments.Contains("PROBE_INSTALLEDLOOK"))
+            {
+                try
+                {
+                    Logic.CustomItems.showInApp();
+                    Logic.GlbModel? any = null;
+                    foreach (var mesh in Logic.WeaponMeshes.all().Where(m => m.Name.StartsWith("★")))
+                    {
+                        var look = Logic.CustomItems.installedLook(mesh.AssetPath);
+                        if (look == null) { Console.WriteLine($"[look] {mesh.AssetPath}: nothing installed, opens as the copy"); continue; }
+                        any ??= look.Model;
+                        var t = look.Transform;
+                        Console.WriteLine($"[look] {look.Name} {mesh.AssetPath}: model {(look.Model == null ? (look.ModelMissing ? "MISSING" : "none (reshape)") : look.Model.Name + " " + look.Model.VertexCount + " vertices")}, " +
+                            $"scale {t.Scale:0.###} offset ({t.Offset.X:0.#},{t.Offset.Y:0.#},{t.Offset.Z:0.#}) turn ({t.RotationDegrees.X:0},{t.RotationDegrees.Y:0},{t.RotationDegrees.Z:0}), texture {(look.Texture == null ? "-" : look.Texture.PixelWidth + "x" + look.Texture.PixelHeight)}");
+                    }
+
+                    var pak = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "MCDReborn_ProbeLook_P.pak");
+                    System.IO.File.WriteAllBytes(pak, new byte[] { 1 });
+                    var transform = new Logic.MeshEdit.Transform(2.5f, new Logic.MeshGeometry.Position(1, 2, 3), new Logic.MeshGeometry.Position(10, 20, 30));
+                    Logic.MeshInstalls.remember("ProbeLook", "/Game/Probe/SM_Test", any, transform, pak);
+                    var back = Logic.MeshInstalls.recall("ProbeLook", "/Game/Probe/SM_Test");
+                    var bt = back?.Edit.transform ?? Logic.MeshEdit.Transform.none;
+                    Console.WriteLine($"[look] stock memory: recalled {(back == null ? "NOTHING" : "model " + (back.ModelName ?? "-") + " file " + (back.Edit.File != null && System.IO.File.Exists(back.Edit.File)) + $", scale {bt.Scale} offset ({bt.Offset.X},{bt.Offset.Y},{bt.Offset.Z}) turn ({bt.RotationDegrees.X},{bt.RotationDegrees.Y},{bt.RotationDegrees.Z})")}");
+                    var kept = back?.Edit.File;
+                    System.IO.File.Delete(pak);
+                    var gone = Logic.MeshInstalls.recall("ProbeLook", "/Game/Probe/SM_Test");
+                    Console.WriteLine($"[look] after its pak is removed: {(gone == null ? "forgotten" : "STILL THERE")}, kept model file removed {(kept == null || !System.IO.File.Exists(kept))}");
+                }
+                catch (Exception e) { Console.WriteLine($"[look] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_RECOLORCUSTOM[=<id>] - the Recolor Gear tab's side of a custom item: lists each
+            //type's custom items and whether their texture reads, then recolours one (a red tint of
+            //its own texture), reads the installed pak back to see the red, and removes the
+            //recolour again - the item ends as it began.
+            if (_startupArguments.Any(a => a == "PROBE_RECOLORCUSTOM" || a.StartsWith("PROBE_RECOLORCUSTOM=", StringComparison.Ordinal)))
+            {
+                var arg = _startupArguments.First(a => a.StartsWith("PROBE_RECOLORCUSTOM", StringComparison.Ordinal));
+                var id = arg.Contains('=') ? arg[(arg.IndexOf('=') + 1)..] : "MCDR_Item06";
+                try
+                {
+                    if (Logic.GameRunning.isUp) { Console.WriteLine("[recolor] close the game first"); Shutdown(); return; }
+                    Logic.CustomItems.showInApp();
+                    foreach (var kind in Enum.GetValues<Logic.CustomItems.Kind>())
+                    {
+                        foreach (var each in Logic.CustomItems.customIdsOf(kind))
+                        {
+                            var t = Logic.CustomItems.colourTexture(each);
+                            Console.WriteLine($"[recolor] {kind,-8} ★ {R.itemName(each),-22} {each}: {(t == null ? "NO TEXTURE" : t.PixelWidth + "x" + t.PixelHeight)}");
+                            if (t != null)
+                            {
+                                //What the tab previews, saved for a look: %TEMP%\MCDRebornRecolor\<id>.png
+                                var shots = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "MCDRebornRecolor");
+                                System.IO.Directory.CreateDirectory(shots);
+                                var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                                encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(t));
+                                using var file = System.IO.File.Create(System.IO.Path.Combine(shots, each + ".png"));
+                                encoder.Save(file);
+                            }
+                        }
+                    }
+
+                    var own = Logic.CustomItems.colourTexture(id) ?? throw new InvalidOperationException("no texture");
+                    var w = own.PixelWidth; var h = own.PixelHeight;
+                    var pixels = Logic.CustomSkins.pixelsAt(own, w, h);
+                    for (var i = 0; i < pixels.Length; i += 4) { pixels[i] = 0; pixels[i + 1] = 0; pixels[i + 2] = 255; }   //BGRA: pure red, alpha kept
+                    var red = System.Windows.Media.Imaging.BitmapSource.Create(w, h, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null, pixels, w * 4);
+
+                    Logic.CustomItems.setTexture(id, red);
+                    Console.WriteLine($"[recolor] {id} recoloured: isRecoloured {Logic.CustomItems.isRecoloured(id)}");
+                    (int r, int g, int b) average()
+                    {
+                        var pak = System.IO.Path.Combine(Logic.CustomSkins.paksFolder!, Logic.CustomSkins.MOD_PREFIX + Logic.CustomItems.MOD_NAME + "_P.pak");
+                        var inside = Logic.ModPak.read(pak).ToDictionary(f => f.Path, f => f.Data, StringComparer.OrdinalIgnoreCase);
+                        var texture = inside.Keys.Where(k => k.Contains("/" + id + "/", StringComparison.OrdinalIgnoreCase) && k.EndsWith(".uasset")
+                                && System.IO.Path.GetFileName(k).StartsWith("T_") && Logic.CustomSkins.isColourMap(System.IO.Path.GetFileNameWithoutExtension(k)))
+                            .OrderBy(k => System.IO.Path.GetFileName(k).Length).First();
+                        var stem = texture[..^7];
+                        inside.TryGetValue(stem + ".ubulk", out var bulk);
+                        var package = new PakReader.Pak.PakPackage(new ArraySegment<byte>(inside[texture]), new ArraySegment<byte>(inside[stem + ".uexp"]),
+                            bulk == null ? (ArraySegment<byte>?)null : new ArraySegment<byte>(bulk));
+                        var image = Services.PakIndexExtensions.bitmapImageFromSKImage(package.GetExport<PakReader.Parsers.Class.UTexture2D>()!.Image!);
+                        var px = Logic.CustomSkins.pixelsAt(image, image.PixelWidth, image.PixelHeight);
+                        long sr = 0, sg = 0, sb = 0, n = 0;
+                        for (var i = 0; i < px.Length; i += 4) { if (px[i + 3] == 0) { continue; } sb += px[i]; sg += px[i + 1]; sr += px[i + 2]; n++; }
+                        Console.WriteLine($"[recolor]   pak texture {System.IO.Path.GetFileName(texture)} {image.PixelWidth}x{image.PixelHeight}");
+                        return n == 0 ? (0, 0, 0) : ((int)(sr / n), (int)(sg / n), (int)(sb / n));
+                    }
+                    Console.WriteLine($"[recolor]   average colour in the pak with the recolour: {average()}");
+
+                    Logic.CustomItems.setTexture(id, null);
+                    Console.WriteLine($"[recolor] {id} recolour removed: isRecoloured {Logic.CustomItems.isRecoloured(id)}");
+                    Console.WriteLine($"[recolor]   average colour in the pak without it: {average()}");
+                }
+                catch (Exception e) { Console.WriteLine($"[recolor] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
             //PROBE_MIGRATESLOTS[=write] - the free slots are gone: every custom item is a plugin item.
             //Turns each design still in a slot into a plugin item under a new MCDR_ItemNN id (name,
             //icon, behaviour and model kept), and swaps the old id for the new one wherever a

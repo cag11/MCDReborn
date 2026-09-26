@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -30,8 +30,12 @@ namespace MCDSaveEdit.Logic
         /// <summary>What the plugin exports so that its copy can be told from anybody else's.</summary>
         private static readonly byte[] MARK = Encoding.ASCII.GetBytes("MCDRebornPlugin");
 
-        /// <summary>One item for the plugin to register.</summary>
-        public sealed record Item(string Id, string Source, string Folder, string Name, string Description);
+        /// <summary>
+        /// One item for the plugin to register. Skills ("5:1;9:1") and Lines ("key=text|...") replace
+        /// the copied item's when given; "-" keeps them.
+        /// </summary>
+        public sealed record Item(string Id, string Source, string Folder, string Name, string Description,
+            string Skills = "-", string Lines = "-", string ArmorProperties = "-", string Numbers = "-");
 
         /// <summary>
         /// The folder with the game's executable, from its paks folder: Dungeons\Content\Paks is
@@ -87,8 +91,8 @@ namespace MCDSaveEdit.Logic
             //Tab-separated, one item a line. A tab or a line break typed into a name would split
             //it, so they become spaces.
             string clean(string text) => text.Replace('\t', ' ').Replace('\r', ' ').Replace('\n', ' ').Trim();
-            var lines = new List<string> { "# id\tsource\tfolder\tname\tdescription - written by MCD Reborn, rewritten on every install" };
-            lines.AddRange(items.Select(i => string.Join("\t", i.Id, i.Source, i.Folder, clean(i.Name), clean(i.Description))));
+            var lines = new List<string> { "# id\tsource\tfolder\tname\tdescription\tskills\tlines\tarmor properties\tnumbers - written by MCD Reborn, rewritten on every install" };
+            lines.AddRange(items.Select(i => string.Join("\t", i.Id, i.Source, i.Folder, clean(i.Name), clean(i.Description), clean(i.Skills), clean(i.Lines), clean(i.ArmorProperties), clean(i.Numbers))));
             File.WriteAllLines(list, lines, new UTF8Encoding(false));
             return $"The item plugin will register {items.Count} item(s) the next time the game starts.";
         }

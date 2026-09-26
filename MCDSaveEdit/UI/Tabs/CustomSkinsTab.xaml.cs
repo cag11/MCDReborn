@@ -1,4 +1,4 @@
-using MCDSaveEdit.Logic;
+﻿using MCDSaveEdit.Logic;
 using MCDSaveEdit.Services;
 using Microsoft.Win32;
 using System;
@@ -44,6 +44,7 @@ namespace MCDSaveEdit.UI
             designerButton.Content = R.CUSTOM_SKINS_DESIGNER;
             pasteButton.Content = R.CUSTOM_SKINS_PASTE;
             applyButton.Content = R.CUSTOM_SKINS_APPLY;
+            unrecolourButton.Content = R.CUSTOM_SKINS_UNRECOLOUR;
             filesLabel.Text = R.CUSTOM_SKINS_FILES;
             hintLabel.Text = R.CUSTOM_SKINS_HINT;
             showArmourCheckBox.Content = R.ARMOUR_SHOW;
@@ -142,8 +143,27 @@ namespace MCDSaveEdit.UI
                 GearCategory.Artifacts => ItemDatabase.artifacts,
                 _ => ItemDatabase.armor,
             };
+            var kind = selectedCategory switch {
+                GearCategory.Melee => CustomItems.Kind.Melee,
+                GearCategory.Ranged => CustomItems.Kind.Ranged,
+                GearCategory.Artifacts => CustomItems.Kind.Artifact,
+                _ => CustomItems.Kind.Armor,
+            };
 
-            foreach (var id in items.Distinct().OrderBy(id => R.itemName(id), StringComparer.CurrentCultureIgnoreCase))
+            //The user's own items first, marked as the Weapons tab marks them.
+            var custom = CustomItems.customIdsOf(kind);
+            foreach (var id in custom.OrderBy(id => R.itemName(id), StringComparer.CurrentCultureIgnoreCase))
+            {
+                if (!matchesText(R.itemName(id), id, search)) { continue; }
+                gearList.Items.Add(new ListBoxItem {
+                    Content = "★ " + R.itemName(id),
+                    Tag = id,
+                    ToolTip = id,
+                });
+            }
+
+            foreach (var id in items.Distinct().Except(custom, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(id => R.itemName(id), StringComparer.CurrentCultureIgnoreCase))
             {
                 if (!matchesText(R.itemName(id), id, search)) { continue; }
                 gearList.Items.Add(new ListBoxItem {
@@ -172,13 +192,31 @@ namespace MCDSaveEdit.UI
         {
             _selectedItem = (gearList.SelectedItem as ListBoxItem)?.Tag as string;
 
+            //A custom item's files are in the items pak, which the app's index of the game leaves
+            //out: its texture comes from CustomItems, and a recolour goes into its design.
+            _selectedCustom = _selectedItem != null && CustomItems.isCustom(_selectedItem);
+
             //A cape or a pet was found by its texture in the first place, so it carries the path
             //rather than being searched for again.
             var cosmetic = CosmeticSkins.find(_selectedItem);
-            _selectedTexture = cosmetic != null ? cosmetic.TexturePath
+            _selectedTexture = _selectedCustom ? null
+                : cosmetic != null ? cosmetic.TexturePath
                 : _selectedItem == null ? null
                 : CustomSkins.textureFor(_selectedItem);
             updateSelection();
+        }
+
+        private bool _selectedCustom;
+
+        /// <summary>Whether something with pixels is selected: a texture of the game's, or a custom item.</summary>
+        private bool hasSelection => _selectedItem != null && (_selectedCustom || _selectedTexture != null);
+
+        /// <summary>The pixels the selection wears now.</summary>
+        private BitmapSource? selectedImage()
+        {
+            if (_selectedItem == null) { return null; }
+            if (_selectedCustom) { return CustomItems.colourTexture(_selectedItem); }
+            return _selectedTexture == null ? null : CustomSkins.preview(_selectedTexture) as BitmapSource;
         }
 
         private void updateSelection()
@@ -186,8 +224,10 @@ namespace MCDSaveEdit.UI
             //Every button here needs pixels, not just a path. Gating on the decoded image rather
             //than on "a texture was named" is what keeps a button from opening a dialog that
             //only says the thing the preview already says.
-            var image = _selectedTexture == null ? null : CustomSkins.preview(_selectedTexture);
+            var image = selectedImage();
             var hasTexture = image != null;
+            unrecolourButton.Visibility = _selectedCustom && CustomItems.isRecoloured(_selectedItem!)
+                ? Visibility.Visible : Visibility.Collapsed;
             exportButton.IsEnabled = hasTexture;
             applyButton.IsEnabled = hasTexture;
             designerButton.IsEnabled = hasTexture;
@@ -228,11 +268,11 @@ namespace MCDSaveEdit.UI
 
         private void exportButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_selectedTexture == null || _selectedItem == null) { return; }
-            EventLogger.logEvent("customSkinExport", new Dictionary<string, object>() { { "item", _selectedItem } });
+            if (!hasSelection) { return; }
+            EventLogger.logEvent("customSkinExport", new Dictionary<string, object>() { { "item", _selectedItem! } });
 
             var dialog = new SaveFileDialog {
-                FileName = System.IO.Path.GetFileName(_selectedTexture) + ".png",
+                FileName = (_selectedCustom ? _selectedItem : System.IO.Path.GetFileName(_selectedTexture)) + ".png",
                 Filter = "PNG image|*.png",
                 Title = R.CUSTOM_SKINS_EXPORT,
             };
@@ -240,7 +280,18 @@ namespace MCDSaveEdit.UI
 
             try
             {
-                CustomSkins.exportTexture(_selectedTexture!, dialog.FileName);
+                if (_selectedCustom)
+                {
+                    var image = selectedImage() ?? throw new InvalidOperationException(R.CUSTOM_SKINS_NO_TEXTURE);
+                    var encoder = new PngBitmapEncoder();
+                    encoder.Frames.Add(BitmapFrame.Create(image));
+                    using var file = System.IO.File.Create(dialog.FileName);
+                    encoder.Save(file);
+                }
+                else
+                {
+                    CustomSkins.exportTexture(_selectedTexture!, dialog.FileName);
+                }
                 MessageBox.Show(R.formatCUSTOM_SKINS_EXPORTED(dialog.FileName), R.CUSTOM_SKINS_TAB);
             }
             catch (Exception exception)
@@ -258,12 +309,12 @@ namespace MCDSaveEdit.UI
         /// </summary>
         private void designerButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_selectedTexture == null || _selectedItem == null) { return; }
-            EventLogger.logEvent("customSkinDesigner", new Dictionary<string, object>() { { "item", _selectedItem } });
+            if (!hasSelection) { return; }
+            EventLogger.logEvent("customSkinDesigner", new Dictionary<string, object>() { { "item", _selectedItem! } });
 
             try
             {
-                var image = CustomSkins.preview(_selectedTexture!)
+                var image = selectedImage()
                     ?? throw new InvalidOperationException(R.CUSTOM_SKINS_NO_TEXTURE);
                 var url = SkinCodec.designerUrl(image, R.itemName(_selectedItem!));
 
@@ -284,8 +335,8 @@ namespace MCDSaveEdit.UI
         /// <summary>The way back: the designer puts its result on the clipboard as the same link.</summary>
         private void pasteButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_selectedTexture == null || _selectedItem == null) { return; }
-            EventLogger.logEvent("customSkinPaste", new Dictionary<string, object>() { { "item", _selectedItem } });
+            if (!hasSelection) { return; }
+            EventLogger.logEvent("customSkinPaste", new Dictionary<string, object>() { { "item", _selectedItem! } });
 
             if (!Clipboard.ContainsText())
             {
@@ -311,14 +362,23 @@ namespace MCDSaveEdit.UI
 
         private void applyButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_selectedTexture == null || _selectedItem == null) { return; }
-            EventLogger.logEvent("customSkinApply", new Dictionary<string, object>() { { "item", _selectedItem } });
+            if (!hasSelection) { return; }
+            EventLogger.logEvent("customSkinApply", new Dictionary<string, object>() { { "item", _selectedItem! } });
 
             var dialog = new OpenFileDialog {
                 Filter = "PNG image|*.png",
                 Title = R.CUSTOM_SKINS_APPLY,
             };
             if (dialog.ShowDialog() != true) { return; }
+
+            if (_selectedCustom)
+            {
+                BitmapSource picture;
+                try { picture = CustomSkins.imageFromPng(System.IO.File.ReadAllBytes(dialog.FileName)); }
+                catch (Exception exception) { MessageBox.Show(exception.Message, R.ERROR); return; }
+                install(picture);
+                return;
+            }
 
             try
             {
@@ -334,12 +394,34 @@ namespace MCDSaveEdit.UI
         {
             try
             {
+                if (_selectedCustom)
+                {
+                    //Rebuilds the items pak, which the running game holds open.
+                    if (GameRunning.isUp) { MessageBox.Show(R.MODS_GAME_RUNNING, R.CUSTOM_SKINS_TAB); return; }
+                    install(CustomItems.setTexture(_selectedItem!, image));
+                    return;
+                }
                 install(CustomSkins.apply(_selectedTexture!, image, _selectedItem!));
             }
             catch (Exception exception)
             {
                 //Writing into the game's folder can fail for reasons worth reading: the game is
                 //running, or the install needs elevation.
+                MessageBox.Show(exception.Message, R.ERROR);
+            }
+        }
+
+        private void unrecolourButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_selectedCustom || _selectedItem == null) { return; }
+            if (GameRunning.isUp) { MessageBox.Show(R.MODS_GAME_RUNNING, R.CUSTOM_SKINS_TAB); return; }
+            try
+            {
+                CustomItems.setTexture(_selectedItem, null);
+                updateSelection();
+            }
+            catch (Exception exception)
+            {
                 MessageBox.Show(exception.Message, R.ERROR);
             }
         }

@@ -4042,4 +4042,112 @@ Delete it?</value>
     <value>What an artifact does - its cooldown, damage and duration - is built into the game, so the copy works like its source. These are the few extra values its blueprint stores.</value>
     <comment>Hint above the behaviour grid for artifacts</comment>
   </data>
+  <data name="CUSTOM_SKINS_UNRECOLOUR" xml:space="preserve">
+    <value>Remove recolour</value>
+    <comment>Button, shown for a recoloured custom item: back to the copied item's own texture</comment>
+  </data>
+  <data name="WEAPON_SKINS_INSTALLED_MODEL" xml:space="preserve">
+    <value>Showing what is installed on this: {0}. Move it and press Install to change it, or Clear model to start again.</value>
+    <comment>Weapons / Mob Import tab, when a mesh opens with its installed model. {0} is the model's or custom item's name</comment>
+  </data>
+  <data name="WEAPON_SKINS_INSTALLED_SHAPE" xml:space="preserve">
+    <value>Showing the reshape installed on this. Move it and press Install to change it.</value>
+    <comment>Weapons / Mob Import tab, when a mesh opens with its installed reshape</comment>
+  </data>
+  <data name="WEAPON_SKINS_MODEL_GONE" xml:space="preserve">
+    <value>A model is installed on this, but its file is gone, so the original is shown.</value>
+    <comment>Weapons / Mob Import tab, when the kept copy of an installed model has been deleted</comment>
+  </data>
+  <data name="ITEMS_SKILLS" xml:space="preserve">
+    <value>Skills</value>
+    <comment>Label above a melee item's built-in skills</comment>
+  </data>
+  <data name="ITEMS_SKILLS_HINT" xml:space="preserve">
+    <value>Built-in enchantments, like Firebrand's burning. Each one adds its own line to the item's tooltip, and it works on top of any enchantments you put on the item.</value>
+    <comment>Hint under the Skills label</comment>
+  </data>
+  <data name="ITEMS_SKILLS_NONE" xml:space="preserve">
+    <value>No skills</value>
+    <comment>Shown when a melee item has no built-in skills</comment>
+  </data>
+  <data name="ITEMS_SKILL_LEVEL" xml:space="preserve">
+    <value>Level</value>
+    <comment>Before the level of a built-in skill</comment>
+  </data>
+  <data name="ITEMS_SKILL_ADD" xml:space="preserve">
+    <value>Add</value>
+    <comment>Button that adds the chosen skill</comment>
+  </data>
+  <data name="ITEMS_SKILL_REMOVE" xml:space="preserve">
+    <value>Remove this skill</value>
+    <comment>Tooltip of the button that removes a skill</comment>
+  </data>
+  <data name="ITEMS_TRAITS_RESET" xml:space="preserve">
+    <value>Use the copied item's</value>
+    <comment>Button: back to the copied weapon's own skills and property lines</comment>
+  </data>
+  <data name="ITEMS_LINES" xml:space="preserve">
+    <value>Property lines</value>
+    <comment>Label above a melee item's property lines</comment>
+  </data>
+  <data name="ITEMS_LINES_HINT" xml:space="preserve">
+    <value>The lines its tooltip shows under the name. They describe the moves; the moves themselves come from the weapon it copies.</value>
+    <comment>Hint under the Property lines label</comment>
+  </data>
+  <data name="ITEMS_ARMOR_PROPERTIES" xml:space="preserve">
+    <value>Armor properties</value>
+    <comment>Label above a custom armor's default armor properties</comment>
+  </data>
+  <data name="ITEMS_ARMOR_PROPERTIES_HINT" xml:space="preserve">
+    <value>What the armor comes with: the inventory's Defaults button gives it these. A unique armor leads with its gold, unique one. Each character's copy keeps the properties in its save, which the inventory edits.</value>
+    <comment>Hint under the Armor properties label</comment>
+  </data>
+  <data name="ITEMS_ARMOR_PROPERTIES_NONE" xml:space="preserve">
+    <value>No armor properties</value>
+    <comment>Shown when a custom armor has none</comment>
+  </data>
+  <data name="ITEMS_RARITY_COMMON" xml:space="preserve">
+    <value>Common</value>
+    <comment>Armor property rarity</comment>
+  </data>
+  <data name="ITEMS_RARITY_UNIQUE" xml:space="preserve">
+    <value>Unique</value>
+    <comment>Armor property rarity</comment>
+  </data>
+  <data name="ITEMS_ARTIFACT" xml:space="preserve">
+    <value>Artifact</value>
+    <comment>Label above a custom artifact's numbers</comment>
+  </data>
+  <data name="ITEMS_ARTIFACT_HINT" xml:space="preserve">
+    <value>Leave a box empty to keep the copied artifact's own.</value>
+    <comment>Hint under the Artifact label</comment>
+  </data>
+  <data name="ITEMS_ARTIFACT_OWN" xml:space="preserve">
+    <value>The copied one has: cooldown {0}s, duration {1}s, soul cost {2}.</value>
+    <comment>Appended to the artifact hint. {0}-{2} are numbers; 0 where it has none</comment>
+  </data>
+  <data name="ITEMS_COOLDOWN" xml:space="preserve">
+    <value>Cooldown (s)</value>
+    <comment>Artifact number</comment>
+  </data>
+  <data name="ITEMS_DURATION" xml:space="preserve">
+    <value>Duration (s)</value>
+    <comment>Artifact number</comment>
+  </data>
+  <data name="ITEMS_SOUL_COST" xml:space="preserve">
+    <value>Soul cost</value>
+    <comment>Artifact number</comment>
+  </data>
+  <data name="ITEMS_COPIED_VALUE" xml:space="preserve">
+    <value>The copied artifact's: {0}</value>
+    <comment>Tooltip of an artifact number box</comment>
+  </data>
+  <data name="ITEMS_SUMMONS" xml:space="preserve">
+    <value>Summons</value>
+    <comment>Label above a summoning artifact's creatures</comment>
+  </data>
+  <data name="ITEMS_SUMMONS_HINT" xml:space="preserve">
+    <value>One is picked at random each time. Any creature of the game's can be chosen; one that is normally hostile may not come out friendly.</value>
+    <comment>Hint under the Summons label</comment>
+  </data>
 </root>
