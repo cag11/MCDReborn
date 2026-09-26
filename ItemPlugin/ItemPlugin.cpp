@@ -1694,6 +1694,197 @@ namespace
         say("mobs: behaviour hooked - setup %p in the vtable at %p, pawn +0x%X, type +0x%X", caller, slot, g_pawnAt, g_typeAt);
     }
 
+    // ---------------------------------------------------------------- Apocalypse+ beyond 25
+    //
+    // How many Apocalypse+ levels there are is a constant in the game's code: four small functions
+    // the mission screen asks - how many endless struggles in total, how many in a difficulty (25
+    // for Apocalypse, else 0), and the same two counted with the seven threat levels (32). Only
+    // their blueprint thunks call them, so the screen is the only thing that reads them.
+    //
+    // The code itself is left alone. Rewriting it was tried first and the game crashed on start,
+    // inside a function the copy protection guards - the plugin has only ever changed data, and
+    // that is what this does too: each thunk's UFunction gets a wrapper that runs the thunk and
+    // then raises the answer, the same swap the enchantment icons use.
+    //
+    // What a level past 25 does is data as well. Item power follows global threat, which the game
+    // raises by 1/19 a level with no ceiling. The mob and loot multipliers follow a curve that
+    // holds flat past its end; the app installs a copy of it with one more point, in its own pak.
+    //
+    // "@struggle \t <highest level>" in MCDRebornItems.txt turns it on; the app writes it.
+    int g_struggleTop = 0;
+    constexpr int GAME_STRUGGLES = 25;
+    constexpr int GAME_WITH_THREATS = 32;
+    Exec g_countExec[4]{};
+
+    int readStruggleTop()
+    {
+        FILE* file = _wfopen((g_folder + L"MCDRebornItems.txt").c_str(), L"rb");
+        if (!file) { return 0; }
+        char line[256];
+        int top = 0;
+        while (fgets(line, sizeof(line), file))
+        {
+            if (strncmp(line, "@struggle\t", 10) == 0) { top = atoi(line + 10); }
+        }
+        fclose(file);
+        return (top > GAME_STRUGGLES && top <= 99) ? top : 0;
+    }
+
+    void raiseCount(void* result)
+    {
+        auto answer = static_cast<int32_t*>(result);
+        if (*answer == GAME_STRUGGLES) { *answer = g_struggleTop; }
+        else if (*answer == GAME_WITH_THREATS) { *answer = GAME_WITH_THREATS - GAME_STRUGGLES + g_struggleTop; }
+    }
+
+    template <int N> void __fastcall countExec(void* context, void* stack, void** result)
+    {
+        g_countExec[N](context, stack, result);
+        raiseCount(result);
+    }
+    Exec const COUNT_WRAPPERS[4] = { &countExec<0>, &countExec<1>, &countExec<2>, &countExec<3> };
+
+    // The function that makes the one call to `target` - where the thunk begins, found by walking
+    // back from that call to the padding before it.
+    uint8_t* onlyCaller(uint8_t* target)
+    {
+        HMODULE exe = GetModuleHandleW(nullptr);
+        auto dos = reinterpret_cast<IMAGE_DOS_HEADER*>(exe);
+        auto nt = reinterpret_cast<IMAGE_NT_HEADERS*>(reinterpret_cast<uint8_t*>(exe) + dos->e_lfanew);
+        uint8_t* base = reinterpret_cast<uint8_t*>(exe);
+        size_t size = nt->OptionalHeader.SizeOfImage;
+        uint8_t* caller = nullptr;
+        int callers = 0;
+        MEMORY_BASIC_INFORMATION info;
+        for (uint8_t* at = base; at < base + size && VirtualQuery(at, &info, sizeof(info)); at = static_cast<uint8_t*>(info.BaseAddress) + info.RegionSize)
+        {
+            if (info.State != MEM_COMMIT || !(info.Protect & (PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE))) { continue; }
+            auto from = static_cast<uint8_t*>(info.BaseAddress);
+            for (size_t i = 0; i + 5 <= info.RegionSize; i++)
+            {
+                if (from[i] != 0xE8) { continue; }
+                int32_t rel; memcpy(&rel, from + i + 1, 4);
+                if (from + i + 5 + rel != target) { continue; }
+                callers++;
+                uint8_t* start = from + i;
+                while (start > from + 2 && !(start[-1] == 0xCC && start[-2] == 0xCC)) { start--; }
+                caller = start;
+            }
+        }
+        return callers == 1 ? caller : nullptr;
+    }
+
+    // Which levels are open is a ladder of unlock tiers the game makes as it starts, each with
+    // `make tier(threshold, k)` and then its own "open up to" value: tier k opens once k boss
+    // missions are won at +threshold. Tier 7 is the last - 7 bosses at +21 open +22 to +25. They
+    // live in one array, from which the game builds its sorted ladder the first time a mission
+    // screen asks, well after this runs; three more tiers added to it now are simply part of that
+    // ladder. They carry on the game's pattern: 8 bosses at +25 open +26 to +28, 9 at +28 open
+    // +29 to +31, 10 at +31 open +32 to +35 - threes, then a last four, one boss more each time.
+    //
+    // Each tier is also one of the save's progress counters, by id: 8 to 15 are
+    // WIN_MISSIONS_APOCALYPSE_PLUS_TIER0..7 and 16 is WIN_HYPERMISSIONS. The save writes them by
+    // name, so a new id would be a name the game does not have. The new tiers count under 15,
+    // TIER7, the ladder's own top - a mission won past +25 adds to that counter again.
+    using MakeTier = uint8_t* (__fastcall*)(int32_t threshold, int32_t bosses);
+    constexpr size_t TIER_OPENS = 0x100;
+    constexpr size_t TIER_COUNTER = 0x148;
+    constexpr uint8_t TOP_TIER_COUNTER = 15;
+
+    void addUnlockTiers()
+    {
+        // How the game makes tier 7: mov rax,[tier 6] / mov edx,7 / mov ecx,[rax+100h] /
+        // call make tier / mov [rax+100h],25 / mov byte [rax+148h],15 / mov [tier 7],rax
+        auto stub = scan(parse("48 8B 05 ?? ?? ?? ?? BA 07 00 00 00 8B 88 00 01 00 00 E8 ?? ?? ?? ?? C7 80 00 01 00 00 19 00 00 00 C6 80 48 01 00 00 0F 48 89 05"));
+        if (stub.size() != 1) { say("apocalypse+: the unlock tiers were not found (%zu); +26 and above stay locked", stub.size()); return; }
+        auto make = reinterpret_cast<MakeTier>(callTarget(stub[0] + 0x12));
+        int32_t rel; memcpy(&rel, stub[0] + 0x2B, 4);
+        auto last = reinterpret_cast<uint8_t**>(stub[0] + 0x2F + rel);
+        int32_t from = 0;
+        if (!*last || !readBlock(*last + TIER_OPENS, &from, 4) || from != GAME_STRUGGLES)
+        {
+            say("apocalypse+: the game's last tier does not open +25 (%d); +26 and above stay locked", from);
+            return;
+        }
+        int32_t bosses = 8;
+        while (from < g_struggleTop)
+        {
+            int32_t opens = from + 3;
+            if (g_struggleTop - opens < 3) { opens = g_struggleTop; }    // the last group takes the rest
+            uint8_t* tier = make(from, bosses);
+            if (!tier) { say("apocalypse+: a tier could not be made"); return; }
+            *reinterpret_cast<int32_t*>(tier + TIER_OPENS) = opens;
+            tier[TIER_COUNTER] = TOP_TIER_COUNTER;
+            say("apocalypse+: %d boss missions at +%d open up to +%d", bosses, from, opens);
+            from = opens;
+            bosses++;
+        }
+    }
+
+    void extendStruggles(Game& game)
+    {
+        g_struggleTop = readStruggleTop();
+        if (!g_struggleTop) { return; }
+        if (!game.objectCount || !game.objectChunks) { say("apocalypse+: the object array was not found; left at +25"); return; }
+
+        // Only read: mov eax,19h / ret, padding, mov eax,20h / ret - the two totals, side by side;
+        // then the counts in a difficulty, without and with the threat levels.
+        auto totals = scan(parse("B8 19 00 00 00 C3 CC CC CC CC CC CC CC CC CC CC B8 20 00 00 00 C3"));
+        auto inDifficulty = scan(parse("33 C0 BA 19 00 00 00 80 F9 03 0F 44 C2 C3"));
+        auto withThreatLevels = scan(parse("80 F9 03 B8 07 00 00 00 BA 20 00 00 00 0F 44 C2 C3"));
+        if (totals.size() != 1 || inDifficulty.size() != 1 || withThreatLevels.size() != 1)
+        {
+            say("apocalypse+: the count functions are not as expected (%zu/%zu/%zu); left at +25", totals.size(), inDifficulty.size(), withThreatLevels.size());
+            return;
+        }
+        uint8_t* thunks[4] = { onlyCaller(totals[0]), onlyCaller(totals[0] + 16), onlyCaller(inDifficulty[0]), onlyCaller(withThreatLevels[0]) };
+        for (int i = 0; i < 4; i++)
+        {
+            if (!thunks[i]) { say("apocalypse+: count %d has no single caller; left at +25", i); return; }
+        }
+
+        // The UFunction holding each thunk, exactly one each. Looked for again a few times: the
+        // game's classes are made as it starts, and this may run before they all are.
+        uint8_t** slot[4]{};
+        int hits[4]{};
+        for (int attempt = 0; attempt < 40; attempt++)
+        {
+            hits[0] = hits[1] = hits[2] = hits[3] = 0;
+            int32_t count = *game.objectCount;
+            uint8_t** chunks = *game.objectChunks;
+            for (int32_t i = 0; i < count; i++)
+            {
+                uint8_t* chunk = nullptr;
+                if (!readBlock(chunks + (i >> 16), &chunk, 8) || !chunk) { continue; }
+                uint8_t* object = nullptr;
+                if (!readBlock(chunk + static_cast<size_t>(i & 0xFFFF) * 0x18, &object, 8) || !object) { continue; }
+                uint8_t* body[0x140 / 8]{};
+                if (!readBlock(object, body, sizeof(body))) { continue; }
+                for (size_t at = 0; at < 0x140 / 8; at++)
+                {
+                    for (int k = 0; k < 4; k++)
+                    {
+                        if (body[at] == thunks[k]) { slot[k] = reinterpret_cast<uint8_t**>(object) + at; hits[k]++; }
+                    }
+                }
+            }
+            if (hits[0] == 1 && hits[1] == 1 && hits[2] == 1 && hits[3] == 1) { break; }
+            Sleep(250);
+        }
+        if (hits[0] != 1 || hits[1] != 1 || hits[2] != 1 || hits[3] != 1)
+        {
+            say("apocalypse+: the count functions were found %d/%d/%d/%d times; left at +25", hits[0], hits[1], hits[2], hits[3]);
+            return;
+        }
+        for (int k = 0; k < 4; k++)
+        {
+            g_countExec[k] = reinterpret_cast<Exec>(thunks[k]);
+            *slot[k] = reinterpret_cast<uint8_t*>(COUNT_WRAPPERS[k]);
+        }
+        say("apocalypse+: the mission screen offers levels up to +%d", g_struggleTop);
+        addUnlockTiers();
+    }
+
     // ---------------------------------------------------------------- crash note
     //
     // When the game faults in its own code, the plugin writes down where and what it was working
@@ -1921,6 +2112,9 @@ namespace
             last = now;
             if (quiet < 2) { Sleep(250); }
         }
+        //Independent of the items: it only needs the game's own functions to exist, which they
+        //do by the time the item list has filled.
+        extendStruggles(game);
         say("registry at %p holds %d items", registry, count(registry));
         if (quiet < 2) { say("the item list never settled; nothing was changed"); return 0; }
 

@@ -44,6 +44,7 @@ namespace MCDSaveEdit.UI
         {
             InitializeComponent();
             translateStaticStrings();
+            IsVisibleChanged += (_, _) => { if (IsVisible) { showApocalypsePlus(); } };
 
             _live.changed += () => Dispatcher.BeginInvoke(new Action(showLive));
 
@@ -93,6 +94,40 @@ namespace MCDSaveEdit.UI
             restoreButton.Content = R.STATS_RESTORE;
             poseOnlyWhenSeen.Content = R.STATS_POSE_WHEN_SEEN;
             poseWhy.Text = R.STATS_POSE_WHY;
+            apocalypsePlusOn.Content = R.STATS_APOC_PLUS;
+            apocalypsePlusWhy.Text = R.STATS_APOC_PLUS_WHY;
+        }
+
+        /// <summary>The Apocalypse +26 to +35 switch, as installed.</summary>
+        private void showApocalypsePlus()
+        {
+            _filling = true;
+            apocalypsePlusOn.IsChecked = Logic.ApocalypsePlus.isOn;
+            apocalypsePlusOn.IsEnabled = Logic.GamePlugin.gameFolder() != null;
+            _filling = false;
+        }
+
+        private void apocalypsePlusOn_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+            var on = apocalypsePlusOn.IsChecked == true;
+            //The plugin is a file the game holds while it runs.
+            if (Logic.GameRunning.isUp)
+            {
+                Notices.warn(R.MODS_GAME_RUNNING);
+                showApocalypsePlus();
+                return;
+            }
+            try
+            {
+                Logic.ApocalypsePlus.set(on);
+                Notices.done(on ? R.STATS_APOC_PLUS_DONE : R.STATS_APOC_PLUS_REMOVED);
+            }
+            catch (Exception problem)
+            {
+                Notices.error(problem.Message);
+            }
+            showApocalypsePlus();
         }
 
         public void updateUI() => showLive();

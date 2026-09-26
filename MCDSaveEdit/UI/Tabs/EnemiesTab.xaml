@@ -61,6 +61,12 @@
                               Checked="poseOnlyWhenSeen_Changed" Unchecked="poseOnlyWhenSeen_Changed"/>
                     <TextBlock x:Name="poseWhy" Foreground="Gray" TextWrapping="Wrap"
                                Margin="0,4,0,0"/>
+
+                    <!-- Not a live change: the item plugin applies it when the game starts. -->
+                    <CheckBox x:Name="apocalypsePlusOn" FontWeight="Bold" Margin="0,24,0,0"
+                              Checked="apocalypsePlusOn_Changed" Unchecked="apocalypsePlusOn_Changed"/>
+                    <TextBlock x:Name="apocalypsePlusWhy" Foreground="Gray" TextWrapping="Wrap"
+                               Margin="0,4,0,0"/>
                 </StackPanel>
             </Grid>
         </ScrollViewer>

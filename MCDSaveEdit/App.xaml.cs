@@ -10834,6 +10834,54 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_APOCCURVE=<folder> - the Apocalypse+ curve with its point past the end, written out
+            //as a .uasset/.uexp pair to check before it goes in a pak. Installs nothing.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_APOCCURVE=", StringComparison.Ordinal)))
+            {
+                var into = _startupArguments.First(a => a.StartsWith("PROBE_APOCCURVE=", StringComparison.Ordinal))["PROBE_APOCCURVE=".Length..].Trim('"');
+                try
+                {
+                    var (uasset, uexp) = Logic.ApocalypsePlus.extendedCurve();
+                    Directory.CreateDirectory(into);
+                    File.WriteAllBytes(Path.Combine(into, "EndlessStruggleLinearCurve.uasset"), uasset);
+                    File.WriteAllBytes(Path.Combine(into, "EndlessStruggleLinearCurve.uexp"), uexp);
+                    Console.WriteLine($"[apoc] wrote {uasset.Length} + {uexp.Length} bytes to {into}");
+                }
+                catch (Exception problem) { Console.WriteLine($"[apoc] failed: {problem.Message}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_SAVESTRUGGLE=<.dat> - each mission's completed difficulty, threat and Apocalypse+
+            //level in a character save, and the highest of them. Read-only.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_SAVESTRUGGLE=", StringComparison.Ordinal)))
+            {
+                var path = _startupArguments.First(a => a.StartsWith("PROBE_SAVESTRUGGLE=", StringComparison.Ordinal))["PROBE_SAVESTRUGGLE=".Length..].Trim('"');
+                try
+                {
+                    //Off the window's thread: waiting on these async readers from it deadlocks.
+                    var profile = System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        using var file = File.OpenRead(path);
+                        //Also steps past the magic at the front, as the app's own loader relies on.
+                        if (!DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file)) { throw new InvalidOperationException("not an encrypted save"); }
+                        using var plain = await Logic.FileProcessHelper.Decrypt(file) ?? throw new InvalidOperationException("could not decrypt");
+                        return await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Read(plain) ?? throw new InvalidOperationException("could not parse");
+                    }).GetAwaiter().GetResult();
+                    var highest = 0;
+                    foreach (var (mission, p) in profile.Progress.OrderBy(p => p.Key))
+                    {
+                        Console.WriteLine($"[struggle] {mission,-28} {p.CompletedDifficulty,-14} {p.CompletedThreatLevel,-10} +{p.CompletedEndlessStruggle}");
+                        highest = Math.Max(highest, p.CompletedEndlessStruggle);
+                    }
+                    Console.WriteLine($"[struggle] highest completed: +{highest}");
+                    Console.WriteLine($"[struggle] progressStatCounters: {System.Text.Json.JsonSerializer.Serialize(profile.ProgressStatCounters)}");
+                }
+                catch (Exception problem) { Console.WriteLine($"[struggle] failed: {problem}"); }
+                Shutdown();
+                return;
+            }
+
             //PROBE_PACKOUT=<zip> - Export All into that file, then what it holds and the manifest as
             //Import All reads it back. Installs nothing.
             if (_startupArguments.Any(a => a.StartsWith("PROBE_PACKOUT=", StringComparison.Ordinal)))
