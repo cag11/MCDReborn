@@ -154,6 +154,12 @@
                                 <TextBlock x:Name="soulCostLabel" VerticalAlignment="Center" Margin="0,0,6,0"/>
                                 <TextBox x:Name="soulCostBox" Width="70" TextChanged="artifactNumber_Changed"/>
                             </WrapPanel>
+                            <!-- A summoning artifact's creatures, one per entry of the copied list. -->
+                            <StackPanel x:Name="summonsSection">
+                                <TextBlock x:Name="summonsLabel" Margin="0,8,0,2"/>
+                                <TextBlock x:Name="summonsHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="2,0,2,6"/>
+                                <StackPanel x:Name="summonsList"/>
+                            </StackPanel>
                         </StackPanel>
                         <StackPanel x:Name="linesSection">
                             <Label x:Name="linesLabel" Content="*Property lines*" Padding="0,10,0,2"/>

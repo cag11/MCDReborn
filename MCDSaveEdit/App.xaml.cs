@@ -10365,6 +10365,35 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_SUMMONS - a copy of Enchanted Grass told to summon a Skeleton, a Zombie and a Wolf,
+            //built into a pak that is NOT installed, and its Instance read back: the summon list
+            //must name the new mobs, and the package must still parse.
+            if (_startupArguments.Contains("PROBE_SUMMONS"))
+            {
+                try
+                {
+                    var design = new Logic.CustomItems.Design
+                    {
+                        Slot = "MCDR_ProbeSummon", Source = "RainbowGrass", PluginKind = Logic.CustomItems.Kind.Artifact,
+                        Summons = new List<string> { "Skeleton", "Zombie", "Wolf" },
+                    };
+                    Console.WriteLine($"[summon] copied list: {string.Join(", ", Logic.CustomItems.copiedSummons(design))}");
+                    var pak = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "MCDReborn_ProbeSummon_P.pak");
+                    var built = Logic.CustomItems.build(new List<Logic.CustomItems.Design> { design }, pak);
+                    foreach (var note in built.Notes) { Console.WriteLine($"[summon] {note}"); }
+                    var inside = Logic.ModPak.read(pak).ToDictionary(f => f.Path, f => f.Data, StringComparer.OrdinalIgnoreCase);
+                    var key = inside.Keys.First(k => k.EndsWith("/BP_MCDR_ProbeSummonInstance.uasset", StringComparison.OrdinalIgnoreCase));
+                    var package = new PakReader.Pak.PakPackage(new ArraySegment<byte>(inside[key]), new ArraySegment<byte>(inside[key[..^7] + ".uexp"]), null);
+                    var json = package.JsonData;
+                    var at = json.IndexOf("MobsToChooseFrom", StringComparison.Ordinal);
+                    Console.WriteLine($"[summon] read back: {(at < 0 ? "NO LIST" : json.Substring(at, Math.Min(260, json.Length - at)).Replace("\n", " ").Replace("  ", ""))}");
+                    System.IO.File.Delete(pak);
+                }
+                catch (Exception e) { Console.WriteLine($"[summon] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
             //PROBE_RECORDS[=<id>;<id>...] - the live item registry's records, read from outside the
             //running game (ReadProcessMemory, never a debugger). The registry's address is the one
             //the item plugin logged this run. For each melee weapon (or the ids named): the two

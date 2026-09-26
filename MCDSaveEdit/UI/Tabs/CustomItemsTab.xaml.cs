@@ -134,6 +134,8 @@ namespace MCDSaveEdit.UI
             cooldownLabel.Text = R.ITEMS_COOLDOWN;
             durationLabel.Text = R.ITEMS_DURATION;
             soulCostLabel.Text = R.ITEMS_SOUL_COST;
+            summonsLabel.Text = R.ITEMS_SUMMONS;
+            summonsHint.Text = R.ITEMS_SUMMONS_HINT;
         }
 
         // ------------------------------------------------------------------ loading
@@ -548,6 +550,7 @@ namespace MCDSaveEdit.UI
             _working.Cooldown = null;
             _working.Duration = null;
             _working.SoulCost = null;
+            _working.Summons = null;
             showTraits();
         }
 
@@ -572,6 +575,35 @@ namespace MCDSaveEdit.UI
             soulCostBox.ToolTip = string.Format(R.ITEMS_COPIED_VALUE, format(own.souls));
             artifactHint.Text = R.ITEMS_ARTIFACT_HINT + " " + string.Format(R.ITEMS_ARTIFACT_OWN,
                 format(own.cooldown), format(own.duration), format(own.souls));
+            showSummons();
+        }
+
+        /// <summary>
+        /// A summoning artifact's creatures: one picker per entry of the copied one's list, over
+        /// every EntityType the game has. Only for artifacts built on RandomMobSummonItem.
+        /// </summary>
+        private void showSummons()
+        {
+            var original = _working == null ? new List<string>() : CustomItems.copiedSummons(_working);
+            summonsSection.Visibility = original.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            summonsList.Children.Clear();
+            if (original.Count == 0) { return; }
+            var current = _working!.Summons ?? original;
+            for (var i = 0; i < original.Count; i++)
+            {
+                var at = i;
+                var picker = new ComboBox { Width = 260, IsEditable = true, IsTextSearchEnabled = true, Margin = new Thickness(0, 0, 0, 3),
+                    ItemsSource = GearTraits.ENTITY_TYPES, SelectedItem = i < current.Count ? current[i] : original[i],
+                    ToolTip = string.Format(R.ITEMS_COPIED_VALUE, original[i]) };
+                picker.SelectionChanged += (_, _) =>
+                {
+                    if (picker.SelectedItem is not string mob) { return; }
+                    _working.Summons ??= CustomItems.copiedSummons(_working);
+                    while (_working.Summons.Count <= at) { _working.Summons.Add(original[_working.Summons.Count]); }
+                    _working.Summons[at] = mob;
+                };
+                summonsList.Children.Add(picker);
+            }
         }
 
         private void artifactNumber_Changed(object sender, TextChangedEventArgs e)

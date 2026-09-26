@@ -163,6 +163,61 @@ namespace MCDSaveEdit.Logic
             return given.Count == 0 ? "-" : string.Join(";", given);
         }
 
+        /// <summary>
+        /// What a summoning artifact's copy summons as copied: the MobsToChooseFrom list of a
+        /// RandomMobSummonItem Instance, in order, as EntityType names. Empty for any other item.
+        /// The list is data - EntityType::SheepFireRed and its two siblings are entries of the
+        /// Instance's name table - so pointing an entry at another mob is a rename of that name.
+        /// </summary>
+        public static List<string> copiedSummons(Design design)
+        {
+            try
+            {
+                var (slot, made) = copyOf(design);
+                var files = made.Entries.ToDictionary(e => e.Path, e => e.Data, StringComparer.OrdinalIgnoreCase);
+                var key = files.Keys.FirstOrDefault(k => k.EndsWith("/BP_" + slot.FolderId + "Instance.uasset", StringComparison.OrdinalIgnoreCase));
+                if (key == null) { return new List<string>(); }
+                var stem = key.Substring(0, key.Length - ".uasset".Length);
+                var json = packageOf(files[key], files[stem + ".uexp"], null).JsonData;
+                using var document = JsonDocument.Parse(json);
+                foreach (var export in document.RootElement.EnumerateArray())
+                {
+                    if (!export.TryGetProperty("ExportValue", out var value) || value.ValueKind != JsonValueKind.Object) { continue; }
+                    if (!value.TryGetProperty("MobsToChooseFrom", out var mobs) || mobs.ValueKind != JsonValueKind.Array) { continue; }
+                    return mobs.EnumerateArray()
+                        .Select(m => m.TryGetProperty("MobType", out var t) ? t.GetString() ?? "" : "")
+                        .Select(t => t.StartsWith("EntityType::", StringComparison.Ordinal) ? t.Substring("EntityType::".Length) : t)
+                        .ToList();
+                }
+            }
+            catch (Exception) { }
+            return new List<string>();
+        }
+
+        /// <summary>
+        /// The design's summons, written over the copy's: each entry's EntityType name renamed in the
+        /// Instance's name table, so the list's values name other mobs. Two entries may name the
+        /// same mob.
+        /// </summary>
+        private static void applySummons(Dictionary<string, byte[]> files, Slot slot, Design design, List<string> notes)
+        {
+            if (design.Summons == null) { return; }
+            var original = copiedSummons(design);
+            if (original.Count == 0) { notes.Add($"{slot.Id}: it summons nothing that can be changed."); return; }
+            var key = files.Keys.FirstOrDefault(k => k.EndsWith("/BP_" + slot.FolderId + "Instance.uasset", StringComparison.OrdinalIgnoreCase));
+            if (key == null) { return; }
+            var map = new Dictionary<string, string>(StringComparer.Ordinal);
+            for (var i = 0; i < original.Count && i < design.Summons.Count; i++)
+            {
+                if (!GearTraits.ENTITY_TYPES.Contains(design.Summons[i])) { continue; }
+                map["EntityType::" + original[i]] = "EntityType::" + design.Summons[i];
+            }
+            var renamed = PackageRename.rename(files[key], text => map.TryGetValue(text, out var to) ? to : null, out var changed);
+            if (renamed == null) { notes.Add($"{slot.Id}: its summons could not be changed."); return; }
+            files[key] = renamed;
+            notes.Add($"{slot.Id}: summons {string.Join(", ", design.Summons)}.");
+        }
+
         /// <summary>The copied artifact's own numbers: soul cost, cooldown, duration.</summary>
         public static (double souls, double cooldown, double duration) artifactNumbersOf(Design design)
             => GearTraits.ARTIFACT_NUMBERS.TryGetValue(design.Source, out var own) ? own : (0, 0, 0);
@@ -262,6 +317,11 @@ namespace MCDSaveEdit.Logic
             public double? Duration { get; set; }
             /// <summary>An artifact's soul cost. Null keeps the copied artifact's.</summary>
             public double? SoulCost { get; set; }
+            /// <summary>
+            /// What a summoning artifact summons, one EntityType per entry of the copied one's list
+            /// (Enchanted Grass: three sheep). Null keeps the copied artifact's.
+            /// </summary>
+            public List<string>? Summons { get; set; }
         }
 
         /// <summary>One armor property: its id, as EArmorPropertyID and the save spell it, and its rarity (0 common, 2 unique).</summary>
@@ -502,6 +562,7 @@ namespace MCDSaveEdit.Logic
             Cooldown = d.Cooldown,
             Duration = d.Duration,
             SoulCost = d.SoulCost,
+            Summons = d.Summons?.ToList(),
             Model = d.Model == null ? null : new ModelEdit
             {
                 File = d.Model.File,
@@ -660,6 +721,7 @@ namespace MCDSaveEdit.Logic
                 var files = made.Entries.ToDictionary(e => e.Path, e => (byte[])e.Data.Clone(), StringComparer.OrdinalIgnoreCase);
 
                 applyBehaviour(files, slot, design, result.Notes);
+                applySummons(files, slot, design, result.Notes);
                 applyIcons(files, slot, design, result.Notes);
                 applyModel(files, slot, design, result.Notes);
                 applyTexture(files, slot, design, result.Notes);

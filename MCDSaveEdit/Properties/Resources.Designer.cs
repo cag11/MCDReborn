@@ -9156,5 +9156,23 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("ITEMS_COPIED_VALUE", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Summons.
+        /// </summary>
+        public static string ITEMS_SUMMONS {
+            get {
+                return ResourceManager.GetString("ITEMS_SUMMONS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to One is picked at random each time. Any creature of the game's can be chosen; one that is normally hostile may not come out friendly..
+        /// </summary>
+        public static string ITEMS_SUMMONS_HINT {
+            get {
+                return ResourceManager.GetString("ITEMS_SUMMONS_HINT", resourceCulture);
+            }
+        }
     }
 }

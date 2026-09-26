@@ -4142,4 +4142,12 @@ Delete it?</value>
     <value>The copied artifact's: {0}</value>
     <comment>Tooltip of an artifact number box</comment>
   </data>
+  <data name="ITEMS_SUMMONS" xml:space="preserve">
+    <value>Summons</value>
+    <comment>Label above a summoning artifact's creatures</comment>
+  </data>
+  <data name="ITEMS_SUMMONS_HINT" xml:space="preserve">
+    <value>One is picked at random each time. Any creature of the game's can be chosen; one that is normally hostile may not come out friendly.</value>
+    <comment>Hint under the Summons label</comment>
+  </data>
 </root>

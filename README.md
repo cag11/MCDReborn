@@ -80,7 +80,7 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 * **Name it**: your own name and description, shown whatever language the game runs in
 * **Pick its icon**: keep the copied item's, use any other item's, or bring your own picture
 * **Give it your own 3D model**: custom weapons appear at the top of the **Weapons** tab marked ★. Import a `.glb` there and line it up
-* **Skills and properties**: give a weapon or armor any skill another of its kind has built in (Firebrand's burning, the Trickbow's endless ricochet, the Frost Armor's chill and 80 more), pick a weapon's property lines or an armor's default properties, and set an artifact's cooldown, duration and soul cost
+* **Skills and properties**: give a weapon or armor any skill another of its kind has built in, set an artifact's cooldown, duration and soul cost or change artifact behavior
 * **Share it**: Export saves a custom item as one `.mcditem` file with its name, behaviour, icon and model inside; Import adds it as a new item on anyone's game
 
 #### Mob Import Feature
