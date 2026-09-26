@@ -79,7 +79,7 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Recolor Gear.
+        ///   Looks up a localized string similar to Recolor.
         /// </summary>
         public static string CUSTOM_SKINS_TAB {
             get {
@@ -340,7 +340,7 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Custom Skins.
+        ///   Looks up a localized string similar to Skins.
         /// </summary>
         public static string HERO_TAB {
             get {
@@ -1672,7 +1672,7 @@ namespace MCDSaveEdit.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to The Tower.
+        ///   Looks up a localized string similar to Tower.
         /// </summary>
         public static string THE_TOWER {
             get {
@@ -9487,6 +9487,168 @@ namespace MCDSaveEdit.Properties {
         public static string ITEMS_MOB_EXPORTED {
             get {
                 return ResourceManager.GetString("ITEMS_MOB_EXPORTED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to This pack brings {0} item(s), {1} enchantment(s) and {2} mob(s). They replace the ones you have now - yours are copied into a backup folder first..
+        /// </summary>
+        public static string MODS_PACK_REPLACE_DESIGNS {
+            get {
+                return ResourceManager.GetString("MODS_PACK_REPLACE_DESIGNS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Map slot {0} already holds {1}. Replace it with {2}?.
+        /// </summary>
+        public static string MODS_PACK_REPLACE_SLOT {
+            get {
+                return ResourceManager.GetString("MODS_PACK_REPLACE_SLOT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Importing the pack....
+        /// </summary>
+        public static string MODS_PACK_WORKING {
+            get {
+                return ResourceManager.GetString("MODS_PACK_WORKING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} item(s), {1} enchantment(s) and {2} mob(s) installed. Restart the game to see them..
+        /// </summary>
+        public static string MODS_PACK_DESIGNS {
+            get {
+                return ResourceManager.GetString("MODS_PACK_DESIGNS", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Your previous ones are in {0}..
+        /// </summary>
+        public static string MODS_PACK_BACKUP {
+            get {
+                return ResourceManager.GetString("MODS_PACK_BACKUP", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} mod(s), {1} item(s), {2} enchantment(s) and {3} mob(s) written to {4}..
+        /// </summary>
+        public static string MODS_PACK_EXPORTED {
+            get {
+                return ResourceManager.GetString("MODS_PACK_EXPORTED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Save file.
+        /// </summary>
+        public static string NAV_SAVE {
+            get {
+                return ResourceManager.GetString("NAV_SAVE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Create.
+        /// </summary>
+        public static string NAV_CREATE {
+            get {
+                return ResourceManager.GetString("NAV_CREATE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Live game.
+        /// </summary>
+        public static string NAV_LIVE {
+            get {
+                return ResourceManager.GetString("NAV_LIVE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Show in folder.
+        /// </summary>
+        public static string NOTICE_SHOW_FILE {
+            get {
+                return ResourceManager.GetString("NOTICE_SHOW_FILE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Close.
+        /// </summary>
+        public static string NOTICE_CLOSE {
+            get {
+                return ResourceManager.GetString("NOTICE_CLOSE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Copy.
+        /// </summary>
+        public static string NOTICE_COPY {
+            get {
+                return ResourceManager.GetString("NOTICE_COPY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to No save open.
+        /// </summary>
+        public static string STATUS_NO_SAVE {
+            get {
+                return ResourceManager.GetString("STATUS_NO_SAVE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Game closed.
+        /// </summary>
+        public static string STATUS_GAME_CLOSED {
+            get {
+                return ResourceManager.GetString("STATUS_GAME_CLOSED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Game running - installs wait until it closes.
+        /// </summary>
+        public static string STATUS_GAME_RUNNING {
+            get {
+                return ResourceManager.GetString("STATUS_GAME_RUNNING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to The game holds its files while it runs, so installing items, maps, skins and mods waits until it is closed. Camera and Difficulty work on the running game..
+        /// </summary>
+        public static string STATUS_GAME_WHY {
+            get {
+                return ResourceManager.GetString("STATUS_GAME_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Plugin: {0} item(s), {1} enchantment(s), {2} mob(s).
+        /// </summary>
+        public static string STATUS_PLUGIN {
+            get {
+                return ResourceManager.GetString("STATUS_PLUGIN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Plugin not installed.
+        /// </summary>
+        public static string STATUS_PLUGIN_NONE {
+            get {
+                return ResourceManager.GetString("STATUS_PLUGIN_NONE", resourceCulture);
             }
         }
     }

@@ -1,5 +1,6 @@
 ﻿using MCDSaveEdit.Logic;
 using MCDSaveEdit.ViewModels;
+using System;
 using System.Windows;
 using System.Windows.Media;
 #nullable enable
@@ -39,8 +40,11 @@ namespace MCDSaveEdit.UI
         public static MainWindow createMainWindow(MainViewModel model)
         {
             var mainWindow = new MainWindow(model);
-            mainWindow.Width = 1200;
-            mainWindow.Height = 675;
+            //Room for the side menu to stand open beside a page laid out for 1200, where the
+            //screen has it. At 1200 the menu would be shut to icons on every start.
+            var area = SystemParameters.WorkArea;
+            mainWindow.Width = Math.Max(mainWindow.MinWidth, Math.Min(1480, area.Width - 40));
+            mainWindow.Height = Math.Max(mainWindow.MinHeight, Math.Min(900, area.Height - 40));
             mainWindow.WindowStartupLocation = WindowStartupLocation.CenterScreen;
             return mainWindow;
         }

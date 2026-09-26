@@ -272,9 +272,7 @@ namespace MCDSaveEdit.UI
             //Unequipping only adds to the inventory, so unlike equipping it can be refused.
             if (_model?.tryUnequipItem(item) == false)
             {
-                MessageBox.Show(
-                    R.formatINVENTORY_FULL_ERROR_MESSAGE(Constants.MAXIMUM_INVENTORY_ITEM_COUNT),
-                    R.ERROR);
+                Notices.warn(R.formatINVENTORY_FULL_ERROR_MESSAGE(Constants.MAXIMUM_INVENTORY_ITEM_COUNT));
             }
         }
 

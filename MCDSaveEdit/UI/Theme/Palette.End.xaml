@@ -25,6 +25,7 @@
     <SolidColorBrush x:Key="Brush.Positive"          Color="#FF5FBF8A"/>
     <SolidColorBrush x:Key="Brush.PositiveBright"    Color="#FF74D69F"/>
     <SolidColorBrush x:Key="Brush.Danger"            Color="#FFD9557A"/>
+    <SolidColorBrush x:Key="Brush.Warning"           Color="#FFE8B04A"/>
     <SolidColorBrush x:Key="Brush.Thumb"             Color="#FF3A3357"/>
     <SolidColorBrush x:Key="Brush.ThumbHover"        Color="#FF564C7D"/>
     <SolidColorBrush x:Key="Brush.Menu"              Color="#FF0B0913"/>

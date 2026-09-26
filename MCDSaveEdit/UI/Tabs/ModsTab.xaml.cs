@@ -102,7 +102,7 @@ namespace MCDSaveEdit.UI
             if (!Logic.GameRunning.isUp) { return false; }
 
             statusLabel.Text = R.MODS_GAME_RUNNING;
-            MessageBox.Show(R.MODS_GAME_RUNNING, R.MODS_TAB);
+            Notices.warn(R.MODS_GAME_RUNNING);
             return true;
         }
 
@@ -157,19 +157,19 @@ namespace MCDSaveEdit.UI
                         R.formatCUSTOM_SKINS_PAK_REPLACE(name), R.MODS_TAB, MessageBoxButton.YesNo);
                     if (answer != MessageBoxResult.Yes) { continue; }
                     try { added.Add(CustomSkins.installPak(file, overwrite: true).Name); }
-                    catch (Exception retry) { MessageBox.Show(retry.Message, R.ERROR); }
+                    catch (Exception retry) { Notices.error(retry.Message); }
                 }
                 catch (Exception exception)
                 {
                     //Not a pak, the game holding the folder open, or an install needing elevation.
-                    MessageBox.Show(exception.Message, R.ERROR);
+                    Notices.error(exception.Message);
                 }
             }
 
             fillInstalled();
             if (added.Count > 0)
             {
-                MessageBox.Show(R.formatCUSTOM_SKINS_PAK_ADDED(string.Join(", ", added)), R.MODS_TAB);
+                Notices.done(R.formatCUSTOM_SKINS_PAK_ADDED(string.Join(", ", added)));
             }
         }
 
@@ -195,17 +195,52 @@ namespace MCDSaveEdit.UI
             {
                 //The question about replacing is asked here rather than inside, because this is
                 //the half of the program with a window to ask it in.
-                var haul = ModArchive.install(dialog.FileName, name =>
+                bool replace(string name) =>
                     MessageBox.Show(R.formatCUSTOM_SKINS_PAK_REPLACE(name), R.MODS_TAB,
+                        MessageBoxButton.YesNo) == MessageBoxResult.Yes;
+
+                //A pack from Export All carries designs as well as paks; anything else is paks.
+                var pack = ModPack.read(dialog.FileName);
+                if (pack == null)
+                {
+                    var haul = ModArchive.install(dialog.FileName, replace);
+                    fillInstalled();
+                    Notices.show(haul.Rejected.Count > 0 || haul.Skipped.Count > 0 ? Notices.Kind.Warning : Notices.Kind.Done, describe(haul));
+                    return;
+                }
+
+                if (pack.HasDesigns && ModPack.hasOwnDesigns()
+                    && MessageBox.Show(string.Format(R.MODS_PACK_REPLACE_DESIGNS, pack.Items, pack.Enchantments, pack.Mobs),
+                        R.MODS_TAB, MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                {
+                    return;
+                }
+
+                statusLabel.Text = R.MODS_PACK_WORKING;
+                var result = ModPack.install(dialog.FileName, pack, replace, (slot, there, coming) =>
+                    MessageBox.Show(string.Format(R.MODS_PACK_REPLACE_SLOT, slot, there, coming), R.MODS_TAB,
                         MessageBoxButton.YesNo) == MessageBoxResult.Yes);
 
                 fillInstalled();
-                MessageBox.Show(describe(haul), R.MODS_TAB);
+                var said = new List<string>();
+                if (result.DesignsTaken)
+                {
+                    said.Add(string.Format(R.MODS_PACK_DESIGNS, pack.Items, pack.Enchantments, pack.Mobs));
+                    if (result.Backup != null) { said.Add(string.Format(R.MODS_PACK_BACKUP, result.Backup)); }
+                }
+                if (result.Haul.Installed.Count + result.Haul.Replaced.Count + result.Haul.Skipped.Count
+                    + result.Haul.Rejected.Count > 0 || !result.DesignsTaken)
+                {
+                    said.Add(describe(result.Haul));
+                }
+                said.AddRange(result.Notes);
+                statusLabel.Text = string.Empty;
+                Notices.done(string.Join(Environment.NewLine, said));
             }
             catch (Exception exception)
             {
                 //Not an archive, an archive this cannot read, or the game holding the folder open.
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
             }
         }
 
@@ -240,7 +275,7 @@ namespace MCDSaveEdit.UI
             var dialog = new SaveFileDialog {
                 Filter = ModArchive.WRITE_FILTER,
                 Title = R.MODS_EXPORT_ZIP,
-                FileName = "MCDReborn mods.zip",
+                FileName = "MCDReborn mod pack.zip",
                 AddExtension = true,
                 DefaultExt = "zip",
             };
@@ -248,12 +283,13 @@ namespace MCDSaveEdit.UI
 
             try
             {
-                var many = ModArchive.writeAll(dialog.FileName);
-                MessageBox.Show(string.Format(R.MODS_ZIP_EXPORTED, many, dialog.FileName), R.MODS_TAB);
+                var pack = ModPack.export(dialog.FileName);
+                Notices.doneWithFile(string.Format(R.MODS_PACK_EXPORTED, pack.Paks,
+                    pack.Items, pack.Enchantments, pack.Mobs, dialog.FileName), dialog.FileName);
             }
             catch (Exception exception)
             {
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
             }
         }
 
@@ -450,12 +486,12 @@ namespace MCDSaveEdit.UI
                 var folder = CustomSkins.ensureModsFolder();
                 if (!LinkLauncher.open(folder))
                 {
-                    MessageBox.Show(folder, R.MODS_OPEN_FOLDER);
+                    Notices.info(folder);
                 }
             }
             catch (Exception exception)
             {
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
             }
         }
 
@@ -502,7 +538,7 @@ namespace MCDSaveEdit.UI
             installedCountLabel.Text = mods.Count.ToString();
 
             //Nothing to pack is not an error worth a dialog, so the button says so by being off.
-            exportZipButton.IsEnabled = mods.Count > 0;
+            exportZipButton.IsEnabled = mods.Count > 0 || ModPack.hasOwnDesigns();
 
             if (mods.Count == 0)
             {
@@ -579,7 +615,7 @@ namespace MCDSaveEdit.UI
             }
             catch (Exception exception)
             {
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
             }
         }
 

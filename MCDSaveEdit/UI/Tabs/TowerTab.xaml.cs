@@ -750,11 +750,10 @@ namespace MCDSaveEdit.UI
             selectedItemScreen.item = null;
             commit();
 
-            MessageBox.Show(
+            Notices.done(
                 toChest
                     ? R.formatTOWER_MOVED_CHEST(R.itemName(moved.Type))
-                    : R.formatTOWER_MOVED_INVENTORY(R.itemName(moved.Type)),
-                R.THE_TOWER);
+                    : R.formatTOWER_MOVED_INVENTORY(R.itemName(moved.Type)));
         }
 
         #endregion

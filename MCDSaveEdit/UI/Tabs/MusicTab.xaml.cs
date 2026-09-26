@@ -163,7 +163,7 @@ namespace MCDSaveEdit.UI
             //a new pak written now would not be read until it restarts anyway.
             if (GameRunning.isUp)
             {
-                MessageBox.Show(R.MODS_GAME_RUNNING, R.MUSIC_TAB);
+                Notices.warn(R.MODS_GAME_RUNNING);
                 return;
             }
 

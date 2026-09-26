@@ -15,10 +15,13 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 
 * **Everything MCDSaveEdit already did**: editing items, enchantments, stats, counters and currencies; reading and writing the encrypted save format
 * Ported from .NET Framework 4.8 to **.NET 10**, every package updated, the known advisories cleared
-* **Custom Skins tab**: play as any of the game's 67 hero skins, written to the save for you, no mod needed
+* **Skins tab**: play as any of the game's 67 hero skins, written to the save for you, no mod needed
 * Wear any 64×64 Minecraft skin as your hero; import any skin from your favorite skin website
-* A **Show armours** switch on both the Custom Skins and Recolor Gear tabs: wearing a skin hides armour so the skin can be seen, and one tick puts it all back
+* A **Show armours** switch on both the Skins and Recolor tabs: wearing a skin hides armour so the skin can be seen, and one tick puts it all back
 * Five themes in the **View** menu (Dark, Light, Nether, End and Frost), swapped live and remembered between runs
+* A Windows 11 look in every theme: rounded controls, the Segoe UI Variable font, filled checkboxes, thin scrollbars and shadowed menus
+* A side menu with the pages grouped into **Save file**, **Create** and **Live game**, Mods at the bottom; on a narrow window it folds to icons and **☰** opens it over the page
+* A status bar showing the open save, whether the game is running, and what the item plugin holds; results and errors appear as notices in the corner instead of pop-ups
 * Item search across the whole inventory, filtering as you type, without covering the UI
 * A search box on every picker (items, armor, melee, ranged, artifacts, armor properties and enchantments), narrowing within whatever the filters already allow
 * A **Defaults** button fills in the properties an armor drops with in game; changing an armor's type no longer replaces them by itself
@@ -27,14 +30,14 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * Every save backs the file up first, keeping one timestamped `.bak` beside it
 * The enchantment picker opens on the gear type being enchanted, with **Melee / Armor / Ranged / Other** toggles
 * A loading screen that is a themed card with a vector mark, version and status line
-* **The Tower** tab: tower runs that you have started and saved will show here, allow modifying gear and floor progress
+* **Tower** tab: tower runs that you have started and saved will show here, allow modifying gear and floor progress
 * 36 new enchantments the game carries but never offers, under the **Other** toggle
 * Bulk Delete items on the inventory and storage chest tabs
 * **Difficulty Tab:** Change how hard the game is while it is running. How tough, how fast and how heavy the enemies are, and your own speed, roll cooldown, roll charges, gravity and attack speed
 * **Escalation Mode:** Enemies get worse the longer you stay in a level. A slim bar over the game says which of the nine stages you are in, how long until the next one, and what the multipliers are now. The clock restarts when you load a new level.
 * **Press J to throw every enemy in the level into the air**, with the enemy gravity slider deciding how long they stay there - at normal weight they reach 141 units, at a fortieth nearly 3000. The two go together: gravity does nothing to a mob standing on the floor
 * **Music Tab:** Play your own MP3 over any of the game's 112 music tracks, installed as a mod pak beside the game's own so removing it puts the original back
-* **Installed Mods Tab:** Every mod pak in one place. You can import and export multiple mods via a zip package.
+* **Installed Mods Tab:** Every mod pak in one place. **Export All** puts every mod, map, new item, enchantment and mob into one file, and **Import All** brings it all back on another PC, so a map with custom mobs arrives with its mobs.
 
 #### Custom Maps Feature
 * Exports the game missions as Minecraft worlds or allows you to build on them to create your own custom maps..Use the maps tab to do the export and imports.
@@ -61,8 +64,8 @@ See **[CustomMaps.md](CustomMaps.md)** for the whole workflow: which Minecraft b
 
 https://github.com/user-attachments/assets/509496fd-7186-4422-a639-9d10272be407
 
-#### Recolor Gear Feature
-* **Recolor Gear**: put your own artwork on a piece of gear, installed as a mod pak beside the game's own; the originals are never modified and Remove undoes it completely
+#### Recolor Feature
+* **Recolor**: put your own artwork on a piece of gear, installed as a mod pak beside the game's own; the originals are never modified and Remove undoes it completely
 * **Your own items too**: custom items from the New Items tab are listed first, marked ★. Their recolour becomes part of the item itself, and **Remove recolour** puts back the look of the item it copies
 * Armor, melee, ranged, artifacts, **capes, pets, enchantment icons and the interface and HUD**, picked one category at a time
 * The texture travels to [mcddesigner.vercel.app](https://mcddesigner.vercel.app/) and back. Find, upload and download again

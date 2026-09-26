@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 #nullable enable
 
@@ -73,6 +74,32 @@ namespace MCDSaveEdit.UI.Theme
         public static void initialize()
         {
             apply(loadSavedTheme());
+            useThemeFont();
+        }
+
+        private static bool _fontHooked;
+
+        /// <summary>
+        /// Every window in Controls.xaml's Font.Body - Windows 11's Segoe UI Variable - unless
+        /// the window picks a font of its own.
+        ///
+        /// A window's font is what everything in it inherits, and an implicit style cannot reach
+        /// it: styles match the exact type, and every window here is a subclass of Window. So it
+        /// is set on each one as it loads, by reference, so a later change to the resource
+        /// follows.
+        /// </summary>
+        private static void useThemeFont()
+        {
+            if (_fontHooked) { return; }
+            _fontHooked = true;
+            EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent, new RoutedEventHandler((sender, _) =>
+            {
+                if (sender is Window window
+                    && window.ReadLocalValue(Control.FontFamilyProperty) == DependencyProperty.UnsetValue)
+                {
+                    window.SetResourceReference(Control.FontFamilyProperty, "Font.Body");
+                }
+            }));
         }
 
         public static void apply(AppTheme theme)

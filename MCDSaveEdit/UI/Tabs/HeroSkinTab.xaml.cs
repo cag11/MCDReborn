@@ -133,7 +133,7 @@ namespace MCDSaveEdit.UI
             {
                 //Writing into the game's folder can fail: the game is running, or it needs
                 //elevation. Put the box back rather than leave it lying about the state.
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
                 refreshArmourBox();
             }
             //Reset becomes available once armour is hidden, and stops being the moment it is not.
@@ -367,7 +367,7 @@ namespace MCDSaveEdit.UI
             var profile = _model?.profile.value;
             if (profile == null)
             {
-                MessageBox.Show(R.HERO_NO_SAVE, R.HERO_TAB);
+                Notices.warn(R.HERO_NO_SAVE);
                 return;
             }
 
@@ -399,7 +399,7 @@ namespace MCDSaveEdit.UI
             }
             catch (Exception exception)
             {
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
                 return;
             }
 
@@ -410,7 +410,7 @@ namespace MCDSaveEdit.UI
                     ArmourVisibility.setHidden(false);
                     undone.Add(R.HERO_RESET_ARMOUR);
                 }
-                catch (Exception exception) { MessageBox.Show(exception.Message, R.ERROR); }
+                catch (Exception exception) { Notices.error(exception.Message); }
             }
 
             var profile = _model?.profile.value;
@@ -456,11 +456,11 @@ namespace MCDSaveEdit.UI
                 {
                     System.IO.File.Copy(_selected.Custom!.Path, dialog.FileName, overwrite: true);
                 }
-                MessageBox.Show(R.formatCUSTOM_SKINS_EXPORTED(dialog.FileName), R.HERO_TAB);
+                Notices.doneWithFile(R.formatCUSTOM_SKINS_EXPORTED(dialog.FileName), dialog.FileName);
             }
             catch (Exception exception)
             {
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
             }
         }
 
@@ -485,7 +485,7 @@ namespace MCDSaveEdit.UI
             foreach (var file in dialog.FileNames)
             {
                 try { added.Add(SkinLibrary.import(file).Name); }
-                catch (Exception exception) { MessageBox.Show(exception.Message, R.ERROR); }
+                catch (Exception exception) { Notices.error(exception.Message); }
             }
 
             if (added.Count == 0) { return; }
@@ -527,7 +527,7 @@ namespace MCDSaveEdit.UI
             }
             catch (Exception exception)
             {
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
             }
         }
 
@@ -538,7 +538,7 @@ namespace MCDSaveEdit.UI
             var target = currentHero();
             if (target == null)
             {
-                MessageBox.Show(R.HERO_NO_SAVE, R.HERO_TAB);
+                Notices.warn(R.HERO_NO_SAVE);
                 return;
             }
 
@@ -557,13 +557,13 @@ namespace MCDSaveEdit.UI
                 //nothing to the person who just picked "spiderman".
                 var message = R.formatHERO_NOW_WEARING(skinName);
                 status(message);
-                MessageBox.Show(message, R.HERO_TAB);
+                Notices.done(message);
             }
             catch (Exception exception)
             {
                 //Writing into the game's folder can fail for reasons worth reading: the game is
                 //running, or the install needs elevation.
-                MessageBox.Show(exception.Message, R.ERROR);
+                Notices.error(exception.Message);
             }
         }
 

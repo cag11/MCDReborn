@@ -102,6 +102,15 @@ namespace MCDSaveEdit.UI
             editor.IsEnabled = false;
             installButton.IsEnabled = clearButton.IsEnabled = false;
             IsVisibleChanged += (_, _) => { if (IsVisible) { refresh(); } };
+            //A mod pack imported from the Mods tab replaces the designs underneath this tab.
+            ModPack.DesignsReplaced += () => Dispatcher.Invoke(() =>
+            {
+                _loaded = false;
+                _pending.Clear();
+                _pendingEnchantments.Clear();
+                _pendingMobs.Clear();
+                if (IsVisible) { refresh(); }
+            });
         }
 
         private void setStrings()
@@ -1291,7 +1300,7 @@ namespace MCDSaveEdit.UI
         private async void importButton_Click(object sender, RoutedEventArgs e)
         {
             if (!_loaded) { statusLabel.Text = R.ITEMS_NOT_READY; return; }
-            if (GameRunning.isUp) { MessageBox.Show(R.MODS_GAME_RUNNING, R.ITEMS_TAB); return; }
+            if (GameRunning.isUp) { Notices.warn(R.MODS_GAME_RUNNING); return; }
             var dialog = new OpenFileDialog { Filter = $"{R.ITEMS_FILE_KIND}|*{CustomItems.SHARE_EXTENSION}" };
             if (dialog.ShowDialog() != true) { return; }
 
@@ -1345,7 +1354,7 @@ namespace MCDSaveEdit.UI
             if (_mob != null)
             {
                 if (string.IsNullOrEmpty(_mob.Source)) { statusLabel.Text = R.ITEMS_MOB_PICK_SOURCE; return; }
-                if (GameRunning.isUp) { MessageBox.Show(R.MODS_GAME_RUNNING, R.ITEMS_TAB); return; }
+                if (GameRunning.isUp) { Notices.warn(R.MODS_GAME_RUNNING); return; }
                 var working = _mob;
                 var mobs = _mobs.Where(d => d.Id != working.Id).ToList();
                 mobs.Add(CustomMobs.copy(working));
@@ -1355,7 +1364,7 @@ namespace MCDSaveEdit.UI
             if (_enchantment != null)
             {
                 if (string.IsNullOrEmpty(_enchantment.Source)) { statusLabel.Text = R.ITEMS_ENCH_PICK_SOURCE; return; }
-                if (GameRunning.isUp) { MessageBox.Show(R.MODS_GAME_RUNNING, R.ITEMS_TAB); return; }
+                if (GameRunning.isUp) { Notices.warn(R.MODS_GAME_RUNNING); return; }
                 var working = _enchantment;
                 var enchantments = _enchantments.Where(d => d.Id != working.Id).ToList();
                 enchantments.Add(CustomEnchantments.copy(working));
@@ -1364,7 +1373,7 @@ namespace MCDSaveEdit.UI
             }
             if (_working == null) { return; }
             if (string.IsNullOrEmpty(_working.Source)) { statusLabel.Text = R.ITEMS_PICK_SOURCE; return; }
-            if (GameRunning.isUp) { MessageBox.Show(R.MODS_GAME_RUNNING, R.ITEMS_TAB); return; }
+            if (GameRunning.isUp) { Notices.warn(R.MODS_GAME_RUNNING); return; }
 
             behaviourGrid.CommitEdit(DataGridEditingUnit.Row, true);
             collectValues();
@@ -1391,7 +1400,7 @@ namespace MCDSaveEdit.UI
                 updateButtons();
                 return;
             }
-            if (GameRunning.isUp) { MessageBox.Show(R.MODS_GAME_RUNNING, R.ITEMS_TAB); return; }
+            if (GameRunning.isUp) { Notices.warn(R.MODS_GAME_RUNNING); return; }
             var ask = MessageBox.Show(string.Format(R.ITEMS_DELETE_WARN, displayName(_slot)), R.ITEMS_TAB,
                 MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (ask != MessageBoxResult.Yes) { return; }
@@ -1414,7 +1423,7 @@ namespace MCDSaveEdit.UI
                 fillSlots();
                 return;
             }
-            if (GameRunning.isUp) { MessageBox.Show(R.MODS_GAME_RUNNING, R.ITEMS_TAB); return; }
+            if (GameRunning.isUp) { Notices.warn(R.MODS_GAME_RUNNING); return; }
             var ask = MessageBox.Show(string.Format(R.ITEMS_ENCH_DELETE_WARN, enchantmentDisplayName(id)), R.ITEMS_TAB,
                 MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (ask != MessageBoxResult.Yes) { return; }
@@ -1562,7 +1571,7 @@ namespace MCDSaveEdit.UI
                 fillSlots();
                 return;
             }
-            if (GameRunning.isUp) { MessageBox.Show(R.MODS_GAME_RUNNING, R.ITEMS_TAB); return; }
+            if (GameRunning.isUp) { Notices.warn(R.MODS_GAME_RUNNING); return; }
             var ask = MessageBox.Show(string.Format(R.ITEMS_MOB_DELETE_WARN, mobDisplayName(id)), R.ITEMS_TAB,
                 MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (ask != MessageBoxResult.Yes) { return; }
