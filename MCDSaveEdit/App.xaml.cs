@@ -10908,6 +10908,106 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_CLASSCOUNT[=<substring>;...] - live objects counted by class, for classes whose
+            //name holds one of the substrings (default Skeleton, Zombie, Creeper, MCDR). Default
+            //objects are left out. ReadProcessMemory only.
+            if (_startupArguments.Any(a => a == "PROBE_CLASSCOUNT" || a.StartsWith("PROBE_CLASSCOUNT=", StringComparison.Ordinal)))
+            {
+                var arg = _startupArguments.First(a => a.StartsWith("PROBE_CLASSCOUNT", StringComparison.Ordinal));
+                var wanted = arg.Contains('=') ? arg[(arg.IndexOf('=') + 1)..].Split(';') : new[] { "Skeleton", "Zombie", "Creeper", "MCDR" };
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[count] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, s => { });
+                    if (reflect == null) { Console.WriteLine("[count] no reflection"); Shutdown(); return; }
+                    var counts = new SortedDictionary<string, int>(StringComparer.Ordinal);
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var obj = reflect.objectAt(i);
+                        if (obj == 0) { continue; }
+                        var kind = reflect.kindOf(obj) ?? "";
+                        if (!kind.EndsWith("Character_C", StringComparison.Ordinal) || !wanted.Any(w => kind.Contains(w, StringComparison.OrdinalIgnoreCase))) { continue; }
+                        if ((reflect.nameOf(obj) ?? "").StartsWith("Default__", StringComparison.Ordinal)) { continue; }
+                        counts[kind] = counts.TryGetValue(kind, out var n) ? n + 1 : 1;
+                    }
+                    foreach (var (kind, n) in counts) { Console.WriteLine($"[count] {n,4}  {kind}"); }
+                    Console.WriteLine($"[count] {counts.Count} classes");
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_MOBSTATE - one live character of each class whose name holds Zombie, Skeleton or
+            //MCDR: every native property of its class chain (not the blueprint's own), and the same
+            //for its Controller, into %TEMP%\mcd-mobstate.txt, so a custom mob and a game mob can be
+            //set side by side. ReadProcessMemory only.
+            if (_startupArguments.Contains("PROBE_MOBSTATE"))
+            {
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[state] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, s => { });
+                    if (reflect == null) { Console.WriteLine("[state] no reflection"); Shutdown(); return; }
+                    long q(long at) => BitConverter.ToInt64(game.read(new IntPtr(at), 8) ?? new byte[8], 0);
+                    var lines = new List<string>();
+                    void dump(long obj, string label)
+                    {
+                        var klass = q(obj + 0x10);
+                        lines.Add($"== {label}: {reflect.nameOf(obj)} ({reflect.kindOf(obj)}) at {obj:x}");
+                        for (var at = klass; at != 0; at = q(at + 0x40))
+                        {
+                            var cls = reflect.nameOf(at) ?? "?";
+                            if (cls == "Object" || cls == "Actor" || cls == "Pawn" && label.StartsWith("controller")) { break; }
+                            if (cls.EndsWith("_C", StringComparison.Ordinal)) { continue; }
+                            foreach (var f in reflect.fieldsOf(at))
+                            {
+                                string value;
+                                if (f.Kind is "ObjectProperty" or "ClassProperty" or "WeakObjectProperty")
+                                {
+                                    var p = q(obj + f.Offset);
+                                    value = p == 0 ? "null" : $"{reflect.nameOf(p)} ({reflect.kindOf(p)})";
+                                }
+                                else if (f.Kind is "EnumProperty" or "IntProperty")
+                                {
+                                    value = BitConverter.ToInt32(game.read(new IntPtr(obj + f.Offset), 4) ?? new byte[4], 0).ToString("x");
+                                }
+                                else { value = reflect.valueOf(obj, f.Name) ?? "?"; }
+                                lines.Add($"   {cls}.{f.Name} [{f.Kind}] = {value}");
+                            }
+                        }
+                    }
+                    var seen = new HashSet<string>();
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var obj = reflect.objectAt(i);
+                        if (obj == 0) { continue; }
+                        var kind = reflect.kindOf(obj) ?? "";
+                        if (!kind.EndsWith("Character_C", StringComparison.Ordinal)) { continue; }
+                        if (!(kind.Contains("Zombie") || kind.Contains("Skeleton") || kind.Contains("MCDR"))) { continue; }
+                        if ((reflect.nameOf(obj) ?? "").StartsWith("Default__", StringComparison.Ordinal) || !seen.Add(kind)) { continue; }
+                        dump(obj, "character");
+                        var controllerField = 0L;
+                        foreach (var at2 in new[] { "Controller" })
+                        {
+                            for (var k = q(obj + 0x10); k != 0 && controllerField == 0; k = q(k + 0x40))
+                            {
+                                var f = reflect.fieldsOf(k).FirstOrDefault(x => x.Name == at2);
+                                if (f != null) { controllerField = q(obj + f.Offset); }
+                            }
+                        }
+                        if (controllerField != 0) { dump(controllerField, "controller of " + kind); }
+                        else { lines.Add($"== controller of {kind}: NONE"); }
+                    }
+                    var into = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "mcd-mobstate.txt");
+                    System.IO.File.WriteAllLines(into, lines);
+                    Console.WriteLine($"[state] {seen.Count} classes, {lines.Count} lines into {into}");
+                }
+                Shutdown();
+                return;
+            }
+
             //PROBE_ENCHANTS[=<id>;<id>...] - the live enchantment definition table: the global at
             //image+0x44ef680 that each enchantment's static block fills by id (a79ee0). Its shape,
             //how many ids are set, and for the ids named (default Fire Aspect 5 and Fire Trail 111)

@@ -1579,6 +1579,121 @@ namespace
         say("enchantments: %d of %zu own blueprint(s) in the enchantment finder at %p", found, g_blueprints.size(), finder);
     }
 
+    // ---------------------------------------------------------------- mob behaviour
+    //
+    // A mob's AI is built by a C++ switch on its EntityType (8b5a10: jump tables into one
+    // behaviour builder per mob - 967d30 is the zombie's), fed by MobCharacter.EntityType (+0xBA0,
+    // read by 905f60). A new type has no case, so a custom mob was spawned, possessed by its
+    // MobBtController and never did anything. The switch is code; what reaches it is a virtual of
+    // the controller (7c77b0, reading its pawn at +0x360, which sets up the behaviour through
+    // 8b59c0), one slot in one vtable. That slot gets a wrapper: for a pawn whose type is a custom
+    // mob, the type is its source's while the behaviour is built, and its own again afterwards.
+    // It is the controller's OnPossess(pawn): its first call hands the pawn straight on to the
+    // parent class's, which is what fills the controller's own pawn field. So the pawn is the
+    // argument, and every argument register is passed through untouched - the first try took one
+    // argument, left rdx holding whatever the wrapper had used it for, and the parent class read
+    // garbage from it (a crash in MobBtController, loading arno).
+    using ControllerSetup = void (__fastcall*)(void* controller, void* pawn, void* third, void* fourth);
+    ControllerSetup g_originalSetup = nullptr;
+    int32_t g_pawnAt = 0;        // the controller's pawn, from 7c77b0's mov rbx,[rdi+x]
+    int32_t g_typeAt = 0;        // MobCharacter.EntityType, from 905f60's mov eax,[rcx+x]
+
+    bool nameText(int32_t index, char* out, size_t size);
+
+    // Whether a pawn is a MobCharacter: its class chain (UStruct's SuperStruct is +0x40 in a
+    // shipping build) names MobCharacter. OnPossess runs for every pawn, the player's included,
+    // and only a mob's +0xBA0 is its EntityType.
+    bool isMob(uint8_t* pawn)
+    {
+        uint8_t* cls = nullptr;
+        if (!readBlock(pawn + 0x10, &cls, 8)) { return false; }
+        for (int depth = 0; cls && depth < 16; depth++)
+        {
+            int32_t name[2]{};
+            char text[64];
+            if (!readBlock(cls + 0x18, name, 8) || !nameText(name[0], text, sizeof(text))) { return false; }
+            if (strcmp(text, "MobCharacter") == 0) { return true; }
+            if (!readBlock(cls + 0x40, &cls, 8)) { return false; }
+        }
+        return false;
+    }
+
+    void __fastcall controllerSetup(void* controller, void* pawnArgument, void* third, void* fourth)
+    {
+        auto pawn = static_cast<uint8_t*>(pawnArgument);
+        int32_t own = 0;
+        int32_t source = 0;
+        if (pawn && isMob(pawn) && readBlock(pawn + g_typeAt, &own, 4))
+        {
+            for (const auto& m : g_mobs) { if (m.type == own) { source = m.mob.source; break; } }
+        }
+        if (!source) { g_originalSetup(controller, pawnArgument, third, fourth); return; }
+        memcpy(pawn + g_typeAt, &source, 4);
+        g_originalSetup(controller, pawnArgument, third, fourth);
+        memcpy(pawn + g_typeAt, &own, 4);
+    }
+
+    void hookMobBehaviour()
+    {
+        if (g_mobs.empty()) { return; }
+        // cmp esi,10E / ja / je / lea eax,[rsi-0E] / cmp eax,FD - the switch, 0x30 into its function
+        auto switches = scan(parse("81 FE 0E 01 00 00 0F 87 ?? ?? ?? ?? 0F 84 ?? ?? ?? ?? 8D 46 F2 3D FD 00 00 00"));
+        if (switches.size() != 1) { say("mobs: the behaviour switch was found %zu times; custom mobs have no AI", switches.size()); return; }
+        uint8_t* dispatch = switches[0] - 0x30;
+        // mov r8d,ebx / mov rdx,rdi / mov rcx,rsi / call switch - the behaviour setup, 0x2D in
+        uint8_t* setup = nullptr;
+        for (uint8_t* at : scan(parse("44 8B C3 48 8B D7 48 8B CE E8"))) { if (callTarget(at + 9) == dispatch) { setup = at - 0x2D; } }
+        if (!setup) { say("mobs: the behaviour setup was not found; custom mobs have no AI"); return; }
+        // 905f60, the type reader, is the setup's first call: its mov eax,[rcx+x] says where the type is.
+        uint8_t* reader = callTarget(setup + 0x18);
+        for (int i = 0; i < 0x60 && !g_typeAt; i++)
+        {
+            if (reader[i] == 0x8B && reader[i + 1] == 0x81 && reader[i + 6] == 0x83 && reader[i + 7] == 0xF8 && reader[i + 8] == 0x01) { memcpy(&g_typeAt, reader + i + 2, 4); }
+        }
+        // The one function calling the setup, and the one vtable slot holding it.
+        uint8_t* caller = nullptr;
+        int callers = 0;
+        HMODULE exe = GetModuleHandleW(nullptr);
+        auto dos = reinterpret_cast<IMAGE_DOS_HEADER*>(exe);
+        auto nt = reinterpret_cast<IMAGE_NT_HEADERS*>(reinterpret_cast<uint8_t*>(exe) + dos->e_lfanew);
+        uint8_t* base = reinterpret_cast<uint8_t*>(exe);
+        size_t size = nt->OptionalHeader.SizeOfImage;
+        for (size_t i = 0; i + 5 < size; i++)
+        {
+            if (base[i] != 0xE8) { continue; }
+            int32_t rel; memcpy(&rel, base + i + 1, 4);
+            if (base + i + 5 + rel != setup) { continue; }
+            callers++;
+            uint8_t* start = base + i;
+            while (start > base + 2 && !(start[-1] == 0xCC && start[-2] == 0xCC)) { start--; }
+            caller = start;
+        }
+        if (callers != 1 || !caller) { say("mobs: the behaviour setup has %d callers; custom mobs have no AI", callers); return; }
+        // mov rbx,[rdi+x] - where the controller keeps its pawn.
+        for (int i = 0; i < 0x40 && !g_pawnAt; i++)
+        {
+            if (caller[i] == 0x48 && caller[i + 1] == 0x8B && caller[i + 2] == 0x9F) { memcpy(&g_pawnAt, caller + i + 3, 4); }
+        }
+        uint8_t** slot = nullptr;
+        int slots = 0;
+        for (size_t i = 0; i + 8 <= size; i += 8)
+        {
+            uint8_t* value; memcpy(&value, base + i, 8);
+            if (value == caller) { slot = reinterpret_cast<uint8_t**>(base + i); slots++; }
+        }
+        if (slots != 1 || !g_typeAt || !g_pawnAt)
+        {
+            say("mobs: the controller's setup is in %d vtable slot(s), type at +0x%X, pawn at +0x%X; custom mobs have no AI", slots, g_typeAt, g_pawnAt);
+            return;
+        }
+        DWORD was = 0;
+        if (!VirtualProtect(slot, 8, PAGE_READWRITE, &was)) { say("mobs: the controller's vtable cannot be written; custom mobs have no AI"); return; }
+        g_originalSetup = reinterpret_cast<ControllerSetup>(*slot);
+        *slot = reinterpret_cast<uint8_t*>(&controllerSetup);
+        VirtualProtect(slot, 8, was, &was);
+        say("mobs: behaviour hooked - setup %p in the vtable at %p, pawn +0x%X, type +0x%X", caller, slot, g_pawnAt, g_typeAt);
+    }
+
     // ---------------------------------------------------------------- crash note
     //
     // When the game faults in its own code, the plugin writes down where and what it was working
@@ -1827,6 +1942,7 @@ namespace
         if (!ids.empty()) { refreshFinder(game, registry, ids); }
         say("done: %d item(s), registry now holds %d", added, count(registry));
         addMobs(game);
+        hookMobBehaviour();
         addEnchantments(game);
         fileEnchantmentBlueprints(game);
         return 0;
