@@ -12186,8 +12186,20 @@ namespace MCDSaveEdit
             var screenshotPath = UI.Theme.WindowCapture.pathFromArguments(_startupArguments);
             if (screenshotPath != null)
             {
+                //SCREENSHOT_WIDTH=<px> shoots the window at that width - the side menu shuts to
+                //icons below Nav.DOCK_FROM. SCREENSHOT_NAVOPEN shoots it with the menu open.
+                var shotWidth = _startupArguments.FirstOrDefault(a => a.StartsWith("SCREENSHOT_WIDTH="));
+                if (shotWidth != null && double.TryParse(shotWidth.Substring("SCREENSHOT_WIDTH=".Length), out var width))
+                {
+                    this.MainWindow.Width = width;
+                }
                 this.MainWindow.UpdateLayout();
                 UI.Theme.WindowCapture.selectTab(this.MainWindow, _startupArguments);
+                if (_startupArguments.Contains("SCREENSHOT_NAVOPEN")
+                    && UI.Theme.WindowCapture.findFirst<System.Windows.Controls.TabControl>(this.MainWindow) is { } nav)
+                {
+                    UI.Theme.Nav.SetIsOpen(nav, true);
+                }
 
                 //Dev aid: fire a named menu item before capturing, so a command can be
                 //exercised through its real handler rather than only in theory.

@@ -4320,4 +4320,16 @@ Import it?</value>
     <value>{0} mod(s), {1} item(s), {2} enchantment(s) and {3} mob(s) written to {4}.</value>
     <comment>The export succeeded</comment>
   </data>
+  <data name="NAV_SAVE" xml:space="preserve">
+    <value>Save file</value>
+    <comment>Side menu group: pages that edit the save</comment>
+  </data>
+  <data name="NAV_CREATE" xml:space="preserve">
+    <value>Create</value>
+    <comment>Side menu group: pages that make things for the game</comment>
+  </data>
+  <data name="NAV_LIVE" xml:space="preserve">
+    <value>Live game</value>
+    <comment>Side menu group: pages that change the running game</comment>
+  </data>
 </root>

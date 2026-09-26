@@ -34,6 +34,7 @@ namespace MCDSaveEdit.UI
             _model = model;
             InitializeComponent();
             translateStaticStrings();
+            Theme.Nav.attach(mainTabControl);
 
             _model.showError = showError;
             gameFilesLocationMenuItem.Header = ImageResolver.instance.path ?? R.GAME_FILES_WINDOW_NO_CONTENT_BUTTON;
@@ -156,6 +157,12 @@ namespace MCDSaveEdit.UI
             //row if the longest four are shortened, and this is one of them.
             chestTabItem.Header = R.CHEST_TAB;
             towerTabItem.Header = R.getString("TheTower") ?? R.THE_TOWER;
+
+            //The side menu's groups, on the first page of each.
+            Theme.Nav.SetGroup(inventoryTabItem, R.NAV_SAVE);
+            Theme.Nav.SetGroup(customItemsTabItem, R.NAV_CREATE);
+            Theme.Nav.SetGroup(cameraTabItem, R.NAV_LIVE);
+            Theme.Nav.SetGroup(modsTabItem, string.Empty);
         }
 
         private void createLangMenuItems()

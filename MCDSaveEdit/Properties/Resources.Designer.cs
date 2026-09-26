@@ -9543,5 +9543,32 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("MODS_PACK_EXPORTED", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Save file.
+        /// </summary>
+        public static string NAV_SAVE {
+            get {
+                return ResourceManager.GetString("NAV_SAVE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Create.
+        /// </summary>
+        public static string NAV_CREATE {
+            get {
+                return ResourceManager.GetString("NAV_CREATE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Live game.
+        /// </summary>
+        public static string NAV_LIVE {
+            get {
+                return ResourceManager.GetString("NAV_LIVE", resourceCulture);
+            }
+        }
     }
 }

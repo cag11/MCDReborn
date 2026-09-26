@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:MCDSaveEdit.UI"
+        xmlns:theme="clr-namespace:MCDSaveEdit.UI.Theme"
         mc:Ignorable="d"
         d:DesignWidth="1200"
         MinHeight="490" MinWidth="1200"
@@ -56,56 +57,64 @@
             <MenuItem x:Name="updateMenuItem" Header="_Get New Version" Visibility="Collapsed" Click="updateMenuItem_Click"/>
         </Menu>
 
-        <TabControl x:Name="mainTabControl" DockPanel.Dock="Bottom">
-            <TabItem x:Name="heroTabItem" Header="*Custom Skins*" Selector.Selected="OnTabSelected">
-                <local:HeroSkinTab x:Name="heroTab"/>
-            </TabItem>
-
-            <TabItem x:Name="inventoryTabItem" Header="*Inventory*" Selector.Selected="OnTabSelected">
+        <!--
+            The pages, as a side menu (Controls.xaml's NavTabControl, Nav.cs): what edits the
+            save, what makes things for the game, what changes the game while it runs, and the
+            mods at the foot. The group headings are set with the names, in translateStaticStrings.
+        -->
+        <TabControl x:Name="mainTabControl" DockPanel.Dock="Bottom" Style="{StaticResource NavTabControl}">
+            <!-- Save file -->
+            <TabItem x:Name="inventoryTabItem" theme:Nav.Icon="&#xE80A;" Header="*Inventory*" Selector.Selected="OnTabSelected">
                 <local:InventoryTab x:Name="inventoryTab"/>
             </TabItem>
 
-            <TabItem x:Name="chestTabItem" Header="*Chest*" Selector.Selected="OnTabSelected">
+            <TabItem x:Name="chestTabItem" theme:Nav.Icon="&#xE7B8;" Header="*Chest*" Selector.Selected="OnTabSelected">
                 <local:ChestTab x:Name="chestTab"/>
             </TabItem>
 
-            <TabItem x:Name="towerTabItem" Header="*Tower*" Selector.Selected="OnTabSelected">
+            <TabItem x:Name="towerTabItem" theme:Nav.Icon="&#xE81E;" Header="*Tower*" Selector.Selected="OnTabSelected">
                 <local:TowerTab x:Name="towerTab"/>
             </TabItem>
 
-            <TabItem x:Name="customSkinsTabItem" Header="*Recolor Gear*" Selector.Selected="OnTabSelected">
-                <local:CustomSkinsTab x:Name="customSkinsTab"/>
-            </TabItem>
-
-            <TabItem x:Name="weaponSkinsTabItem" Header="*Weapon Import*" Selector.Selected="OnTabSelected">
-                <local:MeshWorkshopTab x:Name="weaponSkinsTab" Catalogue="Weapons"/>
-            </TabItem>
-
-            <TabItem x:Name="customItemsTabItem" Header="*New Items*" Selector.Selected="OnTabSelected">
+            <!-- Create -->
+            <TabItem x:Name="customItemsTabItem" theme:Nav.Icon="&#xE719;" Header="*New Items*" Selector.Selected="OnTabSelected">
                 <local:CustomItemsTab x:Name="customItemsTab"/>
             </TabItem>
 
-            <TabItem x:Name="mobSkinsTabItem" Header="*Mob Import*" Selector.Selected="OnTabSelected">
+            <TabItem x:Name="weaponSkinsTabItem" theme:Nav.Icon="&#xF158;" Header="*Weapon Import*" Selector.Selected="OnTabSelected">
+                <local:MeshWorkshopTab x:Name="weaponSkinsTab" Catalogue="Weapons"/>
+            </TabItem>
+
+            <TabItem x:Name="mobSkinsTabItem" theme:Nav.Icon="&#xEBE8;" Header="*Mob Import*" Selector.Selected="OnTabSelected">
                 <local:MeshWorkshopTab x:Name="mobSkinsTab" Catalogue="Mobs"/>
             </TabItem>
 
-            <TabItem x:Name="mapsTabItem" Header="*Maps*" Selector.Selected="OnTabSelected">
+            <TabItem x:Name="mapsTabItem" theme:Nav.Icon="&#xE707;" Header="*Maps*" Selector.Selected="OnTabSelected">
                 <local:MapsTab x:Name="mapsTab"/>
             </TabItem>
 
-            <TabItem x:Name="musicTabItem" Header="*Music*" Selector.Selected="OnTabSelected">
+            <TabItem x:Name="musicTabItem" theme:Nav.Icon="&#xE8D6;" Header="*Music*" Selector.Selected="OnTabSelected">
                 <local:MusicTab x:Name="musicTab"/>
             </TabItem>
 
-            <TabItem x:Name="cameraTabItem" Header="*Camera*" Selector.Selected="OnTabSelected">
+            <TabItem x:Name="heroTabItem" theme:Nav.Icon="&#xE77B;" Header="*Custom Skins*" Selector.Selected="OnTabSelected">
+                <local:HeroSkinTab x:Name="heroTab"/>
+            </TabItem>
+
+            <TabItem x:Name="customSkinsTabItem" theme:Nav.Icon="&#xE790;" Header="*Recolor Gear*" Selector.Selected="OnTabSelected">
+                <local:CustomSkinsTab x:Name="customSkinsTab"/>
+            </TabItem>
+
+            <!-- Live game -->
+            <TabItem x:Name="cameraTabItem" theme:Nav.Icon="&#xE722;" Header="*Camera*" Selector.Selected="OnTabSelected">
                 <local:CameraTab x:Name="cameraTab"/>
             </TabItem>
 
-            <TabItem x:Name="enemiesTabItem" Header="*Enemies*" Selector.Selected="OnTabSelected">
+            <TabItem x:Name="enemiesTabItem" theme:Nav.Icon="&#xEC4A;" Header="*Enemies*" Selector.Selected="OnTabSelected">
                 <local:EnemiesTab x:Name="enemiesTab"/>
             </TabItem>
 
-            <TabItem x:Name="modsTabItem" Header="*Installed Mods*" Selector.Selected="OnTabSelected">
+            <TabItem x:Name="modsTabItem" theme:Nav.Icon="&#xEA86;" DockPanel.Dock="Bottom" Header="*Installed Mods*" Selector.Selected="OnTabSelected">
                 <local:ModsTab x:Name="modsTab"/>
             </TabItem>
 
