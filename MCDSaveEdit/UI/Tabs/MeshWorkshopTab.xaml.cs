@@ -51,6 +51,12 @@ namespace MCDSaveEdit.UI
         //the weapon rather than reshaping it, and almost everything else behaves the same way.
         private GlbModel? _imported;
 
+        //Whether what is in hand - the model and the placement - was read back from an install
+        //rather than brought this session. Browsing to another mesh puts a read-back one down and
+        //reads that mesh's instead; a model somebody imported stays in hand, as it always has, so
+        //it can be tried on one weapon after another.
+        private bool _recalled;
+
         //The artwork the preview is painted with: the weapon's own, or the imported model's when
         //one has been brought.
         private System.Windows.Media.Imaging.BitmapSource? _texture;
@@ -251,6 +257,28 @@ namespace MCDSaveEdit.UI
         {
             _selected = (meshList.SelectedItem as ListBoxItem)?.Tag as MeshEntry;
             _shape = _selected == null ? null : _catalogue.read(_selected.AssetPath);
+
+            if (_recalled)
+            {
+                _imported = null;
+                _recalled = false;
+                resetScaleRange();
+                modelLabel.Text = string.Empty;
+                clearModelButton.Visibility = Visibility.Collapsed;
+            }
+
+            //What is installed on it, opened the way it was left.
+            MeshEdit.Transform? installed = null;
+            if (_imported == null && _selected != null && recall(_selected.AssetPath) is { } look)
+            {
+                _imported = look.model;
+                _recalled = true;
+                _texture = look.texture ?? (look.model?.BaseColourPng is { } png ? safeImage(png) : null);
+                installed = look.transform;
+                modelLabel.Text = look.label;
+                clearModelButton.Visibility = look.model != null ? Visibility.Visible : Visibility.Collapsed;
+                if (look.model != null) { widenScaleAround(look.transform.Scale); }
+            }
             if (_imported == null)
             {
                 _texture = _selected == null ? null : _catalogue.textureFor(_selected.AssetPath);
@@ -259,9 +287,11 @@ namespace MCDSaveEdit.UI
             //And said in full when it is picked, because the mark in the list is four words.
             statusLabel.Text = _selected?.Caution ?? string.Empty;
 
+            //Sliders moved this session win over the installed placement: that is the edit in progress.
             showTransform(_selected == null
                 ? MeshEdit.Transform.none
-                : _transforms.TryGetValue(_selected.AssetPath, out var saved) ? saved : MeshEdit.Transform.none);
+                : _transforms.TryGetValue(_selected.AssetPath, out var saved) ? saved
+                : installed ?? MeshEdit.Transform.none);
 
             //The offsets are bounded by the weapon's own size rather than by a fixed number. A
             //dagger and a claymore need very different ranges, and a slider whose useful travel is
@@ -274,6 +304,32 @@ namespace MCDSaveEdit.UI
             }
 
             redraw();
+        }
+
+        /// <summary>
+        /// What is installed on a mesh, from wherever it was kept: a custom item's design, or the
+        /// record of a stock mesh's install (MeshInstalls). Null when nothing is.
+        /// </summary>
+        private (GlbModel? model, MeshEdit.Transform transform, System.Windows.Media.Imaging.BitmapSource? texture, string label)? recall(string assetPath)
+        {
+            if (CustomItems.isCopied(assetPath))
+            {
+                var look = CustomItems.installedLook(assetPath);
+                if (look == null) { return null; }
+                if (look.ModelMissing) { return (null, MeshEdit.Transform.none, null, R.WEAPON_SKINS_MODEL_GONE); }
+                return (look.Model, look.Transform, look.Texture,
+                    look.Model != null ? string.Format(R.WEAPON_SKINS_INSTALLED_MODEL, look.Name) : R.WEAPON_SKINS_INSTALLED_SHAPE);
+            }
+
+            var record = MeshInstalls.recall(Catalogue, assetPath);
+            if (record == null) { return null; }
+            if (record.Edit.File == null) { return (null, record.Edit.transform, null, R.WEAPON_SKINS_INSTALLED_SHAPE); }
+            try
+            {
+                var model = GlbModel.read(record.Edit.File);
+                return (model, record.Edit.transform, null, string.Format(R.WEAPON_SKINS_INSTALLED_MODEL, record.ModelName ?? model.Name));
+            }
+            catch (Exception) { return (null, MeshEdit.Transform.none, null, R.WEAPON_SKINS_MODEL_GONE); }
         }
 
         #endregion
@@ -552,6 +608,7 @@ namespace MCDSaveEdit.UI
             {
                 var model = GlbModel.read(picker.FileName);
                 _imported = model;
+                _recalled = false;
 
                 //Its own artwork, which is the only thing that makes the preview worth looking at:
                 //an imported model wearing the weapon's texture would be painted with somebody
@@ -633,6 +690,7 @@ namespace MCDSaveEdit.UI
         private void clearModelButton_Click(object sender, RoutedEventArgs e)
         {
             _imported = null;
+            _recalled = false;
             _texture = _selected == null ? null : _catalogue.textureFor(_selected.AssetPath);
             resetScaleRange();
             modelLabel.Text = string.Empty;
@@ -735,8 +793,11 @@ namespace MCDSaveEdit.UI
             var transform = currentTransform;
             var glow = glowEntries(out var lit);
 
-            //A glow on its own is a change worth writing, even where the shape is untouched.
-            if (_imported == null && glow == null && (transform.isNothing || !_catalogue.canReshape))
+            //A glow on its own is a change worth writing, even where the shape is untouched. So is
+            //taking a custom item's model off: nothing in hand and nothing moved puts its copy back
+            //to the mesh it was copied with.
+            var revert = CustomItems.isCopied(_selected.AssetPath) && CustomItems.installedLook(_selected.AssetPath) != null;
+            if (_imported == null && glow == null && !revert && (transform.isNothing || !_catalogue.canReshape))
             {
                 statusLabel.Text = _catalogue.nothingToDo;
                 return;
@@ -750,6 +811,12 @@ namespace MCDSaveEdit.UI
                     : _catalogue.reshape(_selected.AssetPath, transform, _selected.Name, glow);
                 statusLabel.Text = string.Format(R.WEAPON_SKINS_APPLIED, System.IO.Path.GetFileName(mod.Path))
                     + (lit.Count > 0 ? " " + string.Format(R.WEAPON_SKINS_GLOW_LIT, lit.Count) : string.Empty);
+
+                //So the tab can open this mesh the way it was left. A custom item keeps it in its design.
+                if (!CustomItems.isCopied(_selected.AssetPath))
+                {
+                    MeshInstalls.remember(Catalogue, _selected.AssetPath, _imported, transform, mod.Path);
+                }
             }
             catch (Exception problem)
             {

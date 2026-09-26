@@ -843,11 +843,46 @@ namespace MCDSaveEdit.Logic
                 kept = Path.Combine(folder, design.Slot + ".glb");
                 File.WriteAllBytes(kept, model.Source);
             }
-            design.Model = ModelEdit.of(transform, kept);
+            //Nothing imported and nothing moved is the Weapons tab's "Clear model" then Install:
+            //the copy goes back to the mesh it was copied with.
+            design.Model = model == null && transform.isNothing ? null : ModelEdit.of(transform, kept);
             var built = build(designs);
             save(designs);
             showInApp();
             return new CustomSkins.InstalledMod(built.PakPath ?? throw new InvalidOperationException("Nothing was built."));
+        }
+
+        /// <summary>A custom item's look as the Weapons tab installed it, for opening the tab the way it was left.</summary>
+        public sealed record InstalledLook(GlbModel? Model, MeshEdit.Transform Transform, BitmapSource? Texture, string Name, bool ModelMissing);
+
+        /// <summary>
+        /// What the Weapons tab put on this copied mesh, or null when it has nothing: the model
+        /// (read back from the .glb the design keeps), its placement, and the texture the item wears.
+        /// A model whose file has gone comes back as a placement alone, with ModelMissing said.
+        /// </summary>
+        public static InstalledLook? installedLook(string meshAssetPath)
+        {
+            var design = designOfMesh(meshAssetPath);
+            if (design?.Model == null) { return null; }
+            var name = string.IsNullOrWhiteSpace(design.Name) ? R.itemName(design.Slot) : design.Name!;
+            var file = design.Model.File;
+            if (file == null) { return new InstalledLook(null, design.Model.transform, null, name, false); }
+            if (!File.Exists(file)) { return new InstalledLook(null, MeshEdit.Transform.none, null, name, true); }
+            try
+            {
+                return new InstalledLook(GlbModel.read(file), design.Model.transform, colourTexture(design.Slot), name, false);
+            }
+            catch (Exception) { return new InstalledLook(null, MeshEdit.Transform.none, null, name, true); }
+        }
+
+        private static Design? designOfMesh(string meshAssetPath)
+        {
+            var wanted = meshAssetPath.TrimStart('/') + ".uasset";
+            return _saved.FirstOrDefault(d =>
+            {
+                try { return copyOf(d).made.Entries.Any(e => string.Equals(e.Path, wanted, StringComparison.OrdinalIgnoreCase)); }
+                catch (Exception) { return false; }
+            });
         }
 
         // ------------------------------------------------------------------ the Recolor Gear tab

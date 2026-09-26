@@ -4046,4 +4046,16 @@ Delete it?</value>
     <value>Remove recolour</value>
     <comment>Button, shown for a recoloured custom item: back to the copied item's own texture</comment>
   </data>
+  <data name="WEAPON_SKINS_INSTALLED_MODEL" xml:space="preserve">
+    <value>Showing what is installed on this: {0}. Move it and press Install to change it, or Clear model to start again.</value>
+    <comment>Weapons / Mob Import tab, when a mesh opens with its installed model. {0} is the model's or custom item's name</comment>
+  </data>
+  <data name="WEAPON_SKINS_INSTALLED_SHAPE" xml:space="preserve">
+    <value>Showing the reshape installed on this. Move it and press Install to change it.</value>
+    <comment>Weapons / Mob Import tab, when a mesh opens with its installed reshape</comment>
+  </data>
+  <data name="WEAPON_SKINS_MODEL_GONE" xml:space="preserve">
+    <value>A model is installed on this, but its file is gone, so the original is shown.</value>
+    <comment>Weapons / Mob Import tab, when the kept copy of an installed model has been deleted</comment>
+  </data>
 </root>

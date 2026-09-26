@@ -8940,5 +8940,32 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("CUSTOM_SKINS_UNRECOLOUR", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Showing what is installed on this: {0}. Move it and press Install to change it, or Clear model to start again..
+        /// </summary>
+        public static string WEAPON_SKINS_INSTALLED_MODEL {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_INSTALLED_MODEL", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Showing the reshape installed on this. Move it and press Install to change it..
+        /// </summary>
+        public static string WEAPON_SKINS_INSTALLED_SHAPE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_INSTALLED_SHAPE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to A model is installed on this, but its file is gone, so the original is shown..
+        /// </summary>
+        public static string WEAPON_SKINS_MODEL_GONE {
+            get {
+                return ResourceManager.GetString("WEAPON_SKINS_MODEL_GONE", resourceCulture);
+            }
+        }
     }
 }

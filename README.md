@@ -73,6 +73,7 @@ https://github.com/user-attachments/assets/1109d845-6a2e-49da-992d-f185dd0f4d26
 * **Import your own model** onto any weapon and projectiles: export a `.glb` from Blender (File -> Export -> glTF Binary) and the weapon comes out wearing it, mesh and texture together, weapons installed as a mod pak beside the game's own so deleting it undoes everything
 * Two things worth knowing before you model: this game's weapon textures are tiny - often 32 square - and your artwork is scaled to whatever the one you are replacing uses, so fine detail cannot survive. And an **enchanted** weapon wears the game's purple glint over whatever it is; on a dark model that is most of what you will see, so export brighter than feels right
 * **Or just reshape the game's own model**: resize from a tenth up to **8x**, move and rotate it - a claymore at half size, a dagger the length of a spear, or something absurd
+* **Pick up where you left off**: select a weapon or creature you installed a model on, and the tab shows your model where you placed it, ready to adjust and install again. Your own ★ items show their model too, and **Clear model** then **Install** puts a ★ item back to the weapon it copied
 
 #### New Items Feature
 * **Brand-new items, as many as you like**: **New melee item**, **New ranged item**, **New armour** and **New artifact** make a copy of any of the game's items as a separate item. 

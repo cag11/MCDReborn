@@ -10365,6 +10365,43 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_INSTALLEDLOOK - what the Weapons tab opens a mesh with: each custom item's installed
+            //look (model, placement, texture) from its design, and the stock-mesh memory
+            //(MeshInstalls) remembered, recalled, and forgotten once its pak is gone. Writes only a
+            //test record, which it removes.
+            if (_startupArguments.Contains("PROBE_INSTALLEDLOOK"))
+            {
+                try
+                {
+                    Logic.CustomItems.showInApp();
+                    Logic.GlbModel? any = null;
+                    foreach (var mesh in Logic.WeaponMeshes.all().Where(m => m.Name.StartsWith("★")))
+                    {
+                        var look = Logic.CustomItems.installedLook(mesh.AssetPath);
+                        if (look == null) { Console.WriteLine($"[look] {mesh.AssetPath}: nothing installed, opens as the copy"); continue; }
+                        any ??= look.Model;
+                        var t = look.Transform;
+                        Console.WriteLine($"[look] {look.Name} {mesh.AssetPath}: model {(look.Model == null ? (look.ModelMissing ? "MISSING" : "none (reshape)") : look.Model.Name + " " + look.Model.VertexCount + " vertices")}, " +
+                            $"scale {t.Scale:0.###} offset ({t.Offset.X:0.#},{t.Offset.Y:0.#},{t.Offset.Z:0.#}) turn ({t.RotationDegrees.X:0},{t.RotationDegrees.Y:0},{t.RotationDegrees.Z:0}), texture {(look.Texture == null ? "-" : look.Texture.PixelWidth + "x" + look.Texture.PixelHeight)}");
+                    }
+
+                    var pak = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "MCDReborn_ProbeLook_P.pak");
+                    System.IO.File.WriteAllBytes(pak, new byte[] { 1 });
+                    var transform = new Logic.MeshEdit.Transform(2.5f, new Logic.MeshGeometry.Position(1, 2, 3), new Logic.MeshGeometry.Position(10, 20, 30));
+                    Logic.MeshInstalls.remember("ProbeLook", "/Game/Probe/SM_Test", any, transform, pak);
+                    var back = Logic.MeshInstalls.recall("ProbeLook", "/Game/Probe/SM_Test");
+                    var bt = back?.Edit.transform ?? Logic.MeshEdit.Transform.none;
+                    Console.WriteLine($"[look] stock memory: recalled {(back == null ? "NOTHING" : "model " + (back.ModelName ?? "-") + " file " + (back.Edit.File != null && System.IO.File.Exists(back.Edit.File)) + $", scale {bt.Scale} offset ({bt.Offset.X},{bt.Offset.Y},{bt.Offset.Z}) turn ({bt.RotationDegrees.X},{bt.RotationDegrees.Y},{bt.RotationDegrees.Z})")}");
+                    var kept = back?.Edit.File;
+                    System.IO.File.Delete(pak);
+                    var gone = Logic.MeshInstalls.recall("ProbeLook", "/Game/Probe/SM_Test");
+                    Console.WriteLine($"[look] after its pak is removed: {(gone == null ? "forgotten" : "STILL THERE")}, kept model file removed {(kept == null || !System.IO.File.Exists(kept))}");
+                }
+                catch (Exception e) { Console.WriteLine($"[look] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
             //PROBE_RECOLORCUSTOM[=<id>] - the Recolor Gear tab's side of a custom item: lists each
             //type's custom items and whether their texture reads, then recolours one (a red tint of
             //its own texture), reads the installed pak back to see the red, and removes the
