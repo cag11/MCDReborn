@@ -19,6 +19,7 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * Wear any 64×64 Minecraft skin as your hero; import any skin from your favorite skin website
 * A **Show armours** switch on both the Custom Skins and Recolor Gear tabs: wearing a skin hides armour so the skin can be seen, and one tick puts it all back
 * Five themes in the **View** menu (Dark, Light, Nether, End and Frost), swapped live and remembered between runs
+* A Windows 11 look in every theme: rounded controls, the Segoe UI Variable font, filled checkboxes, thin scrollbars and shadowed menus
 * Item search across the whole inventory, filtering as you type, without covering the UI
 * A search box on every picker (items, armor, melee, ranged, artifacts, armor properties and enchantments), narrowing within whatever the filters already allow
 * A **Defaults** button fills in the properties an armor drops with in game; changing an armor's type no longer replaces them by itself
