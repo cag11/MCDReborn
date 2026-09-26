@@ -8931,5 +8931,14 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("ITEMS_BEHAVIOUR_ARTIFACT", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Remove recolour.
+        /// </summary>
+        public static string CUSTOM_SKINS_UNRECOLOUR {
+            get {
+                return ResourceManager.GetString("CUSTOM_SKINS_UNRECOLOUR", resourceCulture);
+            }
+        }
     }
 }

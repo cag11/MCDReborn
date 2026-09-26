@@ -635,17 +635,20 @@ namespace MCDSaveEdit.UI
 
         private async Task build(List<CustomItems.Design> designs, string? fresh = null)
         {
-            //A model is set from the Weapons tab, which saves straight to disk. What this tab holds
-            //may predate it, so the model on disk wins - unless the item is now a copy of something
-            //else, whose mesh the old placement was never made for.
+            //A model is set from the Weapons tab and a recolour from the Recolor Gear tab, both
+            //saved straight to disk. What this tab holds may predate them, so the disk wins - unless
+            //the item is now a copy of something else, which neither was made for.
             var onDisk = CustomItems.load();
             foreach (var design in designs)
             {
                 //An imported item brings its own model; the slot's old one is not it.
                 if (design.Slot == fresh) { continue; }
                 var saved = onDisk.FirstOrDefault(d => d.Slot == design.Slot);
-                design.Model = saved != null && string.Equals(saved.Source, design.Source, StringComparison.OrdinalIgnoreCase)
-                    ? saved.Model : null;
+                var sameSource = saved != null && string.Equals(saved.Source, design.Source, StringComparison.OrdinalIgnoreCase);
+                design.Model = sameSource ? saved!.Model : null;
+                //The Recolor Gear tab's picture, saved the same way; it fits only the texture it
+                //was made for.
+                design.Texture = sameSource ? saved!.Texture : null;
             }
 
             IsEnabled = false;

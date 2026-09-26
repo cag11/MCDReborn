@@ -4042,4 +4042,8 @@ Delete it?</value>
     <value>What an artifact does - its cooldown, damage and duration - is built into the game, so the copy works like its source. These are the few extra values its blueprint stores.</value>
     <comment>Hint above the behaviour grid for artifacts</comment>
   </data>
+  <data name="CUSTOM_SKINS_UNRECOLOUR" xml:space="preserve">
+    <value>Remove recolour</value>
+    <comment>Button, shown for a recoloured custom item: back to the copied item's own texture</comment>
+  </data>
 </root>

@@ -185,6 +185,11 @@ namespace MCDSaveEdit.Logic
             public ModelEdit? Model { get; set; }
             /// <summary>For an item beyond the free slots (MCDR_ItemNN): its type. Null for a free slot, whose type is fixed.</summary>
             public Kind? PluginKind { get; set; }
+            /// <summary>
+            /// Artwork from the Recolor Gear tab, painted over the copy's own colour texture: a PNG
+            /// kept in the app's folder, at that texture's size. Null keeps the copy's.
+            /// </summary>
+            public string? Texture { get; set; }
         }
 
         /// <summary>
@@ -263,6 +268,8 @@ namespace MCDSaveEdit.Logic
             var shared = copy(design);
             //Which id it had here means nothing on another machine; the kind says what it is.
             shared.IconFile = null;
+            var hasTexture = design.Texture != null && File.Exists(design.Texture);
+            shared.Texture = hasTexture ? "texture.png" : null;
             if (shared.Model != null) { shared.Model.File = null; }
 
             using var zip = System.IO.Compression.ZipFile.Open(path, System.IO.Compression.ZipArchiveMode.Create);
@@ -287,6 +294,7 @@ namespace MCDSaveEdit.Logic
             {
                 add("model.glb", File.ReadAllBytes(design.Model.File));
             }
+            if (hasTexture) { add("texture.png", File.ReadAllBytes(design.Texture!)); }
         }
 
         /// <summary>What an exported file holds, read without putting it anywhere yet.</summary>
@@ -344,6 +352,12 @@ namespace MCDSaveEdit.Logic
                     File.WriteAllBytes(design.IconFile, png);
                 }
             }
+            if (design.Texture != null)
+            {
+                var png = read("texture.png");
+                design.Texture = png == null ? null : Path.Combine(folder, slot.Id + ".texture.png");
+                if (png != null) { File.WriteAllBytes(design.Texture!, png); }
+            }
             if (design.Model != null && shared.HasModel)
             {
                 var glb = read("model.glb");
@@ -369,6 +383,7 @@ namespace MCDSaveEdit.Logic
             Name = d.Name,
             Description = d.Description,
             PluginKind = d.PluginKind,
+            Texture = d.Texture,
             Model = d.Model == null ? null : new ModelEdit
             {
                 File = d.Model.File,
@@ -528,6 +543,7 @@ namespace MCDSaveEdit.Logic
                 applyBehaviour(files, slot, design, result.Notes);
                 applyIcons(files, slot, design, result.Notes);
                 applyModel(files, slot, design, result.Notes);
+                applyTexture(files, slot, design, result.Notes);
 
                 entries.AddRange(files.Select(f => new PakWriter.Entry(f.Key, f.Value)));
                 copies.Add((made.GameFrom, made.Rename));
@@ -680,6 +696,27 @@ namespace MCDSaveEdit.Logic
             }
         }
 
+        /// <summary>
+        /// The Recolor Gear tab's artwork over the copy's colour texture - after the model, whose own
+        /// texture it then replaces, as a recolour of a stock item would.
+        /// </summary>
+        private static void applyTexture(Dictionary<string, byte[]> files, Slot slot, Design design, List<string> notes)
+        {
+            if (design.Texture == null) { return; }
+            if (!File.Exists(design.Texture)) { notes.Add($"{slot.Id}: its recolour file is gone, the copy's own texture kept."); return; }
+            var texture = colourTextureOf(files, slot);
+            if (texture == null) { notes.Add($"{slot.Id}: no colour texture to recolour."); return; }
+
+            var stem = texture.Substring(0, texture.Length - ".uasset".Length);
+            files.TryGetValue(stem + ".ubulk", out var ubulk);
+            var why = repaint(files[texture], files[stem + ".uexp"], ubulk, CustomSkins.imageFromPng(File.ReadAllBytes(design.Texture)),
+                out var uexp, out var bulk);
+            if (why != null) { notes.Add($"{slot.Id}: the recolour was not applied - {why}."); return; }
+            files[stem + ".uexp"] = uexp;
+            if (bulk != null) { files[stem + ".ubulk"] = bulk; }
+            notes.Add($"{slot.Id}: recoloured.");
+        }
+
         /// <summary>The copy's weapon texture: its colour map, the shortest name that is not an icon.</summary>
         private static string? colourTextureOf(Dictionary<string, byte[]> files, Slot slot)
             => files.Keys
@@ -807,6 +844,95 @@ namespace MCDSaveEdit.Logic
                 File.WriteAllBytes(kept, model.Source);
             }
             design.Model = ModelEdit.of(transform, kept);
+            var built = build(designs);
+            save(designs);
+            showInApp();
+            return new CustomSkins.InstalledMod(built.PakPath ?? throw new InvalidOperationException("Nothing was built."));
+        }
+
+        // ------------------------------------------------------------------ the Recolor Gear tab
+
+        /// <summary>Whether this id is one of the user's custom items, as last saved.</summary>
+        public static bool isCustom(string itemId) => _saved.Any(d => string.Equals(d.Slot, itemId, StringComparison.OrdinalIgnoreCase));
+
+        /// <summary>Whether a custom item wears a recolour of the user's.</summary>
+        public static bool isRecoloured(string itemId)
+            => _saved.Any(d => string.Equals(d.Slot, itemId, StringComparison.OrdinalIgnoreCase) && d.Texture != null);
+
+        /// <summary>The user's custom items of one type, for the Recolor Gear tab to list first.</summary>
+        public static IReadOnlyList<string> customIdsOf(Kind kind)
+            => _saved.Where(d => d.PluginKind == kind && !string.IsNullOrEmpty(d.Source)).Select(d => d.Slot).ToList();
+
+        /// <summary>
+        /// The colour texture a custom item wears now, in the order the build lays them down: the
+        /// user's recolour, else an imported model's own texture at the copy's size, else the
+        /// copy's own. Its files are in the items pak, which the app's index of the game leaves
+        /// out, so the Recolor Gear tab asks here instead.
+        /// </summary>
+        public static BitmapSource? colourTexture(string itemId)
+        {
+            var design = _saved.FirstOrDefault(d => string.Equals(d.Slot, itemId, StringComparison.OrdinalIgnoreCase));
+            if (design == null) { return null; }
+            try
+            {
+                if (design.Texture != null && File.Exists(design.Texture)) { return CustomSkins.imageFromPng(File.ReadAllBytes(design.Texture)); }
+                var own = copiedColourTexture(design);
+                if (own != null && design.Model?.File is { } glb && File.Exists(glb) && GlbModel.read(glb).BaseColourPng is { } png)
+                {
+                    var w = own.PixelWidth;
+                    var h = own.PixelHeight;
+                    return BitmapSource.Create(w, h, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null,
+                        CustomSkins.pixelsAt(CustomSkins.imageFromPng(png), w, h), w * 4);
+                }
+                return own;
+            }
+            catch (Exception) { return null; }
+        }
+
+        private static BitmapSource? copiedColourTexture(Design design)
+        {
+            var (slot, made) = copyOf(design);
+            var files = made.Entries.ToDictionary(e => e.Path, e => e.Data, StringComparer.OrdinalIgnoreCase);
+            var texture = colourTextureOf(files, slot);
+            if (texture == null) { return null; }
+            var stem = texture.Substring(0, texture.Length - ".uasset".Length);
+            files.TryGetValue(stem + ".ubulk", out var ubulk);
+            var image = packageOf(files[texture], files[stem + ".uexp"], ubulk).GetExport<UTexture2D>()?.Image;
+            return image == null ? null : Services.PakIndexExtensions.bitmapImageFromSKImage(image);
+        }
+
+        /// <summary>
+        /// What Apply does in the Recolor Gear tab for a custom item: the picture goes into the
+        /// item's design and the items pak is rebuilt. A pak of its own would have to override a
+        /// file the items pak also supplies, and which of two paks wins is decided by how their
+        /// names sort. The picture must be the copy's texture's own size, as for any recolour.
+        /// </summary>
+        /// <param name="image">The new picture, or null to go back to the copy's own texture.</param>
+        public static CustomSkins.InstalledMod setTexture(string itemId, BitmapSource? image)
+        {
+            var designs = load();
+            var design = designs.FirstOrDefault(d => string.Equals(d.Slot, itemId, StringComparison.OrdinalIgnoreCase))
+                ?? throw new InvalidOperationException($"{itemId} is not a custom item.");
+            if (image == null)
+            {
+                design.Texture = null;
+            }
+            else
+            {
+                var own = copiedColourTexture(design) ?? throw new InvalidOperationException($"{itemId} has no colour texture to recolour.");
+                if (image.PixelWidth != own.PixelWidth || image.PixelHeight != own.PixelHeight)
+                {
+                    throw new InvalidOperationException(
+                        $"That image is {image.PixelWidth}×{image.PixelHeight}; this texture is {own.PixelWidth}×{own.PixelHeight}.");
+                }
+
+                var kept = Path.Combine(folder, design.Slot + ".texture.png");
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(image));
+                using (var file = File.Create(kept)) { encoder.Save(file); }
+                design.Texture = kept;
+            }
+
             var built = build(designs);
             save(designs);
             showInApp();

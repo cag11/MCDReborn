@@ -63,6 +63,7 @@ https://github.com/user-attachments/assets/509496fd-7186-4422-a639-9d10272be407
 
 #### Recolor Gear Feature
 * **Recolor Gear**: put your own artwork on a piece of gear, installed as a mod pak beside the game's own; the originals are never modified and Remove undoes it completely
+* **Your own items too**: custom items from the New Items tab are listed first, marked ★. Their recolour becomes part of the item itself, and **Remove recolour** puts back the look of the item it copies
 * Armor, melee, ranged, artifacts, **capes, pets, enchantment icons and the interface and HUD**, picked one category at a time
 * The texture travels to [mcddesigner.vercel.app](https://mcddesigner.vercel.app/) and back. Find, upload and download again
 

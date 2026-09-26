@@ -10365,6 +10365,74 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_RECOLORCUSTOM[=<id>] - the Recolor Gear tab's side of a custom item: lists each
+            //type's custom items and whether their texture reads, then recolours one (a red tint of
+            //its own texture), reads the installed pak back to see the red, and removes the
+            //recolour again - the item ends as it began.
+            if (_startupArguments.Any(a => a == "PROBE_RECOLORCUSTOM" || a.StartsWith("PROBE_RECOLORCUSTOM=", StringComparison.Ordinal)))
+            {
+                var arg = _startupArguments.First(a => a.StartsWith("PROBE_RECOLORCUSTOM", StringComparison.Ordinal));
+                var id = arg.Contains('=') ? arg[(arg.IndexOf('=') + 1)..] : "MCDR_Item06";
+                try
+                {
+                    if (Logic.GameRunning.isUp) { Console.WriteLine("[recolor] close the game first"); Shutdown(); return; }
+                    Logic.CustomItems.showInApp();
+                    foreach (var kind in Enum.GetValues<Logic.CustomItems.Kind>())
+                    {
+                        foreach (var each in Logic.CustomItems.customIdsOf(kind))
+                        {
+                            var t = Logic.CustomItems.colourTexture(each);
+                            Console.WriteLine($"[recolor] {kind,-8} ★ {R.itemName(each),-22} {each}: {(t == null ? "NO TEXTURE" : t.PixelWidth + "x" + t.PixelHeight)}");
+                            if (t != null)
+                            {
+                                //What the tab previews, saved for a look: %TEMP%\MCDRebornRecolor\<id>.png
+                                var shots = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "MCDRebornRecolor");
+                                System.IO.Directory.CreateDirectory(shots);
+                                var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                                encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(t));
+                                using var file = System.IO.File.Create(System.IO.Path.Combine(shots, each + ".png"));
+                                encoder.Save(file);
+                            }
+                        }
+                    }
+
+                    var own = Logic.CustomItems.colourTexture(id) ?? throw new InvalidOperationException("no texture");
+                    var w = own.PixelWidth; var h = own.PixelHeight;
+                    var pixels = Logic.CustomSkins.pixelsAt(own, w, h);
+                    for (var i = 0; i < pixels.Length; i += 4) { pixels[i] = 0; pixels[i + 1] = 0; pixels[i + 2] = 255; }   //BGRA: pure red, alpha kept
+                    var red = System.Windows.Media.Imaging.BitmapSource.Create(w, h, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null, pixels, w * 4);
+
+                    Logic.CustomItems.setTexture(id, red);
+                    Console.WriteLine($"[recolor] {id} recoloured: isRecoloured {Logic.CustomItems.isRecoloured(id)}");
+                    (int r, int g, int b) average()
+                    {
+                        var pak = System.IO.Path.Combine(Logic.CustomSkins.paksFolder!, Logic.CustomSkins.MOD_PREFIX + Logic.CustomItems.MOD_NAME + "_P.pak");
+                        var inside = Logic.ModPak.read(pak).ToDictionary(f => f.Path, f => f.Data, StringComparer.OrdinalIgnoreCase);
+                        var texture = inside.Keys.Where(k => k.Contains("/" + id + "/", StringComparison.OrdinalIgnoreCase) && k.EndsWith(".uasset")
+                                && System.IO.Path.GetFileName(k).StartsWith("T_") && Logic.CustomSkins.isColourMap(System.IO.Path.GetFileNameWithoutExtension(k)))
+                            .OrderBy(k => System.IO.Path.GetFileName(k).Length).First();
+                        var stem = texture[..^7];
+                        inside.TryGetValue(stem + ".ubulk", out var bulk);
+                        var package = new PakReader.Pak.PakPackage(new ArraySegment<byte>(inside[texture]), new ArraySegment<byte>(inside[stem + ".uexp"]),
+                            bulk == null ? (ArraySegment<byte>?)null : new ArraySegment<byte>(bulk));
+                        var image = Services.PakIndexExtensions.bitmapImageFromSKImage(package.GetExport<PakReader.Parsers.Class.UTexture2D>()!.Image!);
+                        var px = Logic.CustomSkins.pixelsAt(image, image.PixelWidth, image.PixelHeight);
+                        long sr = 0, sg = 0, sb = 0, n = 0;
+                        for (var i = 0; i < px.Length; i += 4) { if (px[i + 3] == 0) { continue; } sb += px[i]; sg += px[i + 1]; sr += px[i + 2]; n++; }
+                        Console.WriteLine($"[recolor]   pak texture {System.IO.Path.GetFileName(texture)} {image.PixelWidth}x{image.PixelHeight}");
+                        return n == 0 ? (0, 0, 0) : ((int)(sr / n), (int)(sg / n), (int)(sb / n));
+                    }
+                    Console.WriteLine($"[recolor]   average colour in the pak with the recolour: {average()}");
+
+                    Logic.CustomItems.setTexture(id, null);
+                    Console.WriteLine($"[recolor] {id} recolour removed: isRecoloured {Logic.CustomItems.isRecoloured(id)}");
+                    Console.WriteLine($"[recolor]   average colour in the pak without it: {average()}");
+                }
+                catch (Exception e) { Console.WriteLine($"[recolor] FAILED {e}"); }
+                Shutdown();
+                return;
+            }
+
             //PROBE_MIGRATESLOTS[=write] - the free slots are gone: every custom item is a plugin item.
             //Turns each design still in a slot into a plugin item under a new MCDR_ItemNN id (name,
             //icon, behaviour and model kept), and swaps the old id for the new one wherever a
