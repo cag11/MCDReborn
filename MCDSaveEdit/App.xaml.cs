@@ -10390,7 +10390,11 @@ namespace MCDSaveEdit
                         int d(IntPtr at) => BitConverter.ToInt32(game.read(at, 4) ?? new byte[4], 0);
                         var data = new IntPtr(q(registry + 0xA0));
                         var count = d(registry + 0xA8);
-                        var melee = Logic.CustomItems.gameItems().Where(i => i.NativeParent == "MeleeWeaponGearItemInstance").Select(i => i.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                        //"@ranged" / "@armor" read that type's items instead of melee's.
+                        var parent = wanted != null && wanted.Contains("@ranged") ? "RangedWeaponGearItemInstance"
+                            : wanted != null && wanted.Contains("@armor") ? "ArmorGearItemInstance" : "MeleeWeaponGearItemInstance";
+                        if (wanted != null && wanted.Any(w => w.StartsWith("@"))) { wanted = null; }
+                        var melee = Logic.CustomItems.gameItems().Where(i => i.NativeParent == parent).Select(i => i.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
                         Console.WriteLine($"[rec] registry {registry.ToInt64():x}, {count} records");
                         string resolve(byte[] bytes)
                         {

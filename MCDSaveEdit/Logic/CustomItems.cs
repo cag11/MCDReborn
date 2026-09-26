@@ -133,25 +133,29 @@ namespace MCDSaveEdit.Logic
             catch (IOException) { }
         }
 
+        /// <summary>Whether items of this type have skills and property lines to pick: the weapons, whose records have been read.</summary>
+        public static bool hasTraits(Kind kind) => WeaponTraits.SKILLS.ContainsKey(kind);
+
         /// <summary>
         /// The plugin's skills field: "5:1;9:1" (EEnchantmentTypeID, level), or "-" to keep the
-        /// copied weapon's. Only for melee, the one type whose skills have been read and tried.
+        /// copied weapon's.
         /// </summary>
         private static string skillsField(Design design)
         {
-            if (design.PluginKind != Kind.Melee || design.Skills == null) { return "-"; }
+            if (design.PluginKind is not { } kind || !hasTraits(kind) || design.Skills == null) { return "-"; }
             return string.Join(";", design.Skills
-                .Where(s => MeleeTraits.ENCHANTMENT_IDS.ContainsKey(s.Skill))
-                .Select(s => $"{MeleeTraits.ENCHANTMENT_IDS[s.Skill]}:{Math.Clamp(s.Level, 1, 99)}"));
+                .Where(s => WeaponTraits.ENCHANTMENT_IDS.ContainsKey(s.Skill))
+                .Select(s => $"{WeaponTraits.ENCHANTMENT_IDS[s.Skill]}:{Math.Clamp(s.Level, 1, 99)}"));
         }
 
         /// <summary>The plugin's lines field: "key=English|..." (the game's own ItemType keys), or "-".</summary>
         private static string linesField(Design design)
         {
-            if (design.PluginKind != Kind.Melee || design.Lines == null) { return "-"; }
+            if (design.PluginKind is not { } kind || !hasTraits(kind) || design.Lines == null) { return "-"; }
+            var lines = WeaponTraits.LINES[kind];
             return string.Join("|", design.Lines
-                .Where(MeleeTraits.LINES.ContainsKey)
-                .Select(k => k + "=" + MeleeTraits.LINES[k]));
+                .Where(lines.ContainsKey)
+                .Select(k => k + "=" + lines[k]));
         }
 
         /// <summary>A custom item's slot. Its folder is beside its source's once that is chosen.</summary>
@@ -212,11 +216,11 @@ namespace MCDSaveEdit.Logic
             /// </summary>
             public string? Texture { get; set; }
             /// <summary>
-            /// A melee item's built-in skills (MeleeTraits.SKILLS), replacing the copied weapon's.
+            /// A weapon's built-in skills (WeaponTraits.SKILLS), replacing the copied weapon's.
             /// Null keeps the copied weapon's own; empty means none.
             /// </summary>
             public List<SkillPick>? Skills { get; set; }
-            /// <summary>A melee item's property lines, by ItemType key. Null keeps the copied weapon's.</summary>
+            /// <summary>A weapon's property lines, by ItemType key. Null keeps the copied weapon's.</summary>
             public List<string>? Lines { get; set; }
         }
 
@@ -230,14 +234,14 @@ namespace MCDSaveEdit.Logic
         /// <summary>The skills an item will have: its own when it gives them, else the copied weapon's.</summary>
         public static List<SkillPick> skillsOf(Design design)
             => design.Skills?.Select(s => new SkillPick { Skill = s.Skill, Level = s.Level }).ToList()
-                ?? (MeleeTraits.WEAPONS.TryGetValue(design.Source, out var own)
+                ?? (WeaponTraits.WEAPONS.TryGetValue(design.Source, out var own)
                     ? own.skills.Select(s => new SkillPick { Skill = s.skill, Level = s.level }).ToList()
                     : new List<SkillPick>());
 
         /// <summary>The property lines an item will show: its own when it gives them, else the copied weapon's.</summary>
         public static List<string> linesOf(Design design)
             => design.Lines?.ToList()
-                ?? (MeleeTraits.WEAPONS.TryGetValue(design.Source, out var own) ? own.lines.ToList() : new List<string>());
+                ?? (WeaponTraits.WEAPONS.TryGetValue(design.Source, out var own) ? own.lines.ToList() : new List<string>());
 
         /// <summary>
         /// The Weapons tab's work on a custom item: an imported model and where the sliders put it,

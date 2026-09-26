@@ -442,15 +442,17 @@ namespace MCDSaveEdit.UI
         // ------------------------------------------------------------------ skills and property lines
 
         /// <summary>
-        /// A melee item's built-in skills and property lines, as the design will give them: its own
+        /// A weapon's built-in skills and property lines, as the design will give them: its own
         /// picks, else the copied weapon's (CustomItems.skillsOf / linesOf). The first change turns
         /// the copied weapon's into the design's own, so a later change of source leaves them be.
+        /// Each type offers what its own weapons have: a bow is not offered a melee enchantment.
         /// </summary>
         private void showTraits()
         {
-            var melee = _slot?.Kind == CustomItems.Kind.Melee && _working != null;
-            traitsPanel.Visibility = melee ? Visibility.Visible : Visibility.Collapsed;
-            if (!melee) { return; }
+            var shown = _slot != null && _working != null && CustomItems.hasTraits(_slot.Kind);
+            traitsPanel.Visibility = shown ? Visibility.Visible : Visibility.Collapsed;
+            if (!shown) { return; }
+            var kind = _slot!.Kind;
 
             var skills = CustomItems.skillsOf(_working!);
             skillsList.Children.Clear();
@@ -464,7 +466,9 @@ namespace MCDSaveEdit.UI
                 var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 3) };
                 row.Children.Add(new TextBlock { Text = skillName(skills[i].Skill), Width = 220, VerticalAlignment = VerticalAlignment.Center });
                 row.Children.Add(new TextBlock { Text = R.ITEMS_SKILL_LEVEL, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) });
-                var level = new ComboBox { Width = 56, ItemsSource = new[] { 1, 2, 3 }, SelectedItem = Math.Clamp(skills[i].Level, 1, 3) };
+                //1 to 3 as enchantments go, and 99: every Trickbow's Ricochet is 99, its "always".
+                var levels = new[] { 1, 2, 3, 99 }.Union(new[] { skills[i].Level }).OrderBy(l => l).ToList();
+                var level = new ComboBox { Width = 56, ItemsSource = levels, SelectedItem = skills[i].Level };
                 level.SelectionChanged += (_, _) =>
                 {
                     if (level.SelectedItem is not int chosen) { return; }
@@ -481,7 +485,7 @@ namespace MCDSaveEdit.UI
                 skillsList.Children.Add(row);
             }
 
-            addSkillBox.ItemsSource = MeleeTraits.SKILLS
+            addSkillBox.ItemsSource = WeaponTraits.SKILLS[kind]
                 .Where(s => skills.All(k => k.Skill != s))
                 .Select(s => new ComboBoxItem { Content = skillName(s), Tag = s })
                 .OrderBy(i => (string)i.Content, StringComparer.CurrentCultureIgnoreCase)
@@ -489,9 +493,10 @@ namespace MCDSaveEdit.UI
 
             var lines = CustomItems.linesOf(_working!);
             linesPanel.Children.Clear();
-            foreach (var key in MeleeTraits.LINES.Keys.OrderBy(lineName, StringComparer.CurrentCultureIgnoreCase))
+            var catalogue = WeaponTraits.LINES[kind];
+            foreach (var key in catalogue.Keys.OrderBy(k => lineName(k, catalogue), StringComparer.CurrentCultureIgnoreCase))
             {
-                var box = new CheckBox { Content = lineName(key), IsChecked = lines.Contains(key), Margin = new Thickness(0, 0, 14, 4), Tag = key };
+                var box = new CheckBox { Content = lineName(key, catalogue), IsChecked = lines.Contains(key), Margin = new Thickness(0, 0, 14, 4), Tag = key };
                 box.Checked += line_Changed;
                 box.Unchecked += line_Changed;
                 linesPanel.Children.Add(box);
@@ -529,16 +534,18 @@ namespace MCDSaveEdit.UI
         }
 
         /// <summary>
-        /// An enchantment's name in the player's language. The game's melee variants carry a suffix
-        /// its text does not ("GravityMelee" is Gravity), so that is tried too.
+        /// An enchantment's name in the player's language. The game's melee and ranged variants
+        /// carry a suffix its text does not ("GravityMelee" is Gravity, "PoisonedRanged" is
+        /// Poisoned), so that is tried too.
         /// </summary>
         private static string skillName(string skill)
         {
             var name = R.enchantmentName(skill);
             if (name != skill) { return name; }
-            if (skill.EndsWith("Melee", StringComparison.Ordinal))
+            foreach (var suffix in new[] { "Melee", "Ranged" })
             {
-                var bare = skill.Substring(0, skill.Length - "Melee".Length);
+                if (!skill.EndsWith(suffix, StringComparison.Ordinal)) { continue; }
+                var bare = skill.Substring(0, skill.Length - suffix.Length);
                 var shorter = R.enchantmentName(bare);
                 if (shorter != bare) { return shorter; }
             }
@@ -546,10 +553,10 @@ namespace MCDSaveEdit.UI
         }
 
         /// <summary>A property line in the player's language: the game's own ItemType text, else its English.</summary>
-        private static string lineName(string key)
+        private static string lineName(string key, IReadOnlyDictionary<string, string> catalogue)
         {
             var name = R.itemName(key);
-            return name != key ? name : MeleeTraits.LINES[key];
+            return name != key ? name : catalogue[key];
         }
 
         // ------------------------------------------------------------------ behaviour

@@ -4,22 +4,26 @@
 namespace MCDSaveEdit.Logic
 {
     /// <summary>
-    /// What a melee weapon is beyond its blueprint: its built-in skills and its property lines.
+    /// What a weapon is beyond its blueprint: its built-in skills and its property lines.
     ///
     /// Both live in the item's compiled registry record, read off the running game
-    /// (PROBE_RECORDS, 2026-09-26) - no pak reaches them, and the item plugin writes a custom
-    /// item's own (ItemPlugin: record +0x1B8, built-in enchantments; +0x70, property lines).
+    /// (PROBE_RECORDS, 2026-09-26; melee, then ranged with =@ranged) - no pak reaches them, and
+    /// the item plugin writes a custom item's own (ItemPlugin: record +0x1B8, built-in
+    /// enchantments; +0x70, property lines).
     ///
     ///   - A skill is a built-in enchantment: Firebrand's "Burns Mobs" is Fire Aspect, level 1. Its
     ///     tooltip line is the enchantment's own, added by the game when it draws the item, so it
-    ///     is not listed here. Every built-in the game ships is level 1.
-    ///   - A property line is tooltip text, "Dual Wield" or "Spin attack". It describes the moveset;
-    ///     the move itself comes from the attacks of the weapon an item is a copy of.
+    ///     is not listed here. Melee built-ins are all level 1; ranged ones reach further - every
+    ///     Trickbow has Ricochet 99, which is why its arrows always bounce, and the Harpoon
+    ///     Crossbow's unique has Piercing 3. Some bows' own mechanic is a built-in too: the Wind
+    ///     Bow's pull, the Slow Bow's, the Hunting Bow's pet.
+    ///   - A property line is tooltip text, "Dual Wield" or "Strong Charged Attacks". It describes
+    ///     the weapon; what it does comes from the weapon an item is a copy of.
     ///
     /// Generated from that read, and from EEnchantmentTypeID in the Dumper-7 SDK dump. Regenerate
-    /// both after a game update that adds weapons.
+    /// after a game update that adds weapons.
     /// </summary>
-    public static class MeleeTraits
+    public static class WeaponTraits
     {
         /// <summary>EEnchantmentTypeID: the number the game stores for each enchantment.</summary>
         public static readonly IReadOnlyDictionary<string, int> ENCHANTMENT_IDS = new Dictionary<string, int>
@@ -187,72 +191,128 @@ namespace MCDSaveEdit.Logic
             ["VoidStrikeImmunity"] = 161,
         };
 
-        /// <summary>Every skill a melee weapon in the game has built in: what a custom one can pick.</summary>
-        public static readonly IReadOnlyList<string> SKILLS = new[]
+        /// <summary>Every skill a weapon of each type has built in in the game: what a custom one can pick.</summary>
+        public static readonly IReadOnlyDictionary<CustomItems.Kind, IReadOnlyList<string>> SKILLS = new Dictionary<CustomItems.Kind, IReadOnlyList<string>>
         {
-            "Backstabber",
-            "BaneOfIllagers",
-            "BusyBee",
-            "Chains",
-            "Committed",
-            "CriticalHit",
-            "DynamoMelee",
-            "Echo",
-            "EnigmaResonatorMelee",
-            "Exploding",
-            "FireAspect",
-            "Freezing",
-            "GravityMelee",
-            "Heavyweight",
-            "JunglePoisonMelee",
-            "Leeching",
-            "Looting",
-            "PoisonedMelee",
-            "Prospector",
-            "RadianceMelee",
-            "Rampaging",
-            "Rushdown",
-            "SharedPain",
-            "Sharpness",
-            "Shockwave",
-            "Smiting",
-            "SoulSiphon",
-            "SpongeStrike",
-            "Stunning",
-            "Swirling",
-            "Thundering",
-            "VoidTouchedMelee",
-            "Weakening",
+            [CustomItems.Kind.Melee] = new[]
+            {
+                "Backstabber",
+                "BaneOfIllagers",
+                "BusyBee",
+                "Chains",
+                "Committed",
+                "CriticalHit",
+                "DynamoMelee",
+                "Echo",
+                "EnigmaResonatorMelee",
+                "Exploding",
+                "FireAspect",
+                "Freezing",
+                "GravityMelee",
+                "Heavyweight",
+                "JunglePoisonMelee",
+                "Leeching",
+                "Looting",
+                "PoisonedMelee",
+                "Prospector",
+                "RadianceMelee",
+                "Rampaging",
+                "Rushdown",
+                "SharedPain",
+                "Sharpness",
+                "Shockwave",
+                "Smiting",
+                "SoulSiphon",
+                "SpongeStrike",
+                "Stunning",
+                "Swirling",
+                "Thundering",
+                "VoidTouchedMelee",
+                "Weakening",
+            },
+            [CustomItems.Kind.Ranged] = new[]
+            {
+                "Accelerating",
+                "BonusShot",
+                "ChainReaction",
+                "CogCrossbowEnchantment",
+                "DynamoRanged",
+                "EnigmaResonatorRanged",
+                "FuseShot",
+                "Gravity",
+                "Growing",
+                "HuntingBowEnchantment",
+                "Infinity",
+                "MultiShot",
+                "Piercing",
+                "PoisonedRanged",
+                "Power",
+                "Punch",
+                "RadianceRanged",
+                "RapidFire",
+                "ReliableRicochet",
+                "Ricochet",
+                "RollCharge",
+                "ShadowBarbRanged",
+                "ShadowShot",
+                "SlowBowEnchantment",
+                "Supercharge",
+                "TempoTheft",
+                "Unchanting",
+                "VoidTouchedRanged",
+                "WildRage",
+                "WindBowEnchantment",
+            },
         };
 
-        /// <summary>Every property line a melee weapon in the game shows, by its ItemType key, with its English.</summary>
-        public static readonly IReadOnlyDictionary<string, string> LINES = new Dictionary<string, string>
+        /// <summary>Every property line a weapon of each type shows in the game, by its ItemType key, with its English.</summary>
+        public static readonly IReadOnlyDictionary<CustomItems.Kind, IReadOnlyDictionary<string, string>> LINES = new Dictionary<CustomItems.Kind, IReadOnlyDictionary<string, string>>
         {
-            ["continuous_attacks"] = "Continuous attacks",
-            ["dual_wield"] = "Dual Wield",
-            ["fast_thrusts"] = "Fast Thrusts",
-            ["great_pushback"] = "Great Pushback",
-            ["great_splash"] = "Great Splash",
-            ["long_continuous_attacks"] = "Long Continuous Attacks",
-            ["long_melee_reach"] = "Long Melee Reach",
-            ["longer_melee_reach"] = "Longer Melee Reach",
-            ["powerful_pushback"] = "Powerful Pushback",
-            ["rapid_slashes"] = "Rapid Slashes",
-            ["relentless_combo"] = "Relentless Combo",
-            ["reliable_combo"] = "Reliable Combo",
-            ["slow_but_powerful"] = "Slow but Powerful",
-            ["spin_attack"] = "Spin attack",
-            ["spin_attack_move"] = "Spin attack move",
-            ["stylish_combo"] = "Stylish Combo",
-            ["thrust_attack"] = "Thrust attack",
-            ["turbo_punches"] = "Turbo Punches",
-            ["powerful_combo"] = "Very powerful combo",
+            [CustomItems.Kind.Melee] = new Dictionary<string, string>
+            {
+                ["continuous_attacks"] = "Continuous attacks",
+                ["dual_wield"] = "Dual Wield",
+                ["fast_thrusts"] = "Fast Thrusts",
+                ["great_pushback"] = "Great Pushback",
+                ["great_splash"] = "Great Splash",
+                ["long_continuous_attacks"] = "Long Continuous Attacks",
+                ["long_melee_reach"] = "Long Melee Reach",
+                ["longer_melee_reach"] = "Longer Melee Reach",
+                ["powerful_pushback"] = "Powerful Pushback",
+                ["rapid_slashes"] = "Rapid Slashes",
+                ["relentless_combo"] = "Relentless Combo",
+                ["reliable_combo"] = "Reliable Combo",
+                ["slow_but_powerful"] = "Slow but Powerful",
+                ["spin_attack"] = "Spin attack",
+                ["spin_attack_move"] = "Spin attack move",
+                ["stylish_combo"] = "Stylish Combo",
+                ["thrust_attack"] = "Thrust attack",
+                ["turbo_punches"] = "Turbo Punches",
+                ["powerful_combo"] = "Very powerful combo",
+            },
+            [CustomItems.Kind.Ranged] = new Dictionary<string, string>
+            {
+                ["bubbled_when_charged"] = "Bubble damage",
+                ["double_projectiles"] = "Double Projectiles",
+                ["even_more_projectiles"] = "Even More Projectiles",
+                ["explodes_on_impact"] = "Explodes on Impact",
+                ["fast_multiple_projectiles"] = "Fast Multiple Projectiles",
+                ["faster_projectiles"] = "Faster Projectiles",
+                ["chared_fires_three_arrows"] = "Fires 3 arrows when charged",
+                ["fires_harpoons"] = "Fires Harpoons",
+                ["high_firerate"] = "High Firerate",
+                ["multiple_projectiles"] = "Multiple projectiles",
+                ["Characteristic_TwistingVineBow"] = "Poison Trail",
+                ["powerful_shots"] = "Powerful Shots",
+                ["strong_charged_attacks"] = "Strong Charged Attacks",
+            },
         };
 
-        /// <summary>Each game melee weapon's own built-in skills (name, level) and property lines (keys).</summary>
+        /// <summary>Each game weapon's own built-in skills (name, level) and property lines (keys), melee and ranged.</summary>
         public static readonly IReadOnlyDictionary<string, (IReadOnlyList<(string skill, int level)> skills, IReadOnlyList<string> lines)> WEAPONS =
             new Dictionary<string, (IReadOnlyList<(string, int)>, IReadOnlyList<string>)>(System.StringComparer.OrdinalIgnoreCase)
         {
+            //Melee
             ["Anchor"] = (new (string, int)[] { ("Heavyweight", 1), ("GravityMelee", 1) }, new string[] { "slow_but_powerful" }),
             ["Anchor_Unique1"] = (new (string, int)[] { ("JunglePoisonMelee", 1), ("Heavyweight", 1), ("GravityMelee", 1) }, new string[] { "slow_but_powerful" }),
             ["Axe"] = (new (string, int)[] { }, new string[] { "spin_attack_move" }),
@@ -335,6 +395,78 @@ namespace MCDSaveEdit.Logic
             ["VoidTouchedBlades_Unique1"] = (new (string, int)[] { ("Leeching", 1), ("VoidTouchedMelee", 1) }, new string[] { }),
             ["Whip"] = (new (string, int)[] { }, new string[] { "longer_melee_reach" }),
             ["Whip_Unique1"] = (new (string, int)[] { ("JunglePoisonMelee", 1) }, new string[] { "longer_melee_reach" }),
+            //Ranged
+            ["BatCrossbow"] = (new (string, int)[] { ("ShadowShot", 1), ("ShadowBarbRanged", 1) }, new string[] { }),
+            ["Bow"] = (new (string, int)[] { }, new string[] { }),
+            ["Bow_Spooky1"] = (new (string, int)[] { ("BonusShot", 1) }, new string[] { }),
+            ["Bow_Unique1"] = (new (string, int)[] { ("Growing", 1) }, new string[] { }),
+            ["Bow_Unique2"] = (new (string, int)[] { ("BonusShot", 1) }, new string[] { }),
+            ["BubbleBow"] = (new (string, int)[] { }, new string[] { "bubbled_when_charged" }),
+            ["BubbleBow_Spooky2"] = (new (string, int)[] { ("ReliableRicochet", 1) }, new string[] { "bubbled_when_charged" }),
+            ["BubbleBow_Unique1"] = (new (string, int)[] { ("ReliableRicochet", 1) }, new string[] { "bubbled_when_charged" }),
+            ["BurstCrossbow"] = (new (string, int)[] { }, new string[] { "fast_multiple_projectiles" }),
+            ["BurstCrossbow_Unique1"] = (new (string, int)[] { ("EnigmaResonatorRanged", 1) }, new string[] { "fast_multiple_projectiles" }),
+            ["BurstCrossbow_Unique2"] = (new (string, int)[] { ("DynamoRanged", 1) }, new string[] { "fast_multiple_projectiles" }),
+            ["CogCrossbow"] = (new (string, int)[] { ("CogCrossbowEnchantment", 1) }, new string[] { }),
+            ["CogCrossbow_Unique1"] = (new (string, int)[] { ("Piercing", 1), ("CogCrossbowEnchantment", 1) }, new string[] { }),
+            ["Crossbow"] = (new (string, int)[] { }, new string[] { "faster_projectiles" }),
+            ["Crossbow_Unique1"] = (new (string, int)[] { ("Piercing", 1) }, new string[] { "faster_projectiles" }),
+            ["Crossbow_Unique2"] = (new (string, int)[] { ("RapidFire", 1) }, new string[] { "faster_projectiles" }),
+            ["DualCrossbows"] = (new (string, int)[] { }, new string[] { "double_projectiles" }),
+            ["DualCrossbows_Unique1"] = (new (string, int)[] { ("Unchanting", 1) }, new string[] { "double_projectiles" }),
+            ["DualCrossbows_Unique2"] = (new (string, int)[] { ("Growing", 1) }, new string[] { "double_projectiles" }),
+            ["ExplodingCrossbow"] = (new (string, int)[] { }, new string[] { "explodes_on_impact" }),
+            ["ExplodingCrossbow_Unique1"] = (new (string, int)[] { ("Gravity", 1) }, new string[] { "explodes_on_impact" }),
+            ["ExplodingCrossbow_Unique2"] = (new (string, int)[] { ("ChainReaction", 1) }, new string[] { "explodes_on_impact" }),
+            ["HarpoonCrossbow"] = (new (string, int)[] { }, new string[] { "fires_harpoons" }),
+            ["HarpoonCrossbow_Unique1"] = (new (string, int)[] { ("Piercing", 3) }, new string[] { "fires_harpoons" }),
+            ["HeavyCrossbow"] = (new (string, int)[] { }, new string[] { "powerful_shots" }),
+            ["HeavyCrossbow_Unique1"] = (new (string, int)[] { ("Punch", 1) }, new string[] { "powerful_shots" }),
+            ["HeavyCrossbow_Unique2"] = (new (string, int)[] { ("Ricochet", 1) }, new string[] { "powerful_shots" }),
+            ["HuntingBow"] = (new (string, int)[] { ("HuntingBowEnchantment", 1) }, new string[] { }),
+            ["HuntingBow_Unique1"] = (new (string, int)[] { ("HuntingBowEnchantment", 1), ("Infinity", 1) }, new string[] { }),
+            ["HuntingBow_Unique2"] = (new (string, int)[] { ("HuntingBowEnchantment", 1), ("Power", 1) }, new string[] { }),
+            ["HuntingBow_Unique3"] = (new (string, int)[] { ("HuntingBowEnchantment", 1), ("DynamoRanged", 1) }, new string[] { }),
+            ["Longbow"] = (new (string, int)[] { }, new string[] { "strong_charged_attacks" }),
+            ["Longbow_Unique1"] = (new (string, int)[] { ("Supercharge", 1) }, new string[] { "strong_charged_attacks" }),
+            ["Longbow_Unique2"] = (new (string, int)[] { ("FuseShot", 1) }, new string[] { "strong_charged_attacks" }),
+            ["Powerbow"] = (new (string, int)[] { }, new string[] { "strong_charged_attacks" }),
+            ["PowerBow_Spooky2"] = (new (string, int)[] { ("Power", 1) }, new string[] { "strong_charged_attacks" }),
+            ["Powerbow_Unique1"] = (new (string, int)[] { ("Power", 1) }, new string[] { "strong_charged_attacks" }),
+            ["Powerbow_Unique2"] = (new (string, int)[] { ("RadianceRanged", 1) }, new string[] { "strong_charged_attacks" }),
+            ["RapidCrossbow"] = (new (string, int)[] { }, new string[] { "high_firerate" }),
+            ["RapidCrossbow_Unique1"] = (new (string, int)[] { ("BonusShot", 1) }, new string[] { "high_firerate" }),
+            ["RapidCrossbow_Unique2"] = (new (string, int)[] { ("Accelerating", 1) }, new string[] { "high_firerate" }),
+            ["ScatterCrossbow"] = (new (string, int)[] { }, new string[] { "multiple_projectiles" }),
+            ["ScatterCrossbow_Unique1"] = (new (string, int)[] { }, new string[] { "even_more_projectiles" }),
+            ["ScatterCrossbow_Unique2"] = (new (string, int)[] { ("Ricochet", 1) }, new string[] { "multiple_projectiles" }),
+            ["ShadowCrossbow"] = (new (string, int)[] { ("ShadowShot", 1) }, new string[] { }),
+            ["ShadowCrossbow_Unique1"] = (new (string, int)[] { ("ShadowShot", 1), ("ShadowBarbRanged", 1) }, new string[] { }),
+            ["Shortbow"] = (new (string, int)[] { }, new string[] { }),
+            ["Shortbow_Unique1"] = (new (string, int)[] { ("RapidFire", 1) }, new string[] { }),
+            ["Shortbow_Unique2"] = (new (string, int)[] { ("Accelerating", 1) }, new string[] { }),
+            ["Shortbow_Unique3"] = (new (string, int)[] { ("WildRage", 1) }, new string[] { }),
+            ["SlowBow"] = (new (string, int)[] { ("SlowBowEnchantment", 1) }, new string[] { }),
+            ["SlowBow_Spooky2"] = (new (string, int)[] { ("SlowBowEnchantment", 1) }, new string[] { "chared_fires_three_arrows" }),
+            ["SlowBow_Unique1"] = (new (string, int)[] { ("SlowBowEnchantment", 1) }, new string[] { "chared_fires_three_arrows" }),
+            ["SoulBow"] = (new (string, int)[] { }, new string[] { }),
+            ["SoulBow_Unique1"] = (new (string, int)[] { ("TempoTheft", 1) }, new string[] { }),
+            ["SoulBow_Unique2"] = (new (string, int)[] { ("MultiShot", 1) }, new string[] { }),
+            ["SoulBow_Winter1"] = (new (string, int)[] { ("TempoTheft", 1) }, new string[] { }),
+            ["SoulCrossbow"] = (new (string, int)[] { }, new string[] { }),
+            ["SoulCrossbow_Unique1"] = (new (string, int)[] { ("EnigmaResonatorRanged", 1) }, new string[] { }),
+            ["SoulCrossbow_Unique2"] = (new (string, int)[] { ("Gravity", 1) }, new string[] { }),
+            ["Trickbow"] = (new (string, int)[] { ("Ricochet", 99) }, new string[] { }),
+            ["Trickbow_Unique1"] = (new (string, int)[] { ("PoisonedRanged", 1), ("Ricochet", 99) }, new string[] { }),
+            ["Trickbow_Unique2"] = (new (string, int)[] { ("WildRage", 1), ("Ricochet", 99) }, new string[] { }),
+            ["Trickbow_Year1"] = (new (string, int)[] { ("WildRage", 1), ("Ricochet", 99) }, new string[] { }),
+            ["TwistingVineBow"] = (new (string, int)[] { }, new string[] { "Characteristic_TwistingVineBow" }),
+            ["TwistingVineBow_Unique1"] = (new (string, int)[] { ("RollCharge", 1) }, new string[] { }),
+            ["VoidBow"] = (new (string, int)[] { ("VoidTouchedRanged", 1) }, new string[] { }),
+            ["VoidBow_Unique1"] = (new (string, int)[] { ("VoidTouchedRanged", 1), ("FuseShot", 1) }, new string[] { }),
+            ["WindBow"] = (new (string, int)[] { ("WindBowEnchantment", 1) }, new string[] { }),
+            ["WindBow_Unique1"] = (new (string, int)[] { ("WindBowEnchantment", 1), ("Ricochet", 1) }, new string[] { }),
+            ["WindBow_Unique2"] = (new (string, int)[] { ("WindBowEnchantment", 1), ("RollCharge", 1) }, new string[] { }),
         };
     }
 }
