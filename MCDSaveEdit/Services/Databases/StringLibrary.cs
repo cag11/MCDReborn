@@ -185,9 +185,16 @@ namespace MCDSaveEdit.Services
         }
 
 
+        /// <summary>
+        /// What this app calls its own enchantments (CustomEnchantments): name by id, description
+        /// and effect by id + "_desc" / "_effect". Consulted before the game's table.
+        /// </summary>
+        public static readonly Dictionary<string, string> enchantmentTextOverrides = new(StringComparer.OrdinalIgnoreCase);
+
         public static string enchantmentName(string enchantment)
         {
             var key = enchantment;
+            if (enchantmentTextOverrides.TryGetValue(key, out var mine)) { return mine; }
             if (!isStringsLoaded) { return key; }
             if (Constants.stringMismatches.ContainsKey(key))
             {
@@ -248,6 +255,7 @@ namespace MCDSaveEdit.Services
 
         private static string? getEnchantmentString(string key)
         {
+            if (enchantmentTextOverrides.TryGetValue(key, out var mine)) { return mine; }
             if (!isStringsLoaded) { return key; }
             if (Constants.stringMismatches.ContainsKey(key))
             {

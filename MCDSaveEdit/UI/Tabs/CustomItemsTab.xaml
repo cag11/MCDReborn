@@ -31,8 +31,12 @@
                     <Button x:Name="newArmorButton" Content="*New armour*" Padding="8,4" Margin="0,0,6,0"
                             Click="newArmorButton_Click"/>
                 </StackPanel>
-                <Button x:Name="newArtifactButton" Content="*New artifact*" Padding="8,4" Margin="0,6,0,0"
-                        HorizontalAlignment="Left" Click="newArtifactButton_Click"/>
+                <StackPanel x:Name="moreNewButtons" Orientation="Horizontal" Margin="0,6,0,0">
+                    <Button x:Name="newArtifactButton" Content="*New artifact*" Padding="8,4" Margin="0,0,6,0"
+                            Click="newArtifactButton_Click"/>
+                    <Button x:Name="newEnchantmentButton" Content="*New enchantment*" Padding="8,4"
+                            Click="newEnchantmentButton_Click"/>
+                </StackPanel>
                 <TextBlock x:Name="pluginStatus" Foreground="Gray" TextWrapping="Wrap" FontSize="11" Margin="2,6,2,0"/>
             </StackPanel>
 
@@ -55,6 +59,7 @@
                         Click="importButton_Click"/>
             </StackPanel>
 
+            <Grid>
             <ScrollViewer x:Name="editor" VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="0,0,6,0">
                     <TextBlock x:Name="slotTitle" FontWeight="SemiBold" FontSize="15"/>
@@ -213,6 +218,76 @@
                     </DataGrid>
                 </StackPanel>
             </ScrollViewer>
+
+            <!-- A new enchantment: a copy of an existing one under its own id, with its own texts. -->
+            <ScrollViewer x:Name="enchantmentEditor" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                <StackPanel Margin="0,0,6,0">
+                    <TextBlock x:Name="enchantmentTitle" FontWeight="SemiBold" FontSize="15"/>
+                    <TextBlock x:Name="enchantmentDetail" Foreground="Gray" FontSize="11" Margin="0,2,0,10"
+                               TextWrapping="Wrap"/>
+
+                    <Grid Margin="0,0,0,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="100"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock x:Name="enchantmentNameLabel" VerticalAlignment="Center"/>
+                        <TextBox x:Name="enchantmentNameBox" Grid.Column="1" Height="26" VerticalContentAlignment="Center"
+                                 TextChanged="enchantmentText_Changed"/>
+                        <TextBlock x:Name="enchantmentDescriptionLabel" Grid.Row="1" VerticalAlignment="Top" Margin="0,10,0,0"/>
+                        <TextBox x:Name="enchantmentDescriptionBox" Grid.Row="1" Grid.Column="1" Height="52" Margin="0,6,0,0"
+                                 TextWrapping="Wrap" AcceptsReturn="False" VerticalScrollBarVisibility="Auto"
+                                 TextChanged="enchantmentText_Changed"/>
+                        <TextBlock x:Name="enchantmentBuiltInLabel" Grid.Row="2" VerticalAlignment="Center" Margin="0,6,0,0"/>
+                        <TextBox x:Name="enchantmentBuiltInBox" Grid.Row="2" Grid.Column="1" Height="26" Margin="0,6,0,0"
+                                 VerticalContentAlignment="Center" TextChanged="enchantmentText_Changed"/>
+                        <TextBlock x:Name="enchantmentEffectLabel" Grid.Row="3" VerticalAlignment="Center" Margin="0,6,0,0"/>
+                        <TextBox x:Name="enchantmentEffectBox" Grid.Row="3" Grid.Column="1" Height="26" Margin="0,6,0,0"
+                                 VerticalContentAlignment="Center" TextChanged="enchantmentText_Changed"/>
+                    </Grid>
+                    <TextBlock x:Name="enchantmentTextHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="100,0,2,10"/>
+
+                    <Label x:Name="enchantmentCopyLabel" Content="*Copy from*" Padding="0,0,0,2"/>
+                    <TextBlock x:Name="enchantmentCopyHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="2,0,2,6"/>
+                    <Grid Margin="0,0,0,4">
+                        <TextBox x:Name="enchantmentSearchBox" Height="26" VerticalContentAlignment="Center"
+                                 TextChanged="enchantmentSearchBox_TextChanged"/>
+                        <TextBlock x:Name="enchantmentSearchHint" Text="Search…" Margin="9,0,0,0" Foreground="Gray"
+                                   IsHitTestVisible="False" VerticalAlignment="Center"/>
+                    </Grid>
+                    <ListBox x:Name="enchantmentSourceList" Height="320" SelectionChanged="enchantmentSourceList_SelectionChanged"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Image Source="{Binding Icon}" Width="28" Height="28" Margin="0,0,8,0"/>
+                                    <TextBlock Text="{Binding Text}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Its own numbers: overrides on a copy of the source's blueprint. -->
+                    <Label x:Name="enchantmentNumbersLabel" Content="*Numbers*" Padding="0,12,0,2"/>
+                    <TextBlock x:Name="enchantmentNumbersHint" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="2,0,2,6"/>
+                    <Grid x:Name="enchantmentNumbersGrid" Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="90"/>
+                            <ColumnDefinition Width="100"/>
+                        </Grid.ColumnDefinitions>
+                    </Grid>
+                    <Button x:Name="enchantmentNumbersReset" Content="*Use the copied enchantment's*" Padding="8,2"
+                            HorizontalAlignment="Left" Click="enchantmentNumbersReset_Click"/>
+                </StackPanel>
+            </ScrollViewer>
+            </Grid>
         </DockPanel>
     </Grid>
 </UserControl>

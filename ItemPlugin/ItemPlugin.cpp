@@ -116,6 +116,7 @@ namespace
         Refresh refresh = nullptr;
         AddPath addPath = nullptr;            // the finder's own: one of an item's paths into its path table
         StaticClass pathClass[3]{};           // the classes the finder files those paths under
+        StaticClass enchantmentClass = nullptr;  // the class the enchantment finder files a blueprint under
         uint8_t** module = nullptr;           // the Dungeons module, once the engine has made it
     };
 
@@ -240,6 +241,17 @@ namespace
         game.pathClass[1] = reinterpret_cast<StaticClass>(callTarget(p + 0x1A));
         game.pathClass[2] = reinterpret_cast<StaticClass>(callTarget(p + 0x34));
         game.addPath = reinterpret_cast<AddPath>(callTarget(p + 0x15));
+
+        // The enchantment finder's constructor (707f10) files each definition's three paths the
+        // same way: blueprint (+0x120) under one class, icon and material under two more. Only
+        // the first is needed, for an enchantment with a blueprint of its own. Optional: without
+        // it those are not filed, and the rest works as before.
+        auto enchantmentPaths = scan(parse("E8 ?? ?? ?? ?? 4C 8B 4C 24 ?? 4C 8B 46 F8 48 8B D0 48 8B CB E8 ?? ?? ?? ?? E8 ?? ?? ?? ?? 4C 8B 4C 24 ?? 4C 8B 06 48 8B D0 48 8B CB E8"));
+        say("patterns: enchantment finder paths %zu", enchantmentPaths.size());
+        if (enchantmentPaths.size() == 1 && callTarget(enchantmentPaths[0] + 0x14) == reinterpret_cast<uint8_t*>(game.addPath))
+        {
+            game.enchantmentClass = reinterpret_cast<StaticClass>(callTarget(enchantmentPaths[0]));
+        }
         return true;
     }
 
@@ -286,6 +298,270 @@ namespace
         return out;
     }
 
+    // ---------------------------------------------------------------- enchantments
+    //
+    // An enchantment is a definition in a table the game indexes by EEnchantmentTypeID (a pointer
+    // array at a global a79ee0 fills), 0x140 bytes each: +0x03 its id; +0x18 name, +0x30
+    // description, +0x48 the line it shows when built in, +0x60 its effect label (FText); +0x120,
+    // +0x128, +0x130 FNames of its blueprint, icon and icon material, relative to
+    // Components/Enchantments - and the blueprint's C++ parent is what it does. Every lookup is
+    // table[id], no bounds check, so an id past the enum's Last (162) is safe once it is filled,
+    // and no loop walks past Last.
+    //
+    // Saves spell an enchantment by name through the reflected enum EEnchantmentTypeID, so a new
+    // one is also appended to that enum's names (UEnum +0x40, pairs of FName and int64) once the
+    // engine has made it.
+    constexpr size_t ENCHANTMENT_SIZE = 0x140;
+
+    // Enchantments with a blueprint of their own, by id: filed in the enchantment finder once
+    // everything else is done (fileEnchantmentBlueprints).
+    struct OwnBlueprint { FName id; FName blueprint; };
+    std::vector<OwnBlueprint> g_blueprints;
+    constexpr int FIRST_NEW_ENCHANTMENT = 164;      // past Last (162) and _MAX (163)
+
+    struct Enchantment
+    {
+        std::string id;                // MCDR_Ench01: its name in saves
+        int source = 0;                // EEnchantmentTypeID of the one it copies
+        std::wstring name, description, builtIn, effect;
+        std::string folder;            // its own blueprint, "MCDR_Ench02/BP_MCDR_Ench02", or "-" for the source's
+    };
+
+    // "@enchantment \t id \t source type id \t name \t description \t built-in line \t effect \t folder",
+    // any text "-" for the source's own
+    std::vector<Enchantment> readEnchantments()
+    {
+        std::vector<Enchantment> found;
+        FILE* file = _wfopen((g_folder + L"MCDRebornItems.txt").c_str(), L"rb");
+        if (!file) { return found; }
+        std::string all;
+        char buffer[4096];
+        size_t got;
+        while ((got = fread(buffer, 1, sizeof(buffer), file)) > 0) { all.append(buffer, got); }
+        fclose(file);
+        size_t start = 0;
+        while (start < all.size())
+        {
+            size_t end = all.find('\n', start);
+            if (end == std::string::npos) { end = all.size(); }
+            std::string line = all.substr(start, end - start);
+            start = end + 1;
+            if (!line.empty() && line.back() == '\r') { line.pop_back(); }
+            if (line.rfind("@enchantment\t", 0) != 0) { continue; }
+            std::vector<std::string> parts;
+            size_t from = 0;
+            for (;;)
+            {
+                size_t tab = line.find('\t', from);
+                parts.push_back(line.substr(from, tab == std::string::npos ? std::string::npos : tab - from));
+                if (tab == std::string::npos) { break; }
+                from = tab + 1;
+            }
+            if (parts.size() < 8) { say("skipped an enchantment line with %zu fields", parts.size()); continue; }
+            Enchantment e;
+            e.id = parts[1];
+            e.source = atoi(parts[2].c_str());
+            e.name = wide(parts[3]); e.description = wide(parts[4]); e.builtIn = wide(parts[5]); e.effect = wide(parts[6]);
+            e.folder = parts[7];
+            found.push_back(e);
+        }
+        return found;
+    }
+
+    // The game's routine that makes a definition: its `mov rcx, [rip+x]` names the table.
+    uint8_t** enchantmentTable(TArrayRaw*& header)
+    {
+        auto hits = scan(parse("40 57 48 83 EC 30 48 C7 44 24 20 FE FF FF FF 48 89 5C 24 40 48 89 74 24 50 0F B6 F9 8B F7 B9 40 01 00 00 E8"));
+        if (hits.size() != 1) { say("enchantments: the definition routine was found %zu times", hits.size()); return nullptr; }
+        uint8_t* load = hits[0] + 0x4D;
+        if (load[0] != 0x48 || load[1] != 0x8B || load[2] != 0x0D) { say("enchantments: the table load is not where expected"); return nullptr; }
+        int32_t rel; memcpy(&rel, load + 3, 4);
+        header = reinterpret_cast<TArrayRaw*>(load + 7 + rel);
+        return reinterpret_cast<uint8_t**>(header->Data);
+    }
+
+    // The enum's generated constructor keeps it in a static: found from its parameter block, whose
+    // name pointer (+0x10) points at "EEnchantmentTypeID", and the code that loads that block.
+    uint8_t** enumStatic(const char* enumName)
+    {
+        HMODULE exe = GetModuleHandleW(nullptr);
+        auto dos = reinterpret_cast<IMAGE_DOS_HEADER*>(exe);
+        auto nt = reinterpret_cast<IMAGE_NT_HEADERS*>(reinterpret_cast<uint8_t*>(exe) + dos->e_lfanew);
+        uint8_t* base = reinterpret_cast<uint8_t*>(exe);
+        size_t size = nt->OptionalHeader.SizeOfImage;
+        size_t length = strlen(enumName) + 1;
+
+        uint8_t* text = nullptr;
+        for (size_t i = 1; i + length < size && !text; i++)
+        {
+            if (base[i - 1] == 0 && memcmp(base + i, enumName, length) == 0) { text = base + i; }
+        }
+        if (!text) { say("enum %s: its name is not in the image", enumName); return nullptr; }
+
+        uint8_t* block = nullptr;
+        for (size_t i = 0; i + 8 <= size && !block; i += 8)
+        {
+            uint8_t* value; memcpy(&value, base + i, 8);
+            if (value == text) { block = base + i - 0x10; }
+        }
+        if (!block) { say("enum %s: no parameter block names it", enumName); return nullptr; }
+
+        // mov rax,[rip+static] (7) / test rax,rax (3) / jne (2) / lea rdx,[rip+block] (7)
+        for (size_t i = 12; i + 7 < size; i++)
+        {
+            if (base[i] != 0x48 || base[i + 1] != 0x8D || base[i + 2] != 0x15) { continue; }
+            int32_t rel; memcpy(&rel, base + i + 3, 4);
+            if (base + i + 7 + rel != block) { continue; }
+            uint8_t* mov = base + i - 12;
+            if (mov[0] != 0x48 || mov[1] != 0x8B || mov[2] != 0x05) { continue; }
+            int32_t at; memcpy(&at, mov + 3, 4);
+            return reinterpret_cast<uint8_t**>(mov + 7 + at);
+        }
+        say("enum %s: its constructor was not found", enumName);
+        return nullptr;
+    }
+
+    // An array header read that survives a bad address.
+    bool readArray(TArrayRaw* at, TArrayRaw& out)
+    {
+        __try { out = *at; return true; }
+        __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    }
+
+    // A pointer read that survives a bad address: the enum's static is read while the engine starts.
+    bool readPointer(uint8_t** at, uint8_t*& out)
+    {
+        __try { out = *at; return true; }
+        __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+    }
+
+    // Registers each enchantment: a copy of its source's definition under a new id, then its name
+    // in the enum once the engine has made that. Runs on the plugin's own thread.
+    void addEnchantments(Game& game)
+    {
+        auto enchantments = readEnchantments();
+        if (enchantments.empty()) { return; }
+        TArrayRaw* header = nullptr;
+        uint8_t** table = enchantmentTable(header);
+        if (!table) { say("enchantments: NOT registered"); return; }
+
+        struct Named { std::string id; int value; int source; bool own; };
+        std::vector<Named> named;
+        int next = FIRST_NEW_ENCHANTMENT;
+        for (const auto& e : enchantments)
+        {
+            if (next >= header->Max) { say("enchantments: no room past id %d", next); break; }
+            if (e.source <= 0 || e.source >= header->Num || !table[e.source]) { say("%s: its source %d is not an enchantment", e.id.c_str(), e.source); continue; }
+            auto def = static_cast<uint8_t*>(game.malloc(ENCHANTMENT_SIZE));
+            memcpy(def, table[e.source], ENCHANTMENT_SIZE);
+            def[3] = static_cast<uint8_t>(next);
+            std::wstring key = wide(e.id);
+            // "-" keeps the source's text, in whatever language the game is in.
+            auto text = [&](const std::wstring& value, const wchar_t* space, const std::wstring& textKey, size_t at)
+            {
+                if (value == L"-") { return; }
+                FText t{};
+                game.createText(&t, value.c_str(), space, textKey.c_str());
+                memcpy(def + at, &t, sizeof(t));
+            };
+            text(e.name, L"Enchantment", key, 0x18);
+            text(e.description, L"Enchantment", key + L"_desc", 0x30);
+            text(e.builtIn, L"ItemType", key + L"_builtin", 0x48);
+            text(e.effect, L"Enchantment", key + L"_effect", 0x60);
+            // Its own blueprint - a copy of the source's in the New Items pak, carrying its numbers.
+            // The icon and material stay the source's.
+            bool own = e.folder != "-" && game.enchantmentClass;
+            if (e.folder != "-" && !game.enchantmentClass) { say("%s: the enchantment finder is not known; it keeps its source's blueprint and numbers", e.id.c_str()); }
+            if (own)
+            {
+                FName bp = name(game, e.folder);
+                memcpy(def + 0x120, &bp, 8);
+                g_blueprints.push_back({ name(game, e.id), bp });
+            }
+            table[next] = def;
+            say("%s registered as enchantment %d, a copy of %d%s", e.id.c_str(), next, e.source, own ? ", with its own blueprint" : "");
+            named.push_back({ e.id, next, e.source, own });
+            next++;
+        }
+        if (named.empty()) { return; }
+
+        uint8_t** holder = enumStatic("EEnchantmentTypeID");
+        if (!holder) { say("enchantments: the enum was not found; saves will not keep them"); return; }
+        uint8_t* uenum = nullptr;
+        for (int wait = 0; wait < 600 && !uenum; wait++)
+        {
+            if (!readPointer(holder, uenum) || !uenum) { uenum = nullptr; Sleep(200); }
+        }
+        if (!uenum) { say("enchantments: the enum was never made; saves will not keep them"); return; }
+
+        // The arrays PreloadEnchantments (a72b80) keeps beside the definitions - icons,
+        // icon materials and the loaded enchantment classes, 0x30 / 0x20 / 0x10 below the
+        // definition table's header - are sized to exactly 162 at start-up and filled per id, so
+        // a new id reads past their end: the first test crashed opening the item's tooltip, in
+        // IsValid on the garbage icon. Once they are filled, each gets a bigger block with the
+        // new ids' entries set to their source's. Their count stays 162, so nothing that walks
+        // them sees the new ids; only a lookup by id does.
+        TArrayRaw* arrays[3] = {
+            reinterpret_cast<TArrayRaw*>(reinterpret_cast<uint8_t*>(header) - 0x30),
+            reinterpret_cast<TArrayRaw*>(reinterpret_cast<uint8_t*>(header) - 0x20),
+            reinterpret_cast<TArrayRaw*>(reinterpret_cast<uint8_t*>(header) - 0x10),
+        };
+        int highest = named.back().value;
+        bool filled = false;
+        for (int wait = 0; wait < 1500 && !filled; wait++)
+        {
+            filled = true;
+            for (auto* a : arrays)
+            {
+                TArrayRaw now{};
+                if (!readArray(a, now) || now.Num != 162 || !now.Data) { filled = false; break; }
+                uint8_t* first = nullptr;
+                if (!readPointer(reinterpret_cast<uint8_t**>(now.Data) + named.front().source, first) || !first) { filled = false; break; }
+            }
+            if (!filled) { Sleep(200); }
+        }
+        if (!filled) { say("enchantments: the icon and class arrays were never filled; NOT usable - do not open an item with one"); }
+        else
+        {
+            for (auto* a : arrays)
+            {
+                int32_t capacity = highest + 16;
+                auto bigger = static_cast<uint8_t**>(game.malloc(static_cast<size_t>(capacity) * 8));
+                memset(bigger, 0, static_cast<size_t>(capacity) * 8);
+                memcpy(bigger, a->Data, static_cast<size_t>(a->Num) * 8);
+                auto old = reinterpret_cast<uint8_t**>(a->Data);
+                // An enchantment with a blueprint of its own gets no class: the class getter
+                // (a627e0) loads it from the enchantment finder the first time it is asked, as
+                // it would any enchantment PreloadEnchantments had not reached.
+                for (const auto& n : named) { bigger[n.value] = (n.own && a == arrays[2]) ? nullptr : old[n.source]; }
+                a->Max = capacity;
+                a->Data = reinterpret_cast<uint8_t*>(bigger);      // the old block is left as it is
+            }
+            say("enchantments: icons, materials and classes set for %zu new id(s)", named.size());
+        }
+
+        auto names = reinterpret_cast<TArrayRaw*>(uenum + 0x40);
+        for (const auto& n : named)
+        {
+            const std::string& id = n.id;
+            int value = n.value;
+            if (names->Num >= names->Max)
+            {
+                int32_t more = names->Max + 16;
+                auto bigger = static_cast<uint8_t*>(game.malloc(static_cast<size_t>(more) * 16));
+                memcpy(bigger, names->Data, static_cast<size_t>(names->Num) * 16);
+                names->Data = bigger;           // the old block is left as it is: the game may still hold it
+                names->Max = more;
+            }
+            FName full = name(game, "EEnchantmentTypeID::" + id);
+            int64_t number = value;
+            memcpy(names->Data + static_cast<size_t>(names->Num) * 16, &full, 8);
+            memcpy(names->Data + static_cast<size_t>(names->Num) * 16 + 8, &number, 8);
+            names->Num++;
+            say("%s named in the enum as %d", id.c_str(), value);
+        }
+    }
+
     // id \t source id \t folder (MeleeWeapons/<id>) \t name \t description, one item a line, UTF-8.
     std::vector<Item> readItems()
     {
@@ -307,7 +583,7 @@ namespace
             std::string line = all.substr(start, end - start);
             start = end + 1;
             if (!line.empty() && line.back() == '\r') { line.pop_back(); }
-            if (line.empty() || line[0] == '#') { continue; }
+            if (line.empty() || line[0] == '#' || line[0] == '@') { continue; }
 
             std::vector<std::string> parts;
             size_t from = 0;
@@ -588,11 +864,11 @@ namespace
     // The finder, as the game itself reaches it: the Dungeons module's virtual at +0x48 returns it.
     // Its first instruction says where it is - `lea rax,[rcx+X]` for a member, `mov rax,[rcx+X]`
     // for a pointer - so it is decoded rather than assumed. Anything else: null, and the bytes logged.
-    uint8_t* finderOf(Game& game, uint8_t* module)
+    uint8_t* finderOf(Game& game, uint8_t* module, size_t slot = 0x48)
     {
         uint8_t* vtable = nullptr;
         uint8_t* getter = nullptr;
-        if (!safeGet(module, vtable) || !safeGet(vtable + 0x48, getter)) { say("the module's vtable is not readable"); return nullptr; }
+        if (!safeGet(module, vtable) || !safeGet(vtable + slot, getter)) { say("the module's vtable is not readable"); return nullptr; }
         uint8_t code[16]{};
         for (int hop = 0; hop < 4; hop++)
         {
@@ -696,6 +972,49 @@ namespace
         say("finder refreshed: %d new item(s) still missing%s", missing, missing ? " - do not open an item this added" : "");
     }
 
+    // Enchantments with a blueprint of their own: each blueprint filed in the enchantment finder
+    // under the enchantment's id, as the finder's constructor files the game's (707f10), and the
+    // finder refreshed - so the class getter's lookup (the id's name in EEnchantmentTypeID, then
+    // the definition's +0x120) finds the copy's path. The enchantment finder is the Dungeons
+    // module's virtual at +0x50, beside the item finder at +0x48, and the same class.
+    void fileEnchantmentBlueprints(Game& game)
+    {
+        if (g_blueprints.empty()) { return; }
+        uint8_t* module = nullptr;
+        for (int wait = 0; wait < 600 && !module; wait++)
+        {
+            if (!safeGet(game.module, module) || !module) { module = nullptr; Sleep(200); }
+        }
+        if (!module) { say("enchantments: the module was never made; their blueprints are NOT filed - do not use them"); return; }
+        uint8_t* finder = finderOf(game, module, 0x50);
+        if (!finder) { say("enchantments: the enchantment finder was not found; blueprints NOT filed - do not use them"); return; }
+
+        uint8_t* vtable = nullptr;
+        bool ours = false;
+        if (safeGet(finder, vtable))
+        {
+            for (int slot = 0; slot < 160 && !ours; slot++)
+            {
+                void* entry = nullptr;
+                if (!safeGet(vtable + slot * 8, entry)) { break; }
+                ours = entry == reinterpret_cast<void*>(game.refresh);
+            }
+        }
+        if (!ours) { say("enchantments: the object at %p is not a finder; blueprints NOT filed - do not use them", finder); return; }
+
+        bool readable = true;
+        for (const auto& b : g_blueprints)
+        {
+            if (inPathTable(finder, b.id, readable) || !readable) { continue; }
+            game.addPath(finder, game.enchantmentClass(), b.blueprint, b.id);
+        }
+        if (!readable) { say("enchantments: the finder's path table does not read; NOT refreshed"); return; }
+        game.refresh(finder, true);
+        int found = 0;
+        for (const auto& b : g_blueprints) { if (inFinder(finder, b.id, readable)) { found++; } }
+        say("enchantments: %d of %zu own blueprint(s) in the enchantment finder at %p", found, g_blueprints.size(), finder);
+    }
+
     DWORD WINAPI run(LPVOID)
     {
         wchar_t path[MAX_PATH];
@@ -751,6 +1070,8 @@ namespace
         }
         if (!ids.empty()) { refreshFinder(game, registry, ids); }
         say("done: %d item(s), registry now holds %d", added, count(registry));
+        addEnchantments(game);
+        fileEnchantmentBlueprints(game);
         return 0;
     }
 }

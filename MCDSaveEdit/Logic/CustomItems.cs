@@ -674,6 +674,23 @@ namespace MCDSaveEdit.Logic
             throw new InvalidOperationException($"{source.Id} is not under Actors/Equipment or Actors/Items.");
         }
 
+        /// <summary>What the plugin is told about each design, as its item list spells it.</summary>
+        public static List<GamePlugin.Item> pluginItems(IEnumerable<Design> designs)
+        {
+            var found = new List<GamePlugin.Item>();
+            foreach (var design in designs)
+            {
+                var slot = slotOf(design);
+                if (!slot.Plugin) { continue; }
+                var source = gameItem(design.Source) ?? throw new InvalidOperationException($"{design.Source} is not a game item.");
+                found.Add(new GamePlugin.Item(slot.Id, source.Id, slot.Folder,
+                    string.IsNullOrWhiteSpace(design.Name) ? R.itemName(source.Id) : design.Name!,
+                    string.IsNullOrWhiteSpace(design.Description) ? R.itemDesc(source.Id) : design.Description!,
+                    skillsField(design), linesField(design), armorField(design), numbersField(design)));
+            }
+            return found;
+        }
+
         public static Built build(IReadOnlyList<Design> designs, string? into = null, IReadOnlyList<Extra>? extras = null)
         {
             extras ??= Array.Empty<Extra>();
@@ -681,7 +698,11 @@ namespace MCDSaveEdit.Logic
             var paks = CustomSkins.paksFolder ?? throw new InvalidOperationException("The game's paks folder is not known.");
             var pakPath = into ?? Path.Combine(paks, CustomSkins.MOD_PREFIX + MOD_NAME + "_P.pak");
 
-            if (designs.Count == 0 && extras.Count == 0)
+            //New enchantments with numbers of their own bring a copied blueprint, which the game
+            //finds through the same registry - so they go in this pak too.
+            var enchantments = into == null ? CustomEnchantments.load().Where(CustomEnchantments.hasBlueprint).ToList() : new List<CustomEnchantments.Design>();
+
+            if (designs.Count == 0 && extras.Count == 0 && enchantments.Count == 0)
             {
                 if (File.Exists(pakPath)) { File.Delete(pakPath); }
                 result.Notes.Add("No custom items: the pak was removed.");
@@ -691,17 +712,7 @@ namespace MCDSaveEdit.Logic
 
             //Checked before anything is written: a plugin item with no plugin to register it is an
             //id the game does not know.
-            var pluginItems = new List<GamePlugin.Item>();
-            foreach (var design in designs)
-            {
-                var slot = slotOf(design);
-                if (!slot.Plugin) { continue; }
-                var source = gameItem(design.Source) ?? throw new InvalidOperationException($"{design.Source} is not a game item.");
-                pluginItems.Add(new GamePlugin.Item(slot.Id, source.Id, slot.Folder,
-                    string.IsNullOrWhiteSpace(design.Name) ? R.itemName(source.Id) : design.Name!,
-                    string.IsNullOrWhiteSpace(design.Description) ? R.itemDesc(source.Id) : design.Description!,
-                    skillsField(design), linesField(design), armorField(design), numbersField(design)));
-            }
+            var pluginItems = CustomItems.pluginItems(designs);
             if (pluginItems.Count > 0 && into == null && GamePlugin.gameFolder(paks) == null)
             {
                 throw new InvalidOperationException("Items beyond the free slots need the Steam or Minecraft Launcher version of the game.");
@@ -741,6 +752,13 @@ namespace MCDSaveEdit.Logic
                 copies.Add((made.GameFrom, made.Rename));
                 result.Items++;
                 result.Notes.Add($"{extra.Id}: a copy of {source.Id} in {extraFolder(source, extra.Id)}.");
+            }
+
+            foreach (var enchantment in enchantments)
+            {
+                var (files, made) = CustomEnchantments.files(enchantment, result.Notes);
+                entries.AddRange(files);
+                copies.Add((made.GameFrom, made.Rename));
             }
 
 
