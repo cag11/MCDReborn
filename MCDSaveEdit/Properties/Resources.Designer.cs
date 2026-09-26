@@ -9662,7 +9662,7 @@ namespace MCDSaveEdit.Properties {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Ten more Apocalypse+ levels in the mission screen. Each one keeps getting harder the way +1 to +25 do, and drops stronger gear. Complete +25 to open +26, and so on. Takes effect the next time the game starts, and needs the Steam or Minecraft Launcher version..
+        ///   Looks up a localized string similar to Ten more Apocalypse+ levels in the mission screen. Each one keeps getting harder the way +1 to +25 do, and drops stronger gear. They open like the others, by winning boss missions: 8 at +25 open up to +28, 9 at +28 up to +31, 10 at +31 up to +35. Takes effect the next time the game starts, and needs the Steam or Minecraft Launcher version..
         /// </summary>
         public static string STATS_APOC_PLUS_WHY {
             get {
