@@ -39,6 +39,7 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **Music Tab:** Play your own MP3 over any of the game's 112 music tracks, installed as a mod pak beside the game's own so removing it puts the original back
 * **Installed Mods Tab:** Every mod pak in one place. **Export All** puts every mod, map, new item, enchantment and mob into one file, and **Import All** brings it all back on another PC, so a map with custom mobs arrives with its mobs.
 * **Apocalypse +35**: ten more Apocalypse+ levels in the game's own mission screen, unlocked like the rest by beating boss missions (8 at +25, 9 at +28, 10 at +31), harder with every level and dropping stronger gear; one switch on the **Difficulty** tab
+* **Damage Meter:** A game-styled DPS panel over the game, in the game's own fonts: damage per second, the fight's total and time, the peak, and a bar for each of the last 30 seconds. 
 
 #### Custom Maps Feature
 * Exports the game missions as Minecraft worlds or allows you to build on them to create your own custom maps..Use the maps tab to do the export and imports.
