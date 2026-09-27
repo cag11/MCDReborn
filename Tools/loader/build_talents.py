@@ -83,6 +83,7 @@ TREE_MID = (TREE_W / 2.0, TREE_H / 2.0)
 REGION_TITLE_R = 2480.0                             # the region names, outside the outer ring
 ARC_PIECE = 40.0
 FRESH = 2                                           # frames everything is coloured after a change
+ICON_CACHE = {}
 GROUP_SIZE = 24                                     # buttons a hover group holds
 HEADER_H = 80.0
 SIZES = {'start': 52.0, 'small': 40.0, 'notable': 58.0, 'keystone': 80.0}
@@ -175,8 +176,16 @@ def stub_texture(pictures, name):
     every node but three showed (and the faint group pictures, as grey squares). Nor a copy of the
     game's picture in this build: the art comes from the player's own game, at install.
     """
+    if name in ICON_CACHE:
+        return ICON_CACHE[name]
     path = '%s/Icons/T_TI_%s' % (ICONS, name)
-    there = on_disk(path, 'Texture2D')
+    #The TEXTURE, by its object path, never on_disk's answer: once the texture is loaded that hands
+    #back its package, and a brush given a package draws nothing - every node but the three whose
+    #pictures no group had asked for first came out blank.
+    try:
+        there = ue.load_object(ue.find_class('Texture2D'), '%s.T_TI_%s' % (path, name))
+    except Exception:
+        there = None
     if there is None:
         made = ue.import_asset(os.path.join(PICTURES, 'icons', 'T_TI_%s.png' % name), ICONS + '/Icons')
         there = made[0] if isinstance(made, list) else made
@@ -187,6 +196,7 @@ def stub_texture(pictures, name):
             except Exception as problem:
                 say('  %s.%s not set: %s' % (name, field, problem))
         keep(there)
+    ICON_CACHE[name] = there
     return there
 
 

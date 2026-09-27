@@ -10615,6 +10615,57 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_TALENTICONS - the live Talents screen's Icons and Rings canvases: for the first children,
+            //what each image draws (its texture), its tint, size, visibility and opacity. Read-only.
+            if (_startupArguments.Contains("PROBE_TALENTICONS"))
+            {
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[icons] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, step => { })!;
+                    long ptr(long at) { var b = game.read(new IntPtr(at), 8); return b == null ? 0 : BitConverter.ToInt64(b, 0); }
+                    int i32(long at) { var b = game.read(new IntPtr(at), 4); return b == null ? 0 : BitConverter.ToInt32(b, 0); }
+                    float f32(long at) { var b = game.read(new IntPtr(at), 4); return b == null ? 0 : BitConverter.ToSingle(b, 0); }
+                    int offsetOf(long obj, string field)
+                    {
+                        for (var k = ptr(obj + 0x10); k != 0; k = ptr(k + 0x40))
+                        {
+                            foreach (var f in reflect.fieldsOf(k)) { if (f.Name == field) { return f.Offset; } }
+                        }
+                        return -1;
+                    }
+                    var brushStruct = reflect.find("SlateBrush", "ScriptStruct");
+                    var resourceAt = brushStruct == 0 ? -1 : reflect.fieldsOf(brushStruct).FirstOrDefault(f => f.Name == "ResourceObject")?.Offset ?? -1;
+                    var sizeAt = brushStruct == 0 ? -1 : reflect.fieldsOf(brushStruct).FirstOrDefault(f => f.Name == "ImageSize")?.Offset ?? -1;
+                    foreach (var canvasName in new[] { "Icons", "Rings" })
+                    {
+                        foreach (var (at, kind, outer) in reflect.findAll(canvasName))
+                        {
+                            if (kind != "CanvasPanel") { continue; }
+                            var slots = ptr(at + offsetOf(at, "Slots"));
+                            var count = i32(at + offsetOf(at, "Slots") + 8);
+                            Console.WriteLine($"[icons] {canvasName} {at:X} in {outer}: {count} children");
+                            foreach (var child in new[] { 0, 1, 2, 5, 11, 40, 300 })
+                            {
+                                if (child >= count) { continue; }
+                                var slot = ptr(slots + child * 8);
+                                var content = ptr(slot + offsetOf(slot, "Content"));
+                                if (content == 0) { Console.WriteLine($"[icons]   {child}: no content"); continue; }
+                                var colour = content + offsetOf(content, "ColorAndOpacity");
+                                var brush = content + offsetOf(content, "Brush");
+                                var texture = resourceAt < 0 ? 0 : ptr(brush + resourceAt);
+                                Console.WriteLine($"[icons]   {child}: {reflect.nameOf(content)} texture {reflect.nameOf(texture)} ({reflect.kindOf(texture)}), " +
+                                    $"tint ({f32(colour):F2},{f32(colour + 4):F2},{f32(colour + 8):F2},{f32(colour + 12):F2}), " +
+                                    $"size {f32(brush + sizeAt):F0}x{f32(brush + sizeAt + 4):F0}, visibility {reflect.valueOf(content, "Visibility")}, opacity {reflect.valueOf(content, "RenderOpacity")}");
+                            }
+                        }
+                    }
+                }
+                Shutdown();
+                return;
+            }
+
             //PROBE_CURRENCIES=<save .dat> - every currency a character holds, as the save has them. Read-only.
             var probeCurrencies = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_CURRENCIES=", StringComparison.Ordinal));
             if (probeCurrencies != null)
