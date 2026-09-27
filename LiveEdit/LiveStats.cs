@@ -655,6 +655,23 @@ namespace LiveEdit
             }
         }
 
+        /// <summary>Each attack set's first floats, for probes: (class, offset, value).</summary>
+        public List<(long kind, int offset, float value)> attackSetFloats()
+        {
+            var found = new List<(long, int, float)>();
+            foreach (var kind in _attackSetClasses)
+            {
+                var set = setOf(Player, kind);
+                if (set == IntPtr.Zero) { continue; }
+                for (var o = 0x28; o < 0x60; o += 4)
+                {
+                    var value = _game.readFloat(new IntPtr(set.ToInt64() + o));
+                    if (value != null) { found.Add((kind, o, value.Value)); }
+                }
+            }
+            return found;
+        }
+
         public bool applyAttackSpeed(float times)
         {
             var done = false;

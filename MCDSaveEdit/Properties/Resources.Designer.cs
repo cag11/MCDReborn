@@ -9671,6 +9671,69 @@ namespace MCDSaveEdit.Properties {
         }
 
         /// <summary>
+        ///   Looks up a localized string for ITEMS_GEMS_ON.
+        /// </summary>
+        public static string ITEMS_GEMS_ON {
+            get {
+                return ResourceManager.GetString("ITEMS_GEMS_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for ITEMS_GEMS_WHY.
+        /// </summary>
+        public static string ITEMS_GEMS_WHY {
+            get {
+                return ResourceManager.GetString("ITEMS_GEMS_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for ITEMS_GEMS_DONE.
+        /// </summary>
+        public static string ITEMS_GEMS_DONE {
+            get {
+                return ResourceManager.GetString("ITEMS_GEMS_DONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for ITEMS_GEMS_REMOVED.
+        /// </summary>
+        public static string ITEMS_GEMS_REMOVED {
+            get {
+                return ResourceManager.GetString("ITEMS_GEMS_REMOVED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for ITEMS_GEMS_OFF_WARN.
+        /// </summary>
+        public static string ITEMS_GEMS_OFF_WARN {
+            get {
+                return ResourceManager.GetString("ITEMS_GEMS_OFF_WARN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for MODES_TAB.
+        /// </summary>
+        public static string MODES_TAB {
+            get {
+                return ResourceManager.GetString("MODES_TAB", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for MODES_HINT.
+        /// </summary>
+        public static string MODES_HINT {
+            get {
+                return ResourceManager.GetString("MODES_HINT", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Apocalypse +26 to +35 are installed. Start the game and slide past +25 on the mission screen..
         /// </summary>
         public static string STATS_APOC_PLUS_DONE {

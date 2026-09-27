@@ -85,6 +85,10 @@
                 <local:CustomItemsTab x:Name="customItemsTab"/>
             </TabItem>
 
+            <TabItem x:Name="gameModesTabItem" theme:Nav.Icon="&#xE7FC;" Header="*Game modes*" Selector.Selected="OnTabSelected">
+                <local:GameModesTab x:Name="gameModesTab"/>
+            </TabItem>
+
             <TabItem x:Name="weaponSkinsTabItem" theme:Nav.Icon="&#xF158;" Header="*Weapon Import*" Selector.Selected="OnTabSelected">
                 <local:MeshWorkshopTab x:Name="weaponSkinsTab" Catalogue="Weapons"/>
             </TabItem>

@@ -100,8 +100,12 @@ namespace MCDSaveEdit.Logic
             var dll = Path.Combine(folder, dllName(folder));
             var list = Path.Combine(folder, ITEMS_NAME);
 
+            //Tab-separated, one item a line. A tab or a line break typed into a name would split
+            //it, so they become spaces.
+            string clean(string text) => text.Replace('\t', ' ').Replace('\r', ' ').Replace('\n', ' ').Trim();
+            var properties = CustomProperties.forPlugin(clean);
             var struggles = ApocalypsePlus.isOn;
-            if (items.Count == 0 && enchantments.Count == 0 && mobs.Count == 0 && !struggles)
+            if (items.Count == 0 && enchantments.Count == 0 && mobs.Count == 0 && properties.Count == 0 && !struggles)
             {
                 if (isOurs(dll)) { File.Delete(dll); }
                 if (File.Exists(list)) { File.Delete(list); }
@@ -119,9 +123,6 @@ namespace MCDSaveEdit.Logic
                 File.WriteAllBytes(dll, carried);
             }
 
-            //Tab-separated, one item a line. A tab or a line break typed into a name would split
-            //it, so they become spaces.
-            string clean(string text) => text.Replace('\t', ' ').Replace('\r', ' ').Replace('\n', ' ').Trim();
             var lines = new List<string> { "# id\tsource\tfolder\tname\tdescription\tskills\tlines\tarmor properties\tnumbers - written by MCD Reborn, rewritten on every install" };
             lines.AddRange(items.Select(i => string.Join("\t", i.Id, i.Source, i.Folder, clean(i.Name), clean(i.Description), clean(i.Skills), clean(i.Lines), clean(i.ArmorProperties), clean(i.Numbers))));
             if (enchantments.Count > 0)
@@ -135,13 +136,18 @@ namespace MCDSaveEdit.Logic
                 lines.Add("# @mob	id	source EntityType	name	blueprint under /Game/");
                 lines.AddRange(mobs.Select(m => string.Join("	", "@mob", m.Id, m.SourceType.ToString(System.Globalization.CultureInfo.InvariantCulture), clean(m.Name), m.Blueprint)));
             }
+            if (properties.Count > 0)
+            {
+                lines.Add("# @property\tid\tsource EArmorPropertyID\tname\tline under the item's name\ticon (texture|material) - \"-\" keeps the source's\tactive: 1 does what its source does, 0 is only a line");
+                lines.AddRange(properties);
+            }
             if (struggles)
             {
                 lines.Add("# @struggle	highest Apocalypse+ level - past 25 the game's own step from +24 to +25 is carried on");
                 lines.Add("@struggle	" + ApocalypsePlus.TOP.ToString(System.Globalization.CultureInfo.InvariantCulture));
             }
             File.WriteAllLines(list, lines, new UTF8Encoding(false));
-            return $"The item plugin will register {items.Count} item(s), {enchantments.Count} enchantment(s) and {mobs.Count} mob(s)"
+            return $"The item plugin will register {items.Count} item(s), {enchantments.Count} enchantment(s), {properties.Count} propert(ies) and {mobs.Count} mob(s)"
                 + (struggles ? $", and Apocalypse+ up to +{ApocalypsePlus.TOP}," : "") + " the next time the game starts.";
         }
 

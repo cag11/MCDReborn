@@ -357,6 +357,22 @@ namespace MCDSaveEdit.Logic
             return null;
         }
 
+        /// <summary>Every export's Vector property of that name, by export - where a level's pieces stand.</summary>
+        public static List<(string export, float x, float y, float z)> vectorsOf(Package package, string property)
+        {
+            var found = new List<(string, float, float, float)>();
+            foreach (var export in package.Exports)
+            {
+                var tag = findTag(package, export, property);
+                if (tag == null) { continue; }
+                var (at, size, kind) = tag.Value;
+                if (kind != "StructProperty" || size != 12) { continue; }
+                found.Add((export.Name, BitConverter.ToSingle(package.Data, at),
+                    BitConverter.ToSingle(package.Data, at + 4), BitConverter.ToSingle(package.Data, at + 8)));
+            }
+            return found;
+        }
+
         private static void writeString(BinaryWriter writer, string said)
         {
             writer.Write(said.Length + 1);

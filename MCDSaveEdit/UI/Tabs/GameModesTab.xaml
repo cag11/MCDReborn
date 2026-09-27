@@ -1,0 +1,34 @@
+﻿<UserControl x:Class="MCDSaveEdit.UI.GameModesTab"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             mc:Ignorable="d"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             d:DesignHeight="640" d:DesignWidth="900">
+
+    <DockPanel Margin="8">
+        <Label x:Name="titleLabel" DockPanel.Dock="Top" Content="*Game modes*" Padding="0,0,0,4"/>
+
+        <Border DockPanel.Dock="Top" Margin="0,0,0,10" Padding="0,0,0,10"
+                BorderThickness="0,0,0,1" BorderBrush="{DynamicResource Brush.Border}">
+            <TextBlock x:Name="hint" Foreground="Gray" TextWrapping="Wrap"/>
+        </Border>
+
+        <TextBlock x:Name="statusLabel" DockPanel.Dock="Bottom" Margin="0,8,0,0"
+                   TextWrapping="Wrap" Foreground="Gray"/>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel MaxWidth="760" HorizontalAlignment="Left">
+                <!-- Gems and sockets: gems, sockets and the screens for them, all in the game. -->
+                <CheckBox x:Name="gemsOn" FontWeight="Bold"
+                          Checked="gemsOn_Changed" Unchecked="gemsOn_Changed"/>
+                <TextBlock x:Name="gemsWhy" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
+                <!-- Apocalypse+ 26 to 35: the item plugin opens them when the game starts. -->
+                <CheckBox x:Name="apocalypsePlusOn" FontWeight="Bold" Margin="0,24,0,0"
+                          Checked="apocalypsePlusOn_Changed" Unchecked="apocalypsePlusOn_Changed"/>
+                <TextBlock x:Name="apocalypsePlusWhy" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

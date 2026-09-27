@@ -263,8 +263,19 @@ def reconstruct(node):
 #--- widgets ---------------------------------------------------------------------------------------
 
 def stub_font(path):
-    """An empty stand-in for one of the game's fonts, so the editor has something to point at."""
-    there = on_disk(path, 'Font')
+    """
+    An empty stand-in for one of the game's fonts, so the editor has something to point at.
+
+    The FONT, by its object path, never on_disk's answer: once anything in the session has loaded
+    the font, find_asset hands back its PACKAGE, and a TextBlock given a package for a font saves
+    none - the game then draws its own default face, which is how every panel lost the Minecraft
+    font without a single error.
+    """
+    name = path.rsplit('/', 1)[1]
+    try:
+        there = ue.load_object(ue.find_class('Font'), '%s.%s' % (path, name))
+    except Exception:
+        there = None
     if there is not None:
         return there
     made = ue.duplicate_asset('/Engine/EngineFonts/Roboto.Roboto', path, path.rsplit('/', 1)[1])

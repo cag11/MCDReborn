@@ -5595,6 +5595,14 @@ namespace MCDSaveEdit
                             + (gap < 600 ? "   <- close enough to steal its clicks" : string.Empty));
                     }
 
+                    //PROBE_STAND=look: where you stand and what is near, and nothing moved.
+                    if (string.Equals(asked, "look", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine($"[stand] you stand at {fx:F0} {fy:F0} {fz:F0} - nothing was moved");
+                        this.Shutdown();
+                        return;
+                    }
+
                     //The origin goes on the floor, and the bounds are only REPORTED.
                     //
                     //They were applied once, and it was wrong. UStaticMesh.ExtendedBounds says
@@ -10872,6 +10880,147 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_GEMSLIVE - the Gems screen's own state and every inventory item's new-mark bytes (Meta,
+            //+0xA0), power and line count, read from the running game. Read-only.
+            if (_startupArguments.Contains("PROBE_GEMSLIVE"))
+            {
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[gemslive] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, step => { })!;
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var at = reflect.objectAt(i);
+                        if (at == 0) { continue; }
+                        var kind = reflect.kindOf(at);
+                        var name = reflect.nameOf(at);
+                        if (name == null || name.StartsWith("Default__")) { continue; }
+                        if (kind == "UMG_MCDRebornGems_C")
+                        {
+                            Console.WriteLine($"[gemslive] screen {name}: InMission {reflect.valueOf(at, "InMission")}, Roll {reflect.valueOf(at, "Roll")}, Seen {reflect.valueOf(at, "Seen")}, Scan {reflect.valueOf(at, "Scan")}, Lines {reflect.valueOf(at, "Lines")}, Sockets {reflect.valueOf(at, "Sockets")}, Want {reflect.valueOf(at, "Want")}");
+                        }
+                        if (kind != null && kind.StartsWith("UMG_MerchantItemSlot"))
+                        {
+                            var slot = BitConverter.ToInt64(game.read(new IntPtr(at + 0x2E0), 8) ?? new byte[8], 0);
+                            var shown = slot == 0 ? 0 : BitConverter.ToInt64(game.read(new IntPtr(slot + 0x60), 8) ?? new byte[8], 0);
+                            var lines = shown == 0 ? -1 : BitConverter.ToInt32(game.read(new IntPtr(shown + 0x58), 4) ?? new byte[4], 0);
+                            Console.WriteLine($"[gemslive] tile {kind} {name}: slot {(slot == 0 ? "none" : reflect.kindOf(slot) + " " + reflect.nameOf(slot))}, display item {(shown == 0 ? "none" : reflect.nameOf(shown) + " " + reflect.nameAt(BitConverter.ToInt32(game.read(new IntPtr(shown + 0x34), 4)!, 0)))} lines {lines}");
+                        }
+                        if (kind == "InventoryItem")
+                        {
+                            var raw = game.read(new IntPtr(at + 0x28), 0x7A);
+                            if (raw == null) { continue; }
+                            var id = reflect.nameAt(BitConverter.ToInt32(raw, 0x0C));
+                            var power = BitConverter.ToSingle(raw, 0x14);
+                            var lines = BitConverter.ToInt32(raw, 0x30);
+                            var rarity = raw[0x38];
+                            Console.WriteLine($"[gemslive] item {id,-26} r{rarity} power {power:0.###} lines {lines} meta {raw[0x78]:x2} {raw[0x79]:x2}  ({name} in {reflect.outerOf(at)})");
+                        }
+                    }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_MERCHANTS - every live merchant screen widget: visibility, opacity and its outer, to tell
+            //an open merchant screen from one kept for later. Read-only.
+            if (_startupArguments.Contains("PROBE_MERCHANTS"))
+            {
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[merchants] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, step => { })!;
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var at = reflect.objectAt(i);
+                        if (at == 0) { continue; }
+                        var kind = reflect.kindOf(at);
+                        if (kind == null || !kind.StartsWith("UMG_Merchant") || kind.Contains("Slot") || kind.Contains("Price") || kind.Contains("Bullet")) { continue; }
+                        var name = reflect.nameOf(at);
+                        if (name == null || name.StartsWith("Default__") || name == "WidgetArchetype") { continue; }
+                        Console.WriteLine($"[merchants] {kind} {name}: vis {reflect.valueOf(at, "Visibility")}, opacity {reflect.valueOf(at, "RenderOpacity")}, in {reflect.outerOf(at)}, bIsFocusable {reflect.valueOf(at, "bIsFocusable")}");
+                    }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_LEVELPOS=<pak path> - every placed piece's RelativeLocation in a cooked level. Read-only.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_LEVELPOS=", StringComparison.Ordinal)))
+            {
+                var path = _startupArguments.First(a => a.StartsWith("PROBE_LEVELPOS=", StringComparison.Ordinal))["PROBE_LEVELPOS=".Length..].Trim('"');
+                var package = Logic.CustomSkins.index!.extractPackage(path);
+                if (package == null) { Console.WriteLine($"[levelpos] {path}: not found"); }
+                else
+                {
+                    var read = Logic.CookedEdit.read(package.Value.UAsset.ToArray(), package.Value.UExp.ToArray());
+                    foreach (var (export, x, y, z) in Logic.CookedEdit.vectorsOf(read, "RelativeLocation"))
+                    {
+                        Console.WriteLine($"[levelpos] {export,-48} {x,10:0} {y,10:0} {z,10:0}");
+                    }
+                    Console.WriteLine($"[levelpos] exports: {string.Join(", ", read.Exports.Select(e => e.Name).Where(n => !n.StartsWith("Default__")).Take(80))}");
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_KINDS=<Class>[;<Class>...] - how many live objects of each class there are. Read-only.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_KINDS=", StringComparison.Ordinal)))
+            {
+                var wanted = _startupArguments.First(a => a.StartsWith("PROBE_KINDS=", StringComparison.Ordinal))["PROBE_KINDS=".Length..].Trim('"').Split(';');
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[kinds] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, step => { })!;
+                    var counts = wanted.ToDictionary(w => w, w => 0);
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var at = reflect.objectAt(i);
+                        var kind = at == 0 ? null : reflect.kindOf(at);
+                        if (kind != null && counts.ContainsKey(kind))
+                        {
+                            counts[kind]++;
+                            var name = reflect.nameOf(at);
+                            if (name?.StartsWith("Default__") == false) { Console.WriteLine($"[kinds]   {kind} {name} in {reflect.outerOf(at)}"); }
+                        }
+                    }
+                    foreach (var (kind, n) in counts) { Console.WriteLine($"[kinds] {n,6}  {kind}"); }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_FUNCS=<regex> - every live function whose name matches, where it lives, whether it is
+            //native, and its parameters. Read-only.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_FUNCS=", StringComparison.Ordinal)))
+            {
+                var pattern = new System.Text.RegularExpressions.Regex(_startupArguments.First(a => a.StartsWith("PROBE_FUNCS=", StringComparison.Ordinal))["PROBE_FUNCS=".Length..].Trim('"'));
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[funcs] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, step => { })!;
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var at = reflect.objectAt(i);
+                        if (at == 0) { continue; }
+                        var name = reflect.nameOf(at);
+                        if (name == null || !pattern.IsMatch(name)) { continue; }
+                        var kind = reflect.kindOf(at);
+                        if (kind != "Function" && kind != "DelegateFunction") { continue; }
+                        var flags = game.read(new IntPtr(at + 0x98), 4);
+                        var native = flags != null && (BitConverter.ToUInt32(flags, 0) & 0x400) != 0;
+                        var args = reflect.fieldsOf(at).Where(f => f.IsParameter).Select(f => $"{f.Cpp} {f.Name}");
+                        Console.WriteLine($"[funcs] {reflect.outerOf(at)}.{name} {kind}{(native ? " native" : "")} ({string.Join(", ", args)})");
+                    }
+                }
+                Shutdown();
+                return;
+            }
+
             //PROBE_EQUIPMAP - each live EquipmentComponent's gear power (+0x144), its "built" flag
             //(+0x198) and the drop-power ceiling map at +0x148: every entry's key, difficulty, threat,
             //Apocalypse+ level and power ranges. Read-only, external ReadProcessMemory.
@@ -10906,6 +11055,720 @@ namespace MCDSaveEdit
                         }
                     }
                 }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_EQUIPPED=<.dat> - the equipped items as the save holds them: enchantments and
+            //properties. Read-only.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_EQUIPPED=", StringComparison.Ordinal)))
+            {
+                var path = _startupArguments.First(a => a.StartsWith("PROBE_EQUIPPED=", StringComparison.Ordinal))["PROBE_EQUIPPED=".Length..].Trim('"');
+                try
+                {
+                    var profile = System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        using var file = File.OpenRead(path);
+                        DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file);
+                        using var plain = await Logic.FileProcessHelper.Decrypt(file) ?? throw new InvalidOperationException("could not decrypt");
+                        return await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Read(plain) ?? throw new InvalidOperationException("could not parse");
+                    }).GetAwaiter().GetResult();
+                    Console.WriteLine($"[equipped] saved {File.GetLastWriteTime(path)}");
+                    foreach (var i in profile.Items.Where(i => i.EquipmentSlot != null))
+                    {
+                        Console.WriteLine($"[equipped] {i.EquipmentSlot}: {i.Type} | "
+                            + string.Join(", ", (i.Enchantments ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Enchantment>()).Where(e => e.Level > 0).Select(e => $"{e.Id}:{e.Level}"))
+                            + " | props " + string.Join(", ", (i.Armorproperties ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Armorproperty>()).Select(p => $"{p.Id}:{p.Rarity}")));
+                    }
+                }
+                catch (Exception problem) { Console.WriteLine($"[equipped] failed: {problem.Message}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_ATTACKSETS - your character's attack sets, their first floats. Read-only.
+            if (_startupArguments.Contains("PROBE_ATTACKSETS"))
+            {
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[attack] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, step => { })!;
+                    var stats = new LiveEdit.LiveStats(game);
+                    Console.WriteLine($"[attack] character found {stats.look()}, attack speed {stats.YourAttackSpeed}");
+                    foreach (var group in stats.attackSetFloats().GroupBy(f => f.kind))
+                    {
+                        Console.WriteLine($"[attack] {reflect.nameOf(group.Key)}: " + string.Join("  ", group.Select(f => $"+{f.offset:X}={f.value:0.####}")));
+                    }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_SOCKETS=<.dat> - the built-in sockets: the test designs "Empty Socket" and "Ruby" (user
+            //properties) are dropped, their lines on items become MCDR_SocketEmpty / MCDR_SocketRuby<grade>,
+            //weapons lose any other line, and the equipped gear gets empty sockets to fill in game: melee 3,
+            //armour 2, ranged 1. Gems on, items rebuilt. Backs the save up first.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_SOCKETS=", StringComparison.Ordinal)))
+            {
+                var path = _startupArguments.First(a => a.StartsWith("PROBE_SOCKETS=", StringComparison.Ordinal))["PROBE_SOCKETS=".Length..].Trim('"');
+                try
+                {
+                    if (Logic.GameRunning.isUp) { throw new InvalidOperationException("the game is running"); }
+                    var designs = Logic.CustomProperties.load();
+                    var old = designs.Where(d => d.Name == "Empty Socket" || d.Name == "Ruby").ToDictionary(d => d.Id, d => d.Name!);
+                    Logic.CustomProperties.save(designs.Where(d => !old.ContainsKey(d.Id)).ToList());
+                    Console.WriteLine($"[sockets] dropped designs: {string.Join(", ", old.Select(o => $"{o.Key} ({o.Value})"))}");
+                    Logic.Gems.set(true);
+                    foreach (var d in Logic.Gems.properties().Take(4)) { Console.WriteLine($"[sockets] {d.Id}: {d.Line}"); }
+                    var built = Logic.CustomItems.build(Logic.CustomItems.load());
+                    foreach (var note in built.Notes.Where(n => n.Contains("plugin") || n.Contains("Gems"))) { Console.WriteLine($"[sockets] {note}"); }
+                    System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        async Task<MCDSaveEdit.Save.Models.Profiles.ProfileSaveFile> load()
+                        {
+                            using var file = File.OpenRead(path);
+                            DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file);
+                            using var plain = await Logic.FileProcessHelper.Decrypt(file) ?? throw new InvalidOperationException("could not decrypt");
+                            return await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Read(plain) ?? throw new InvalidOperationException("could not parse");
+                        }
+                        var profile = await load();
+                        MCDSaveEdit.Save.Models.Profiles.Armorproperty empty() => new() { Id = Logic.Gems.SOCKET, Rarity = MCDSaveEdit.Save.Models.Enums.Rarity.Common };
+                        foreach (var item in profile.Items)
+                        {
+                            if (item.Armorproperties == null) { continue; }
+                            foreach (var p in item.Armorproperties)
+                            {
+                                if (!old.TryGetValue(p.Id, out var was)) { continue; }
+                                p.Id = was == "Ruby" ? Logic.Gems.socketOf("Ruby", (int)p.Rarity + 1) : Logic.Gems.SOCKET;
+                            }
+                        }
+                        var wanted = new Dictionary<string, int> { ["MeleeGear"] = 3, ["ArmorGear"] = 2, ["RangedGear"] = 1 };
+                        foreach (var item in profile.Items.Where(i => i.EquipmentSlot != null && wanted.ContainsKey(i.EquipmentSlot)))
+                        {
+                            var lines = (item.Armorproperties ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Armorproperty>()).ToList();
+                            bool socket(MCDSaveEdit.Save.Models.Profiles.Armorproperty p) => p.Id.StartsWith("MCDR_Socket", StringComparison.Ordinal);
+                            //Weapons have no lines of their own; sockets go last, in one run, as the screen expects.
+                            var own = item.EquipmentSlot == "ArmorGear" ? lines.Where(p => !socket(p)).ToList() : new List<MCDSaveEdit.Save.Models.Profiles.Armorproperty>();
+                            var sockets = lines.Where(socket).ToList();
+                            while (sockets.Count < wanted[item.EquipmentSlot!]) { sockets.Add(empty()); }
+                            item.Armorproperties = own.Concat(sockets).ToArray();
+                        }
+                        Console.WriteLine($"[sockets] backup: {Logic.SaveBackup.backup(path)}");
+                        using var json = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Write(profile);
+                        json.Seek(0, SeekOrigin.Begin);
+                        using var sealedFile = await Logic.FileProcessHelper.Encrypt(json) ?? throw new InvalidOperationException("could not encrypt");
+                        using (var output = File.Create(path)) { await sealedFile.CopyToAsync(output); }
+                        var again = await load();
+                        foreach (var i in again.Items.Where(i => i.Armorproperties?.Any(p => p.Id.StartsWith("MCDR_")) == true))
+                        {
+                            Console.WriteLine($"[sockets] {i.Type} ({i.EquipmentSlot ?? "inventory"}): {string.Join(", ", i.Armorproperties!.Select(p => $"{p.Id}:{p.Rarity}"))}");
+                        }
+                    }).GetAwaiter().GetResult();
+                }
+                catch (Exception problem) { Console.WriteLine($"[sockets] failed: {problem}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_MARKNEW=<.dat>;<inventory index>[,...] - those inventory items marked new again, as if just
+            //picked up, so the Gems screen rolls their sockets. Backs the save up first.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_MARKNEW=", StringComparison.Ordinal)))
+            {
+                var bits = _startupArguments.First(a => a.StartsWith("PROBE_MARKNEW=", StringComparison.Ordinal))["PROBE_MARKNEW=".Length..].Trim('"').Split(';');
+                var path = bits[0];
+                var wanted = bits[1].Split(',').Select(long.Parse).ToHashSet();
+                try
+                {
+                    if (Logic.GameRunning.isUp) { throw new InvalidOperationException("the game is running"); }
+                    System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        MCDSaveEdit.Save.Models.Profiles.ProfileSaveFile profile;
+                        using (var file = File.OpenRead(path))
+                        {
+                            DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file);
+                            using var plain = await Logic.FileProcessHelper.Decrypt(file) ?? throw new InvalidOperationException("could not decrypt");
+                            profile = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Read(plain) ?? throw new InvalidOperationException("could not parse");
+                        }
+                        foreach (var i in profile.Items.Where(i => i.EquipmentSlot == null && i.InventoryIndex is { } at && wanted.Contains(at)))
+                        {
+                            i.MarkedNew = true;
+                            Console.WriteLine($"[marknew] #{i.InventoryIndex} {i.Type} {i.Rarity} marked new");
+                        }
+                        Console.WriteLine($"[marknew] backup: {Logic.SaveBackup.backup(path)}");
+                        using var json = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Write(profile);
+                        json.Seek(0, SeekOrigin.Begin);
+                        using var sealedFile = await Logic.FileProcessHelper.Encrypt(json) ?? throw new InvalidOperationException("could not encrypt");
+                        using (var output = File.Create(path)) { await sealedFile.CopyToAsync(output); }
+                    }).GetAwaiter().GetResult();
+                }
+                catch (Exception problem) { Console.WriteLine($"[marknew] failed: {problem.Message}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_ROLLS=<.dat> - every item still marked new, with the socket roll the game should have
+            //made for it (the Gems screen's: Fraction(power * 91.7319) against its rarity's odds). Read-only.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_ROLLS=", StringComparison.Ordinal)))
+            {
+                var path = _startupArguments.First(a => a.StartsWith("PROBE_ROLLS=", StringComparison.Ordinal))["PROBE_ROLLS=".Length..].Trim('"');
+                try
+                {
+                    System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        using var file = File.OpenRead(path);
+                        DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file);
+                        using var plain = await Logic.FileProcessHelper.Decrypt(file) ?? throw new InvalidOperationException("could not decrypt");
+                        var profile = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Read(plain) ?? throw new InvalidOperationException("could not parse");
+                        var odds = new[] { new[] { 0.20f, 0.05f, 0.00f }, new[] { 0.30f, 0.12f, 0.03f }, new[] { 0.35f, 0.25f, 0.10f } };
+                        var fresh = profile.Items.Where(i => i.MarkedNew == true || (i.InventoryIndex ?? 999) < 25).OrderBy(i => i.InventoryIndex ?? -1).ToList();
+                        Console.WriteLine($"[rolls] {profile.Items.Length} item(s), {fresh.Count} marked new");
+                        foreach (var i in fresh)
+                        {
+                            var x = (float)i.Power * 91.7319f;
+                            var chance = x - (float)Math.Floor(x);
+                            var want = odds[(int)i.Rarity].Count(o => chance < o);
+                            var lines = i.Armorproperties ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Armorproperty>();
+                            var sockets = lines.Count(p => p.Id.StartsWith("MCDR_", StringComparison.Ordinal));
+                            Console.WriteLine($"[rolls] {i.Type,-28} {i.Rarity,-7} power {i.Power:0.###}  roll {chance:0.000} -> {want}  has {sockets} socket(s), {lines.Length} line(s) #{i.InventoryIndex} new={i.MarkedNew} {(i.EquipmentSlot ?? "")}");
+                        }
+                    }).GetAwaiter().GetResult();
+                }
+                catch (Exception problem) { Console.WriteLine($"[rolls] failed: {problem.Message}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_ARMOURGEMS=<.dat> - gems set in armour move to their armour lines (MCDR_Socket<X> ->
+            //MCDR_Armour<X>), so they do what a gem does in armour. Backs the save up first.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_ARMOURGEMS=", StringComparison.Ordinal)))
+            {
+                var path = _startupArguments.First(a => a.StartsWith("PROBE_ARMOURGEMS=", StringComparison.Ordinal))["PROBE_ARMOURGEMS=".Length..].Trim('"');
+                try
+                {
+                    if (Logic.GameRunning.isUp) { throw new InvalidOperationException("the game is running"); }
+                    System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        async Task<MCDSaveEdit.Save.Models.Profiles.ProfileSaveFile> load()
+                        {
+                            using var file = File.OpenRead(path);
+                            DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file);
+                            using var plain = await Logic.FileProcessHelper.Decrypt(file) ?? throw new InvalidOperationException("could not decrypt");
+                            return await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Read(plain) ?? throw new InvalidOperationException("could not parse");
+                        }
+                        var profile = await load();
+                        var moved = 0;
+                        foreach (var item in profile.Items.Where(i => Logic.ItemExtensions.isArmor(i) && i.Armorproperties != null))
+                        {
+                            foreach (var p in item.Armorproperties!.Where(p => p.Id.StartsWith("MCDR_Socket", StringComparison.Ordinal) && p.Id != Logic.Gems.SOCKET))
+                            {
+                                p.Id = "MCDR_Armour" + p.Id.Substring("MCDR_Socket".Length);
+                                moved++;
+                            }
+                        }
+                        Console.WriteLine($"[armourgems] {moved} gem(s) moved to their armour lines");
+                        if (moved == 0) { return; }
+                        Console.WriteLine($"[armourgems] backup: {Logic.SaveBackup.backup(path)}");
+                        using var json = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Write(profile);
+                        json.Seek(0, SeekOrigin.Begin);
+                        using var sealedFile = await Logic.FileProcessHelper.Encrypt(json) ?? throw new InvalidOperationException("could not encrypt");
+                        using (var output = File.Create(path)) { await sealedFile.CopyToAsync(output); }
+                        var again = await load();
+                        foreach (var i in again.Items.Where(i => Logic.ItemExtensions.isArmor(i) && i.Armorproperties?.Any(p => p.Id.StartsWith("MCDR_")) == true))
+                        {
+                            Console.WriteLine($"[armourgems] {i.Type} ({i.EquipmentSlot ?? "inventory"}): {string.Join(", ", i.Armorproperties!.Select(p => $"{p.Id}:{p.Rarity}"))}");
+                        }
+                    }).GetAwaiter().GetResult();
+                }
+                catch (Exception problem) { Console.WriteLine($"[armourgems] failed: {problem}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_BUILDITEMS - the New Items pak, the plugin's list and the Gems pak, rebuilt as the Items tab
+            //does. Touches no save.
+            if (_startupArguments.Contains("PROBE_BUILDITEMS"))
+            {
+                try
+                {
+                    if (Logic.GameRunning.isUp) { throw new InvalidOperationException("the game is running"); }
+                    var built = Logic.CustomItems.build(Logic.CustomItems.load());
+                    foreach (var note in built.Notes) { Console.WriteLine($"[build] {note}"); }
+                }
+                catch (Exception problem) { Console.WriteLine($"[build] failed: {problem.Message}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_GEMSPANEL - installs the in-game Gems panel (and the loader) as the items build does.
+            if (_startupArguments.Contains("PROBE_GEMSPANEL"))
+            {
+                try
+                {
+                    if (Logic.GameRunning.isUp) { throw new InvalidOperationException("the game is running"); }
+                    Console.WriteLine($"[gems] {Logic.Gems.syncPanel()} -> {Logic.Gems.panelInstalled()}");
+                }
+                catch (Exception problem) { Console.WriteLine($"[gems] failed: {problem.Message}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_GEMS=<.dat> - gems on: the 21 gem currencies (copies of Gold) built into the New Items
+            //pak and registered by the plugin, and some of each put in the character's wallet for the
+            //Gems panel to show. Backs the save up first.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_GEMS=", StringComparison.Ordinal)))
+            {
+                var path = _startupArguments.First(a => a.StartsWith("PROBE_GEMS=", StringComparison.Ordinal))["PROBE_GEMS=".Length..].Trim('"');
+                try
+                {
+                    if (Logic.GameRunning.isUp) { throw new InvalidOperationException("the game is running"); }
+                    Logic.Gems.set(true);
+                    var built = Logic.CustomItems.build(Logic.CustomItems.load());
+                    foreach (var note in built.Notes.Where(n => n.Contains("MCDR_Gem") || n.Contains("registry") || n.Contains("plugin"))) { Console.WriteLine($"[gems] {note}"); }
+                    var counts = new Dictionary<string, ulong>
+                    {
+                        [Logic.Gems.idOf("Ruby", 1)] = 5, [Logic.Gems.idOf("Ruby", 2)] = 2, [Logic.Gems.idOf("Ruby", 3)] = 1,
+                        [Logic.Gems.idOf("Sapphire", 1)] = 3, [Logic.Gems.idOf("Topaz", 2)] = 1, [Logic.Gems.idOf("Emerald", 1)] = 4,
+                        [Logic.Gems.idOf("Amethyst", 3)] = 1, [Logic.Gems.idOf("Diamond", 2)] = 2, [Logic.Gems.idOf("Skull", 1)] = 6,
+                    };
+                    System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        async Task<MCDSaveEdit.Save.Models.Profiles.ProfileSaveFile> load()
+                        {
+                            using var file = File.OpenRead(path);
+                            DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file);
+                            using var plain = await Logic.FileProcessHelper.Decrypt(file) ?? throw new InvalidOperationException("could not decrypt");
+                            return await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Read(plain) ?? throw new InvalidOperationException("could not parse");
+                        }
+                        var profile = await load();
+                        var list = profile.Currency.Where(c => !counts.ContainsKey(c.Type)).ToList();
+                        list.AddRange(counts.Select(c => new MCDSaveEdit.Save.Models.Profiles.Currency { Type = c.Key, Count = c.Value }));
+                        profile.Currency = list.ToArray();
+                        profile.CurrenciesFound = profile.CurrenciesFound.Union(counts.Keys).ToArray();
+                        Console.WriteLine($"[gems] backup: {Logic.SaveBackup.backup(path)}");
+                        using var json = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Write(profile);
+                        json.Seek(0, SeekOrigin.Begin);
+                        using var sealedFile = await Logic.FileProcessHelper.Encrypt(json) ?? throw new InvalidOperationException("could not encrypt");
+                        using (var output = File.Create(path)) { await sealedFile.CopyToAsync(output); }
+                        var again = await load();
+                        Console.WriteLine($"[gems] wallet: {string.Join(", ", again.Currency.Select(c => $"{c.Type}={c.Count}"))}");
+                    }).GetAwaiter().GetResult();
+                }
+                catch (Exception problem) { Console.WriteLine($"[gems] failed: {problem}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_RUBY=<.dat> - the first gem: "Ruby", an active copy of MeleeDamageBoost, installed, and
+            //set in the equipped melee weapon's properties at Rare (Flawless). Backs the save up first.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_RUBY=", StringComparison.Ordinal)))
+            {
+                var path = _startupArguments.First(a => a.StartsWith("PROBE_RUBY=", StringComparison.Ordinal))["PROBE_RUBY=".Length..].Trim('"');
+                try
+                {
+                    if (Logic.GameRunning.isUp) { throw new InvalidOperationException("the game is running"); }
+                    var designs = Logic.CustomProperties.load();
+                    var ruby = designs.FirstOrDefault(d => d.Name == "Ruby");
+                    if (ruby == null)
+                    {
+                        ruby = new Logic.CustomProperties.Design
+                        {
+                            Id = Logic.CustomProperties.newId(designs), Source = "MeleeDamageBoost",
+                            Name = "Ruby", Line = "Ruby: {0} melee damage", Active = true,
+                        };
+                        designs.Add(ruby);
+                        Logic.CustomProperties.save(designs);
+                    }
+                    Console.WriteLine($"[ruby] Ruby is {ruby.Id}");
+                    var built = Logic.CustomItems.build(Logic.CustomItems.load());
+                    Console.WriteLine($"[ruby] {built.Notes.Last()}");
+                    System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        async Task<MCDSaveEdit.Save.Models.Profiles.ProfileSaveFile> load()
+                        {
+                            using var file = File.OpenRead(path);
+                            DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file);
+                            using var plain = await Logic.FileProcessHelper.Decrypt(file) ?? throw new InvalidOperationException("could not decrypt");
+                            return await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Read(plain) ?? throw new InvalidOperationException("could not parse");
+                        }
+                        var profile = await load();
+                        var melee = profile.Items.First(i => i.EquipmentSlot == "MeleeGear");
+                        melee.Armorproperties = new[] { new MCDSaveEdit.Save.Models.Profiles.Armorproperty { Id = ruby.Id, Rarity = MCDSaveEdit.Save.Models.Enums.Rarity.Rare } };
+                        Console.WriteLine($"[ruby] backup: {Logic.SaveBackup.backup(path)}");
+                        using var json = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Write(profile);
+                        json.Seek(0, SeekOrigin.Begin);
+                        using var sealedFile = await Logic.FileProcessHelper.Encrypt(json) ?? throw new InvalidOperationException("could not encrypt");
+                        using (var output = File.Create(path)) { await sealedFile.CopyToAsync(output); }
+                        var again = await load();
+                        foreach (var i in again.Items.Where(i => i.Armorproperties?.Any(p => p.Id.StartsWith("MCDR_Prop")) == true))
+                        {
+                            Console.WriteLine($"[ruby] {i.Type} ({i.EquipmentSlot ?? "inventory"}): {string.Join(", ", i.Armorproperties!.Select(p => $"{p.Id}:{p.Rarity}"))}");
+                        }
+                    }).GetAwaiter().GetResult();
+                }
+                catch (Exception problem) { Console.WriteLine($"[ruby] failed: {problem}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_CLONEFILES=<cooked folder>;<new id> - what a folder copy holds, file by file. Writes nothing.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_CLONEFILES=", StringComparison.Ordinal)))
+            {
+                var bits = _startupArguments.First(a => a.StartsWith("PROBE_CLONEFILES=", StringComparison.Ordinal))["PROBE_CLONEFILES=".Length..].Trim('"').Split(';');
+                var made = Logic.NewContent.cloneFolder(bits[0], bits[1]);
+                if (made == null) { Console.WriteLine("[clonefiles] nothing copied"); }
+                else { foreach (var e in made.Entries) { Console.WriteLine($"[clonefiles] {e.Path}  {e.Data.Length} bytes"); } }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_PAKKEYS=<text> - every pak index key containing the text. Read-only.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_PAKKEYS=", StringComparison.Ordinal)))
+            {
+                var wanted = _startupArguments.First(a => a.StartsWith("PROBE_PAKKEYS=", StringComparison.Ordinal))["PROBE_PAKKEYS=".Length..].Trim('"');
+                var index = Logic.CustomSkins.index;
+                if (index != null)
+                {
+                    foreach (var entry in index.AllEntries())
+                    {
+                        if (entry.Key.Contains(wanted, StringComparison.OrdinalIgnoreCase)) { Console.WriteLine($"[pakkeys] {entry.Key}"); }
+                    }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_SOCKETPROPS=<.dat> - gem sockets as item properties: makes the "Empty Socket"
+            //property (a copy of MeleeAttackSpeedBoost with its own name, line and icon), installs it,
+            //and in the save (backed up first) gives the equipped melee weapon one socket in place of
+            //its properties and the Sword in the inventory two.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_SOCKETPROPS=", StringComparison.Ordinal)))
+            {
+                var path = _startupArguments.First(a => a.StartsWith("PROBE_SOCKETPROPS=", StringComparison.Ordinal))["PROBE_SOCKETPROPS=".Length..].Trim('"');
+                try
+                {
+                    if (Logic.GameRunning.isUp) { throw new InvalidOperationException("the game is running"); }
+                    var designs = Logic.CustomProperties.load();
+                    var socket = designs.FirstOrDefault(d => d.Name == "Empty Socket");
+                    if (socket == null)
+                    {
+                        socket = new Logic.CustomProperties.Design
+                        {
+                            Id = Logic.CustomProperties.newId(designs), Source = "EnvironmentalProtection",
+                            Name = "Empty Socket", Line = "Empty Socket",
+                            IconFile = Path.Combine(Logic.CustomItems.folder, "EmptySocket.png"),
+                        };
+                        designs.Add(socket);
+                        Logic.CustomProperties.save(designs);
+                    }
+                    Console.WriteLine($"[socketprops] Empty Socket is {socket.Id}");
+                    var built = Logic.CustomItems.build(Logic.CustomItems.load());
+                    Console.WriteLine($"[socketprops] installed: {string.Join(" | ", built.Notes)}");
+                    System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        async Task<MCDSaveEdit.Save.Models.Profiles.ProfileSaveFile> load()
+                        {
+                            using var file = File.OpenRead(path);
+                            DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file);
+                            using var plain = await Logic.FileProcessHelper.Decrypt(file) ?? throw new InvalidOperationException("could not decrypt");
+                            return await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Read(plain) ?? throw new InvalidOperationException("could not parse");
+                        }
+                        MCDSaveEdit.Save.Models.Profiles.Armorproperty empty() => new() { Id = socket.Id, Rarity = MCDSaveEdit.Save.Models.Enums.Rarity.Common };
+                        var profile = await load();
+                        var melee = profile.Items.First(i => i.EquipmentSlot == "MeleeGear");
+                        melee.Armorproperties = new[] { empty() };
+                        var sword = profile.Items.FirstOrDefault(i => i.Type == "Sword" && i.EquipmentSlot == null);
+                        if (sword != null) { sword.Armorproperties = new[] { empty(), empty() }; }
+                        Console.WriteLine($"[socketprops] backup: {Logic.SaveBackup.backup(path)}");
+                        using var json = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Write(profile);
+                        json.Seek(0, SeekOrigin.Begin);
+                        using var sealedFile = await Logic.FileProcessHelper.Encrypt(json) ?? throw new InvalidOperationException("could not encrypt");
+                        using (var output = File.Create(path)) { await sealedFile.CopyToAsync(output); }
+                        var again = await load();
+                        foreach (var i in again.Items.Where(i => i.Armorproperties?.Any(p => p.Id == socket.Id) == true))
+                        {
+                            Console.WriteLine($"[socketprops] {i.Type} ({i.EquipmentSlot ?? "inventory"}): {string.Join(", ", i.Armorproperties!.Select(p => $"{p.Id}:{p.Rarity}"))}");
+                        }
+                    }).GetAwaiter().GetResult();
+                }
+                catch (Exception problem) { Console.WriteLine($"[socketprops] failed: {problem}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_PROPTEST=<.dat>;<backup.bak>;<property> - undoes PROBE_SOCKETTEST (each item's
+            //Empty Socket row put back from the backup, the Empty Socket enchantment removed and the pak
+            //rebuilt), then gives the equipped melee weapon one armour property, to see whether the game
+            //keeps, shows and applies properties on a weapon. Backs the save up first.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_PROPTEST=", StringComparison.Ordinal)))
+            {
+                var bits = _startupArguments.First(a => a.StartsWith("PROBE_PROPTEST=", StringComparison.Ordinal))["PROBE_PROPTEST=".Length..].Trim('"').Split(';');
+                try
+                {
+                    if (Logic.GameRunning.isUp) { throw new InvalidOperationException("the game is running"); }
+                    var designs = Logic.CustomEnchantments.load();
+                    var socket = designs.FirstOrDefault(d => d.Name == "Empty Socket");
+                    System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        async Task<MCDSaveEdit.Save.Models.Profiles.ProfileSaveFile> load(string path)
+                        {
+                            using var file = File.OpenRead(path);
+                            if (!DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file)) { throw new InvalidOperationException("not an encrypted save"); }
+                            using var plain = await Logic.FileProcessHelper.Decrypt(file) ?? throw new InvalidOperationException("could not decrypt");
+                            return await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Read(plain) ?? throw new InvalidOperationException("could not parse");
+                        }
+                        string show(MCDSaveEdit.Save.Models.Profiles.Item i) => $"{i.Type} ({i.EquipmentSlot ?? "inventory"} #{i.InventoryIndex}): "
+                            + string.Join(", ", (i.Enchantments ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Enchantment>()).Select(e => $"{e.Id}:{e.Level}/{e.InvestedPoints}"))
+                            + " | props " + string.Join(", ", (i.Armorproperties ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Armorproperty>()).Select(p => $"{p.Id}:{p.Rarity}"));
+                        var profile = await load(bits[0]);
+                        var backup = await load(bits[1]);
+                        //Each item carrying the socket, matched to its backup by type, slot and place.
+                        foreach (var item in profile.Items.Where(i => socket != null && i.Enchantments?.Any(e => e.Id == socket.Id) == true))
+                        {
+                            var was = backup.Items.FirstOrDefault(b => b.Type == item.Type && b.EquipmentSlot == item.EquipmentSlot && b.InventoryIndex == item.InventoryIndex
+                                && (b.Enchantments?.Length ?? 0) == item.Enchantments!.Length);
+                            if (was == null) { Console.WriteLine($"[proptest] no backup match for {show(item)}"); continue; }
+                            for (var e = 0; e < item.Enchantments!.Length; e++)
+                            {
+                                if (item.Enchantments[e].Id == socket!.Id) { item.Enchantments[e] = was.Enchantments![e].Copy(); item.Enchantments[e].InvestedPoints = was.Enchantments[e].InvestedPoints; }
+                            }
+                            Console.WriteLine($"[proptest] restored: {show(item)}");
+                        }
+                        var melee = profile.Items.First(i => i.EquipmentSlot == "MeleeGear");
+                        melee.Armorproperties = (melee.Armorproperties ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Armorproperty>())
+                            .Append(new MCDSaveEdit.Save.Models.Profiles.Armorproperty { Id = bits[2], Rarity = MCDSaveEdit.Save.Models.Enums.Rarity.Unique }).ToArray();
+                        Console.WriteLine($"[proptest] backup: {Logic.SaveBackup.backup(bits[0])}");
+                        using var json = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Write(profile);
+                        json.Seek(0, SeekOrigin.Begin);
+                        using var sealedFile = await Logic.FileProcessHelper.Encrypt(json) ?? throw new InvalidOperationException("could not encrypt");
+                        using (var output = File.Create(bits[0])) { await sealedFile.CopyToAsync(output); }
+                        var again = await load(bits[0]);
+                        Console.WriteLine($"[proptest] after: {show(again.Items.First(i => i.EquipmentSlot == "MeleeGear"))}");
+                        Console.WriteLine($"[proptest] items still carrying the socket: {again.Items.Count(i => socket != null && i.Enchantments?.Any(e => e.Id == socket.Id) == true)}");
+                    }).GetAwaiter().GetResult();
+                    if (socket != null)
+                    {
+                        designs.Remove(socket);
+                        Logic.CustomEnchantments.save(designs);
+                        var built = Logic.CustomItems.build(Logic.CustomItems.load());
+                        Logic.GamePlugin.registerEnchantments();
+                        Console.WriteLine($"[proptest] {socket.Id} removed; {built.Notes.Last()}");
+                    }
+                }
+                catch (Exception problem) { Console.WriteLine($"[proptest] failed: {problem}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_SOCKETTEST=<.dat>[;install] - gem sockets, test 2. With "install": adds the "Empty
+            //Socket" enchantment (a copy of Smiting that does nothing) and installs it like the New
+            //Items tab does. Then, in the save (backed up first): the equipped melee weapon's first
+            //enchantment row becomes a maxed socket (level 3, no points invested) and the next melee
+            //weapon's first row an unchosen one (all three at level 0).
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_SOCKETTEST=", StringComparison.Ordinal)))
+            {
+                var bits = _startupArguments.First(a => a.StartsWith("PROBE_SOCKETTEST=", StringComparison.Ordinal))["PROBE_SOCKETTEST=".Length..].Trim('"').Split(';');
+                var path = bits[0];
+                try
+                {
+                    if (Logic.GameRunning.isUp) { throw new InvalidOperationException("the game is running"); }
+                    var designs = Logic.CustomEnchantments.load();
+                    var socket = designs.FirstOrDefault(d => d.Name == "Empty Socket");
+                    if (socket == null)
+                    {
+                        socket = new Logic.CustomEnchantments.Design
+                        {
+                            Id = Logic.CustomEnchantments.newId(designs), Source = "Smiting", Name = "Empty Socket",
+                            Description = "An empty socket. Set a gem in it to gain the gem's power.",
+                            BuiltIn = "Empty Socket", Effect = "No effect",
+                            Numbers = new Dictionary<string, double> { ["DamageMultiplierBase"] = 1.0, ["DamageMultiplierPerLevel"] = 0.0 },
+                            IconFile = Path.Combine(Logic.CustomItems.folder, "EmptySocket.png"),
+                        };
+                        designs.Add(socket);
+                    }
+                    Console.WriteLine($"[sockettest] Empty Socket is {socket.Id}");
+                    if (bits.Contains("install"))
+                    {
+                        Logic.CustomEnchantments.save(designs);
+                        var built = Logic.CustomItems.build(Logic.CustomItems.load());
+                        Logic.GamePlugin.registerEnchantments();
+                        Console.WriteLine($"[sockettest] installed: {string.Join(" | ", built.Notes)}");
+                    }
+                    System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        async Task<MCDSaveEdit.Save.Models.Profiles.ProfileSaveFile> load()
+                        {
+                            using var file = File.OpenRead(path);
+                            if (!DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file)) { throw new InvalidOperationException("not an encrypted save"); }
+                            using var plain = await Logic.FileProcessHelper.Decrypt(file) ?? throw new InvalidOperationException("could not decrypt");
+                            return await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Read(plain) ?? throw new InvalidOperationException("could not parse");
+                        }
+                        string show(MCDSaveEdit.Save.Models.Profiles.Item i) => $"{i.Type} ({i.EquipmentSlot ?? "inventory"} #{i.InventoryIndex}): "
+                            + string.Join(", ", (i.Enchantments ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Enchantment>()).Select(e => $"{e.Id}:{e.Level}/{e.InvestedPoints}"));
+                        var profile = await load();
+                        var equipped = profile.Items.FirstOrDefault(i => i.EquipmentSlot == "MeleeGear" && (i.Enchantments?.Length ?? 0) >= 3);
+                        var other = profile.Items.FirstOrDefault(i => i != equipped && i.EquipmentSlot == null && MCDSaveEdit.Logic.ItemExtensions.isMeleeWeapon(i) && (i.Enchantments?.Length ?? 0) >= 3);
+                        if (equipped == null || other == null) { throw new InvalidOperationException("need an equipped enchanted melee weapon and another in the inventory"); }
+                        Console.WriteLine($"[sockettest] before: {show(equipped)}");
+                        Console.WriteLine($"[sockettest] before: {show(other)}");
+                        MCDSaveEdit.Save.Models.Profiles.Enchantment slot(long level) => new() { Id = socket.Id, Level = level, InvestedPoints = 0 };
+                        equipped.Enchantments![0] = slot(3); equipped.Enchantments[1] = slot(0); equipped.Enchantments[2] = slot(0);
+                        other.Enchantments![0] = slot(0); other.Enchantments[1] = slot(0); other.Enchantments[2] = slot(0);
+                        Console.WriteLine($"[sockettest] backup: {Logic.SaveBackup.backup(path)}");
+                        using var json = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Write(profile);
+                        json.Seek(0, SeekOrigin.Begin);
+                        using var sealedFile = await Logic.FileProcessHelper.Encrypt(json) ?? throw new InvalidOperationException("could not encrypt");
+                        using (var output = File.Create(path)) { await sealedFile.CopyToAsync(output); }
+                        var again = await load();
+                        foreach (var i in again.Items.Where(i => i.Enchantments?.Any(e => e.Id == socket.Id) == true)) { Console.WriteLine($"[sockettest] after: {show(i)}"); }
+                    }).GetAwaiter().GetResult();
+                }
+                catch (Exception problem) { Console.WriteLine($"[sockettest] failed: {problem}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_WALLET - every live WalletComponent's currency slots: the slot, its count (+0x1FC) and
+            //any name ids in the slot's unreflected bytes (where its currency type must be). Read-only.
+            if (_startupArguments.Contains("PROBE_WALLET"))
+            {
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[wallet] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, step => { })!;
+                    long ptr(long at) { var b = game.read(new IntPtr(at), 8); return b == null ? 0 : BitConverter.ToInt64(b, 0); }
+                    int i32(long at) { var b = game.read(new IntPtr(at), 4); return b == null ? 0 : BitConverter.ToInt32(b, 0); }
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var at = reflect.objectAt(i);
+                        if (at == 0 || reflect.kindOf(at) != "WalletComponent") { continue; }
+                        //The balances: owner +0xEE0 -> +0x100 -> a vector of {FName, int32 count}, 12 bytes
+                        //each, between +0xF8 and +0x100 (WalletComponent.Balance -> a0f0c0 -> de3630).
+                        var owner = ptr(at + 0x20);
+                        var held = owner == 0 || reflect.nameOf(owner)?.StartsWith("Default__") == true ? 0 : ptr(owner + 0xEE0);
+                        var book = held == 0 ? 0 : ptr(held + 0x100);
+                        if (book != 0)
+                        {
+                            var begin = ptr(book + 0xF8);
+                            var end = ptr(book + 0x100);
+                            Console.WriteLine($"[wallet] balances: owner {reflect.kindOf(owner)} -> {reflect.kindOf(held)} {held:X} -> {reflect.kindOf(book)} {book:X}, {(end - begin) / 12} entries");
+                            for (var e = begin; e < end && e < begin + 12 * 64; e += 12)
+                            {
+                                Console.WriteLine($"[wallet]   {reflect.nameAt(i32(e))}#{i32(e + 4)} = {i32(e + 8)}");
+                            }
+                        }
+                        //The unreflected array at +0x118: dump each 8-byte word, naming name ids and objects.
+                        var hidden = ptr(at + 0x118);
+                        var hiddenCount = i32(at + 0x120);
+                        if (hidden != 0 && hiddenCount > 0 && hiddenCount < 64)
+                        {
+                            Console.WriteLine($"[wallet] +0x118 array at {hidden:X}, {hiddenCount} entries");
+                            var raw = game.read(new IntPtr(hidden), Math.Min(hiddenCount * 0x40, 0x800)) ?? Array.Empty<byte>();
+                            for (var o = 0; o + 8 <= raw.Length; o += 8)
+                            {
+                                var q = BitConverter.ToInt64(raw, o);
+                                var lo = BitConverter.ToInt32(raw, o);
+                                var hi = BitConverter.ToInt32(raw, o + 4);
+                                var said = reflect.kindOf(q) is string k ? $"object {k} {reflect.nameOf(q)}" : "";
+                                string nm(int n) => n > 0 && n < 3_000_000 && reflect.nameAt(n) is string s && s.Length > 1 ? s : "";
+                                if (o < hiddenCount * 0x10 && q > 0x10000 && q < 0x7FFFFFFFFFFF)
+                                {
+                                    Console.WriteLine($"[wallet]   +{o:X3} -> {q:X}  {said}");
+                                    var inner = game.read(new IntPtr(q), 0x60) ?? Array.Empty<byte>();
+                                    for (var p = 0; p + 8 <= inner.Length; p += 8)
+                                    {
+                                        var iq = BitConverter.ToInt64(inner, p);
+                                        var ilo = BitConverter.ToInt32(inner, p);
+                                        var ihi = BitConverter.ToInt32(inner, p + 4);
+                                        var isaid = reflect.kindOf(iq) is string ik ? $"object {ik} {reflect.nameOf(iq)}" : "";
+                                        Console.WriteLine($"[wallet]        +{p:X2} {iq:X16}  ({ilo}, {ihi})  {isaid} {nm(ilo)} {nm(ihi)}");
+                                    }
+                                }
+                            }
+                        }
+                        var slots = ptr(at + 0x130);
+                        var count = i32(at + 0x138);
+                        Console.WriteLine($"[wallet] {reflect.nameOf(at)} at {at:X} in {reflect.outerOf(at)}: {count} slot(s)");
+                        for (var s = 0; s < count && s < 32; s++)
+                        {
+                            var slot = ptr(slots + s * 8);
+                            var body = game.read(new IntPtr(slot), 0x240);
+                            if (body == null) { continue; }
+                            var names = new List<string>();
+                            for (var o = 0xF8; o < 0x168; o += 4)
+                            {
+                                var index = BitConverter.ToInt32(body, o);
+                                if (index <= 0 || index > 3_000_000) { continue; }
+                                var name = reflect.nameAt(index);
+                                if (name != null && name.Length > 1 && !name.Contains('/')) { names.Add($"+{o:X}={name}"); }
+                            }
+                            Console.WriteLine($"[wallet]   slot {s}: {reflect.kindOf(slot)} {reflect.nameOf(slot)} count {BitConverter.ToInt32(body, 0x1FC)}  names {string.Join(" ", names)}");
+                        }
+                    }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_ADDCURRENCY=<.dat>;<type>=<count> - puts a currency in a character save (and in its
+            //"found" list), for testing which currencies the game keeps. Backs the save up first.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_ADDCURRENCY=", StringComparison.Ordinal)))
+            {
+                var bits = _startupArguments.First(a => a.StartsWith("PROBE_ADDCURRENCY=", StringComparison.Ordinal))["PROBE_ADDCURRENCY=".Length..].Trim('"').Split(';');
+                var path = bits[0];
+                var type = bits[1].Split('=')[0];
+                var count = ulong.Parse(bits[1].Split('=')[1]);
+                try
+                {
+                    if (Logic.GameRunning.isUp) { throw new InvalidOperationException("the game is running"); }
+                    System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        async Task<MCDSaveEdit.Save.Models.Profiles.ProfileSaveFile> load()
+                        {
+                            using var file = File.OpenRead(path);
+                            if (!DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file)) { throw new InvalidOperationException("not an encrypted save"); }
+                            using var plain = await Logic.FileProcessHelper.Decrypt(file) ?? throw new InvalidOperationException("could not decrypt");
+                            return await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Read(plain) ?? throw new InvalidOperationException("could not parse");
+                        }
+                        var profile = await load();
+                        var list = profile.Currency.Where(c => c.Type != type).ToList();
+                        list.Add(new MCDSaveEdit.Save.Models.Profiles.Currency { Type = type, Count = count });
+                        profile.Currency = list.ToArray();
+                        if (!profile.CurrenciesFound.Contains(type)) { profile.CurrenciesFound = profile.CurrenciesFound.Append(type).ToArray(); }
+                        Console.WriteLine($"[addcurrency] backup: {Logic.SaveBackup.backup(path)}");
+                        using var json = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Write(profile);
+                        json.Seek(0, SeekOrigin.Begin);
+                        using var sealedFile = await Logic.FileProcessHelper.Encrypt(json) ?? throw new InvalidOperationException("could not encrypt");
+                        using (var output = File.Create(path)) { await sealedFile.CopyToAsync(output); }
+                        var again = await load();
+                        Console.WriteLine($"[addcurrency] read back: {string.Join(", ", again.Currency.Select(c => $"{c.Type}={c.Count}"))}; found {string.Join(",", again.CurrenciesFound)}; {again.Items.Length} items");
+                    }).GetAwaiter().GetResult();
+                }
+                catch (Exception problem) { Console.WriteLine($"[addcurrency] failed: {problem.Message}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_SAVEKEY=<.dat>;<key>[;<key>...] - the top-level JSON values named, as the save holds
+            //them. Read-only.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_SAVEKEY=", StringComparison.Ordinal)))
+            {
+                var bits = _startupArguments.First(a => a.StartsWith("PROBE_SAVEKEY=", StringComparison.Ordinal))["PROBE_SAVEKEY=".Length..].Trim('"').Split(';');
+                try
+                {
+                    var root = System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        using var file = File.OpenRead(bits[0]);
+                        if (!DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file)) { throw new InvalidOperationException("not an encrypted save"); }
+                        using var plain = await Logic.FileProcessHelper.Decrypt(file) ?? throw new InvalidOperationException("could not decrypt");
+                        var text = new StreamReader(plain).ReadToEnd();
+                        return System.Text.Json.Nodes.JsonNode.Parse(text.Substring(0, text.LastIndexOf('}') + 1))!.AsObject();
+                    }).GetAwaiter().GetResult();
+                    if (bits.Length == 1) { Console.WriteLine($"[savekey] keys: {string.Join(", ", root.Select(k => k.Key))}"); }
+                    foreach (var key in bits.Skip(1)) { Console.WriteLine($"[savekey] {key} = {root[key]?.ToJsonString() ?? "(missing)"}"); }
+                }
+                catch (Exception problem) { Console.WriteLine($"[savekey] failed: {problem.Message}"); }
                 Shutdown();
                 return;
             }
