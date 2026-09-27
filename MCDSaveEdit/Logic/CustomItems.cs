@@ -695,7 +695,7 @@ namespace MCDSaveEdit.Logic
             return found;
         }
 
-        /// <summary>The Gems panel follows the gems: a failure there is a note, not a failed build.</summary>
+        /// <summary>The Gems panel follows the gems, the tree the talents: a failure there is a note, not a failed build.</summary>
         private static void panelNote(Built result)
         {
             try
@@ -704,6 +704,12 @@ namespace MCDSaveEdit.Logic
                 if (said.Length > 0) { result.Notes.Add(said); }
             }
             catch (Exception problem) { result.Notes.Add($"The Gems panel could not be installed: {problem.Message}"); }
+            try
+            {
+                var said = Talents.syncPanel();
+                if (said.Length > 0) { result.Notes.Add(said); }
+            }
+            catch (Exception problem) { result.Notes.Add($"The talent tree could not be installed: {problem.Message}"); }
         }
 
         public static Built build(IReadOnlyList<Design> designs, string? into = null, IReadOnlyList<Extra>? extras = null)
@@ -711,7 +717,9 @@ namespace MCDSaveEdit.Logic
             extras ??= Array.Empty<Extra>();
             //Gems are copies of Gold, carried in this pak like any extra, and registered by the plugin.
             var gems = into == null && Gems.isOn ? Gems.extras() : Array.Empty<Extra>();
-            extras = extras.Concat(gems).ToList();
+            //And the talent tree's stores, the same way.
+            var talents = into == null && Talents.isOn ? Talents.extras() : Array.Empty<Extra>();
+            extras = extras.Concat(gems).Concat(talents).ToList();
             var result = new Built();
             var paks = CustomSkins.paksFolder ?? throw new InvalidOperationException("The game's paks folder is not known.");
             var pakPath = into ?? Path.Combine(paks, CustomSkins.MOD_PREFIX + MOD_NAME + "_P.pak");
@@ -725,6 +733,8 @@ namespace MCDSaveEdit.Logic
             var properties = into == null ? CustomProperties.load().Where(CustomProperties.hasIcon).ToList() : new List<CustomProperties.Design>();
             //And gems: each grade a copy of its source with a number of its own.
             if (into == null && Gems.isOn) { properties.AddRange(Gems.properties().Where(p => p.Factor != null)); }
+            //And the talent tree's, one per property it scales.
+            if (into == null && Talents.isOn) { properties.AddRange(Talents.properties()); }
 
             if (designs.Count == 0 && extras.Count == 0 && enchantments.Count == 0 && mobs.Count == 0 && properties.Count == 0)
             {

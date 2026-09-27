@@ -2093,4 +2093,6 @@ def main():
     say('done - cook, then carry the levels, the actor, the screen and the pictures')
 
 
-main()
+#Run as a script it builds; imported (build_talents.py borrows the graph vocabulary) it only defines.
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,1713 @@
+{
+ "points": {
+  "perLevels": 4,
+  "cap": 75
+ },
+ "respec": 500,
+ "stores": 3,
+ "nodes": [
+  {
+   "index": 0,
+   "name": "Start",
+   "kind": "start",
+   "x": 0.0,
+   "y": 0.0,
+   "section": "",
+   "text": "Where every path begins."
+  },
+  {
+   "index": 1,
+   "name": "Melee Damage",
+   "kind": "small",
+   "x": 0.0,
+   "y": -76.0,
+   "section": "Warrior",
+   "source": "MeleeDamageBoost",
+   "factor": 0.12,
+   "text": "+3.6% melee damage",
+   "store": 0,
+   "bit": 0,
+   "id": "MCDR_TalentMeleeDamageBoost"
+  },
+  {
+   "index": 2,
+   "name": "Attack Speed",
+   "kind": "small",
+   "x": 0.0,
+   "y": -128.0,
+   "section": "Warrior",
+   "source": "MeleeAttackSpeedBoost",
+   "factor": 0.12,
+   "text": "+3% melee attack speed",
+   "store": 0,
+   "bit": 1,
+   "id": "MCDR_TalentMeleeAttackSpeedBoost"
+  },
+  {
+   "index": 3,
+   "name": "Melee Damage",
+   "kind": "small",
+   "x": 0.0,
+   "y": -180.0,
+   "section": "Warrior",
+   "source": "MeleeDamageBoost",
+   "factor": 0.12,
+   "text": "+3.6% melee damage",
+   "store": 0,
+   "bit": 2,
+   "id": "MCDR_TalentMeleeDamageBoost"
+  },
+  {
+   "index": 4,
+   "name": "Brute Force",
+   "kind": "notable",
+   "x": 0.0,
+   "y": -240.0,
+   "section": "Warrior",
+   "source": "MeleeDamageBoost",
+   "factor": 0.4,
+   "text": "+12% melee damage",
+   "store": 0,
+   "bit": 3,
+   "id": "MCDR_TalentMeleeDamageBoost"
+  },
+  {
+   "index": 5,
+   "name": "Attack Speed",
+   "kind": "small",
+   "x": -112.3,
+   "y": -281.7,
+   "section": "Warrior",
+   "source": "MeleeAttackSpeedBoost",
+   "factor": 0.12,
+   "text": "+3% melee attack speed",
+   "store": 0,
+   "bit": 4,
+   "id": "MCDR_TalentMeleeAttackSpeedBoost"
+  },
+  {
+   "index": 6,
+   "name": "Attack Speed",
+   "kind": "small",
+   "x": -131.0,
+   "y": -328.7,
+   "section": "Warrior",
+   "source": "MeleeAttackSpeedBoost",
+   "factor": 0.12,
+   "text": "+3% melee attack speed",
+   "store": 0,
+   "bit": 5,
+   "id": "MCDR_TalentMeleeAttackSpeedBoost"
+  },
+  {
+   "index": 7,
+   "name": "Flurry",
+   "kind": "notable",
+   "x": -151.3,
+   "y": -379.5,
+   "section": "Warrior",
+   "source": "MeleeAttackSpeedBoost",
+   "factor": 0.5,
+   "text": "+12.5% melee attack speed",
+   "store": 0,
+   "bit": 6,
+   "id": "MCDR_TalentMeleeAttackSpeedBoost"
+  },
+  {
+   "index": 8,
+   "name": "Life Steal",
+   "kind": "small",
+   "x": 112.3,
+   "y": -281.7,
+   "section": "Warrior",
+   "source": "LifeStealAura",
+   "factor": 0.12,
+   "text": "0.7% life steal aura",
+   "store": 0,
+   "bit": 7,
+   "id": "MCDR_TalentLifeStealAura"
+  },
+  {
+   "index": 9,
+   "name": "Life Steal",
+   "kind": "small",
+   "x": 131.0,
+   "y": -328.7,
+   "section": "Warrior",
+   "source": "LifeStealAura",
+   "factor": 0.12,
+   "text": "0.7% life steal aura",
+   "store": 0,
+   "bit": 8,
+   "id": "MCDR_TalentLifeStealAura"
+  },
+  {
+   "index": 10,
+   "name": "Bloodthirst",
+   "kind": "notable",
+   "x": 151.3,
+   "y": -379.5,
+   "section": "Warrior",
+   "source": "LifeStealAura",
+   "factor": 0.7,
+   "text": "4.2% life steal aura",
+   "store": 0,
+   "bit": 9,
+   "id": "MCDR_TalentLifeStealAura"
+  },
+  {
+   "index": 11,
+   "name": "Unstoppable",
+   "kind": "keystone",
+   "x": 0.0,
+   "y": -452.0,
+   "section": "Warrior",
+   "raw": "Heavyweight",
+   "rawId": 27,
+   "text": "Resist knockback",
+   "store": 0,
+   "bit": 10,
+   "id": null
+  },
+  {
+   "index": 12,
+   "name": "Ranged Damage",
+   "kind": "small",
+   "x": 123.4,
+   "y": -38.0,
+   "section": "Ranger",
+   "source": "RangedDamageBoost",
+   "factor": 0.12,
+   "text": "+3.6% ranged damage",
+   "store": 0,
+   "bit": 11,
+   "id": "MCDR_TalentRangedDamageBoost"
+  },
+  {
+   "index": 13,
+   "name": "Ranged Damage",
+   "kind": "small",
+   "x": 207.8,
+   "y": -64.0,
+   "section": "Ranger",
+   "source": "RangedDamageBoost",
+   "factor": 0.12,
+   "text": "+3.6% ranged damage",
+   "store": 0,
+   "bit": 12,
+   "id": "MCDR_TalentRangedDamageBoost"
+  },
+  {
+   "index": 14,
+   "name": "Ranged Damage",
+   "kind": "small",
+   "x": 292.3,
+   "y": -90.0,
+   "section": "Ranger",
+   "source": "RangedDamageBoost",
+   "factor": 0.12,
+   "text": "+3.6% ranged damage",
+   "store": 0,
+   "bit": 13,
+   "id": "MCDR_TalentRangedDamageBoost"
+  },
+  {
+   "index": 15,
+   "name": "Deadeye",
+   "kind": "notable",
+   "x": 389.7,
+   "y": -120.0,
+   "section": "Ranger",
+   "source": "RangedDamageBoost",
+   "factor": 0.4,
+   "text": "+12% ranged damage",
+   "store": 0,
+   "bit": 14,
+   "id": "MCDR_TalentRangedDamageBoost"
+  },
+  {
+   "index": 16,
+   "name": "Ranged Damage",
+   "kind": "small",
+   "x": 401.3,
+   "y": -192.7,
+   "section": "Ranger",
+   "source": "RangedDamageBoost",
+   "factor": 0.12,
+   "text": "+3.6% ranged damage",
+   "store": 0,
+   "bit": 15,
+   "id": "MCDR_TalentRangedDamageBoost"
+  },
+  {
+   "index": 17,
+   "name": "Ranged Damage",
+   "kind": "small",
+   "x": 468.2,
+   "y": -224.8,
+   "section": "Ranger",
+   "source": "RangedDamageBoost",
+   "factor": 0.12,
+   "text": "+3.6% ranged damage",
+   "store": 0,
+   "bit": 16,
+   "id": "MCDR_TalentRangedDamageBoost"
+  },
+  {
+   "index": 18,
+   "name": "Full Quiver",
+   "kind": "notable",
+   "x": 540.6,
+   "y": -259.6,
+   "section": "Ranger",
+   "raw": "IncreasedArrowBundleSize",
+   "rawId": 8,
+   "text": "More arrows in every arrow bundle",
+   "store": 0,
+   "bit": 17,
+   "id": null
+  },
+  {
+   "index": 19,
+   "name": "Roll Speed",
+   "kind": "small",
+   "x": 513.6,
+   "y": -89.0,
+   "section": "Ranger",
+   "source": "DodgeSpeedIncrease",
+   "factor": 0.12,
+   "text": "+6% roll speed",
+   "store": 0,
+   "bit": 18,
+   "id": "MCDR_TalentDodgeSpeedIncrease"
+  },
+  {
+   "index": 20,
+   "name": "Roll Speed",
+   "kind": "small",
+   "x": 599.2,
+   "y": -103.8,
+   "section": "Ranger",
+   "source": "DodgeSpeedIncrease",
+   "factor": 0.12,
+   "text": "+6% roll speed",
+   "store": 0,
+   "bit": 19,
+   "id": "MCDR_TalentDodgeSpeedIncrease"
+  },
+  {
+   "index": 21,
+   "name": "Skirmisher",
+   "kind": "notable",
+   "x": 691.9,
+   "y": -119.9,
+   "section": "Ranger",
+   "source": "DodgeSpeedIncrease",
+   "factor": 0.5,
+   "text": "+25% roll speed",
+   "store": 0,
+   "bit": 20,
+   "id": "MCDR_TalentDodgeSpeedIncrease"
+  },
+  {
+   "index": 22,
+   "name": "Ghost Step",
+   "kind": "keystone",
+   "x": 734.0,
+   "y": -226.0,
+   "section": "Ranger",
+   "raw": "DodgeGhostForm",
+   "rawId": 24,
+   "text": "Briefly gain Ghost Form when rolling",
+   "store": 0,
+   "bit": 21,
+   "id": null
+  },
+  {
+   "index": 23,
+   "name": "Artifact Damage",
+   "kind": "small",
+   "x": 123.4,
+   "y": 38.0,
+   "section": "Mystic",
+   "source": "ItemDamageBoost",
+   "factor": 0.12,
+   "text": "+6% artifact damage",
+   "store": 0,
+   "bit": 22,
+   "id": "MCDR_TalentItemDamageBoost"
+  },
+  {
+   "index": 24,
+   "name": "Artifact Cooldown",
+   "kind": "small",
+   "x": 207.8,
+   "y": 64.0,
+   "section": "Mystic",
+   "source": "ItemCooldownDecrease",
+   "factor": 0.12,
+   "text": "-4.8% artifact cooldown",
+   "store": 0,
+   "bit": 23,
+   "id": "MCDR_TalentItemCooldownDecrease"
+  },
+  {
+   "index": 25,
+   "name": "Artifact Damage",
+   "kind": "small",
+   "x": 292.3,
+   "y": 90.0,
+   "section": "Mystic",
+   "source": "ItemDamageBoost",
+   "factor": 0.12,
+   "text": "+6% artifact damage",
+   "store": 0,
+   "bit": 24,
+   "id": "MCDR_TalentItemDamageBoost"
+  },
+  {
+   "index": 26,
+   "name": "Arcane Power",
+   "kind": "notable",
+   "x": 389.7,
+   "y": 120.0,
+   "section": "Mystic",
+   "source": "ItemDamageBoost",
+   "factor": 0.4,
+   "text": "+20% artifact damage",
+   "store": 0,
+   "bit": 25,
+   "id": "MCDR_TalentItemDamageBoost"
+  },
+  {
+   "index": 27,
+   "name": "Artifact Cooldown",
+   "kind": "small",
+   "x": 513.6,
+   "y": 89.0,
+   "section": "Mystic",
+   "source": "ItemCooldownDecrease",
+   "factor": 0.12,
+   "text": "-4.8% artifact cooldown",
+   "store": 0,
+   "bit": 26,
+   "id": "MCDR_TalentItemCooldownDecrease"
+  },
+  {
+   "index": 28,
+   "name": "Artifact Cooldown",
+   "kind": "small",
+   "x": 599.2,
+   "y": 103.8,
+   "section": "Mystic",
+   "source": "ItemCooldownDecrease",
+   "factor": 0.12,
+   "text": "-4.8% artifact cooldown",
+   "store": 0,
+   "bit": 27,
+   "id": "MCDR_TalentItemCooldownDecrease"
+  },
+  {
+   "index": 29,
+   "name": "Quickened",
+   "kind": "notable",
+   "x": 691.9,
+   "y": 119.9,
+   "section": "Mystic",
+   "source": "ItemCooldownDecrease",
+   "factor": 0.4,
+   "text": "-16% artifact cooldown",
+   "store": 0,
+   "bit": 28,
+   "id": "MCDR_TalentItemCooldownDecrease"
+  },
+  {
+   "index": 30,
+   "name": "Souls",
+   "kind": "small",
+   "x": 401.3,
+   "y": 192.7,
+   "section": "Mystic",
+   "source": "SoulGatheringBoost",
+   "factor": 0.12,
+   "text": "+6% souls gathered",
+   "store": 0,
+   "bit": 29,
+   "id": "MCDR_TalentSoulGatheringBoost"
+  },
+  {
+   "index": 31,
+   "name": "Souls",
+   "kind": "small",
+   "x": 468.2,
+   "y": 224.8,
+   "section": "Mystic",
+   "source": "SoulGatheringBoost",
+   "factor": 0.12,
+   "text": "+6% souls gathered",
+   "store": 1,
+   "bit": 0,
+   "id": "MCDR_TalentSoulGatheringBoost"
+  },
+  {
+   "index": 32,
+   "name": "Soul Harvest",
+   "kind": "notable",
+   "x": 540.6,
+   "y": 259.6,
+   "section": "Mystic",
+   "source": "SoulGatheringBoost",
+   "factor": 0.5,
+   "text": "+25% souls gathered",
+   "store": 1,
+   "bit": 1,
+   "id": "MCDR_TalentSoulGatheringBoost"
+  },
+  {
+   "index": 33,
+   "name": "Refreshing Brew",
+   "kind": "keystone",
+   "x": 734.0,
+   "y": 226.0,
+   "section": "Mystic",
+   "raw": "ItemCooldownReset",
+   "rawId": 30,
+   "text": "Reset artifact cooldowns on potion use",
+   "store": 1,
+   "bit": 2,
+   "id": null
+  },
+  {
+   "index": 34,
+   "name": "Toughness",
+   "kind": "small",
+   "x": 0.0,
+   "y": 76.0,
+   "section": "Guardian",
+   "source": "DamageAbsorption",
+   "factor": 0.12,
+   "text": "1.2% damage reduction",
+   "store": 1,
+   "bit": 3,
+   "id": "MCDR_TalentDamageAbsorption"
+  },
+  {
+   "index": 35,
+   "name": "Toughness",
+   "kind": "small",
+   "x": 0.0,
+   "y": 128.0,
+   "section": "Guardian",
+   "source": "DamageAbsorption",
+   "factor": 0.12,
+   "text": "1.2% damage reduction",
+   "store": 1,
+   "bit": 4,
+   "id": "MCDR_TalentDamageAbsorption"
+  },
+  {
+   "index": 36,
+   "name": "Toughness",
+   "kind": "small",
+   "x": 0.0,
+   "y": 180.0,
+   "section": "Guardian",
+   "source": "DamageAbsorption",
+   "factor": 0.12,
+   "text": "1.2% damage reduction",
+   "store": 1,
+   "bit": 5,
+   "id": "MCDR_TalentDamageAbsorption"
+  },
+  {
+   "index": 37,
+   "name": "Iron Hide",
+   "kind": "notable",
+   "x": 0.0,
+   "y": 240.0,
+   "section": "Guardian",
+   "source": "DamageAbsorption",
+   "factor": 0.6,
+   "text": "6% damage reduction",
+   "store": 1,
+   "bit": 6,
+   "id": "MCDR_TalentDamageAbsorption"
+  },
+  {
+   "index": 38,
+   "name": "Evasion",
+   "kind": "small",
+   "x": 112.3,
+   "y": 281.7,
+   "section": "Guardian",
+   "source": "MissChance",
+   "factor": 0.12,
+   "text": "3.6% chance to negate damage",
+   "store": 1,
+   "bit": 7,
+   "id": "MCDR_TalentMissChance"
+  },
+  {
+   "index": 39,
+   "name": "Evasion",
+   "kind": "small",
+   "x": 131.0,
+   "y": 328.7,
+   "section": "Guardian",
+   "source": "MissChance",
+   "factor": 0.12,
+   "text": "3.6% chance to negate damage",
+   "store": 1,
+   "bit": 8,
+   "id": "MCDR_TalentMissChance"
+  },
+  {
+   "index": 40,
+   "name": "Evasion",
+   "kind": "notable",
+   "x": 151.3,
+   "y": 379.5,
+   "section": "Guardian",
+   "source": "MissChance",
+   "factor": 0.4,
+   "text": "12% chance to negate damage",
+   "store": 1,
+   "bit": 9,
+   "id": "MCDR_TalentMissChance"
+  },
+  {
+   "index": 41,
+   "name": "Toughness",
+   "kind": "small",
+   "x": -112.3,
+   "y": 281.7,
+   "section": "Guardian",
+   "source": "DamageAbsorption",
+   "factor": 0.12,
+   "text": "1.2% damage reduction",
+   "store": 1,
+   "bit": 10,
+   "id": "MCDR_TalentDamageAbsorption"
+  },
+  {
+   "index": 42,
+   "name": "Toughness",
+   "kind": "small",
+   "x": -131.0,
+   "y": 328.7,
+   "section": "Guardian",
+   "source": "DamageAbsorption",
+   "factor": 0.12,
+   "text": "1.2% damage reduction",
+   "store": 1,
+   "bit": 11,
+   "id": "MCDR_TalentDamageAbsorption"
+  },
+  {
+   "index": 43,
+   "name": "Warded",
+   "kind": "notable",
+   "x": -151.3,
+   "y": 379.5,
+   "section": "Guardian",
+   "raw": "EnvironmentalProtection",
+   "rawId": 28,
+   "text": "Environmental damage resistance",
+   "store": 1,
+   "bit": 12,
+   "id": null
+  },
+  {
+   "index": 44,
+   "name": "Emerald Aegis",
+   "kind": "keystone",
+   "x": 0.0,
+   "y": 452.0,
+   "section": "Guardian",
+   "raw": "EmeraldShield",
+   "rawId": 29,
+   "text": "Brief damage immunity when you collect an emerald",
+   "store": 1,
+   "bit": 13,
+   "id": null
+  },
+  {
+   "index": 45,
+   "name": "Roll Speed",
+   "kind": "small",
+   "x": -123.4,
+   "y": 38.0,
+   "section": "Rogue",
+   "source": "DodgeSpeedIncrease",
+   "factor": 0.12,
+   "text": "+6% roll speed",
+   "store": 1,
+   "bit": 14,
+   "id": "MCDR_TalentDodgeSpeedIncrease"
+  },
+  {
+   "index": 46,
+   "name": "Swiftness",
+   "kind": "small",
+   "x": -207.8,
+   "y": 64.0,
+   "section": "Rogue",
+   "source": "MoveSpeedAura",
+   "factor": 0.12,
+   "text": "+1.8% movement speed aura",
+   "store": 1,
+   "bit": 15,
+   "id": "MCDR_TalentMoveSpeedAura"
+  },
+  {
+   "index": 47,
+   "name": "Roll Speed",
+   "kind": "small",
+   "x": -292.3,
+   "y": 90.0,
+   "section": "Rogue",
+   "source": "DodgeSpeedIncrease",
+   "factor": 0.12,
+   "text": "+6% roll speed",
+   "store": 1,
+   "bit": 16,
+   "id": "MCDR_TalentDodgeSpeedIncrease"
+  },
+  {
+   "index": 48,
+   "name": "Fleet Footed",
+   "kind": "notable",
+   "x": -389.7,
+   "y": 120.0,
+   "section": "Rogue",
+   "source": "MoveSpeedAura",
+   "factor": 0.6,
+   "text": "+9% movement speed aura",
+   "store": 1,
+   "bit": 17,
+   "id": "MCDR_TalentMoveSpeedAura"
+  },
+  {
+   "index": 49,
+   "name": "Blink",
+   "kind": "small",
+   "x": -401.3,
+   "y": 192.7,
+   "section": "Rogue",
+   "source": "TeleportChance",
+   "factor": 0.12,
+   "text": "0.6% chance to teleport away when hit",
+   "store": 1,
+   "bit": 18,
+   "id": "MCDR_TalentTeleportChance"
+  },
+  {
+   "index": 50,
+   "name": "Blink",
+   "kind": "small",
+   "x": -468.2,
+   "y": 224.8,
+   "section": "Rogue",
+   "source": "TeleportChance",
+   "factor": 0.12,
+   "text": "0.6% chance to teleport away when hit",
+   "store": 1,
+   "bit": 19,
+   "id": "MCDR_TalentTeleportChance"
+  },
+  {
+   "index": 51,
+   "name": "Blink",
+   "kind": "notable",
+   "x": -540.6,
+   "y": 259.6,
+   "section": "Rogue",
+   "source": "TeleportChance",
+   "factor": 0.8,
+   "text": "4% chance to teleport away when hit",
+   "store": 1,
+   "bit": 20,
+   "id": "MCDR_TalentTeleportChance"
+  },
+  {
+   "index": 52,
+   "name": "Evasion",
+   "kind": "small",
+   "x": -513.6,
+   "y": 89.0,
+   "section": "Rogue",
+   "source": "MissChance",
+   "factor": 0.12,
+   "text": "3.6% chance to negate damage",
+   "store": 1,
+   "bit": 21,
+   "id": "MCDR_TalentMissChance"
+  },
+  {
+   "index": 53,
+   "name": "Evasion",
+   "kind": "small",
+   "x": -599.2,
+   "y": 103.8,
+   "section": "Rogue",
+   "source": "MissChance",
+   "factor": 0.12,
+   "text": "3.6% chance to negate damage",
+   "store": 1,
+   "bit": 22,
+   "id": "MCDR_TalentMissChance"
+  },
+  {
+   "index": 54,
+   "name": "Untouchable",
+   "kind": "notable",
+   "x": -691.9,
+   "y": 119.9,
+   "section": "Rogue",
+   "raw": "DodgeInvulnerability",
+   "rawId": 21,
+   "text": "Brief invulnerability when rolling",
+   "store": 1,
+   "bit": 23,
+   "id": null
+  },
+  {
+   "index": 55,
+   "name": "Shadow Step",
+   "kind": "keystone",
+   "x": -734.0,
+   "y": 226.0,
+   "section": "Rogue",
+   "raw": "InstantTransmission",
+   "rawId": 38,
+   "text": "Roll to teleport",
+   "store": 1,
+   "bit": 24,
+   "id": null
+  },
+  {
+   "index": 56,
+   "name": "Leadership",
+   "kind": "small",
+   "x": -123.4,
+   "y": -38.0,
+   "section": "Shepherd",
+   "source": "AllyDamageBoost",
+   "factor": 0.12,
+   "text": "+2.4% weapon damage aura for allies",
+   "store": 1,
+   "bit": 25,
+   "id": "MCDR_TalentAllyDamageBoost"
+  },
+  {
+   "index": 57,
+   "name": "Healing",
+   "kind": "small",
+   "x": -207.8,
+   "y": -64.0,
+   "section": "Shepherd",
+   "source": "HealingAura",
+   "factor": 0.12,
+   "text": "+3% healing",
+   "store": 1,
+   "bit": 26,
+   "id": "MCDR_TalentHealingAura"
+  },
+  {
+   "index": 58,
+   "name": "Leadership",
+   "kind": "small",
+   "x": -292.3,
+   "y": -90.0,
+   "section": "Shepherd",
+   "source": "AllyDamageBoost",
+   "factor": 0.12,
+   "text": "+2.4% weapon damage aura for allies",
+   "store": 1,
+   "bit": 27,
+   "id": "MCDR_TalentAllyDamageBoost"
+  },
+  {
+   "index": 59,
+   "name": "Rallying Cry",
+   "kind": "notable",
+   "x": -389.7,
+   "y": -120.0,
+   "section": "Shepherd",
+   "source": "AllyDamageBoost",
+   "factor": 0.5,
+   "text": "+10% weapon damage aura for allies",
+   "store": 1,
+   "bit": 28,
+   "id": "MCDR_TalentAllyDamageBoost"
+  },
+  {
+   "index": 60,
+   "name": "Healing",
+   "kind": "small",
+   "x": -513.6,
+   "y": -89.0,
+   "section": "Shepherd",
+   "source": "HealingAura",
+   "factor": 0.12,
+   "text": "+3% healing",
+   "store": 1,
+   "bit": 29,
+   "id": "MCDR_TalentHealingAura"
+  },
+  {
+   "index": 61,
+   "name": "Healing",
+   "kind": "small",
+   "x": -599.2,
+   "y": -103.8,
+   "section": "Shepherd",
+   "source": "HealingAura",
+   "factor": 0.12,
+   "text": "+3% healing",
+   "store": 2,
+   "bit": 0,
+   "id": "MCDR_TalentHealingAura"
+  },
+  {
+   "index": 62,
+   "name": "Field Medic",
+   "kind": "notable",
+   "x": -691.9,
+   "y": -119.9,
+   "section": "Shepherd",
+   "raw": "AreaHeal",
+   "rawId": 15,
+   "text": "Health potions heal nearby allies",
+   "store": 2,
+   "bit": 1,
+   "id": null
+  },
+  {
+   "index": 63,
+   "name": "Swiftness",
+   "kind": "small",
+   "x": -401.3,
+   "y": -192.7,
+   "section": "Shepherd",
+   "source": "MoveSpeedAura",
+   "factor": 0.12,
+   "text": "+1.8% movement speed aura",
+   "store": 2,
+   "bit": 2,
+   "id": "MCDR_TalentMoveSpeedAura"
+  },
+  {
+   "index": 64,
+   "name": "Swiftness",
+   "kind": "small",
+   "x": -468.2,
+   "y": -224.8,
+   "section": "Shepherd",
+   "source": "MoveSpeedAura",
+   "factor": 0.12,
+   "text": "+1.8% movement speed aura",
+   "store": 2,
+   "bit": 3,
+   "id": "MCDR_TalentMoveSpeedAura"
+  },
+  {
+   "index": 65,
+   "name": "Swarm",
+   "kind": "notable",
+   "x": -540.6,
+   "y": -259.6,
+   "section": "Shepherd",
+   "raw": "Beekeeper",
+   "rawId": 25,
+   "text": "Chance to summon a bee when hit",
+   "store": 2,
+   "bit": 4,
+   "id": null
+  },
+  {
+   "index": 66,
+   "name": "Night Companion",
+   "kind": "keystone",
+   "x": -734.0,
+   "y": -226.0,
+   "section": "Shepherd",
+   "raw": "PetBat",
+   "rawId": 14,
+   "text": "Gives you a pet bat",
+   "store": 2,
+   "bit": 5,
+   "id": null
+  },
+  {
+   "index": 67,
+   "name": "Melee Damage",
+   "kind": "small",
+   "x": 115.4,
+   "y": -169.1,
+   "section": "Ring",
+   "source": "MeleeDamageBoost",
+   "factor": 0.12,
+   "text": "+3.6% melee damage",
+   "store": 2,
+   "bit": 6,
+   "id": "MCDR_TalentMeleeDamageBoost"
+  },
+  {
+   "index": 68,
+   "name": "Ranged Damage",
+   "kind": "small",
+   "x": 216.9,
+   "y": -137.9,
+   "section": "Ring",
+   "source": "RangedDamageBoost",
+   "factor": 0.12,
+   "text": "+3.6% ranged damage",
+   "store": 2,
+   "bit": 7,
+   "id": "MCDR_TalentRangedDamageBoost"
+  },
+  {
+   "index": 69,
+   "name": "Melee Damage",
+   "kind": "small",
+   "x": 295.9,
+   "y": -354.5,
+   "section": "Ring",
+   "source": "MeleeDamageBoost",
+   "factor": 0.12,
+   "text": "+3.6% melee damage",
+   "store": 2,
+   "bit": 8,
+   "id": "MCDR_TalentMeleeDamageBoost"
+  },
+  {
+   "index": 70,
+   "name": "Ranged Damage",
+   "kind": "small",
+   "x": 427.6,
+   "y": -313.9,
+   "section": "Ring",
+   "source": "RangedDamageBoost",
+   "factor": 0.12,
+   "text": "+3.6% ranged damage",
+   "store": 2,
+   "bit": 9,
+   "id": "MCDR_TalentRangedDamageBoost"
+  },
+  {
+   "index": 71,
+   "name": "Ranged Damage",
+   "kind": "small",
+   "x": 332.4,
+   "y": -31.3,
+   "section": "Ring",
+   "source": "RangedDamageBoost",
+   "factor": 0.12,
+   "text": "+3.6% ranged damage",
+   "store": 2,
+   "bit": 10,
+   "id": "MCDR_TalentRangedDamageBoost"
+  },
+  {
+   "index": 72,
+   "name": "Artifact Damage",
+   "kind": "small",
+   "x": 332.4,
+   "y": 31.3,
+   "section": "Ring",
+   "source": "ItemDamageBoost",
+   "factor": 0.12,
+   "text": "+6% artifact damage",
+   "store": 2,
+   "bit": 11,
+   "id": "MCDR_TalentItemDamageBoost"
+  },
+  {
+   "index": 73,
+   "name": "Ranged Damage",
+   "kind": "small",
+   "x": 723.5,
+   "y": -40.6,
+   "section": "Ring",
+   "source": "RangedDamageBoost",
+   "factor": 0.12,
+   "text": "+3.6% ranged damage",
+   "store": 2,
+   "bit": 12,
+   "id": "MCDR_TalentRangedDamageBoost"
+  },
+  {
+   "index": 74,
+   "name": "Artifact Damage",
+   "kind": "small",
+   "x": 723.5,
+   "y": 40.6,
+   "section": "Ring",
+   "source": "ItemDamageBoost",
+   "factor": 0.12,
+   "text": "+6% artifact damage",
+   "store": 2,
+   "bit": 13,
+   "id": "MCDR_TalentItemDamageBoost"
+  },
+  {
+   "index": 75,
+   "name": "Artifact Damage",
+   "kind": "small",
+   "x": 216.9,
+   "y": 137.9,
+   "section": "Ring",
+   "source": "ItemDamageBoost",
+   "factor": 0.12,
+   "text": "+6% artifact damage",
+   "store": 2,
+   "bit": 14,
+   "id": "MCDR_TalentItemDamageBoost"
+  },
+  {
+   "index": 76,
+   "name": "Toughness",
+   "kind": "small",
+   "x": 115.4,
+   "y": 169.1,
+   "section": "Ring",
+   "source": "DamageAbsorption",
+   "factor": 0.12,
+   "text": "1.2% damage reduction",
+   "store": 2,
+   "bit": 15,
+   "id": "MCDR_TalentDamageAbsorption"
+  },
+  {
+   "index": 77,
+   "name": "Artifact Damage",
+   "kind": "small",
+   "x": 427.6,
+   "y": 313.9,
+   "section": "Ring",
+   "source": "ItemDamageBoost",
+   "factor": 0.12,
+   "text": "+6% artifact damage",
+   "store": 2,
+   "bit": 16,
+   "id": "MCDR_TalentItemDamageBoost"
+  },
+  {
+   "index": 78,
+   "name": "Toughness",
+   "kind": "small",
+   "x": 295.9,
+   "y": 354.5,
+   "section": "Ring",
+   "source": "DamageAbsorption",
+   "factor": 0.12,
+   "text": "1.2% damage reduction",
+   "store": 2,
+   "bit": 17,
+   "id": "MCDR_TalentDamageAbsorption"
+  },
+  {
+   "index": 79,
+   "name": "Toughness",
+   "kind": "small",
+   "x": -115.4,
+   "y": 169.1,
+   "section": "Ring",
+   "source": "DamageAbsorption",
+   "factor": 0.12,
+   "text": "1.2% damage reduction",
+   "store": 2,
+   "bit": 18,
+   "id": "MCDR_TalentDamageAbsorption"
+  },
+  {
+   "index": 80,
+   "name": "Roll Speed",
+   "kind": "small",
+   "x": -216.9,
+   "y": 137.9,
+   "section": "Ring",
+   "source": "DodgeSpeedIncrease",
+   "factor": 0.12,
+   "text": "+6% roll speed",
+   "store": 2,
+   "bit": 19,
+   "id": "MCDR_TalentDodgeSpeedIncrease"
+  },
+  {
+   "index": 81,
+   "name": "Toughness",
+   "kind": "small",
+   "x": -295.9,
+   "y": 354.5,
+   "section": "Ring",
+   "source": "DamageAbsorption",
+   "factor": 0.12,
+   "text": "1.2% damage reduction",
+   "store": 2,
+   "bit": 20,
+   "id": "MCDR_TalentDamageAbsorption"
+  },
+  {
+   "index": 82,
+   "name": "Roll Speed",
+   "kind": "small",
+   "x": -427.6,
+   "y": 313.9,
+   "section": "Ring",
+   "source": "DodgeSpeedIncrease",
+   "factor": 0.12,
+   "text": "+6% roll speed",
+   "store": 2,
+   "bit": 21,
+   "id": "MCDR_TalentDodgeSpeedIncrease"
+  },
+  {
+   "index": 83,
+   "name": "Roll Speed",
+   "kind": "small",
+   "x": -332.4,
+   "y": 31.3,
+   "section": "Ring",
+   "source": "DodgeSpeedIncrease",
+   "factor": 0.12,
+   "text": "+6% roll speed",
+   "store": 2,
+   "bit": 22,
+   "id": "MCDR_TalentDodgeSpeedIncrease"
+  },
+  {
+   "index": 84,
+   "name": "Leadership",
+   "kind": "small",
+   "x": -332.4,
+   "y": -31.3,
+   "section": "Ring",
+   "source": "AllyDamageBoost",
+   "factor": 0.12,
+   "text": "+2.4% weapon damage aura for allies",
+   "store": 2,
+   "bit": 23,
+   "id": "MCDR_TalentAllyDamageBoost"
+  },
+  {
+   "index": 85,
+   "name": "Roll Speed",
+   "kind": "small",
+   "x": -723.5,
+   "y": 40.6,
+   "section": "Ring",
+   "source": "DodgeSpeedIncrease",
+   "factor": 0.12,
+   "text": "+6% roll speed",
+   "store": 2,
+   "bit": 24,
+   "id": "MCDR_TalentDodgeSpeedIncrease"
+  },
+  {
+   "index": 86,
+   "name": "Leadership",
+   "kind": "small",
+   "x": -723.5,
+   "y": -40.6,
+   "section": "Ring",
+   "source": "AllyDamageBoost",
+   "factor": 0.12,
+   "text": "+2.4% weapon damage aura for allies",
+   "store": 2,
+   "bit": 25,
+   "id": "MCDR_TalentAllyDamageBoost"
+  },
+  {
+   "index": 87,
+   "name": "Leadership",
+   "kind": "small",
+   "x": -216.9,
+   "y": -137.9,
+   "section": "Ring",
+   "source": "AllyDamageBoost",
+   "factor": 0.12,
+   "text": "+2.4% weapon damage aura for allies",
+   "store": 2,
+   "bit": 26,
+   "id": "MCDR_TalentAllyDamageBoost"
+  },
+  {
+   "index": 88,
+   "name": "Melee Damage",
+   "kind": "small",
+   "x": -115.4,
+   "y": -169.1,
+   "section": "Ring",
+   "source": "MeleeDamageBoost",
+   "factor": 0.12,
+   "text": "+3.6% melee damage",
+   "store": 2,
+   "bit": 27,
+   "id": "MCDR_TalentMeleeDamageBoost"
+  },
+  {
+   "index": 89,
+   "name": "Leadership",
+   "kind": "small",
+   "x": -427.6,
+   "y": -313.9,
+   "section": "Ring",
+   "source": "AllyDamageBoost",
+   "factor": 0.12,
+   "text": "+2.4% weapon damage aura for allies",
+   "store": 2,
+   "bit": 28,
+   "id": "MCDR_TalentAllyDamageBoost"
+  },
+  {
+   "index": 90,
+   "name": "Melee Damage",
+   "kind": "small",
+   "x": -295.9,
+   "y": -354.5,
+   "section": "Ring",
+   "source": "MeleeDamageBoost",
+   "factor": 0.12,
+   "text": "+3.6% melee damage",
+   "store": 2,
+   "bit": 29,
+   "id": "MCDR_TalentMeleeDamageBoost"
+  }
+ ],
+ "edges": [
+  [
+   0,
+   1
+  ],
+  [
+   1,
+   2
+  ],
+  [
+   2,
+   3
+  ],
+  [
+   3,
+   4
+  ],
+  [
+   4,
+   5
+  ],
+  [
+   5,
+   6
+  ],
+  [
+   6,
+   7
+  ],
+  [
+   4,
+   8
+  ],
+  [
+   8,
+   9
+  ],
+  [
+   9,
+   10
+  ],
+  [
+   7,
+   11
+  ],
+  [
+   10,
+   11
+  ],
+  [
+   0,
+   12
+  ],
+  [
+   12,
+   13
+  ],
+  [
+   13,
+   14
+  ],
+  [
+   14,
+   15
+  ],
+  [
+   15,
+   16
+  ],
+  [
+   16,
+   17
+  ],
+  [
+   17,
+   18
+  ],
+  [
+   15,
+   19
+  ],
+  [
+   19,
+   20
+  ],
+  [
+   20,
+   21
+  ],
+  [
+   18,
+   22
+  ],
+  [
+   21,
+   22
+  ],
+  [
+   0,
+   23
+  ],
+  [
+   23,
+   24
+  ],
+  [
+   24,
+   25
+  ],
+  [
+   25,
+   26
+  ],
+  [
+   26,
+   27
+  ],
+  [
+   27,
+   28
+  ],
+  [
+   28,
+   29
+  ],
+  [
+   26,
+   30
+  ],
+  [
+   30,
+   31
+  ],
+  [
+   31,
+   32
+  ],
+  [
+   29,
+   33
+  ],
+  [
+   32,
+   33
+  ],
+  [
+   0,
+   34
+  ],
+  [
+   34,
+   35
+  ],
+  [
+   35,
+   36
+  ],
+  [
+   36,
+   37
+  ],
+  [
+   37,
+   38
+  ],
+  [
+   38,
+   39
+  ],
+  [
+   39,
+   40
+  ],
+  [
+   37,
+   41
+  ],
+  [
+   41,
+   42
+  ],
+  [
+   42,
+   43
+  ],
+  [
+   40,
+   44
+  ],
+  [
+   43,
+   44
+  ],
+  [
+   0,
+   45
+  ],
+  [
+   45,
+   46
+  ],
+  [
+   46,
+   47
+  ],
+  [
+   47,
+   48
+  ],
+  [
+   48,
+   49
+  ],
+  [
+   49,
+   50
+  ],
+  [
+   50,
+   51
+  ],
+  [
+   48,
+   52
+  ],
+  [
+   52,
+   53
+  ],
+  [
+   53,
+   54
+  ],
+  [
+   51,
+   55
+  ],
+  [
+   54,
+   55
+  ],
+  [
+   0,
+   56
+  ],
+  [
+   56,
+   57
+  ],
+  [
+   57,
+   58
+  ],
+  [
+   58,
+   59
+  ],
+  [
+   59,
+   60
+  ],
+  [
+   60,
+   61
+  ],
+  [
+   61,
+   62
+  ],
+  [
+   59,
+   63
+  ],
+  [
+   63,
+   64
+  ],
+  [
+   64,
+   65
+  ],
+  [
+   62,
+   66
+  ],
+  [
+   65,
+   66
+  ],
+  [
+   3,
+   67
+  ],
+  [
+   67,
+   68
+  ],
+  [
+   68,
+   14
+  ],
+  [
+   10,
+   69
+  ],
+  [
+   69,
+   70
+  ],
+  [
+   70,
+   18
+  ],
+  [
+   14,
+   71
+  ],
+  [
+   71,
+   72
+  ],
+  [
+   72,
+   25
+  ],
+  [
+   21,
+   73
+  ],
+  [
+   73,
+   74
+  ],
+  [
+   74,
+   29
+  ],
+  [
+   25,
+   75
+  ],
+  [
+   75,
+   76
+  ],
+  [
+   76,
+   36
+  ],
+  [
+   32,
+   77
+  ],
+  [
+   77,
+   78
+  ],
+  [
+   78,
+   40
+  ],
+  [
+   36,
+   79
+  ],
+  [
+   79,
+   80
+  ],
+  [
+   80,
+   47
+  ],
+  [
+   43,
+   81
+  ],
+  [
+   81,
+   82
+  ],
+  [
+   82,
+   51
+  ],
+  [
+   47,
+   83
+  ],
+  [
+   83,
+   84
+  ],
+  [
+   84,
+   58
+  ],
+  [
+   54,
+   85
+  ],
+  [
+   85,
+   86
+  ],
+  [
+   86,
+   62
+  ],
+  [
+   58,
+   87
+  ],
+  [
+   87,
+   88
+  ],
+  [
+   88,
+   3
+  ],
+  [
+   65,
+   89
+  ],
+  [
+   89,
+   90
+  ],
+  [
+   90,
+   7
+  ]
+ ]
+}

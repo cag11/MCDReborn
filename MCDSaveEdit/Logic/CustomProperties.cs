@@ -207,10 +207,12 @@ namespace MCDSaveEdit.Logic
 
         /// <summary>
         /// What the plugin is told: "@property" lines. Sockets and gems first when gems are on, so
-        /// their numbers (41 on) never move; then the user's own, in the order they were made.
+        /// their numbers (41 on) never move; then the user's own, in the order they were made; then
+        /// the talent tree's.
         /// </summary>
         public static IReadOnlyList<string> forPlugin(Func<string, string> clean)
             => (Gems.isOn ? Gems.properties() : Array.Empty<Design>()).Concat(load())
+                .Concat(Talents.isOn ? Talents.properties() : Array.Empty<Design>())
                 .Where(d => GearTraits.ARMOR_PROPERTY_IDS.ContainsKey(d.Source))
                 .Select(d => string.Join("\t", "@property", d.Id,
                     GearTraits.ARMOR_PROPERTY_IDS[d.Source].ToString(System.Globalization.CultureInfo.InvariantCulture),

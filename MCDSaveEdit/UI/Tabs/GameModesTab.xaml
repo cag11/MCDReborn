@@ -24,6 +24,11 @@
                           Checked="gemsOn_Changed" Unchecked="gemsOn_Changed"/>
                 <TextBlock x:Name="gemsWhy" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
 
+                <!-- The talent tree: P in the game, points from hero levels. -->
+                <CheckBox x:Name="talentsOn" FontWeight="Bold" Margin="0,24,0,0"
+                          Checked="talentsOn_Changed" Unchecked="talentsOn_Changed"/>
+                <TextBlock x:Name="talentsWhy" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
                 <!-- Apocalypse+ 26 to 35: the item plugin opens them when the game starts. -->
                 <CheckBox x:Name="apocalypsePlusOn" FontWeight="Bold" Margin="0,24,0,0"
                           Checked="apocalypsePlusOn_Changed" Unchecked="apocalypsePlusOn_Changed"/>

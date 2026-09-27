@@ -9,7 +9,7 @@ using System.Windows.Controls;
 namespace MCDSaveEdit.UI
 {
     /// <summary>
-    /// Switches that change the game itself rather than a save: gems and sockets, and Apocalypse+
+    /// Switches that change the game itself rather than a save: gems and sockets, the talent tree, and Apocalypse+
     /// past +25. Each is installed beside the game - the item plugin, its list and the paks it
     /// needs - so it is flipped while the game is closed and takes effect the next time it starts.
     /// </summary>
@@ -30,6 +30,8 @@ namespace MCDSaveEdit.UI
             hint.Text = R.MODES_HINT;
             gemsOn.Content = R.ITEMS_GEMS_ON;
             gemsWhy.Text = R.ITEMS_GEMS_WHY;
+            talentsOn.Content = R.TALENTS_ON;
+            talentsWhy.Text = R.TALENTS_WHY;
             apocalypsePlusOn.Content = R.STATS_APOC_PLUS;
             apocalypsePlusWhy.Text = R.STATS_APOC_PLUS_WHY;
         }
@@ -41,6 +43,8 @@ namespace MCDSaveEdit.UI
             var available = GamePlugin.gameFolder() != null;
             gemsOn.IsChecked = Gems.isOn;
             gemsOn.IsEnabled = available && CustomSkins.ready;
+            talentsOn.IsChecked = Talents.isOn;
+            talentsOn.IsEnabled = available && CustomSkins.ready;
             apocalypsePlusOn.IsChecked = ApocalypsePlus.isOn;
             apocalypsePlusOn.IsEnabled = available;
             _filling = false;
@@ -71,6 +75,40 @@ namespace MCDSaveEdit.UI
             catch (Exception problem)
             {
                 Gems.set(!on);
+                statusLabel.Text = string.Format(R.ITEMS_FAILED, problem.Message);
+            }
+            finally
+            {
+                IsEnabled = true;
+                show();
+            }
+        }
+
+        /// <summary>
+        /// The talent tree on or off: as gems - the New Items pak (its hidden currencies and
+        /// properties), the plugin's list and the tree's pak rebuilt. Off asks first.
+        /// </summary>
+        private async void talentsOn_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+            var on = talentsOn.IsChecked == true;
+            if (GameRunning.isUp) { Notices.warn(R.MODS_GAME_RUNNING); show(); return; }
+            if (!on && MessageBox.Show(R.TALENTS_OFF_WARN, R.MODES_TAB, MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            {
+                show();
+                return;
+            }
+            IsEnabled = false;
+            statusLabel.Text = R.ITEMS_WORKING;
+            try
+            {
+                Talents.set(on);
+                await Task.Run(() => CustomItems.build(CustomItems.load()));
+                statusLabel.Text = on ? R.TALENTS_DONE : R.TALENTS_REMOVED;
+            }
+            catch (Exception problem)
+            {
+                Talents.set(!on);
                 statusLabel.Text = string.Format(R.ITEMS_FAILED, problem.Message);
             }
             finally

@@ -4454,4 +4454,26 @@ The game no longer knows gems or sockets when they are off, and the next time it
     <value>Switches that change the game itself, not a save. Flip them while the game is closed; they take effect the next time it starts, on Steam, the Minecraft Launcher and the Xbox app.</value>
     <comment>Explanation at the top of the Game modes tab</comment>
   </data>
+  <data name="TALENTS_ON" xml:space="preserve">
+    <value>Talent tree</value>
+    <comment>Checkbox on the Game modes tab</comment>
+  </data>
+  <data name="TALENTS_WHY" xml:space="preserve">
+    <value>A passive talent tree in the game. Press P in the Camp or a mission: drag the tree with the mouse, zoom with the wheel, and click a lit node to take it. Every 4 hero levels gives a point; 91 nodes in six paths (Warrior, Ranger, Mystic, Guardian, Rogue, Shepherd), with notables and a keystone at the end of each. Reset in the Camp for 500 emeralds. Takes effect the next time the game starts.</value>
+    <comment>Explanation under the checkbox</comment>
+  </data>
+  <data name="TALENTS_DONE" xml:space="preserve">
+    <value>Talent tree on. Start the game and press P.</value>
+    <comment>Status after turning talents on</comment>
+  </data>
+  <data name="TALENTS_REMOVED" xml:space="preserve">
+    <value>Talent tree off.</value>
+    <comment>Status after turning talents off</comment>
+  </data>
+  <data name="TALENTS_OFF_WARN" xml:space="preserve">
+    <value>Turn the talent tree off?
+
+The game no longer knows the tree when it is off, and the next time it saves your characters it drops the talents they have taken.</value>
+    <comment>Question before turning talents off</comment>
+  </data>
 </root>

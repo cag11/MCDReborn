@@ -10966,6 +10966,17 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_PROPTEXT - every armour property's name and line, as the game words them. Read-only.
+            if (_startupArguments.Contains("PROBE_PROPTEXT"))
+            {
+                foreach (var (id, number) in Logic.GearTraits.ARMOR_PROPERTY_IDS.OrderBy(p => p.Value))
+                {
+                    Console.WriteLine($"[proptext] {number,2} {id,-26} {R.armorProperty(id)} | {R.armorPropertyDescription(id)}");
+                }
+                Shutdown();
+                return;
+            }
+
             //PROBE_KINDS=<Class>[;<Class>...] - how many live objects of each class there are. Read-only.
             if (_startupArguments.Any(a => a.StartsWith("PROBE_KINDS=", StringComparison.Ordinal)))
             {

@@ -9734,6 +9734,51 @@ namespace MCDSaveEdit.Properties {
         }
 
         /// <summary>
+        ///   Looks up a localized string for TALENTS_ON.
+        /// </summary>
+        public static string TALENTS_ON {
+            get {
+                return ResourceManager.GetString("TALENTS_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for TALENTS_WHY.
+        /// </summary>
+        public static string TALENTS_WHY {
+            get {
+                return ResourceManager.GetString("TALENTS_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for TALENTS_DONE.
+        /// </summary>
+        public static string TALENTS_DONE {
+            get {
+                return ResourceManager.GetString("TALENTS_DONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for TALENTS_REMOVED.
+        /// </summary>
+        public static string TALENTS_REMOVED {
+            get {
+                return ResourceManager.GetString("TALENTS_REMOVED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for TALENTS_OFF_WARN.
+        /// </summary>
+        public static string TALENTS_OFF_WARN {
+            get {
+                return ResourceManager.GetString("TALENTS_OFF_WARN", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Apocalypse +26 to +35 are installed. Start the game and slide past +25 on the mission screen..
         /// </summary>
         public static string STATS_APOC_PLUS_DONE {
