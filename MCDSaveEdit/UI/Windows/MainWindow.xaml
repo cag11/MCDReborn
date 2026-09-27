@@ -41,6 +41,8 @@
                 <Separator/>
                 <MenuItem x:Name="relaunchToChangeMenuItem" Header="Relaunch to change..." Click="relaunchMenuItem_Click"/>
             </MenuItem>
+            <!-- Which copy of the game everything targets: Steam, the Xbox app or the Minecraft Launcher. -->
+            <MenuItem x:Name="gameVersionMenuItem" Header="Game _Version"/>
             <MenuItem x:Name="langMenuItem" Header="_Language">
                 <MenuItem x:Name="noneLangMenuItem" Header="None" IsChecked="true"/>
                 <Separator/>

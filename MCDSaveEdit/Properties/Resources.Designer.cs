@@ -9734,6 +9734,51 @@ namespace MCDSaveEdit.Properties {
         }
 
         /// <summary>
+        ///   Looks up a localized string for TALENTS_ON.
+        /// </summary>
+        public static string TALENTS_ON {
+            get {
+                return ResourceManager.GetString("TALENTS_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for TALENTS_WHY.
+        /// </summary>
+        public static string TALENTS_WHY {
+            get {
+                return ResourceManager.GetString("TALENTS_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for TALENTS_DONE.
+        /// </summary>
+        public static string TALENTS_DONE {
+            get {
+                return ResourceManager.GetString("TALENTS_DONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for TALENTS_REMOVED.
+        /// </summary>
+        public static string TALENTS_REMOVED {
+            get {
+                return ResourceManager.GetString("TALENTS_REMOVED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for TALENTS_OFF_WARN.
+        /// </summary>
+        public static string TALENTS_OFF_WARN {
+            get {
+                return ResourceManager.GetString("TALENTS_OFF_WARN", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Apocalypse +26 to +35 are installed. Start the game and slide past +25 on the mission screen..
         /// </summary>
         public static string STATS_APOC_PLUS_DONE {
@@ -9838,6 +9883,76 @@ namespace MCDSaveEdit.Properties {
         public static string STATS_DPS_WHY {
             get {
                 return ResourceManager.GetString("STATS_DPS_WHY", resourceCulture);
+            }
+        }
+            /// <summary>
+        ///   Looks up a localized string for GAME_VERSION_MENU.
+        /// </summary>
+        public static string GAME_VERSION_MENU {
+            get {
+                return ResourceManager.GetString("GAME_VERSION_MENU", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for GAME_STORE_STEAM.
+        /// </summary>
+        public static string GAME_STORE_STEAM {
+            get {
+                return ResourceManager.GetString("GAME_STORE_STEAM", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for GAME_STORE_XBOX.
+        /// </summary>
+        public static string GAME_STORE_XBOX {
+            get {
+                return ResourceManager.GetString("GAME_STORE_XBOX", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for GAME_STORE_LAUNCHER.
+        /// </summary>
+        public static string GAME_STORE_LAUNCHER {
+            get {
+                return ResourceManager.GetString("GAME_STORE_LAUNCHER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for GAME_STORE_MISSING.
+        /// </summary>
+        public static string GAME_STORE_MISSING {
+            get {
+                return ResourceManager.GetString("GAME_STORE_MISSING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for GAME_SWITCH_CONFIRM.
+        /// </summary>
+        public static string GAME_SWITCH_CONFIRM {
+            get {
+                return ResourceManager.GetString("GAME_SWITCH_CONFIRM", resourceCulture);
+            }
+        }
+            /// <summary>
+        ///   Looks up a localized string for GAME_SAVES_FOLDER.
+        /// </summary>
+        public static string GAME_SAVES_FOLDER {
+            get {
+                return ResourceManager.GetString("GAME_SAVES_FOLDER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for GAME_SAVES_NONE.
+        /// </summary>
+        public static string GAME_SAVES_NONE {
+            get {
+                return ResourceManager.GetString("GAME_SAVES_NONE", resourceCulture);
             }
         }
     }

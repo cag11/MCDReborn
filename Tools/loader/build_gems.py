@@ -1842,21 +1842,23 @@ def build_strip(pictures, path, holders, chain, hovered_of):
     return widget
 
 
-def build_stall(pictures):
+def build_stall(pictures, actor_path=STALL_ACTOR, level_path=STALL_LEVEL, looks_path=STALL_LOOKS,
+                sign_path=STALL_SIGN, words='GEM MERCHANT', at=STALL_WHERE, facing=STALL_FACING, sign_height=330.0):
     """
     The Gem Merchant's booth: an actor that draws the game's blue market booth where it stands, with
     a GEM MERCHANT sign over it the way the Camp names its own, and a Lobby level holding one.
+    Any other prop of the game's, with words of its own over it, is the same thing with other arguments.
     """
-    there = on_disk(STALL_ACTOR, 'Blueprint')
+    there = on_disk(actor_path, 'Blueprint')
     if there is None:
-        looks = on_disk(STALL_LOOKS, 'Blueprint')
+        looks = on_disk(looks_path, 'Blueprint')
         if looks is None:
-            looks = ue.create_blueprint(Actor, STALL_LOOKS)      # a stand-in at the game's path; never ships
+            looks = ue.create_blueprint(Actor, looks_path)      # a stand-in at the game's path; never ships
             ue.compile_blueprint(looks)
             keep(looks)
-        sign = build_stall_sign()
+        sign = build_stall_sign(sign_path, words)
 
-        actor = ue.create_blueprint(Actor, STALL_ACTOR)
+        actor = ue.create_blueprint(Actor, actor_path)
         page = actor.UberGraphPages[0]
         begin = event(actor, Actor, 'ReceiveBeginPlay', 0, 0)
         spawn = page.graph_add_node(K2Node_SpawnActorFromClass, 500, 0)
@@ -1871,33 +1873,33 @@ def build_stall(pictures):
         made.WidgetClass = sign.GeneratedClass
         made.Space = 1                                           # EWidgetSpace::Screen
         made.DrawSize = IntPoint(X=512, Y=96)
-        made.RelativeLocation = Vector(X=0.0, Y=0.0, Z=330.0)
+        made.RelativeLocation = Vector(X=0.0, Y=0.0, Z=sign_height)
         try:
             made.bGenerateOverlapEvents = False
         except Exception:
             pass
         ue.compile_blueprint(actor)
         keep(actor)
-        say('stall built: ' + STALL_ACTOR)
+        say('stall built: ' + actor_path)
         there = actor
 
-    if on_disk(STALL_LEVEL, 'World') is None:
-        world = WorldFactory().factory_create_new(STALL_LEVEL)
-        x, y, z = STALL_WHERE
-        world.actor_spawn(there.GeneratedClass, ue.FVector(x, y, z), ue.FRotator(0.0, STALL_FACING, 0.0))
+    if on_disk(level_path, 'World') is None:
+        world = WorldFactory().factory_create_new(level_path)
+        x, y, z = at
+        world.actor_spawn(there.GeneratedClass, ue.FVector(x, y, z), ue.FRotator(0.0, facing, 0.0))
         keep(world)
-        say('stall level built: ' + STALL_LEVEL)
+        say('stall level built: ' + level_path)
     return there
 
 
-def build_stall_sign():
+def build_stall_sign(path=STALL_SIGN, words='GEM MERCHANT'):
     """The words over the booth, in the Camp labels' own font."""
-    there = on_disk(STALL_SIGN, 'WidgetBlueprint')
+    there = on_disk(path, 'WidgetBlueprint')
     if there is not None:
         return there
     factory = WidgetBlueprintFactory()
     factory.ParentClass = UserWidget
-    widget = factory.factory_create_new(STALL_SIGN)
+    widget = factory.factory_create_new(path)
     widget.modify()
     tree = widget.WidgetTree
     #As build_sign.py does it: a root of its own, the words stretched over it, compiled before it is
@@ -1905,7 +1907,7 @@ def build_stall_sign():
     root = CanvasPanel('Root', tree)
     tree.RootWidget = root
     root.Visibility = 3
-    words = label(tree, 'Says', 'GEM MERCHANT', INK, stub_font(TITLE_FONT), 20, typeface=TITLE_FACE, outline=2)
+    words = label(tree, 'Says', words, INK, stub_font(TITLE_FONT), 20, typeface=TITLE_FACE, outline=2)
     try:
         words.Justification = 1                                  # ETextJustify::Center
     except Exception:
@@ -1913,7 +1915,7 @@ def build_stall_sign():
     mcd_ui.stretch(root, words)
     ue.compile_blueprint(widget)
     keep(widget)
-    say('stall sign built: ' + STALL_SIGN)
+    say('stall sign built: ' + path)
     return widget
 
 
@@ -2093,4 +2095,6 @@ def main():
     say('done - cook, then carry the levels, the actor, the screen and the pictures')
 
 
-main()
+#Run as a script it builds; imported (build_talents.py borrows the graph vocabulary) it only defines.
+if __name__ == '__main__':
+    main()

@@ -141,6 +141,12 @@ namespace MCDSaveEdit.Logic
                 lines.Add("# @property\tid\tsource EArmorPropertyID\tname\tline under the item's name\ticon (texture|material) - \"-\" keeps the source's\tactive: 1 does what its source does, 0 is only a line");
                 lines.AddRange(properties);
             }
+            var talents = Talents.forPlugin();
+            if (talents.Count > 0)
+            {
+                lines.Add("# @talent	store	bit	target: a talent property's id or a game property's number	factor of its source's number");
+                lines.AddRange(talents);
+            }
             if (struggles)
             {
                 lines.Add("# @struggle	highest Apocalypse+ level - past 25 the game's own step from +24 to +25 is carried on");

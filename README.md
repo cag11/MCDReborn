@@ -41,6 +41,8 @@ https://github.com/user-attachments/assets/37a02d17-7f2b-4d0c-a0f2-47f183cfc7b5
 * **Apocalypse +35**: ten more Apocalypse+ levels in the game's own mission screen, unlocked like the rest by beating boss missions (8 at +25, 9 at +28, 10 at +31), harder with every level and dropping stronger gear; one switch on the **Game modes** tab
 * **Damage Meter:** A game-styled DPS panel over the game, in the game's own fonts: damage per second, the fight's total and time, the peak, and a bar for each of the last 30 seconds. 
 * **Gems and Sockets:** Found and shop gear can come with up to three sockets. Seven gems (Ruby, Sapphire, Topaz, Emerald, Amethyst, Diamond, Skull) in three grades drop in missions and are sold by the **Gem Merchant** beside the map table. 
+* **Talents:** Press **P** in the game, or click the **TALENTS** display case in the Camp, for a passive tree of 583 nodes in six regions, with wheels, clusters, notables and 12 keystones. Earn a talent point for every hero level, drag and zoom the tree with the mouse, and reset in the Camp for 500 emeralds; one switch on the **Game modes** tab.
+* **Game Version menu:** Pick which copy of the game MCD Reborn works on: Steam, the Xbox app or the Minecraft Launcher. Every copy found on the PC is listed (all Steam libraries, XboxGames on any drive), and mods, new items, Gems and Talents install into the one you pick. File › Open starts in that version's own save folder, which MCD Reborn learns from the saves you open.
 
 #### Custom Maps Feature
 * Exports the game missions as Minecraft worlds or allows you to build on them to create your own custom maps..Use the maps tab to do the export and imports.

@@ -695,7 +695,7 @@ namespace MCDSaveEdit.Logic
             return found;
         }
 
-        /// <summary>The Gems panel follows the gems: a failure there is a note, not a failed build.</summary>
+        /// <summary>The Gems panel follows the gems, the tree the talents: a failure there is a note, not a failed build.</summary>
         private static void panelNote(Built result)
         {
             try
@@ -704,6 +704,12 @@ namespace MCDSaveEdit.Logic
                 if (said.Length > 0) { result.Notes.Add(said); }
             }
             catch (Exception problem) { result.Notes.Add($"The Gems panel could not be installed: {problem.Message}"); }
+            try
+            {
+                var said = Talents.syncPanel();
+                if (said.Length > 0) { result.Notes.Add(said); }
+            }
+            catch (Exception problem) { result.Notes.Add($"Talents could not be installed: {problem.Message}"); }
         }
 
         public static Built build(IReadOnlyList<Design> designs, string? into = null, IReadOnlyList<Extra>? extras = null)
@@ -711,7 +717,9 @@ namespace MCDSaveEdit.Logic
             extras ??= Array.Empty<Extra>();
             //Gems are copies of Gold, carried in this pak like any extra, and registered by the plugin.
             var gems = into == null && Gems.isOn ? Gems.extras() : Array.Empty<Extra>();
-            extras = extras.Concat(gems).ToList();
+            //And the talent tree's stores, the same way.
+            var talents = into == null && Talents.isOn ? Talents.extras() : Array.Empty<Extra>();
+            extras = extras.Concat(gems).Concat(talents).ToList();
             var result = new Built();
             var paks = CustomSkins.paksFolder ?? throw new InvalidOperationException("The game's paks folder is not known.");
             var pakPath = into ?? Path.Combine(paks, CustomSkins.MOD_PREFIX + MOD_NAME + "_P.pak");
@@ -725,6 +733,8 @@ namespace MCDSaveEdit.Logic
             var properties = into == null ? CustomProperties.load().Where(CustomProperties.hasIcon).ToList() : new List<CustomProperties.Design>();
             //And gems: each grade a copy of its source with a number of its own.
             if (into == null && Gems.isOn) { properties.AddRange(Gems.properties().Where(p => p.Factor != null)); }
+            //And the talent tree's, one per property it scales.
+            if (into == null && Talents.isOn) { properties.AddRange(Talents.properties()); }
 
             if (designs.Count == 0 && extras.Count == 0 && enchantments.Count == 0 && mobs.Count == 0 && properties.Count == 0)
             {
@@ -738,10 +748,13 @@ namespace MCDSaveEdit.Logic
             //Checked before anything is written: a plugin item with no plugin to register it is an
             //id the game does not know.
             var pluginItems = CustomItems.pluginItems(designs);
-            foreach (var gem in gems)
+            //Gems and the talent stores are currencies the game only knows once the plugin registers
+            //them: an unregistered id has no name in the wallet, and every one of them then shares a
+            //single balance (the talent stores and their count did, until they were listed here).
+            foreach (var currency in gems.Concat(talents))
             {
-                var gold = gameItem(gem.Source) ?? throw new InvalidOperationException($"{gem.Source} is not a game item.");
-                pluginItems.Add(new GamePlugin.Item(gem.Id, gold.Id, extraFolder(gold, gem.Id), gem.Name, gem.Description));
+                var gold = gameItem(currency.Source) ?? throw new InvalidOperationException($"{currency.Source} is not a game item.");
+                pluginItems.Add(new GamePlugin.Item(currency.Id, gold.Id, extraFolder(gold, currency.Id), currency.Name, currency.Description));
             }
             if (pluginItems.Count > 0 && into == null && GamePlugin.gameFolder(paks) == null)
             {

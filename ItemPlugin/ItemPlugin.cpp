@@ -1615,7 +1615,8 @@ namespace
 
     // A gem grade's own class: loaded on the game thread (the first heartbeat), its one number
     // scaled from the source's, then put where the source's class was. Until then it is the source's.
-    struct GradeClass { int value; std::wstring path; float factor, neutral; uint8_t* source; };
+    struct GradeClass { int value; std::wstring path; float factor, neutral; uint8_t* source;
+                        uint8_t* ownDefault = nullptr; float was = 0; float set = -1; };
     std::vector<GradeClass> g_gradeClasses;
     TArrayRaw* g_propertyDefs = nullptr;
     TArrayRaw* g_propertyClasses = nullptr;
@@ -2000,6 +2001,7 @@ namespace
         uint8_t* component = nullptr;
         std::vector<uint8_t*> slots;
         std::vector<uint16_t> applied;
+        std::vector<uint32_t> masks;
         int32_t liveAfter = -1;
         ULONGLONG lastCheck = 0, lastScan = 0;
     };
@@ -2041,7 +2043,7 @@ namespace
             return;
         }
         int done = 0;
-        for (const auto& grade : g_gradeClasses)
+        for (auto& grade : g_gradeClasses)
         {
             uint8_t* meta = nullptr;       // the source class's own class: what the copy is loaded as
             if (!readPointer(reinterpret_cast<uint8_t**>(grade.source + 0x10), meta) || !meta) { continue; }
@@ -2055,6 +2057,9 @@ namespace
             if (!readBlock(sourceDefault + PROPERTY_NUMBER, &was, 4)) { continue; }
             float now = grade.neutral + (was - grade.neutral) * grade.factor;
             *reinterpret_cast<float*>(ownDefault + PROPERTY_NUMBER) = now;
+            grade.ownDefault = ownDefault;             // a talent's number is set again as nodes are taken
+            grade.was = was;
+            grade.set = now;
             *reinterpret_cast<uint8_t**>(g_propertyDefs->Data + static_cast<size_t>(grade.value) * PROPERTY_SIZE + 0xF8) = loaded;
             reinterpret_cast<uint8_t**>(g_propertyClasses->Data)[grade.value] = loaded;
             say("gems: property %d is %ls, its number %.3f (its source's %.3f)", grade.value, grade.path.c_str(), now, was);
@@ -2062,6 +2067,129 @@ namespace
         }
         say("gems: %d of %zu grade classes in place", done, g_gradeClasses.size());
         for (auto& h : g_hearts) { h.applied.clear(); }     // rebuilt next beat with them
+    }
+
+    // ---------------------------------------------------------------- talents
+    //
+    // The talent tree's nodes live in the character's own save, as the bits of hidden currencies -
+    // MCDR_Talents0, 1, 2, thirty nodes to one - which the tree screen in the game adds to. The
+    // app writes one line per node: "@talent \t store \t bit \t target \t factor". The target is
+    // one of the talent properties (MCDR_Talent<Source>, a copy of a game property with its own
+    // class, like a gem grade) or a game property's own number. Every beat reads the balances; a
+    // property copy is added to the list once, its number neutral + (source's - neutral) * the sum
+    // of the factors of the nodes taken for it, and a game property is added as it is.
+    struct TalentNode { int store; int bit; std::string target; int value = -1; float factor = 0; };
+    std::vector<TalentNode> g_talentNodes;
+    constexpr int TALENT_STORES = 32;
+    FName g_talentStores[TALENT_STORES]{};
+
+    std::vector<TalentNode> readTalents()
+    {
+        std::vector<TalentNode> found;
+        FILE* file = _wfopen((g_folder + L"MCDRebornItems.txt").c_str(), L"rb");
+        if (!file) { return found; }
+        std::string all;
+        char buffer[4096];
+        size_t got;
+        while ((got = fread(buffer, 1, sizeof(buffer), file)) > 0) { all.append(buffer, got); }
+        fclose(file);
+        size_t start = 0;
+        while (start < all.size())
+        {
+            size_t end = all.find('\n', start);
+            if (end == std::string::npos) { end = all.size(); }
+            std::string line = all.substr(start, end - start);
+            start = end + 1;
+            if (!line.empty() && line.back() == '\r') { line.pop_back(); }
+            if (line.rfind("@talent\t", 0) != 0) { continue; }
+            std::vector<std::string> parts;
+            size_t from = 0;
+            for (;;)
+            {
+                size_t tab = line.find('\t', from);
+                parts.push_back(line.substr(from, tab == std::string::npos ? std::string::npos : tab - from));
+                if (tab == std::string::npos) { break; }
+                from = tab + 1;
+            }
+            if (parts.size() < 5) { say("skipped a talent line with %zu fields", parts.size()); continue; }
+            TalentNode t{ atoi(parts[1].c_str()), atoi(parts[2].c_str()), parts[3] };
+            t.factor = static_cast<float>(atof(parts[4].c_str()));
+            if (t.store < 0 || t.store >= TALENT_STORES || t.bit < 0 || t.bit > 30) { say("talent: store %d bit %d is out of range", t.store, t.bit); continue; }
+            found.push_back(t);
+        }
+        return found;
+    }
+
+    // Turns each node's target into a property number: a new property by its id, a game one by its number.
+    template <typename NamedList> void resolveTalents(Game& game, const NamedList& named)
+    {
+        auto nodes = readTalents();
+        if (nodes.empty()) { return; }
+        for (int i = 0; i < TALENT_STORES; i++) { g_talentStores[i] = name(game, "MCDR_Talents" + std::to_string(i)); }
+        int resolved = 0;
+        for (auto& t : nodes)
+        {
+            bool number = !t.target.empty() && t.target.find_first_not_of("0123456789") == std::string::npos;
+            if (number) { t.value = atoi(t.target.c_str()); }
+            for (const auto& n : named) { if (n.id == t.target) { t.value = n.value; } }
+            if (t.value <= 0 || t.value > 250) { say("talent: %s is not a property; that node does nothing", t.target.c_str()); continue; }
+            resolved++;
+        }
+        g_talentNodes = nodes;
+        say("talents: %d of %zu nodes do something", resolved, nodes.size());
+    }
+
+    // The character's talent masks, from its save data's balances: +0xEE0 CharacterLazySaveComponent,
+    // +0x100 CharacterSaveData, {FName, int32} entries between +0xF8 and +0x100.
+    std::vector<uint32_t> talentMasks(uint8_t* character)
+    {
+        std::vector<uint32_t> masks(TALENT_STORES, 0);
+        uint8_t* held = nullptr; uint8_t* book = nullptr; uint8_t* begin = nullptr; uint8_t* end = nullptr;
+        if (!readPointer(reinterpret_cast<uint8_t**>(character + 0xEE0), held) || !held) { return masks; }
+        if (!readPointer(reinterpret_cast<uint8_t**>(held + 0x100), book) || !book) { return masks; }
+        if (!readPointer(reinterpret_cast<uint8_t**>(book + 0xF8), begin) || !readPointer(reinterpret_cast<uint8_t**>(book + 0x100), end)) { return masks; }
+        if (!begin || end <= begin || end - begin > 12 * 512) { return masks; }
+        std::vector<uint8_t> entries(static_cast<size_t>(end - begin));
+        if (!readBlock(begin, entries.data(), entries.size())) { return masks; }
+        for (size_t at = 0; at + 12 <= entries.size(); at += 12)
+        {
+            FName its{}; int32_t count = 0;
+            memcpy(&its, entries.data() + at, 8);
+            memcpy(&count, entries.data() + at + 8, 4);
+            for (int i = 0; i < TALENT_STORES; i++)
+            {
+                if (its.Index == g_talentStores[i].Index && its.Number == g_talentStores[i].Number) { masks[i] = static_cast<uint32_t>(count); }
+            }
+        }
+        return masks;
+    }
+
+    // Adds what the taken nodes do to `list`, setting each talent property's number first.
+    void addTalents(const std::vector<uint32_t>& masks, std::vector<uint16_t>& list)
+    {
+        std::vector<std::pair<int, float>> sums;
+        for (const auto& t : g_talentNodes)
+        {
+            if (t.value <= 0 || !((masks[t.store] >> t.bit) & 1)) { continue; }
+            bool seen = false;
+            for (auto& s : sums) { if (s.first == t.value) { s.second += t.factor; seen = true; } }
+            if (!seen) { sums.push_back({ t.value, t.factor }); }
+        }
+        for (const auto& s : sums)
+        {
+            for (auto& grade : g_gradeClasses)
+            {
+                if (grade.value != s.first || !grade.ownDefault) { continue; }
+                float now = grade.neutral + (grade.was - grade.neutral) * s.second;
+                if (now != grade.set)
+                {
+                    *reinterpret_cast<float*>(grade.ownDefault + PROPERTY_NUMBER) = now;
+                    grade.set = now;
+                    say("talents: property %d is now %.3f (%.2f of its source's %.3f)", grade.value, now, s.second, grade.was);
+                }
+            }
+            list.push_back(static_cast<uint16_t>(s.first));
+        }
     }
 
     void beat(uint8_t* character)
@@ -2109,10 +2237,20 @@ namespace
             if (type == 16) { readBlock(item + 0x3C, &power, 4); }          // FInventoryItemData.ItemPower
         }
 
+        std::vector<uint32_t> masks;
+        if (!g_talentNodes.empty())
+        {
+            masks = talentMasks(character);
+            addTalents(masks, list);
+        }
+
         TArrayRaw live{};
         readBlock(h.component + 0x100, &live, sizeof(live));               // ArmorPropertiesComponent.properties
         bool gameRebuilt = h.liveAfter >= 0 && live.Num != h.liveAfter;
-        if (list == h.applied && !gameRebuilt) { return; }
+        // A node taken for a property already in the list changes its number, not the list.
+        bool talentsMoved = masks != h.masks;
+        h.masks = masks;
+        if (list == h.applied && !gameRebuilt && !talentsMoved) { return; }
 
         g_combined = list;
         TArrayRaw handed{ reinterpret_cast<uint8_t*>(g_combined.data()), static_cast<int32_t>(g_combined.size()), static_cast<int32_t>(g_combined.size()) };
@@ -2320,6 +2458,7 @@ namespace
 
         // Gems do what their source does, on weapons too; everything else new is only a line.
         for (const auto& n : named) { (n.active ? g_activeProperties : g_inertProperties).push_back(n.value); }
+        resolveTalents(game, named);
         hookGemEffects(game);
 
         // The side arrays, once the preload has sized them.

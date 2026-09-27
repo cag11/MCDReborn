@@ -65,6 +65,8 @@
     <!-- The in-game Gems panel, as cooked under /Game/MCDReborn: two Gems levels share a name, so
          each file keeps its folder in its resource name. -->
     <EmbeddedResource Include="Logic\GemsAssets\**\*.*" LogicalName="GemsAssets/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Logic\TalentsAssets\**\*.*" LogicalName="TalentsAssets/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Logic\Talents.json" LogicalName="Talents.json" />
     <!-- The item plugin (ItemPlugin/), built with the C++ tools and carried here as it is: the
          game loads it as xinput1_3.dll (Steam, Launcher) or dsound.dll (Xbox app) to register items
          beyond the free slots. -->

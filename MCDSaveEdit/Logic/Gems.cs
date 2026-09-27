@@ -240,7 +240,7 @@ namespace MCDSaveEdit.Logic
 
             if (!isOn)
             {
-                if (old != null && Payloads.installed().Count == 0 && !MapTable.isInstalled) { Loader.remove(); }
+                if (old != null && !Talents.isOn && Payloads.installed().Count == 0 && !MapTable.isInstalled) { Loader.remove(); }
                 return old != null ? "Gems panel removed." : "";
             }
 
