@@ -1,0 +1,85 @@
+<Window x:Class="MCDSaveEdit.UI.DamageMeterOverlay"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ShowInTaskbar="False" Topmost="True" ResizeMode="NoResize"
+        SizeToContent="Height" Width="276" Focusable="False"
+        TextOptions.TextRenderingMode="Aliased" TextOptions.TextFormattingMode="Display"
+        RenderOptions.EdgeMode="Aliased" UseLayoutRounding="True" SnapsToDevicePixels="True">
+
+    <Window.Resources>
+        <!-- The game's hard pixel shadow under its text: no blur, down and to the right. -->
+        <DropShadowEffect x:Key="PixelShadow" ShadowDepth="2" Direction="315" BlurRadius="0"
+                          Color="#FF000000" Opacity="0.85"/>
+        <!-- A stud in each corner of the frame, as on the game's own panels. -->
+        <Style x:Key="Stud" TargetType="Border">
+            <Setter Property="Width" Value="6"/>
+            <Setter Property="Height" Value="6"/>
+            <Setter Property="Background" Value="#FF6A6E78"/>
+            <Setter Property="BorderBrush" Value="#FF2A2C31"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="4">
+        <!-- The frame: a light edge outside a dark one, square, like every panel in the game. -->
+        <Border Background="#E0141519" BorderBrush="#FF4A4E57" BorderThickness="2">
+            <Border BorderBrush="#FF0B0C0E" BorderThickness="2" Padding="12,9,12,11">
+                <StackPanel>
+                    <DockPanel>
+                        <TextBlock x:Name="stateLabel" DockPanel.Dock="Right" FontSize="11"
+                                   Foreground="#FF8E939C" VerticalAlignment="Center"
+                                   Effect="{StaticResource PixelShadow}"/>
+                        <TextBlock x:Name="titleLabel" FontSize="14" Foreground="#FFE8A33D"
+                                   Effect="{StaticResource PixelShadow}"/>
+                    </DockPanel>
+
+                    <Border Height="2" Background="#FF2C2F35" Margin="0,7,0,6"/>
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock x:Name="dpsLabel" FontSize="40" Foreground="#FFFFFFFF"
+                                   Effect="{StaticResource PixelShadow}"/>
+                        <TextBlock x:Name="dpsUnit" FontSize="14" Foreground="#FFB8BCC4" Margin="8,0,0,7"
+                                   VerticalAlignment="Bottom" Effect="{StaticResource PixelShadow}"/>
+                    </StackPanel>
+
+                    <!-- A bar for each of the last thirty seconds, the newest on the right. -->
+                    <Border Height="38" Margin="0,6,0,8" Background="#FF0E0F12" BorderBrush="#FF2C2F35"
+                            BorderThickness="1" Padding="3,3,3,2">
+                        <ItemsControl x:Name="bars" VerticalAlignment="Bottom" HorizontalAlignment="Right">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </Border>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                        </Grid.RowDefinitions>
+                        <TextBlock x:Name="firstName" Grid.Row="0" FontSize="14" Foreground="#FF8E939C"
+                                   Margin="0,0,12,2" Effect="{StaticResource PixelShadow}"/>
+                        <TextBlock x:Name="firstValue" Grid.Row="0" Grid.Column="1" FontSize="14"
+                                   Foreground="#FFEFEFEF" TextAlignment="Right" Effect="{StaticResource PixelShadow}"/>
+                        <TextBlock x:Name="secondName" Grid.Row="1" FontSize="14" Foreground="#FF8E939C"
+                                   Margin="0,0,12,0" Effect="{StaticResource PixelShadow}"/>
+                        <TextBlock x:Name="secondValue" Grid.Row="1" Grid.Column="1" FontSize="14"
+                                   Foreground="#FFEFEFEF" TextAlignment="Right" Effect="{StaticResource PixelShadow}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Border>
+
+        <Border Style="{StaticResource Stud}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-2,-2,0,0"/>
+        <Border Style="{StaticResource Stud}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-2,-2,0"/>
+        <Border Style="{StaticResource Stud}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-2,0,0,-2"/>
+        <Border Style="{StaticResource Stud}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-2,-2"/>
+    </Grid>
+</Window>

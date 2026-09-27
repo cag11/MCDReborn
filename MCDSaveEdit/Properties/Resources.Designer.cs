@@ -9687,5 +9687,95 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("STATS_APOC_PLUS_REMOVED", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to DAMAGE.
+        /// </summary>
+        public static string DPS_TITLE {
+            get {
+                return ResourceManager.GetString("DPS_TITLE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to DPS.
+        /// </summary>
+        public static string DPS_UNIT {
+            get {
+                return ResourceManager.GetString("DPS_UNIT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to IN FIGHT.
+        /// </summary>
+        public static string DPS_IN_FIGHT {
+            get {
+                return ResourceManager.GetString("DPS_IN_FIGHT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to IDLE.
+        /// </summary>
+        public static string DPS_IDLE {
+            get {
+                return ResourceManager.GetString("DPS_IDLE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Fight.
+        /// </summary>
+        public static string DPS_FIGHT {
+            get {
+                return ResourceManager.GetString("DPS_FIGHT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Peak.
+        /// </summary>
+        public static string DPS_PEAK {
+            get {
+                return ResourceManager.GetString("DPS_PEAK", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Last fight.
+        /// </summary>
+        public static string DPS_LAST {
+            get {
+                return ResourceManager.GetString("DPS_LAST", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} in {1}.
+        /// </summary>
+        public static string DPS_TOTAL_IN {
+            get {
+                return ResourceManager.GetString("DPS_TOTAL_IN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Damage meter.
+        /// </summary>
+        public static string STATS_DPS_ON {
+            get {
+                return ResourceManager.GetString("STATS_DPS_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Shows your damage per second over the game, counted from the enemies' health: every drop is a hit. Your pets and summons count toward it; damage done to them does not. In co-op everyone's damage is counted together. A fight ends after five seconds without a hit..
+        /// </summary>
+        public static string STATS_DPS_WHY {
+            get {
+                return ResourceManager.GetString("STATS_DPS_WHY", resourceCulture);
+            }
+        }
     }
 }

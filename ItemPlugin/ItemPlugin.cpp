@@ -24,6 +24,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 namespace
 {
@@ -1885,13 +1886,38 @@ namespace
         return nullptr;
     }
 
-    // One component: each entry still at +25 moved to the top. Returns how many were lifted.
-    int liftCeiling(uint8_t* component)
+    // What has been lifted, by the entry's address: the value its first range now starts at. An
+    // entry whose value is still that has been lifted already; any other value - the game rebuilt
+    // the map, or the address is new - is lifted again. The level itself is left at 25: other code
+    // copies these contexts out and reads the level, and 25 is the highest it was built to expect
+    // (writing 35 there crashed the game in a custom map at Apocalypse). Only the power moves.
+    struct Lifted { uint8_t* context; float first; };
+    std::vector<Lifted> g_lifted;
+    struct SeenMap { uint8_t* component; uint8_t* data; int32_t num; };
+    std::vector<SeenMap> g_seenMaps;
+
+    bool readMap(uint8_t* component, TArrayRaw& map)
     {
         uint8_t built = 0;
+        if (!readBlock(component + EQUIP_BUILT, &built, 1) || !built) { return false; }
+        if (!readBlock(component + EQUIP_MAP, &map, sizeof(map)) || !map.Data || map.Num <= 0 || map.Num > 16) { return false; }
+        return true;
+    }
+
+    // One component: each entry built at +25 has its power moved to the top. Returns how many.
+    int liftCeiling(uint8_t* component, std::vector<SeenMap>& seen)
+    {
         TArrayRaw map{};
-        if (!readBlock(component + EQUIP_BUILT, &built, 1) || !built) { return 0; }
-        if (!readBlock(component + EQUIP_MAP, &map, sizeof(map)) || !map.Data || map.Num <= 0 || map.Num > 16) { return 0; }
+        if (!readMap(component, map)) { return 0; }
+        seen.push_back({ component, map.Data, map.Num });
+        // Only a map that was the same at the last look: one the game is rebuilding waits.
+        bool steady = false;
+        for (const SeenMap& before : g_seenMaps)
+        {
+            if (before.component == component && before.data == map.Data && before.num == map.Num) { steady = true; }
+        }
+        if (!steady) { return 0; }
+
         int lifted = 0;
         const float move = POWER_PER_LEVEL * static_cast<float>(g_struggleTop - GAME_STRUGGLES);
         for (int32_t e = 0; e < map.Num; e++)
@@ -1903,12 +1929,19 @@ namespace
             if (difficulty[0] != 3 || difficulty[1] != 7 || level != GAME_STRUGGLES) { continue; }
             float ranges[8];
             if (!readBlock(context + RANGES_AT, ranges, sizeof(ranges))) { continue; }
+            bool done = false;
+            for (const Lifted& l : g_lifted) { if (l.context == context && l.first == ranges[0]) { done = true; } }
+            if (done) { continue; }
             bool sane = true;
             for (float v : ranges) { if (!(v > 1.0f && v < 100.0f)) { sane = false; } }
             if (!sane) { continue; }
+            // Looked at again just before the write: still this map, still this entry.
+            TArrayRaw again{};
+            if (!readMap(component, again) || again.Data != map.Data || again.Num != map.Num) { return lifted; }
             for (float& v : ranges) { v += move; }
             memcpy(context + RANGES_AT, ranges, sizeof(ranges));
-            memcpy(context + 12, &g_struggleTop, 4);
+            g_lifted.erase(std::remove_if(g_lifted.begin(), g_lifted.end(), [&](const Lifted& l) { return l.context == context; }), g_lifted.end());
+            g_lifted.push_back({ context, ranges[0] });
             lifted++;
         }
         return lifted;
@@ -1920,7 +1953,10 @@ namespace
         {
             Sleep(2000);
             int lifted = 0;
-            for (uint8_t* component : objectsOf(g_gameKept, g_equipmentClass)) { lifted += liftCeiling(component); }
+            std::vector<SeenMap> seen;
+            for (uint8_t* component : objectsOf(g_gameKept, g_equipmentClass)) { lifted += liftCeiling(component, seen); }
+            g_seenMaps = seen;
+            if (g_lifted.size() > 256) { g_lifted.erase(g_lifted.begin(), g_lifted.begin() + 128); }
             if (lifted) { say("apocalypse+: lifted %d drop power ceiling(s) from +25 to +%d", lifted, g_struggleTop); }
         }
     }

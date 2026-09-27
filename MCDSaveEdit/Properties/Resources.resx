@@ -4384,4 +4384,44 @@ Import it?</value>
     <value>Removed. The game stops at +25 again from its next start.</value>
     <comment>Notice after turning it off</comment>
   </data>
+  <data name="DPS_TITLE" xml:space="preserve">
+    <value>DAMAGE</value>
+    <comment>Heading of the damage meter overlay</comment>
+  </data>
+  <data name="DPS_UNIT" xml:space="preserve">
+    <value>DPS</value>
+    <comment>Damage per second, after the number</comment>
+  </data>
+  <data name="DPS_IN_FIGHT" xml:space="preserve">
+    <value>IN FIGHT</value>
+    <comment>Damage meter state</comment>
+  </data>
+  <data name="DPS_IDLE" xml:space="preserve">
+    <value>IDLE</value>
+    <comment>Damage meter state</comment>
+  </data>
+  <data name="DPS_FIGHT" xml:space="preserve">
+    <value>Fight</value>
+    <comment>Damage meter row: this fight's total</comment>
+  </data>
+  <data name="DPS_PEAK" xml:space="preserve">
+    <value>Peak</value>
+    <comment>Damage meter row: highest damage per second</comment>
+  </data>
+  <data name="DPS_LAST" xml:space="preserve">
+    <value>Last fight</value>
+    <comment>Damage meter row while idle</comment>
+  </data>
+  <data name="DPS_TOTAL_IN" xml:space="preserve">
+    <value>{0} in {1}</value>
+    <comment>Damage meter: {0} total damage, {1} fight length</comment>
+  </data>
+  <data name="STATS_DPS_ON" xml:space="preserve">
+    <value>Damage meter</value>
+    <comment>Checkbox on the Difficulty tab</comment>
+  </data>
+  <data name="STATS_DPS_WHY" xml:space="preserve">
+    <value>Shows your damage per second over the game, counted from the enemies' health: every drop is a hit. Your pets and summons count toward it; damage done to them does not. In co-op everyone's damage is counted together. A fight ends after five seconds without a hit.</value>
+    <comment>Explanation under the checkbox</comment>
+  </data>
 </root>

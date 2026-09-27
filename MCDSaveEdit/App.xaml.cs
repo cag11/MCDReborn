@@ -9620,6 +9620,14 @@ namespace MCDSaveEdit
                 Console.WriteLine($"[extract] {bits[0]}");
                 Console.WriteLine($"[extract]   {stem}.uasset  {uasset.Length:N0} bytes");
                 Console.WriteLine($"[extract]   {stem}.uexp    {uexp.Length:N0} bytes");
+                //The bulk part too - a texture's mips, or a font face's .ufont, which the pak reader
+                //files under the package as its bulk data.
+                if (read.Value.UBulk != null)
+                {
+                    var bulk = read.Value.UBulk.Value.ToArray();
+                    System.IO.File.WriteAllBytes(stem + ".ubulk", bulk);
+                    Console.WriteLine($"[extract]   {stem}.ubulk   {bulk.Length:N0} bytes");
+                }
                 //Spelled the way PROBE_PROPS wants it, so the next command can be pasted rather
                 //than retyped with the slashes turned round.
                 var asProbe = stem.Replace(System.IO.Path.DirectorySeparatorChar, '/');
@@ -10849,6 +10857,18 @@ namespace MCDSaveEdit
                 }
                 catch (Exception problem) { Console.WriteLine($"[apoc] failed: {problem.Message}"); }
                 Shutdown();
+                return;
+            }
+
+            //PROBE_DPSPREVIEW=<png> - the damage meter with made-up numbers, captured to a file, for
+            //checking the look without a game. Needs the game files loaded for the fonts.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_DPSPREVIEW=", StringComparison.Ordinal)))
+            {
+                var to = _startupArguments.First(a => a.StartsWith("PROBE_DPSPREVIEW=", StringComparison.Ordinal))["PROBE_DPSPREVIEW=".Length..].Trim('"');
+                var meter = UI.DamageMeterOverlay.preview();
+                meter.Left = 200; meter.Top = 200;
+                meter.Show();
+                UI.Theme.WindowCapture.captureThenExit(meter, to);
                 return;
             }
 

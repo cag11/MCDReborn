@@ -39,6 +39,41 @@ namespace MCDSaveEdit.Logic
 
         public event Action? changed;
 
+        /// <summary>
+        /// Damage per second, read from the enemies' health. Sampled on a timer of its own, faster
+        /// than the loop above: that one finds the enemies, which is the expensive part, and this
+        /// only reads a float from each - a hit between two looks is caught either way, but a
+        /// quicker look makes the number move with the fight rather than behind it.
+        /// </summary>
+        public DamageMeter damage { get; } = new DamageMeter();
+
+        private DispatcherTimer? _damageTick;
+        private readonly System.Diagnostics.Stopwatch _damageClock = System.Diagnostics.Stopwatch.StartNew();
+
+        public bool damageOn
+        {
+            get => _damageTick != null;
+            set
+            {
+                if (value == damageOn) { return; }
+                if (value)
+                {
+                    damage.reset();
+                    _damageTick = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
+                    _damageTick.Tick += (_, _) =>
+                    {
+                        if (_stats != null && _stats.Ready) { damage.sample(_stats, _stats.Enemies, _damageClock.Elapsed.TotalSeconds); }
+                    };
+                    _damageTick.Start();
+                }
+                else
+                {
+                    _damageTick!.Stop();
+                    _damageTick = null;
+                }
+            }
+        }
+
         public bool attached => _stats?.Ready == true;
 
         public int enemyCount => _stats?.Enemies.Count ?? 0;

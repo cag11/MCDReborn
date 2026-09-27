@@ -77,6 +77,7 @@ namespace MCDSaveEdit.UI
 
             _hookedClose = true;
             window.Closed += (s, e) => {
+                _dpsOverlay?.Close();
                 _overlay?.Close();
                 _live.Dispose();
             };
@@ -94,6 +95,8 @@ namespace MCDSaveEdit.UI
             restoreButton.Content = R.STATS_RESTORE;
             poseOnlyWhenSeen.Content = R.STATS_POSE_WHEN_SEEN;
             poseWhy.Text = R.STATS_POSE_WHY;
+            dpsOn.Content = R.STATS_DPS_ON;
+            dpsWhy.Text = R.STATS_DPS_WHY;
             apocalypsePlusOn.Content = R.STATS_APOC_PLUS;
             apocalypsePlusWhy.Text = R.STATS_APOC_PLUS_WHY;
         }
@@ -303,6 +306,27 @@ namespace MCDSaveEdit.UI
             {
                 _overlay?.Close();
                 _overlay = null;
+            }
+        }
+
+        //Like the escalation clock, the meter's window belongs to its switch.
+        private DamageMeterOverlay? _dpsOverlay;
+
+        private void dpsOn_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+            var on = dpsOn.IsChecked == true;
+            _live.damageOn = on;
+            if (on)
+            {
+                _dpsOverlay ??= new DamageMeterOverlay(_live);
+                _dpsOverlay.Closed += (_, _) => _dpsOverlay = null;
+                _dpsOverlay.Show();
+            }
+            else
+            {
+                _dpsOverlay?.Close();
+                _dpsOverlay = null;
             }
         }
 
