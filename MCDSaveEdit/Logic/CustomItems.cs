@@ -709,7 +709,7 @@ namespace MCDSaveEdit.Logic
                 var said = Talents.syncPanel();
                 if (said.Length > 0) { result.Notes.Add(said); }
             }
-            catch (Exception problem) { result.Notes.Add($"The talent tree could not be installed: {problem.Message}"); }
+            catch (Exception problem) { result.Notes.Add($"Talents could not be installed: {problem.Message}"); }
         }
 
         public static Built build(IReadOnlyList<Design> designs, string? into = null, IReadOnlyList<Extra>? extras = null)
@@ -748,10 +748,13 @@ namespace MCDSaveEdit.Logic
             //Checked before anything is written: a plugin item with no plugin to register it is an
             //id the game does not know.
             var pluginItems = CustomItems.pluginItems(designs);
-            foreach (var gem in gems)
+            //Gems and the talent stores are currencies the game only knows once the plugin registers
+            //them: an unregistered id has no name in the wallet, and every one of them then shares a
+            //single balance (the talent stores and their count did, until they were listed here).
+            foreach (var currency in gems.Concat(talents))
             {
-                var gold = gameItem(gem.Source) ?? throw new InvalidOperationException($"{gem.Source} is not a game item.");
-                pluginItems.Add(new GamePlugin.Item(gem.Id, gold.Id, extraFolder(gold, gem.Id), gem.Name, gem.Description));
+                var gold = gameItem(currency.Source) ?? throw new InvalidOperationException($"{currency.Source} is not a game item.");
+                pluginItems.Add(new GamePlugin.Item(currency.Id, gold.Id, extraFolder(gold, currency.Id), currency.Name, currency.Description));
             }
             if (pluginItems.Count > 0 && into == null && GamePlugin.gameFolder(paks) == null)
             {

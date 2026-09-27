@@ -9885,5 +9885,75 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("STATS_DPS_WHY", resourceCulture);
             }
         }
+            /// <summary>
+        ///   Looks up a localized string for GAME_VERSION_MENU.
+        /// </summary>
+        public static string GAME_VERSION_MENU {
+            get {
+                return ResourceManager.GetString("GAME_VERSION_MENU", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for GAME_STORE_STEAM.
+        /// </summary>
+        public static string GAME_STORE_STEAM {
+            get {
+                return ResourceManager.GetString("GAME_STORE_STEAM", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for GAME_STORE_XBOX.
+        /// </summary>
+        public static string GAME_STORE_XBOX {
+            get {
+                return ResourceManager.GetString("GAME_STORE_XBOX", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for GAME_STORE_LAUNCHER.
+        /// </summary>
+        public static string GAME_STORE_LAUNCHER {
+            get {
+                return ResourceManager.GetString("GAME_STORE_LAUNCHER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for GAME_STORE_MISSING.
+        /// </summary>
+        public static string GAME_STORE_MISSING {
+            get {
+                return ResourceManager.GetString("GAME_STORE_MISSING", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for GAME_SWITCH_CONFIRM.
+        /// </summary>
+        public static string GAME_SWITCH_CONFIRM {
+            get {
+                return ResourceManager.GetString("GAME_SWITCH_CONFIRM", resourceCulture);
+            }
+        }
+            /// <summary>
+        ///   Looks up a localized string for GAME_SAVES_FOLDER.
+        /// </summary>
+        public static string GAME_SAVES_FOLDER {
+            get {
+                return ResourceManager.GetString("GAME_SAVES_FOLDER", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for GAME_SAVES_NONE.
+        /// </summary>
+        public static string GAME_SAVES_NONE {
+            get {
+                return ResourceManager.GetString("GAME_SAVES_NONE", resourceCulture);
+            }
+        }
     }
 }

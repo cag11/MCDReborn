@@ -23,6 +23,8 @@ namespace MCDSaveEdit.UI
     public partial class MainWindow : Window
     {
         public Action? onRelaunch;
+        /// <summary>Loads the game at this paks folder instead, and reloads the app with it.</summary>
+        public Action<string>? onSwitchGame;
         public Action<string?, ProfileSaveFile?>? onReload;
 
         private readonly MainViewModel _model;
@@ -53,6 +55,7 @@ namespace MCDSaveEdit.UI
                 : string.IsNullOrWhiteSpace(detectedGameVersion) ? "Minecraft Dungeons"
                 : R.formatMCD_VERSION(detectedGameVersion), ImageResolver.instance.path);
 
+            buildGameVersionMenu();
             buildThemeMenu();
             refreshThemeMenu(Theme.ThemeManager.current);
             Theme.ThemeManager.themeChanged += refreshThemeMenu;
@@ -262,6 +265,72 @@ namespace MCDSaveEdit.UI
             Application.Current?.Shutdown();
         }
 
+        /// <summary>
+        /// Game Version: Steam, the Xbox app and the Minecraft Launcher, each ticked when it is the
+        /// one loaded and greyed out when it is not installed. Picking another reloads the app with it.
+        /// </summary>
+        private void buildGameVersionMenu()
+        {
+            gameVersionMenuItem.Header = R.GAME_VERSION_MENU;
+            gameVersionMenuItem.Items.Clear();
+            var current = ImageResolver.instance.path;
+            Logic.GameInstalls.claimLoaded(current);
+            var found = Logic.GameInstalls.find();
+            foreach (Logic.GameInstalls.Store store in Enum.GetValues(typeof(Logic.GameInstalls.Store)))
+            {
+                var name = store switch
+                {
+                    Logic.GameInstalls.Store.Steam => R.GAME_STORE_STEAM,
+                    Logic.GameInstalls.Store.Xbox => R.GAME_STORE_XBOX,
+                    _ => R.GAME_STORE_LAUNCHER,
+                };
+                var install = found.FirstOrDefault(i => i.Store == store);
+                var item = new MenuItem
+                {
+                    Header = install == null ? string.Format(R.GAME_STORE_MISSING, name) : name,
+                    IsEnabled = install != null,
+                    IsCheckable = false,
+                    IsChecked = install != null && Logic.GameInstalls.same(install.PaksFolder, current),
+                    ToolTip = install?.PaksFolder,
+                };
+                if (install != null)
+                {
+                    item.Click += (_, _) => switchGame(name, install.PaksFolder);
+                }
+                gameVersionMenuItem.Items.Add(item);
+            }
+
+            //The loaded version's saves: where File > Open starts. A click shows the folder.
+            var saves = Logic.GameInstalls.saveFolder(Logic.GameInstalls.storeOf(current));
+            gameVersionMenuItem.Items.Add(new Separator());
+            var savesItem = new MenuItem
+            {
+                Header = saves == null ? R.GAME_SAVES_NONE : string.Format(R.GAME_SAVES_FOLDER, saves),
+                IsEnabled = saves != null,
+            };
+            if (saves != null)
+            {
+                savesItem.Click += (_, _) =>
+                {
+                    try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "\"" + saves + "\"") { UseShellExecute = true }); }
+                    catch (Exception) { }
+                };
+            }
+            gameVersionMenuItem.Items.Add(savesItem);
+        }
+
+        private void switchGame(string name, string paksFolder)
+        {
+            if (Logic.GameInstalls.same(paksFolder, ImageResolver.instance.path)) { return; }
+            if (Logic.GameRunning.isUp) { Notices.warn(R.MODS_GAME_RUNNING); return; }
+            if (MessageBox.Show(string.Format(R.GAME_SWITCH_CONFIRM, name), R.GAME_VERSION_MENU.Replace("_", ""),
+                    MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) { return; }
+            EventLogger.logEvent("switchGame");
+            //The save open now is the version being left's: learnt, so each version keeps its own saves.
+            Logic.GameInstalls.rememberSave(Logic.GameInstalls.storeOf(ImageResolver.instance.path), _model.profileModel.filePath);
+            onSwitchGame?.Invoke(paksFolder);
+        }
+
         private void relaunchMenuItem_Click(object sender, RoutedEventArgs e)
         {
             EventLogger.logEvent("relaunchMenuItem_Click");
@@ -275,7 +344,13 @@ namespace MCDSaveEdit.UI
             openFileDialog.CheckFileExists = true;
             openFileDialog.Filter = constructOpenFileDialogFilterString(ProfileViewModel.supportedFileTypesDict);
             openFileDialog.FilterIndex = 0;
-            if(!string.IsNullOrWhiteSpace(_model.profileModel.filePath))
+            //The loaded game version's own saves first (Game Version menu), then the open file's folder.
+            var saves = Logic.GameInstalls.saveFolder(Logic.GameInstalls.storeOf(ImageResolver.instance.path));
+            if (saves != null)
+            {
+                openFileDialog.InitialDirectory = saves;
+            }
+            else if(!string.IsNullOrWhiteSpace(_model.profileModel.filePath))
             {
                 var directory = Path.GetDirectoryName(_model.profileModel.filePath!);
                 openFileDialog.InitialDirectory = directory;
@@ -530,6 +605,8 @@ namespace MCDSaveEdit.UI
             string extension = Path.GetExtension(fileName!);
             EventLogger.logEvent("handleFileOpenAsync", new Dictionary<string, object>() { { "extension", extension } });
             await _model.handleFileOpenAsync(fileName!);
+            //A save opened while a game version is loaded is that version's.
+            Logic.GameInstalls.rememberSave(Logic.GameInstalls.storeOf(ImageResolver.instance.path), fileName);
             updateTitleUI();
             refreshRecentFilesList();
             closeBusyIndicator();

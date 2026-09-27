@@ -268,6 +268,7 @@ namespace MCDSaveEdit
             MainThreadConsoleWriteLine("Loading Done");
             var mainWindow = WindowFactory.createMainWindow(_model.mainModel);
             mainWindow.onRelaunch = onRelaunch;
+            mainWindow.onSwitchGame = onSwitchGame;
             mainWindow.onReload = onReload;
             this.MainWindow = mainWindow;
 
@@ -10614,6 +10615,83 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_CURRENCIES=<save .dat> - every currency a character holds, as the save has them. Read-only.
+            var probeCurrencies = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_CURRENCIES=", StringComparison.Ordinal));
+            if (probeCurrencies != null)
+            {
+                var saveFile = probeCurrencies["PROBE_CURRENCIES=".Length..].Trim('"');
+                var save = Task.Run(async () =>
+                {
+                    using var file = File.OpenRead(saveFile);
+                    DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file);        //reads past the header, as opening a save does
+                    using var plain = await Logic.FileProcessHelper.Decrypt(file);
+                    return await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Read(plain!);
+                }).GetAwaiter().GetResult();
+                {
+                    foreach (var c in save?.Currency ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Currency>())
+                    {
+                        Console.WriteLine($"[currencies] {c.Type} = {c.Count}");
+                    }
+                    Console.WriteLine($"[currencies] found: {string.Join(", ", save?.CurrenciesFound ?? Array.Empty<string>())}");
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_INSTALLS - every copy of the game found (Game Version menu), and which is loaded. Read-only.
+            if (_startupArguments.Contains("PROBE_INSTALLS"))
+            {
+                foreach (var install in Logic.GameInstalls.find())
+                {
+                    Console.WriteLine($"[installs] {install.Store,-9} {install.PaksFolder}{(Logic.GameInstalls.same(install.PaksFolder, Logic.CustomSkins.paksFolder) ? "   <- loaded" : "")}");
+                }
+                foreach (Logic.GameInstalls.Store store in Enum.GetValues(typeof(Logic.GameInstalls.Store)))
+                {
+                    Console.WriteLine($"[installs] saves {store,-9} {Logic.GameInstalls.saveFolder(store)}");
+                }
+                foreach (var folder in Logic.GameInstalls.characterFolders()) { Console.WriteLine($"[installs] found {folder}"); }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_SHEET=<out png>;<search words> - the game's textures that match, drawn on one sheet
+            //with their names, for picking pictures by eye. Read-only.
+            if (_startupArguments.Any(a => a.StartsWith("PROBE_SHEET=", StringComparison.Ordinal)))
+            {
+                var parts = _startupArguments.First(a => a.StartsWith("PROBE_SHEET=", StringComparison.Ordinal))["PROBE_SHEET=".Length..].Trim('"').Split(';');
+                var (shown, matched) = Logic.GameAssets.search(parts[1], "Texture2D");
+                var found = Logic.GameAssets.all().Where(a => System.IO.Path.GetFileName(a.EnginePath).StartsWith("T_", StringComparison.OrdinalIgnoreCase) && parts[1].Split(' ').All(w => a.EnginePath.Contains(w, StringComparison.OrdinalIgnoreCase)))
+                    .Take(160).ToList();
+                const int cell = 128, label = 28, across = 10;
+                var rows = (found.Count + across - 1) / across;
+                var visual = new System.Windows.Media.DrawingVisual();
+                using (var draw = visual.RenderOpen())
+                {
+                    draw.DrawRectangle(new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(24, 26, 32)), null,
+                        new Rect(0, 0, across * cell, rows * (cell + label)));
+                    for (var i = 0; i < found.Count; i++)
+                    {
+                        var x = i % across * cell;
+                        var y = i / across * (cell + label);
+                        var path = "/Dungeons/Content/" + found[i].EnginePath["/Game/".Length..];
+                        var picture = Services.ImageResolver.instance.imageSource(path);
+                        if (picture != null) { draw.DrawImage(picture, new Rect(x + 8, y + 4, cell - 16, cell - 16)); }
+                        var name = found[i].EnginePath[(found[i].EnginePath.LastIndexOf('/') + 1)..];
+                        draw.DrawText(new System.Windows.Media.FormattedText(name, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                            new System.Windows.Media.Typeface("Segoe UI"), 10, System.Windows.Media.Brushes.White, 1.0) { MaxTextWidth = cell - 4 },
+                            new Point(x + 2, y + cell - 10));
+                    }
+                }
+                var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(across * cell, Math.Max(1, rows * (cell + label)), 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                bitmap.Render(visual);
+                var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+                using (var stream = System.IO.File.Create(parts[0])) { encoder.Save(stream); }
+                Console.WriteLine($"[sheet] {found.Count} of {matched} drawn to {parts[0]}");
+                Shutdown();
+                return;
+            }
+
             //PROBE_SHINE=<png>;<out png> - the sheen masks EnchantmentShine makes from a picture,
             //written out for looking at. Read-only.
             if (_startupArguments.Any(a => a.StartsWith("PROBE_SHINE=", StringComparison.Ordinal)))
@@ -13615,11 +13693,23 @@ namespace MCDSaveEdit
             _ = loadAsync(askForGameContentLocation: true);
         }
 
+        /// <summary>
+        /// Another copy of the game (Steam, the Xbox app, the Minecraft Launcher): remembered as the
+        /// paks folder - which is looked at first on every start - and loaded now.
+        /// </summary>
+        private void onSwitchGame(string paksFolder)
+        {
+            RegistryTools.SaveSetting(Constants.APPLICATION_NAME, Constants.PAK_FILE_LOCATION_REGISTRY_KEY, paksFolder);
+            showSplashWindowReplacingOldWindow();
+            _ = loadAsync(askForGameContentLocation: false);
+        }
+
         private void onReload(string? autoReloadFilename, ProfileSaveFile? profile)
         {
             var oldMainWindow = this.MainWindow;
             var mainWindow = WindowFactory.createMainWindow(_model.mainModel);
             mainWindow.onRelaunch = onRelaunch;
+            mainWindow.onSwitchGame = onSwitchGame;
             mainWindow.onReload = onReload;
             this.MainWindow = mainWindow;
             this.MainWindow.Show();

@@ -2080,7 +2080,7 @@ namespace
     // of the factors of the nodes taken for it, and a game property is added as it is.
     struct TalentNode { int store; int bit; std::string target; int value = -1; float factor = 0; };
     std::vector<TalentNode> g_talentNodes;
-    constexpr int TALENT_STORES = 4;
+    constexpr int TALENT_STORES = 32;
     FName g_talentStores[TALENT_STORES]{};
 
     std::vector<TalentNode> readTalents()
