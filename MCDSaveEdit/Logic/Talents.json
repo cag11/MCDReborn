@@ -1,7 +1,7 @@
 {
  "points": {
-  "perLevels": 3,
-  "cap": 100
+  "perLevels": 1,
+  "cap": 100000
  },
  "respec": 500,
  "stores": 20,

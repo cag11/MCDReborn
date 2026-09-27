@@ -384,7 +384,7 @@ def build():
     xs = [n['x'] for n in t.nodes]
     ys = [n['y'] for n in t.nodes]
     return {
-        'points': {'perLevels': 3, 'cap': 100},
+        'points': {'perLevels': 1, 'cap': 100000},     # a point a hero level, however high (the user's call)
         'respec': 500,
         'stores': (len(t.nodes) - 1 + 29) // 30,
         'bounds': [min(xs), min(ys), max(xs), max(ys)],

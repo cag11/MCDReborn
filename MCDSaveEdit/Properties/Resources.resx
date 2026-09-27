@@ -4459,7 +4459,7 @@ The game no longer knows gems or sockets when they are off, and the next time it
     <comment>Checkbox on the Game modes tab</comment>
   </data>
   <data name="TALENTS_WHY" xml:space="preserve">
-    <value>Talents in the game: a large passive tree of 583 nodes in six regions (Warrior, Ranger, Mystic, Guardian, Rogue, Shepherd), with wheels, clusters, 84 notables and 12 keystones. Press P in the Camp or a mission, or click the TALENTS display case in the Camp. Drag with the mouse, zoom with the wheel, click a lit node to take it. A point every 3 hero levels, up to 100. Reset in the Camp for 500 emeralds. Takes effect the next time the game starts.</value>
+    <value>Talents in the game: a large passive tree of 583 nodes in six regions (Warrior, Ranger, Mystic, Guardian, Rogue, Shepherd), with wheels, clusters, 84 notables and 12 keystones. Press P in the Camp or a mission, or click the TALENTS display case in the Camp. Drag with the mouse, zoom with the wheel, click a lit node to take it. A talent point for every hero level. Reset in the Camp for 500 emeralds. Takes effect the next time the game starts.</value>
     <comment>Explanation under the checkbox</comment>
   </data>
   <data name="TALENTS_DONE" xml:space="preserve">
