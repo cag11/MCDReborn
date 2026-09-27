@@ -1,0 +1,17 @@
+; The plugin standing in for dsound.dll on the Xbox app's build (which never loads XInput): the real
+; one's exports, at the real one's ordinals, each passed on to the system's copy (ItemPlugin.cpp,
+; PROXY_DSOUND).
+EXPORTS
+    DirectSoundCreate = proxyDirectSoundCreate @1
+    DirectSoundEnumerateA = proxyDirectSoundEnumerateA @2
+    DirectSoundEnumerateW = proxyDirectSoundEnumerateW @3
+    DllCanUnloadNow = proxyDllCanUnloadNow @4 PRIVATE
+    DllGetClassObject = proxyDllGetClassObject @5 PRIVATE
+    DirectSoundCaptureCreate = proxyDirectSoundCaptureCreate @6
+    DirectSoundCaptureEnumerateA = proxyDirectSoundCaptureEnumerateA @7
+    DirectSoundCaptureEnumerateW = proxyDirectSoundCaptureEnumerateW @8
+    GetDeviceID = proxyGetDeviceID @9
+    DirectSoundFullDuplexCreate = proxyDirectSoundFullDuplexCreate @10
+    DirectSoundCreate8 = proxyDirectSoundCreate8 @11
+    DirectSoundCaptureCreate8 = proxyDirectSoundCaptureCreate8 @12
+    MCDRebornPlugin @200

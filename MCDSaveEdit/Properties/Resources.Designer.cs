@@ -8825,7 +8825,7 @@ namespace MCDSaveEdit.Properties {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Items beyond the free slots need the Steam or Minecraft Launcher version of the game..
+        ///   Looks up a localized string similar to Items beyond the free slots need the game's own folder beside its paks (Steam, the Minecraft Launcher or the Xbox app)..
         /// </summary>
         public static string ITEMS_NEW_UNAVAILABLE {
             get {
@@ -8888,7 +8888,7 @@ namespace MCDSaveEdit.Properties {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Needs MCD Reborn's xinput1_3.dll beside the game, which is installed with it. Without that file the game deletes this item from any character holding it..
+        ///   Looks up a localized string similar to Needs MCD Reborn's plugin beside the game (xinput1_3.dll, or dsound.dll on the Xbox app), which is installed with it. Without that file the game deletes this item from any character holding it..
         /// </summary>
         public static string ITEMS_PLUGIN_KEEP {
             get {
@@ -9662,7 +9662,7 @@ namespace MCDSaveEdit.Properties {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Ten more Apocalypse+ levels in the mission screen. Each one keeps getting harder the way +1 to +25 do, and drops stronger gear. They open like the others, by winning boss missions: 8 at +25 open up to +28, 9 at +28 up to +31, 10 at +31 up to +35. Takes effect the next time the game starts, and needs the Steam or Minecraft Launcher version..
+        ///   Looks up a localized string similar to Ten more Apocalypse+ levels in the mission screen. Each one keeps getting harder the way +1 to +25 do, and drops stronger gear. They open like the others, by winning boss missions: 8 at +25 open up to +28, 9 at +28 up to +31, 10 at +31 up to +35. Takes effect the next time the game starts, and works on Steam, the Minecraft Launcher and the Xbox app..
         /// </summary>
         public static string STATS_APOC_PLUS_WHY {
             get {
@@ -9685,6 +9685,96 @@ namespace MCDSaveEdit.Properties {
         public static string STATS_APOC_PLUS_REMOVED {
             get {
                 return ResourceManager.GetString("STATS_APOC_PLUS_REMOVED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to DAMAGE.
+        /// </summary>
+        public static string DPS_TITLE {
+            get {
+                return ResourceManager.GetString("DPS_TITLE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to DPS.
+        /// </summary>
+        public static string DPS_UNIT {
+            get {
+                return ResourceManager.GetString("DPS_UNIT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to IN FIGHT.
+        /// </summary>
+        public static string DPS_IN_FIGHT {
+            get {
+                return ResourceManager.GetString("DPS_IN_FIGHT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to IDLE.
+        /// </summary>
+        public static string DPS_IDLE {
+            get {
+                return ResourceManager.GetString("DPS_IDLE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Fight.
+        /// </summary>
+        public static string DPS_FIGHT {
+            get {
+                return ResourceManager.GetString("DPS_FIGHT", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Peak.
+        /// </summary>
+        public static string DPS_PEAK {
+            get {
+                return ResourceManager.GetString("DPS_PEAK", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Last fight.
+        /// </summary>
+        public static string DPS_LAST {
+            get {
+                return ResourceManager.GetString("DPS_LAST", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to {0} in {1}.
+        /// </summary>
+        public static string DPS_TOTAL_IN {
+            get {
+                return ResourceManager.GetString("DPS_TOTAL_IN", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Damage meter.
+        /// </summary>
+        public static string STATS_DPS_ON {
+            get {
+                return ResourceManager.GetString("STATS_DPS_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Shows your damage per second over the game, counted from the enemies' health: every drop is a hit. Your pets and summons count toward it; damage done to them does not. In co-op everyone's damage is counted together. A fight ends after five seconds without a hit..
+        /// </summary>
+        public static string STATS_DPS_WHY {
+            get {
+                return ResourceManager.GetString("STATS_DPS_WHY", resourceCulture);
             }
         }
     }

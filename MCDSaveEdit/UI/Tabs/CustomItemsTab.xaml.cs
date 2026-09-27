@@ -223,7 +223,7 @@ namespace MCDSaveEdit.UI
         {
             var available = GamePlugin.gameFolder() != null;
             newButtons.IsEnabled = moreNewButtons.IsEnabled = available;
-            //Only a reason to show: on the Xbox app's install, items cannot be made at all.
+            //Only a reason to show: without the game's own folder beside the paks, items cannot be made at all.
             slotsHint.Text = available ? string.Empty : R.ITEMS_NEW_UNAVAILABLE;
             slotsHint.Visibility = available ? Visibility.Collapsed : Visibility.Visible;
             pluginStatus.Text = string.Empty;

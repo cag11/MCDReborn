@@ -63,8 +63,10 @@
     <EmbeddedResource Include="Logic\TableAssets\*.uexp" />
     <EmbeddedResource Include="Logic\TableAssets\*.umap" />
     <!-- The item plugin (ItemPlugin/), built with the C++ tools and carried here as it is: the
-         game loads it as xinput1_3.dll to register items beyond the free slots. -->
+         game loads it as xinput1_3.dll (Steam, Launcher) or dsound.dll (Xbox app) to register items
+         beyond the free slots. -->
     <EmbeddedResource Include="Logic\PluginAssets\MCDRebornItems.dll" />
+    <EmbeddedResource Include="Logic\PluginAssets\MCDRebornDSound.dll" />
     <Resource Include="Images\**\*.png" />
     <Resource Include="Properties\icon.ico" />
   </ItemGroup>

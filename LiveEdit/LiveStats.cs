@@ -389,6 +389,31 @@ namespace LiveEdit
                 && looksLikeMovement(movement) && looksLikeHealth(health);
         }
 
+        #region Health, for the damage meter
+
+        //ABaseCharacter::TeamName. Heroes is you and everything on your side - pets, summons,
+        //another player - so damage they take is not damage you dealt.
+        private const int TEAM_NAME = 0x0948;
+        private const byte TEAM_HEROES = 1;
+
+        /// <summary>What a character's health is now, or null when it cannot be read.</summary>
+        public float? healthOf(IntPtr actor)
+        {
+            var set = setOf(actor, _healthSetClass);
+            if (set == IntPtr.Zero) { return null; }
+            var health = _game.readFloat(new IntPtr(set.ToInt64() + HEALTH));
+            return health == null || float.IsNaN(health.Value) ? null : health;
+        }
+
+        /// <summary>Whether a character fights on your side.</summary>
+        public bool isOnYourSide(IntPtr actor)
+        {
+            var team = _game.read(new IntPtr(actor.ToInt64() + TEAM_NAME), 1);
+            return team != null && team[0] == TEAM_HEROES;
+        }
+
+        #endregion
+
         #region What the enemies are made of
 
         /// <summary>
