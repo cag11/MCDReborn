@@ -2228,6 +2228,13 @@ namespace
         g_folder = path;
         g_folder = g_folder.substr(0, g_folder.find_last_of(L"\\/") + 1);
         g_log = _wfopen((g_folder + L"MCDRebornItems.log").c_str(), L"w");
+        // A packaged game (the Xbox app's) may not be allowed to write beside itself: then the
+        // temp folder it is given.
+        if (!g_log)
+        {
+            wchar_t temp[MAX_PATH];
+            if (GetTempPathW(MAX_PATH, temp)) { g_log = _wfopen((std::wstring(temp) + L"MCDRebornItems.log").c_str(), L"w"); }
+        }
         say("MCD Reborn item plugin loaded");
 
         // The game decrypts itself after it starts, so the patterns can be missing for a while.
@@ -2329,6 +2336,62 @@ namespace
     }
 }
 
+#ifdef PROXY_DSOUND
+// ---------------------------------------------------------------- standing in for dsound.dll
+//
+// The Xbox app's build reads controllers through the Xbox game runtime and never loads XInput, so
+// there the plugin stands in for dsound.dll, which it does load and which is not a KnownDLL. Built
+// with /DPROXY_DSOUND and exports_dsound.def; every DirectSound export is passed on to the
+// system's copy, as XInput's are.
+namespace
+{
+    HMODULE realDSound()
+    {
+        static HMODULE real = nullptr;
+        if (!real)
+        {
+            wchar_t path[MAX_PATH];
+            UINT length = GetSystemDirectoryW(path, MAX_PATH);
+            if (length == 0 || length > MAX_PATH - 20) { return nullptr; }
+            wcscat_s(path, L"\\dsound.dll");
+            real = LoadLibraryW(path);
+        }
+        return real;
+    }
+
+    FARPROC realDSoundExport(const char* name)
+    {
+        HMODULE real = realDSound();
+        return real ? GetProcAddress(real, name) : nullptr;
+    }
+}
+
+// All but one take at most four arguments, none floating point.
+#define PASS(export, name) extern "C" uintptr_t WINAPI export(uintptr_t a, uintptr_t b, uintptr_t c, uintptr_t d) \
+    { auto target = reinterpret_cast<uintptr_t (WINAPI*)(uintptr_t, uintptr_t, uintptr_t, uintptr_t)>(realDSoundExport(name)); \
+      return target ? target(a, b, c, d) : static_cast<uintptr_t>(0x80004005); }
+PASS(proxyDirectSoundCreate, "DirectSoundCreate")
+PASS(proxyDirectSoundEnumerateA, "DirectSoundEnumerateA")
+PASS(proxyDirectSoundEnumerateW, "DirectSoundEnumerateW")
+PASS(proxyDllCanUnloadNow, "DllCanUnloadNow")
+PASS(proxyDllGetClassObject, "DllGetClassObject")
+PASS(proxyDirectSoundCaptureCreate, "DirectSoundCaptureCreate")
+PASS(proxyDirectSoundCaptureEnumerateA, "DirectSoundCaptureEnumerateA")
+PASS(proxyDirectSoundCaptureEnumerateW, "DirectSoundCaptureEnumerateW")
+PASS(proxyGetDeviceID, "GetDeviceID")
+PASS(proxyDirectSoundCreate8, "DirectSoundCreate8")
+PASS(proxyDirectSoundCaptureCreate8, "DirectSoundCaptureCreate8")
+#undef PASS
+
+// Ten arguments: passed on with its own shape.
+extern "C" uintptr_t WINAPI proxyDirectSoundFullDuplexCreate(uintptr_t a, uintptr_t b, uintptr_t c, uintptr_t d, uintptr_t e,
+    uintptr_t f, uintptr_t g, uintptr_t h, uintptr_t i, uintptr_t j)
+{
+    auto target = reinterpret_cast<uintptr_t (WINAPI*)(uintptr_t, uintptr_t, uintptr_t, uintptr_t, uintptr_t, uintptr_t,
+        uintptr_t, uintptr_t, uintptr_t, uintptr_t)>(realDSoundExport("DirectSoundFullDuplexCreate"));
+    return target ? target(a, b, c, d, e, f, g, h, i, j) : static_cast<uintptr_t>(0x80004005);
+}
+#else
 #define PASS(export, name) extern "C" uintptr_t WINAPI export(uintptr_t a, uintptr_t b, uintptr_t c, uintptr_t d) { return pass(name, a, b, c, d); }
 PASS(proxyGetState, "XInputGetState")
 PASS(proxySetState, "XInputSetState")
@@ -2342,6 +2405,7 @@ PASS(proxyWaitForGuideButton, MAKEINTRESOURCEA(101))
 PASS(proxyCancelGuideButtonWait, MAKEINTRESOURCEA(102))
 PASS(proxyPowerOffController, MAKEINTRESOURCEA(103))
 #undef PASS
+#endif
 
 // How MCD Reborn tells its own xinput1_3.dll from somebody else's: the version of the plugin.
 extern "C" int WINAPI MCDRebornPlugin() { return 1; }

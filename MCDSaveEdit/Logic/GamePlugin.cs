@@ -8,7 +8,8 @@ using System.Text;
 namespace MCDSaveEdit.Logic
 {
     /// <summary>
-    /// MCD Reborn's item plugin, installed beside the game as xinput1_3.dll.
+    /// MCD Reborn's item plugin, installed beside the game as xinput1_3.dll - or as dsound.dll on
+    /// the Xbox app.
     ///
     /// The free slots are ids the game already has. Anything beyond them needs the id added to the
     /// game's item list while it runs, and that list is C++ - no pak reaches it. The plugin
@@ -18,12 +19,28 @@ namespace MCDSaveEdit.Logic
     /// registration routine, as a copy of the item it was copied from. The item's files, icons
     /// and registry entries are in the New Items pak like any slot's.
     ///
-    /// Steam and the Minecraft Launcher only. The Xbox app's install cannot be written to - or
-    /// even read.
+    /// Steam, the Minecraft Launcher and the Xbox app. The Xbox app's install (C:\XboxGames, which
+    /// is the same folder the running game sees under WindowsApps) names its executable Dungeons.exe
+    /// rather than Dungeons-Win64-Shipping.exe; the exe itself cannot be read, but its folder takes
+    /// new files like the others. That build never loads XInput - it reads controllers through the
+    /// Xbox game runtime - so there the plugin is the DirectSound stand-in, dsound.dll.
     /// </summary>
     public static class GamePlugin
     {
         public const string DLL_NAME = "xinput1_3.dll";
+
+        /// <summary>
+        /// The name the plugin goes in as on the Xbox app, whose build reads controllers through
+        /// the Xbox game runtime and never loads XInput - but loads dsound.dll from beside itself
+        /// (tested 2026-09-27: loaded, patterns found, cross-check passed).
+        /// </summary>
+        public const string XBOX_DLL_NAME = "dsound.dll";
+
+        /// <summary>Whether the game folder is the Xbox app's: its executable is Dungeons.exe.</summary>
+        public static bool isXbox(string gameFolder) => !File.Exists(Path.Combine(gameFolder, "Dungeons-Win64-Shipping.exe"));
+
+        /// <summary>The name the plugin is installed under in this game folder.</summary>
+        public static string dllName(string gameFolder) => isXbox(gameFolder) ? XBOX_DLL_NAME : DLL_NAME;
         public const string ITEMS_NAME = "MCDRebornItems.txt";
         public const string LOG_NAME = "MCDRebornItems.log";
 
@@ -56,7 +73,9 @@ namespace MCDSaveEdit.Logic
             var dungeons = Directory.GetParent(Directory.GetParent(paksFolder.TrimEnd('\\', '/'))?.FullName ?? "")?.FullName;
             if (dungeons == null) { return null; }
             var win64 = Path.Combine(dungeons, "Binaries", "Win64");
-            return File.Exists(Path.Combine(win64, "Dungeons-Win64-Shipping.exe")) ? win64 : null;
+            //Steam and the Minecraft Launcher, then the Xbox app.
+            return File.Exists(Path.Combine(win64, "Dungeons-Win64-Shipping.exe")) || File.Exists(Path.Combine(win64, "Dungeons.exe"))
+                ? win64 : null;
         }
 
         /// <summary>Whether the xinput1_3.dll at this path is the plugin rather than somebody else's.</summary>
@@ -77,8 +96,8 @@ namespace MCDSaveEdit.Logic
             var enchantments = CustomEnchantments.forPlugin();
             var mobs = CustomMobs.forPlugin();
             var folder = gameFolder(paksFolder)
-                ?? throw new InvalidOperationException("Items beyond the free slots need the Steam or Minecraft Launcher version of the game; this one's folder cannot take the plugin.");
-            var dll = Path.Combine(folder, DLL_NAME);
+                ?? throw new InvalidOperationException("Items beyond the free slots need the game's own folder beside its paks (Steam, the Minecraft Launcher or the Xbox app); this one has no game executable there.");
+            var dll = Path.Combine(folder, dllName(folder));
             var list = Path.Combine(folder, ITEMS_NAME);
 
             var struggles = ApocalypsePlus.isOn;
@@ -91,10 +110,10 @@ namespace MCDSaveEdit.Logic
 
             if (File.Exists(dll) && !isOurs(dll))
             {
-                throw new InvalidOperationException($"Another mod already installed an {DLL_NAME} beside the game (in {folder}). Remove it to use items beyond the free slots.");
+                throw new InvalidOperationException($"Another mod already installed a {dllName(folder)} beside the game (in {folder}). Remove it to use items beyond the free slots.");
             }
 
-            var carried = carriedDll();
+            var carried = carriedDll(isXbox(folder));
             if (!File.Exists(dll) || !File.ReadAllBytes(dll).AsSpan().SequenceEqual(carried))
             {
                 File.WriteAllBytes(dll, carried);
@@ -215,11 +234,13 @@ namespace MCDSaveEdit.Logic
             return found;
         }
 
-        private static byte[] carriedDll()
+        /// <summary>The plugin this build carries: the XInput stand-in, or the DirectSound one for the Xbox app.</summary>
+        private static byte[] carriedDll(bool xbox)
         {
             var assembly = typeof(GamePlugin).Assembly;
+            var wanted = xbox ? ".MCDRebornDSound.dll" : ".MCDRebornItems.dll";
             var resource = assembly.GetManifestResourceNames()
-                .FirstOrDefault(one => one.EndsWith(".MCDRebornItems.dll", StringComparison.OrdinalIgnoreCase))
+                .FirstOrDefault(one => one.EndsWith(wanted, StringComparison.OrdinalIgnoreCase))
                 ?? throw new InvalidOperationException("This build does not carry the item plugin.");
             using var stream = assembly.GetManifestResourceStream(resource)
                 ?? throw new InvalidOperationException("The item plugin could not be read out of this build.");

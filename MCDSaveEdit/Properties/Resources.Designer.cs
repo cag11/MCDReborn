@@ -8825,7 +8825,7 @@ namespace MCDSaveEdit.Properties {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Items beyond the free slots need the Steam or Minecraft Launcher version of the game..
+        ///   Looks up a localized string similar to Items beyond the free slots need the game's own folder beside its paks (Steam, the Minecraft Launcher or the Xbox app)..
         /// </summary>
         public static string ITEMS_NEW_UNAVAILABLE {
             get {
@@ -8888,7 +8888,7 @@ namespace MCDSaveEdit.Properties {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Needs MCD Reborn's xinput1_3.dll beside the game, which is installed with it. Without that file the game deletes this item from any character holding it..
+        ///   Looks up a localized string similar to Needs MCD Reborn's plugin beside the game (xinput1_3.dll, or dsound.dll on the Xbox app), which is installed with it. Without that file the game deletes this item from any character holding it..
         /// </summary>
         public static string ITEMS_PLUGIN_KEEP {
             get {
@@ -9662,7 +9662,7 @@ namespace MCDSaveEdit.Properties {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Ten more Apocalypse+ levels in the mission screen. Each one keeps getting harder the way +1 to +25 do, and drops stronger gear. They open like the others, by winning boss missions: 8 at +25 open up to +28, 9 at +28 up to +31, 10 at +31 up to +35. Takes effect the next time the game starts, and needs the Steam or Minecraft Launcher version..
+        ///   Looks up a localized string similar to Ten more Apocalypse+ levels in the mission screen. Each one keeps getting harder the way +1 to +25 do, and drops stronger gear. They open like the others, by winning boss missions: 8 at +25 open up to +28, 9 at +28 up to +31, 10 at +31 up to +35. Takes effect the next time the game starts, and works on Steam, the Minecraft Launcher and the Xbox app..
         /// </summary>
         public static string STATS_APOC_PLUS_WHY {
             get {

@@ -47,7 +47,7 @@ namespace MCDSaveEdit.Logic
             var paks = CustomSkins.paksFolder ?? throw new InvalidOperationException("The game's paks folder is not known.");
             if (GamePlugin.gameFolder() == null)
             {
-                throw new InvalidOperationException("Apocalypse +26 to +35 need the Steam or Minecraft Launcher version of the game.");
+                throw new InvalidOperationException("Apocalypse +26 to +35 need the game's own folder beside its paks (Steam, the Minecraft Launcher or the Xbox app).");
             }
             var pak = Path.Combine(paks, PAK_NAME);
             var was = isOn;

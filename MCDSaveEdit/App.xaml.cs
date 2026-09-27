@@ -12172,7 +12172,7 @@ namespace MCDSaveEdit
                     Logic.CustomItems.save(designs);
                     foreach (var note in built.Notes) { Console.WriteLine($"[items] {note}"); }
                     var folder = Logic.GamePlugin.gameFolder();
-                    Console.WriteLine($"[items] game folder {folder}; ours {Logic.GamePlugin.isOurs(System.IO.Path.Combine(folder!, Logic.GamePlugin.DLL_NAME))}");
+                    Console.WriteLine($"[items] game folder {folder}; ours {Logic.GamePlugin.isOurs(System.IO.Path.Combine(folder!, Logic.GamePlugin.dllName(folder!)))}");
                     Console.WriteLine(System.IO.File.ReadAllText(System.IO.Path.Combine(folder!, Logic.GamePlugin.ITEMS_NAME)));
                 }
                 catch (Exception e) { Console.WriteLine($"[items] FAILED {e}"); }

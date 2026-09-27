@@ -719,7 +719,7 @@ namespace MCDSaveEdit.Logic
             var pluginItems = CustomItems.pluginItems(designs);
             if (pluginItems.Count > 0 && into == null && GamePlugin.gameFolder(paks) == null)
             {
-                throw new InvalidOperationException("Items beyond the free slots need the Steam or Minecraft Launcher version of the game.");
+                throw new InvalidOperationException("Items beyond the free slots need the game's own folder beside its paks (Steam, the Minecraft Launcher or the Xbox app).");
             }
 
             var registry = RegistryPatch.readGameRegistry(paks)
