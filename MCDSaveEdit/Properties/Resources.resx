@@ -4424,4 +4424,34 @@ Import it?</value>
     <value>Shows your damage per second over the game, counted from the enemies' health: every drop is a hit. Your pets and summons count toward it; damage done to them does not. In co-op everyone's damage is counted together. A fight ends after five seconds without a hit.</value>
     <comment>Explanation under the checkbox</comment>
   </data>
+  <data name="ITEMS_GEMS_ON" xml:space="preserve">
+    <value>Gems and sockets</value>
+    <comment>Checkbox on the Custom items tab</comment>
+  </data>
+  <data name="ITEMS_GEMS_WHY" xml:space="preserve">
+    <value>Gems and sockets, all in the game. Found items can drop with up to three sockets; in missions, picking up emeralds sometimes finds a gem (Ruby, Sapphire, Topaz, Emerald, Amethyst, Diamond or Skull, in three grades). Set gems in the inventory's Sockets bar, or on the Gems screen (K), which also joins three gems into one of the next grade. Takes effect the next time the game starts.</value>
+    <comment>Explanation under the checkbox</comment>
+  </data>
+  <data name="ITEMS_GEMS_DONE" xml:space="preserve">
+    <value>Gems and sockets are installed. Start the game and press K.</value>
+    <comment>Status after turning gems on</comment>
+  </data>
+  <data name="ITEMS_GEMS_REMOVED" xml:space="preserve">
+    <value>Gems and sockets are removed.</value>
+    <comment>Status after turning gems off</comment>
+  </data>
+  <data name="ITEMS_GEMS_OFF_WARN" xml:space="preserve">
+    <value>Turn gems and sockets off?
+
+The game no longer knows gems or sockets when they are off, and the next time it saves your characters it drops them: every gem owned, and every socket on every item, set gems included.</value>
+    <comment>Confirmation before turning gems off</comment>
+  </data>
+  <data name="MODES_TAB" xml:space="preserve">
+    <value>Game modes</value>
+    <comment>Tab title</comment>
+  </data>
+  <data name="MODES_HINT" xml:space="preserve">
+    <value>Switches that change the game itself, not a save. Flip them while the game is closed; they take effect the next time it starts, on Steam, the Minecraft Launcher and the Xbox app.</value>
+    <comment>Explanation at the top of the Game modes tab</comment>
+  </data>
 </root>

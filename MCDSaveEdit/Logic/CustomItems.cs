@@ -616,7 +616,9 @@ namespace MCDSaveEdit.Logic
         }
 
         public static RegistryPatch.GameItem? gameItem(string id)
-            => gameItems().FirstOrDefault(i => string.Equals(i.Id, id, StringComparison.OrdinalIgnoreCase));
+            => gameItems().FirstOrDefault(i => string.Equals(i.Id, id, StringComparison.OrdinalIgnoreCase))
+                //A currency has no Instance, so it is not in that list; gems copy Gold.
+                ?? (string.Equals(id, "Gold", StringComparison.OrdinalIgnoreCase) ? Gems.gold : null);
 
         /// <summary>`/Game/X` as the pak index spells it, `/Dungeons/Content/X`.</summary>
         private static string cooked(string gamePath) => "/Dungeons/Content/" + gamePath.Substring("/Game/".Length);
@@ -693,9 +695,23 @@ namespace MCDSaveEdit.Logic
             return found;
         }
 
+        /// <summary>The Gems panel follows the gems: a failure there is a note, not a failed build.</summary>
+        private static void panelNote(Built result)
+        {
+            try
+            {
+                var said = Gems.syncPanel();
+                if (said.Length > 0) { result.Notes.Add(said); }
+            }
+            catch (Exception problem) { result.Notes.Add($"The Gems panel could not be installed: {problem.Message}"); }
+        }
+
         public static Built build(IReadOnlyList<Design> designs, string? into = null, IReadOnlyList<Extra>? extras = null)
         {
             extras ??= Array.Empty<Extra>();
+            //Gems are copies of Gold, carried in this pak like any extra, and registered by the plugin.
+            var gems = into == null && Gems.isOn ? Gems.extras() : Array.Empty<Extra>();
+            extras = extras.Concat(gems).ToList();
             var result = new Built();
             var paks = CustomSkins.paksFolder ?? throw new InvalidOperationException("The game's paks folder is not known.");
             var pakPath = into ?? Path.Combine(paks, CustomSkins.MOD_PREFIX + MOD_NAME + "_P.pak");
@@ -705,18 +721,28 @@ namespace MCDSaveEdit.Logic
             var enchantments = into == null ? CustomEnchantments.load().Where(CustomEnchantments.hasBlueprint).ToList() : new List<CustomEnchantments.Design>();
             //And new mobs with a look of their own bring copies of their blueprints and mesh.
             var mobs = into == null ? CustomMobs.load().Where(CustomMobs.hasLook).ToList() : new List<CustomMobs.Design>();
+            //And new properties with an icon of their own bring a copy of their source's folder.
+            var properties = into == null ? CustomProperties.load().Where(CustomProperties.hasIcon).ToList() : new List<CustomProperties.Design>();
+            //And gems: each grade a copy of its source with a number of its own.
+            if (into == null && Gems.isOn) { properties.AddRange(Gems.properties().Where(p => p.Factor != null)); }
 
-            if (designs.Count == 0 && extras.Count == 0 && enchantments.Count == 0 && mobs.Count == 0)
+            if (designs.Count == 0 && extras.Count == 0 && enchantments.Count == 0 && mobs.Count == 0 && properties.Count == 0)
             {
                 if (File.Exists(pakPath)) { File.Delete(pakPath); }
                 result.Notes.Add("No custom items: the pak was removed.");
                 if (into == null && GamePlugin.gameFolder(paks) != null) { result.Notes.Add(GamePlugin.install(Array.Empty<GamePlugin.Item>(), paks)); }
+                if (into == null) { panelNote(result); }
                 return result;
             }
 
             //Checked before anything is written: a plugin item with no plugin to register it is an
             //id the game does not know.
             var pluginItems = CustomItems.pluginItems(designs);
+            foreach (var gem in gems)
+            {
+                var gold = gameItem(gem.Source) ?? throw new InvalidOperationException($"{gem.Source} is not a game item.");
+                pluginItems.Add(new GamePlugin.Item(gem.Id, gold.Id, extraFolder(gold, gem.Id), gem.Name, gem.Description));
+            }
             if (pluginItems.Count > 0 && into == null && GamePlugin.gameFolder(paks) == null)
             {
                 throw new InvalidOperationException("Items beyond the free slots need the game's own folder beside its paks (Steam, the Minecraft Launcher or the Xbox app).");
@@ -772,6 +798,13 @@ namespace MCDSaveEdit.Logic
                 copies.Add((made.GameFrom, made.Rename));
             }
 
+            foreach (var property in properties)
+            {
+                var (files, made) = CustomProperties.files(property, result.Notes);
+                entries.AddRange(files);
+                copies.Add((made.GameFrom, made.Rename));
+            }
+
 
             var patched = RegistryPatch.withClones(registry, copies, out var added)
                 ?? throw new InvalidOperationException("The game's asset registry is not in a shape this can add to.");
@@ -795,6 +828,7 @@ namespace MCDSaveEdit.Logic
                 File.Delete(test);
                 result.Notes.Add("Removed the old SpiderCrossbow test pak.");
             }
+            if (into == null) { panelNote(result); }
             return result;
         }
 
@@ -1324,9 +1358,19 @@ namespace MCDSaveEdit.Logic
         /// </summary>
         internal static string? repaint(byte[] uasset, byte[] uexp, byte[]? ubulk, BitmapSource picture,
             out byte[] newUexp, out byte[]? newBulk)
+            => repaintInto(uasset, uexp, ubulk, uexp, ubulk, picture, out newUexp, out newBulk);
+
+        /// <summary>
+        /// As <see cref="repaint"/>, with the texture read from one package and its pixels replaced
+        /// in another's .uexp and .ubulk. For a renamed copy whose header shrank: its bulk offsets
+        /// no longer read (the pixels themselves are unchanged by a rename), so the original says
+        /// where the mips are and what they hold.
+        /// </summary>
+        internal static string? repaintInto(byte[] uasset, byte[] uexp, byte[]? ubulk, byte[] targetUexp, byte[]? targetBulk,
+            BitmapSource picture, out byte[] newUexp, out byte[]? newBulk)
         {
-            newUexp = uexp;
-            newBulk = ubulk;
+            newUexp = targetUexp;
+            newBulk = targetBulk;
             UTexture2D? texture;
             try
             {
@@ -1346,8 +1390,8 @@ namespace MCDSaveEdit.Logic
                 return $"it is stored as {format}";
             }
 
-            var exp = (byte[])uexp.Clone();
-            var bulk = ubulk == null ? null : (byte[])ubulk.Clone();
+            var exp = (byte[])targetUexp.Clone();
+            var bulk = targetBulk == null ? null : (byte[])targetBulk.Clone();
             foreach (var mip in platform.Mips)
             {
                 var old = mip.BulkData.Data;

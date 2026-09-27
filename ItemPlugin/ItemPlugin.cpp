@@ -1580,6 +1580,851 @@ namespace
         say("enchantments: %d of %zu own blueprint(s) in the enchantment finder at %p", found, g_blueprints.size(), finder);
     }
 
+    // ---------------------------------------------------------------- item properties
+    //
+    // The lines listed under an item's name - "+25% melee attack speed" - are its armour
+    // properties, kept per item in the save apart from its enchantments; the game shows them on
+    // any item, weapons too, and only turns an armour's into effects. Gem sockets are made of them.
+    //
+    // A property is a 0x100-byte definition in a TArray the game indexes by EArmorPropertyID
+    // (93cd10: movzx r8d,dl / shl r8,8 / add r8,[rip+defs] / mov rax,[r8+20]), built once by a
+    // static block per property (12d530 for MeleeAttackSpeedBoost): +0x00 its id, +0x04 the FName of
+    // its folder under ArmorProperties, +0x20 its name, +0x38 its line ("{0} melee attack speed"),
+    // +0xF8 its class once loaded. 39 entries, one per id below Last (39); every lookup is by id,
+    // no bounds check. Below the header, exactly as for enchantments, three arrays the preload fills
+    // per id - icons (-0x30), icon materials (-0x20), classes (-0x10) - read by getters with no
+    // fallback (93ca70), and reached by the UI through exec thunks of the same shape as the
+    // enchantments' (ea89d0, ea8910). So a new id gets: a bigger definitions block with a copy of its
+    // source's entry, bigger side arrays with its source's icon, material and class (or a mark for an
+    // icon of its own, turned into the loaded texture by the wrapped thunks), and its name in
+    // EArmorPropertyID so a save keeps it. The counts stay 39: whatever walks the table - the rolls
+    // that give dropped armour its properties - never sees the new ids.
+    constexpr size_t PROPERTY_SIZE = 0x100;
+    constexpr int FIRST_NEW_PROPERTY = 41;          // past Last (39) and _MAX (40)
+
+    struct Property
+    {
+        std::string id;                // MCDR_Prop01: its name in saves
+        int source = 0;                // EArmorPropertyID of the one it copies
+        std::wstring name, line;
+        std::string icon;              // "texture object path|material object path", or "-"
+        bool active = false;           // does what its source does (a gem), or is only a line (Empty Socket)
+        std::wstring blueprint;        // its own copy of the source's class, "/Game/.../BP_X.BP_X_C", or empty
+        float factor = 1, neutral = 1; // the copy's number: neutral + (source's - neutral) * factor
+    };
+
+    // A gem grade's own class: loaded on the game thread (the first heartbeat), its one number
+    // scaled from the source's, then put where the source's class was. Until then it is the source's.
+    struct GradeClass { int value; std::wstring path; float factor, neutral; uint8_t* source; };
+    std::vector<GradeClass> g_gradeClasses;
+    TArrayRaw* g_propertyDefs = nullptr;
+    TArrayRaw* g_propertyClasses = nullptr;
+    bool g_gradesLoaded = false;
+    constexpr size_t PROPERTY_NUMBER = 0x128;       // Multiplier / Absorption / Amount on every gem source
+
+    // "@property \t id \t source \t name \t line \t icon", any text "-" for the source's own
+    std::vector<Property> readProperties()
+    {
+        std::vector<Property> found;
+        FILE* file = _wfopen((g_folder + L"MCDRebornItems.txt").c_str(), L"rb");
+        if (!file) { return found; }
+        std::string all;
+        char buffer[4096];
+        size_t got;
+        while ((got = fread(buffer, 1, sizeof(buffer), file)) > 0) { all.append(buffer, got); }
+        fclose(file);
+        size_t start = 0;
+        while (start < all.size())
+        {
+            size_t end = all.find('\n', start);
+            if (end == std::string::npos) { end = all.size(); }
+            std::string line = all.substr(start, end - start);
+            start = end + 1;
+            if (!line.empty() && line.back() == '\r') { line.pop_back(); }
+            if (line.rfind("@property\t", 0) != 0) { continue; }
+            std::vector<std::string> parts;
+            size_t from = 0;
+            for (;;)
+            {
+                size_t tab = line.find('\t', from);
+                parts.push_back(line.substr(from, tab == std::string::npos ? std::string::npos : tab - from));
+                if (tab == std::string::npos) { break; }
+                from = tab + 1;
+            }
+            if (parts.size() < 6) { say("skipped a property line with %zu fields", parts.size()); continue; }
+            Property p;
+            p.id = parts[1];
+            p.source = atoi(parts[2].c_str());
+            p.name = wide(parts[3]); p.line = wide(parts[4]);
+            p.icon = parts[5];
+            p.active = parts.size() > 6 && parts[6] == "1";
+            if (parts.size() > 7 && parts[7] != "-") { p.blueprint = wide(parts[7]); }
+            if (parts.size() > 8 && parts[8] != "-")
+            {
+                size_t bar = parts[8].find('|');
+                p.factor = static_cast<float>(atof(parts[8].substr(0, bar).c_str()));
+                p.neutral = bar == std::string::npos ? 1.f : static_cast<float>(atof(parts[8].substr(bar + 1).c_str()));
+            }
+            found.push_back(p);
+        }
+        return found;
+    }
+
+    // The definitions' header, from the name lookup (93cd10) that reads it.
+    TArrayRaw* propertyTable()
+    {
+        auto hits = scan(parse("44 0F B6 C2 49 C1 E0 08 4C 03 05 ?? ?? ?? ?? 49 8B 40 20"));
+        if (hits.size() != 1) { say("properties: the name lookup was found %zu times", hits.size()); return nullptr; }
+        int32_t rel; memcpy(&rel, hits[0] + 11, 4);
+        return reinterpret_cast<TArrayRaw*>(hits[0] + 15 + rel);
+    }
+
+    // Own property icons: the same wrap as enchantments', with marks of their own.
+    std::vector<OwnIcon> g_propertyIcons;
+    uint8_t g_propertyMarks[256];
+    TArrayRaw* g_propertyIconArrays[2]{};
+    Exec g_propertyOriginalExec[2]{};
+
+    void resolvePropertyIcon(void** result, int which)
+    {
+        auto mark = static_cast<uint8_t*>(*result);
+        if (mark < g_propertyMarks || mark >= g_propertyMarks + sizeof(g_propertyMarks)) { return; }
+        int id = static_cast<int>(mark - g_propertyMarks);
+        void* found = nullptr;
+        for (const auto& icon : g_propertyIcons)
+        {
+            if (icon.id != id) { continue; }
+            const std::wstring& path = which == 0 ? icon.texture : icon.material;
+            void* cls = which == 0 ? g_game->textureClass() : g_game->materialClass();
+            found = g_game->load(cls, nullptr, path.c_str(), nullptr, 0, nullptr, true, nullptr);
+            if (found)
+            {
+                rootObject(found);
+                say("property %d: its own %s loaded at %p", id, which == 0 ? "icon" : "icon material", found);
+            }
+            else
+            {
+                found = which == 0 ? icon.sourceTexture : icon.sourceMaterial;
+                say("property %d: %ls did not load; the source's is shown", id, path.c_str());
+            }
+            break;
+        }
+        reinterpret_cast<void**>(g_propertyIconArrays[which]->Data)[id] = found;
+        *result = found;
+    }
+
+    void __fastcall propertyTextureExec(void* context, void* stack, void** result) { g_propertyOriginalExec[0](context, stack, result); resolvePropertyIcon(result, 0); }
+    void __fastcall propertyMaterialExec(void* context, void* stack, void** result) { g_propertyOriginalExec[1](context, stack, result); resolvePropertyIcon(result, 1); }
+
+    // The property icon thunks, told apart from the enchantments' by the arrays their getters read,
+    // then swapped in their UFunctions the way hookIconExecs does it.
+    bool hookPropertyIconExecs(Game& game, TArrayRaw* icons, TArrayRaw* materials)
+    {
+        uint8_t* execs[2]{};
+        for (uint8_t* tail : scan(parse("48 89 7B 20 E8 ?? ?? ?? ?? 48 8B 5C 24 30 48 89 06")))
+        {
+            uint8_t* getter = callTarget(tail + 4);
+            uint8_t code[15]{};
+            if (!readBlock(getter, code, sizeof(code)) || code[0] != 0x48 || code[1] != 0x8B || code[2] != 0x05
+                || code[7] != 0x0F || code[8] != 0xB6 || code[9] != 0xCA || code[14] != 0xC3) { continue; }
+            int32_t rel; memcpy(&rel, code + 3, 4);
+            uint8_t* reads = getter + 7 + rel;
+            if (reads == reinterpret_cast<uint8_t*>(icons)) { execs[0] = tail - 0xA3; }
+            if (reads == reinterpret_cast<uint8_t*>(materials)) { execs[1] = tail - 0xA3; }
+        }
+        if (!execs[0] || !execs[1]) { say("properties: the icon functions were not found"); return false; }
+
+        int32_t count = *game.objectCount;
+        uint8_t** chunks = *game.objectChunks;
+        uint8_t** slot[2]{};
+        int hits[2]{};
+        for (int32_t i = 0; i < count; i++)
+        {
+            uint8_t* chunk = nullptr;
+            if (!readBlock(chunks + (i >> 16), &chunk, 8) || !chunk) { continue; }
+            uint8_t* object = nullptr;
+            if (!readBlock(chunk + static_cast<size_t>(i & 0xFFFF) * 0x18, &object, 8) || !object) { continue; }
+            uint8_t* body[0x140 / 8]{};
+            if (!readBlock(object, body, sizeof(body))) { continue; }
+            for (size_t at = 0; at < 0x140 / 8; at++)
+            {
+                if (body[at] == execs[0]) { slot[0] = reinterpret_cast<uint8_t**>(object) + at; hits[0]++; }
+                if (body[at] == execs[1]) { slot[1] = reinterpret_cast<uint8_t**>(object) + at; hits[1]++; }
+            }
+        }
+        say("property icon functions: %d texture, %d material", hits[0], hits[1]);
+        if (hits[0] != 1 || hits[1] != 1) { return false; }
+        g_propertyOriginalExec[0] = reinterpret_cast<Exec>(execs[0]);
+        g_propertyOriginalExec[1] = reinterpret_cast<Exec>(execs[1]);
+        *slot[0] = reinterpret_cast<uint8_t*>(&propertyTextureExec);
+        *slot[1] = reinterpret_cast<uint8_t*>(&propertyMaterialExec);
+        return true;
+    }
+
+    // ---------------------------------------------------------------- gem effects
+    //
+    // The game turns only the armour's properties into effects: equipping armour calls the
+    // character's ArmorPropertiesComponent.ServerActivateProperties(the armour's properties, its
+    // power), whose implementation (vtable +0x3E8) clears the live properties and builds them from
+    // the list. A weapon's properties are kept and shown, never built. So two network functions -
+    // which always go through ProcessEvent, and so through their UFunction's thunk pointer, heap
+    // data - get wrappers:
+    //  - ItemSlot.EquipItem(item, count, source): after the game equips, a melee or ranged slot's
+    //    gems are remembered, and the component rebuilt with them;
+    //  - ServerActivateProperties: whenever the game builds the armour's properties, the list it
+    //    passes gets the equipped weapons' gems added, and loses every inactive custom property
+    //    (an Empty Socket is only a line - built, it would do what its source does).
+    // The component's own implementation does the building; nothing here makes an effect itself.
+    struct FrameView { uint8_t pad[0x28]; uint8_t* Locals; };      // FFrame: Locals at +0x28 in 4.22
+
+    std::vector<int> g_activeProperties;      // custom ids whose effect is wanted: the gems
+    std::vector<int> g_inertProperties;       // custom ids that are only a line: Empty Socket
+    Exec g_originalEquip = nullptr;
+    Exec g_originalActivate = nullptr;
+    int g_activateSlot = 0;                   // the implementation's vtable offset, read from the thunk
+
+    struct Worn { uint8_t* owner; std::vector<uint16_t> gems[2]; };    // melee, ranged
+    struct Built { uint8_t* component; uint8_t* owner; std::vector<uint16_t> armour; float power; };
+    std::vector<Worn> g_worn;
+    std::vector<Built> g_built;
+    std::vector<uint16_t> g_combined;         // the list handed to the game; kept, so it outlives the call
+
+    bool isIn(const std::vector<int>& list, int id) { for (int v : list) { if (v == id) { return true; } } return false; }
+
+    uint8_t* outerOf(uint8_t* object) { uint8_t* outer = nullptr; readPointer(reinterpret_cast<uint8_t**>(object + 0x20), outer); return outer; }
+
+    Worn& wornBy(uint8_t* owner)
+    {
+        for (auto& w : g_worn) { if (w.owner == owner) { return w; } }
+        g_worn.push_back({ owner, {} });
+        return g_worn.back();
+    }
+
+    // The armour's list with the weapons' gems added and inactive custom properties left out.
+    void combine(const std::vector<uint16_t>& armour, uint8_t* owner)
+    {
+        g_combined.clear();
+        for (uint16_t p : armour) { if (!isIn(g_inertProperties, p & 0xFF)) { g_combined.push_back(p); } }
+        for (auto& w : g_worn)
+        {
+            if (w.owner != owner) { continue; }
+            for (auto& slot : w.gems) { for (uint16_t p : slot) { g_combined.push_back(p); } }
+        }
+    }
+
+    std::vector<uint16_t> propertiesIn(const TArrayRaw& list)
+    {
+        std::vector<uint16_t> out;
+        if (!list.Data || list.Num <= 0 || list.Num > 64) { return out; }
+        out.resize(static_cast<size_t>(list.Num));
+        if (!readBlock(list.Data, out.data(), out.size() * 2)) { out.clear(); }
+        return out;
+    }
+
+    using Activate = void (__fastcall*)(void* component, TArrayRaw* list, float power);
+
+    void rebuild(Built& b)
+    {
+        combine(b.armour, b.owner);
+        TArrayRaw list{ reinterpret_cast<uint8_t*>(g_combined.data()), static_cast<int32_t>(g_combined.size()), static_cast<int32_t>(g_combined.size()) };
+        uint8_t* vtable = nullptr;
+        Activate implementation = nullptr;
+        if (!readPointer(reinterpret_cast<uint8_t**>(b.component), vtable) || !vtable
+            || !readPointer(reinterpret_cast<uint8_t**>(vtable + g_activateSlot), *reinterpret_cast<uint8_t**>(&implementation)) || !implementation) { return; }
+        implementation(b.component, &list, b.power);
+        say("gems: %zu propert(ies) built for %p, %zu of them from weapons", g_combined.size(), b.owner, g_combined.size() - b.armour.size());
+    }
+
+    std::vector<uint8_t*> objectsOf(Game& game, uint8_t* cls);
+    uint8_t* findClass(Game& game, const char* className);
+    uint8_t* g_equipSlotClass = nullptr;      // InventoryEquipmentItemSlot: SlotType +0x2C, Item +0x30
+
+    // Whether `object` belongs to `owner`: its outer chain reaches the character, its controller
+    // (+0x368) or its player state (+0x350) - wherever the game keeps its inventory.
+    bool belongsTo(uint8_t* object, uint8_t* owner)
+    {
+        uint8_t* controller = nullptr; readPointer(reinterpret_cast<uint8_t**>(owner + 0x368), controller);
+        uint8_t* state = nullptr; readPointer(reinterpret_cast<uint8_t**>(owner + 0x350), state);
+        uint8_t* at = object;
+        for (int step = 0; step < 4 && at; step++)
+        {
+            at = outerOf(at);
+            if (at && (at == owner || at == controller || at == state)) { return true; }
+        }
+        return false;
+    }
+
+    // The gems in the melee and ranged items equipped now, read from the equipment slots.
+    void readWornWeapons(uint8_t* owner)
+    {
+        if (!g_equipSlotClass || !g_game) { return; }
+        std::vector<uint16_t> found[2];
+        std::vector<uint16_t> anyone[2];
+        bool mine = false;
+        for (uint8_t* slot : objectsOf(*g_game, g_equipSlotClass))
+        {
+            uint8_t type = 0; readBlock(slot + 0x2C, &type, 1);
+            if (type != 14 && type != 15) { continue; }                  // MeleeWeapon, RangedWeapon
+            uint8_t* item = nullptr;
+            if (!readPointer(reinterpret_cast<uint8_t**>(slot + 0x30), item) || !item) { continue; }
+            TArrayRaw props{};
+            if (!readBlock(item + 0x50, &props, sizeof(props))) { continue; }   // FInventoryItemData.ArmorProperties
+            std::vector<uint16_t> gems;
+            for (uint16_t p : propertiesIn(props)) { if (isIn(g_activeProperties, p & 0xFF)) { gems.push_back(p); } }
+            bool ours = belongsTo(slot, owner);
+            mine = mine || ours;
+            auto& into = ours ? found[type - 14] : anyone[type - 14];
+            into.insert(into.end(), gems.begin(), gems.end());
+        }
+        // Playing alone the slots may hang off something the chain above does not name; then
+        // every equipment slot there is is this player's.
+        auto& w = wornBy(owner);
+        for (int i = 0; i < 2; i++) { w.gems[i] = mine ? found[i] : anyone[i]; }
+    }
+
+    void __fastcall activateExec(void* context, void* stack, void** result)
+    {
+        auto frame = static_cast<FrameView*>(stack);
+        auto list = reinterpret_cast<TArrayRaw*>(frame->Locals);
+        float power = 0; readBlock(frame->Locals + 0x10, &power, 4);
+        auto component = static_cast<uint8_t*>(context);
+        uint8_t* owner = outerOf(component);
+        Built* b = nullptr;
+        for (auto& x : g_built) { if (x.component == component) { b = &x; } }
+        if (!b) { g_built.push_back({ component, owner, {}, power }); b = &g_built.back(); }
+        b->armour = propertiesIn(*list);
+        b->power = power;
+        // The weapons as they are worn now: a save loads its gear into the slots without EquipItem.
+        readWornWeapons(owner);
+        combine(b->armour, owner);
+        say("gems: the armour's %zu propert(ies) built with %zu from weapons", b->armour.size(), g_combined.size() - b->armour.size());
+        // Handed over in place of the armour's own list for the length of the call, then put back,
+        // so what the game frees afterwards is its own.
+        TArrayRaw kept = *list;
+        *list = { reinterpret_cast<uint8_t*>(g_combined.data()), static_cast<int32_t>(g_combined.size()), static_cast<int32_t>(g_combined.size()) };
+        g_originalActivate(context, stack, result);
+        *list = kept;
+    }
+
+    void __fastcall equipExec(void* context, void* stack, void** result)
+    {
+        g_originalEquip(context, stack, result);
+        auto slotObject = static_cast<uint8_t*>(context);
+        uint8_t which = 0xFF;
+        readBlock(slotObject + 0x1F9, &which, 1);                     // ItemSlot.EquipmentSlotId
+        if (which != 3 && which != 4) { return; }                     // MeleeGear, RangedGear
+        auto frame = static_cast<FrameView*>(stack);
+        TArrayRaw props{};
+        readBlock(frame->Locals + 0x28, &props, sizeof(props));      // FInventoryItemData.ArmorProperties
+        std::vector<uint16_t> gems;
+        for (uint16_t p : propertiesIn(props)) { if (isIn(g_activeProperties, p & 0xFF)) { gems.push_back(p); } }
+        uint8_t* owner = outerOf(slotObject);
+        auto& w = wornBy(owner);
+        bool changed = w.gems[which - 3] != gems;
+        w.gems[which - 3] = gems;
+        if (!changed) { return; }
+        for (auto& b : g_built) { if (b.owner == owner) { rebuild(b); } }
+    }
+
+    // The exec thunk a UFunction named `name` points at: the native function table pairs each name
+    // with its thunk, and the one that sits in a UFunction object is the thunk - the other pairing
+    // (the construct table) never does. Returns the slot in that UFunction, or null.
+    uint8_t* g_lastFunctionObject = nullptr;  // the UFunction functionSlot last found
+
+    uint8_t** functionSlot(Game& game, const char* name, uint8_t*& exec)
+    {
+        auto hexOf = [](const uint8_t* bytes, size_t n)
+        {
+            std::string out;
+            char two[4];
+            for (size_t i = 0; i < n; i++) { sprintf_s(two, "%02X ", bytes[i]); out += two; }
+            return out;
+        };
+        auto base = reinterpret_cast<uint8_t*>(GetModuleHandleW(nullptr));
+        auto nt = reinterpret_cast<IMAGE_NT_HEADERS*>(base + reinterpret_cast<IMAGE_DOS_HEADER*>(base)->e_lfanew);
+        uint8_t* end = base + nt->OptionalHeader.SizeOfImage;
+        std::string text = "00 " + hexOf(reinterpret_cast<const uint8_t*>(name), strlen(name)) + "00";
+        std::vector<uint8_t*> candidates;
+        size_t texts = 0;
+        for (uint8_t* hit : scan(parse(text.c_str())))
+        {
+            uint8_t* at = hit + 1;
+            texts++;
+            for (uint8_t* ref : scan(parse(hexOf(reinterpret_cast<const uint8_t*>(&at), 8).c_str())))
+            {
+                uint8_t* next = nullptr;
+                if (readPointer(reinterpret_cast<uint8_t**>(ref + 8), next) && next > base && next < end) { candidates.push_back(next); }
+            }
+        }
+        int32_t count = *game.objectCount;
+        uint8_t** chunks = *game.objectChunks;
+        uint8_t** found = nullptr;
+        int hits = 0;
+        for (int32_t i = 0; i < count; i++)
+        {
+            uint8_t* chunk = nullptr;
+            if (!readBlock(chunks + (i >> 16), &chunk, 8) || !chunk) { continue; }
+            uint8_t* object = nullptr;
+            if (!readBlock(chunk + static_cast<size_t>(i & 0xFFFF) * 0x18, &object, 8) || !object) { continue; }
+            uint8_t* body[0x140 / 8]{};
+            if (!readBlock(object, body, sizeof(body))) { continue; }
+            for (size_t at = 0; at < 0x140 / 8; at++)
+            {
+                for (uint8_t* c : candidates)
+                {
+                    if (body[at] == c) { found = reinterpret_cast<uint8_t**>(object) + at; exec = c; g_lastFunctionObject = object; hits++; }
+                }
+            }
+        }
+        say("gems: %s - %zu name(s), %zu candidate thunk(s), %d function(s)", name, texts, candidates.size(), hits);
+        return hits == 1 ? found : nullptr;
+    }
+
+    // ---------------------------------------------------------------- gem heartbeat
+    //
+    // The game builds the armour's properties by calling the component's implementation directly
+    // from C++ - not through ServerActivateProperties, which is only the network entry - and a save
+    // loads its gear without EquipItem. So neither wrapper above sees the one build that matters.
+    // What does run on the game thread, every frame, through ProcessEvent: the player character's
+    // blueprint ReceiveTick. Its UFunction's thunk pointer (heap data) gets a wrapper that, once a
+    // second per player, reads the worn armour's properties and the worn weapons' gems from the
+    // equipment slots and - when that list changed, or the game has rebuilt the component since
+    // (its live count moved) - rebuilds the component with it through the game's own implementation.
+    size_t g_funcOffset = 0;                  // where a UFunction keeps its thunk, from functionSlot's find
+    uint8_t* g_armourComponentClass = nullptr;
+    std::vector<std::pair<uint8_t*, Exec>> g_ticks;     // each wrapped ReceiveTick: its UFunction, its thunk
+
+    struct Heart
+    {
+        uint8_t* character = nullptr;
+        uint8_t* component = nullptr;
+        std::vector<uint8_t*> slots;
+        std::vector<uint16_t> applied;
+        int32_t liveAfter = -1;
+        ULONGLONG lastCheck = 0, lastScan = 0;
+    };
+    std::vector<Heart> g_hearts;
+
+    Heart& heartOf(uint8_t* character)
+    {
+        for (auto& h : g_hearts) { if (h.character == character) { return h; } }
+        g_hearts.push_back({});
+        g_hearts.back().character = character;
+        return g_hearts.back();
+    }
+
+    // An object's class default object: the one of its objects flagged RF_ClassDefaultObject (0x10).
+    uint8_t* defaultOf(uint8_t* cls)
+    {
+        for (uint8_t* object : objectsOf(*g_game, cls))
+        {
+            uint32_t flags = 0;
+            if (readBlock(object + 0x8, &flags, 4) && (flags & 0x10)) { return object; }
+        }
+        return nullptr;
+    }
+
+    // The gem grades' own classes: each loaded (StaticLoadObject, so on the game thread - this runs
+    // from the heartbeat), its number scaled between neutral and the source's own, and put in the
+    // definition and the class array in place of the source's. Once. Every rebuild after uses them,
+    // and so does the line under the item's name, which the game fills in from the class.
+    void loadGradeClasses()
+    {
+        // Not before the property step has given every new id its class: the heartbeat can start
+        // first, and a list read then is empty for good.
+        if (!g_propertyDefs) { return; }
+        g_gradesLoaded = true;
+        if (g_gradeClasses.empty()) { return; }
+        if (!g_game || !g_game->load || !g_propertyDefs || !g_propertyClasses)
+        {
+            say("gems: the grades' classes were NOT loaded (loader or tables unknown); every grade does what its source does");
+            return;
+        }
+        int done = 0;
+        for (const auto& grade : g_gradeClasses)
+        {
+            uint8_t* meta = nullptr;       // the source class's own class: what the copy is loaded as
+            if (!readPointer(reinterpret_cast<uint8_t**>(grade.source + 0x10), meta) || !meta) { continue; }
+            auto* loaded = static_cast<uint8_t*>(g_game->load(meta, nullptr, grade.path.c_str(), nullptr, 0, nullptr, true, nullptr));
+            if (!loaded) { say("gems: %ls did not load; property %d keeps its source's class", grade.path.c_str(), grade.value); continue; }
+            rootObject(loaded);
+            uint8_t* sourceDefault = defaultOf(grade.source);
+            uint8_t* ownDefault = defaultOf(loaded);
+            if (!sourceDefault || !ownDefault) { say("gems: property %d - no default object to scale; it keeps its source's class", grade.value); continue; }
+            float was = 0;
+            if (!readBlock(sourceDefault + PROPERTY_NUMBER, &was, 4)) { continue; }
+            float now = grade.neutral + (was - grade.neutral) * grade.factor;
+            *reinterpret_cast<float*>(ownDefault + PROPERTY_NUMBER) = now;
+            *reinterpret_cast<uint8_t**>(g_propertyDefs->Data + static_cast<size_t>(grade.value) * PROPERTY_SIZE + 0xF8) = loaded;
+            reinterpret_cast<uint8_t**>(g_propertyClasses->Data)[grade.value] = loaded;
+            say("gems: property %d is %ls, its number %.3f (its source's %.3f)", grade.value, grade.path.c_str(), now, was);
+            done++;
+        }
+        say("gems: %d of %zu grade classes in place", done, g_gradeClasses.size());
+        for (auto& h : g_hearts) { h.applied.clear(); }     // rebuilt next beat with them
+    }
+
+    void beat(uint8_t* character)
+    {
+        uint8_t* state = nullptr;
+        if (!readPointer(reinterpret_cast<uint8_t**>(character + 0x350), state) || !state) { return; }   // players only
+        if (!g_gradesLoaded) { loadGradeClasses(); }
+        auto& h = heartOf(character);
+        ULONGLONG now = GetTickCount64();
+        if (now - h.lastCheck < 250) { return; }     // a gem set shows within a quarter second
+        h.lastCheck = now;
+
+        if (now - h.lastScan > 3000 || !h.component)
+        {
+            h.lastScan = now;
+            h.component = nullptr;
+            for (uint8_t* c : objectsOf(*g_game, g_armourComponentClass)) { if (outerOf(c) == character) { h.component = c; } }
+            h.slots.clear();
+            std::vector<uint8_t*> everyone;
+            for (uint8_t* s : objectsOf(*g_game, g_equipSlotClass))
+            {
+                everyone.push_back(s);
+                if (belongsTo(s, character)) { h.slots.push_back(s); }
+            }
+            if (h.slots.empty() && g_hearts.size() == 1) { h.slots = everyone; }
+        }
+        if (!h.component) { return; }
+
+        std::vector<uint16_t> list;
+        float power = 0;
+        for (uint8_t* slot : h.slots)
+        {
+            uint8_t type = 0; readBlock(slot + 0x2C, &type, 1);
+            if (type != 14 && type != 15 && type != 16) { continue; }     // MeleeWeapon, RangedWeapon, Armor
+            uint8_t* item = nullptr;
+            if (!readPointer(reinterpret_cast<uint8_t**>(slot + 0x30), item) || !item) { continue; }
+            TArrayRaw props{};
+            if (!readBlock(item + 0x50, &props, sizeof(props))) { continue; }
+            for (uint16_t p : propertiesIn(props))
+            {
+                int id = p & 0xFF;
+                if (isIn(g_inertProperties, id)) { continue; }
+                if (type == 16 || isIn(g_activeProperties, id)) { list.push_back(p); }   // the armour's all, a weapon's gems
+            }
+            if (type == 16) { readBlock(item + 0x3C, &power, 4); }          // FInventoryItemData.ItemPower
+        }
+
+        TArrayRaw live{};
+        readBlock(h.component + 0x100, &live, sizeof(live));               // ArmorPropertiesComponent.properties
+        bool gameRebuilt = h.liveAfter >= 0 && live.Num != h.liveAfter;
+        if (list == h.applied && !gameRebuilt) { return; }
+
+        g_combined = list;
+        TArrayRaw handed{ reinterpret_cast<uint8_t*>(g_combined.data()), static_cast<int32_t>(g_combined.size()), static_cast<int32_t>(g_combined.size()) };
+        uint8_t* vtable = nullptr;
+        Activate implementation = nullptr;
+        if (!readPointer(reinterpret_cast<uint8_t**>(h.component), vtable) || !vtable
+            || !readPointer(reinterpret_cast<uint8_t**>(vtable + g_activateSlot), *reinterpret_cast<uint8_t**>(&implementation)) || !implementation) { return; }
+        implementation(h.component, &handed, power);
+        readBlock(h.component + 0x100, &live, sizeof(live));
+        h.liveAfter = live.Num;
+        h.applied = list;
+        int fromWeapons = 0;
+        for (uint16_t p : list) { if (isIn(g_activeProperties, p & 0xFF)) { fromWeapons++; } }
+        say("gems: %p rebuilt with %zu propert(ies), %d of them gems%s; %d live", character, list.size(), fromWeapons,
+            gameRebuilt ? " (the game had rebuilt it)" : "", live.Num);
+    }
+
+    template <int N> void __fastcall tickExec(void* context, void* stack, void** result)
+    {
+        g_ticks[N].second(context, stack, result);
+        beat(static_cast<uint8_t*>(context));
+    }
+    constexpr int MOST_TICKS = 8;
+    Exec g_tickWrappers[MOST_TICKS] = { &tickExec<0>, &tickExec<1>, &tickExec<2>, &tickExec<3>, &tickExec<4>, &tickExec<5>, &tickExec<6>, &tickExec<7> };
+
+    // Whether a class is BP_PlayerCharacter_C or derives from it (UStruct SuperStruct at +0x40).
+    bool isPlayerClass(uint8_t* cls, FName player)
+    {
+        for (int step = 0; step < 16 && cls; step++)
+        {
+            FName its{};
+            if (readBlock(cls + 0x18, &its, 8) && its.Index == player.Index && its.Number == player.Number) { return true; }
+            if (!readPointer(reinterpret_cast<uint8_t**>(cls + 0x40), cls)) { return false; }
+        }
+        return false;
+    }
+
+    // Wraps every ReceiveTick a player character class has, as the classes load (a hero's skin
+    // class loads with the character): looked for every few seconds, on the plugin's own thread.
+    DWORD WINAPI watchTicks(LPVOID)
+    {
+        Game& game = *g_game;
+        FName tick = name(game, "ReceiveTick");
+        FName player = name(game, "BP_PlayerCharacter_C");
+        for (;;)
+        {
+            int32_t count = *game.objectCount;
+            uint8_t** chunks = *game.objectChunks;
+            for (int32_t i = 0; i < count && static_cast<int>(g_ticks.size()) < MOST_TICKS; i++)
+            {
+                uint8_t* chunk = nullptr;
+                if (!readBlock(chunks + (i >> 16), &chunk, 8) || !chunk) { continue; }
+                uint8_t* object = nullptr;
+                if (!readBlock(chunk + static_cast<size_t>(i & 0xFFFF) * 0x18, &object, 8) || !object) { continue; }
+                FName its{};
+                if (!readBlock(object + 0x18, &its, 8) || its.Index != tick.Index || its.Number != tick.Number) { continue; }
+                uint8_t* owner = outerOf(object);
+                if (!owner || !isPlayerClass(owner, player)) { continue; }
+                bool known = false;
+                for (auto& t : g_ticks) { known = known || t.first == object; }
+                if (known) { continue; }
+                Exec original = nullptr;
+                if (!readPointer(reinterpret_cast<uint8_t**>(object + g_funcOffset), *reinterpret_cast<uint8_t**>(&original)) || !original) { continue; }
+                g_ticks.push_back({ object, original });
+                *reinterpret_cast<Exec*>(object + g_funcOffset) = g_tickWrappers[g_ticks.size() - 1];
+                say("gems: a player's ReceiveTick wrapped (%zu so far)", g_ticks.size());
+            }
+            Sleep(3000);
+        }
+    }
+
+    void hookGemEffects(Game& game)
+    {
+        if (g_activeProperties.empty() && g_inertProperties.empty()) { return; }
+        if (!game.objectCount || !game.objectChunks) { say("gems: the object array is not known; gem effects NOT applied"); return; }
+        uint8_t* activate = nullptr;
+        uint8_t* equip = nullptr;
+        uint8_t** activateSlot = functionSlot(game, "ServerActivateProperties", activate);
+        if (activateSlot) { g_funcOffset = static_cast<size_t>(reinterpret_cast<uint8_t*>(activateSlot) - g_lastFunctionObject); }
+        uint8_t** equipSlot = functionSlot(game, "EquipItem", equip);
+        if (!activateSlot || !equipSlot) { say("gems: the functions were not found; gem effects NOT applied"); return; }
+        // The implementation's offset, from the thunk's `call qword ptr [rax+X]`. The thunk makes two
+        // such calls - the RPC's _Validate (+0x3E0) first, then the _Implementation (+0x3E8) - so it is
+        // the last one before the thunk returns. (The first test took the first, and built nothing.)
+        uint8_t code[0x100]{};
+        readBlock(activate, code, sizeof(code));
+        for (size_t i = 0; i + 6 <= sizeof(code); i++)
+        {
+            if (code[i] == 0xC3) { break; }
+            if (code[i] == 0xFF && code[i + 1] == 0x90) { memcpy(&g_activateSlot, code + i + 2, 4); i += 5; }
+        }
+        g_equipSlotClass = findClass(game, "InventoryEquipmentItemSlot");
+        if (!g_equipSlotClass) { say("gems: the equipment slot class was not found; gems on a weapon worn at load are only seen when it is equipped again"); }
+        g_gameKept = game;
+        g_game = &g_gameKept;
+        if (g_activateSlot <= 0 || g_activateSlot > 0x2000) { say("gems: the implementation's slot was not found; gem effects NOT applied"); return; }
+        g_originalActivate = reinterpret_cast<Exec>(activate);
+        g_originalEquip = reinterpret_cast<Exec>(equip);
+        *activateSlot = reinterpret_cast<uint8_t*>(&activateExec);
+        *equipSlot = reinterpret_cast<uint8_t*>(&equipExec);
+        say("gems: effects on (implementation at vtable +0x%X), %zu gem id(s), %zu line-only id(s)", g_activateSlot, g_activeProperties.size(), g_inertProperties.size());
+
+        g_armourComponentClass = findClass(game, "ArmorPropertiesComponent");
+        if (!g_armourComponentClass || !g_equipSlotClass || !g_funcOffset || g_funcOffset > 0x140)
+        {
+            say("gems: the heartbeat's classes were not found (component %p, slots %p, thunk at +0x%zX); gems on worn weapons wait for the next equip",
+                g_armourComponentClass, g_equipSlotClass, g_funcOffset);
+            return;
+        }
+        g_ticks.reserve(MOST_TICKS);           // never reallocated: the game thread reads it
+        CreateThread(nullptr, 0, watchTicks, nullptr, 0, nullptr);
+        say("gems: heartbeat on (a UFunction keeps its thunk at +0x%zX)", g_funcOffset);
+    }
+
+    void addProperties(Game& game)
+    {
+        auto properties = readProperties();
+        if (properties.empty()) { return; }
+        TArrayRaw* header = propertyTable();
+        if (!header) { say("properties: NOT registered"); return; }
+
+        // The definitions are made by static blocks before anything runs, so they are replaced
+        // first, and the names go into the enum straight after: a character's save is read at the
+        // main menu, and an id the enum does not know by then is read as Unset and saved that way
+        // (the first test lost its sockets so, while this waited for the icons). The side arrays
+        // are sized by a preload whenever that runs, and grown once it has.
+        TArrayRaw defs{};
+        bool built = false;
+        for (int wait = 0; wait < 600 && !built; wait++)
+        {
+            built = readArray(header, defs) && defs.Num >= 39 && defs.Num < 64 && defs.Data;
+            if (!built) { Sleep(100); }
+        }
+        if (!built) { say("properties: the definitions were never built (%d at %p); NOT registered", defs.Num, defs.Data); return; }
+        say("properties: %d definitions at %p", defs.Num, defs.Data);
+
+        struct Named { std::string id; int value; int source; std::string icon; std::wstring name, line; bool active;
+                       std::wstring blueprint; float factor, neutral; };
+        std::vector<Named> named;
+        int next = FIRST_NEW_PROPERTY;
+        for (const auto& p : properties)
+        {
+            if (next > 250) { say("properties: no room past id %d", next); break; }
+            if (p.source <= 0 || p.source >= defs.Num) { say("%s: its source %d is not a property", p.id.c_str(), p.source); continue; }
+            named.push_back({ p.id, next, p.source, p.icon, p.name, p.line, p.active, p.blueprint, p.factor, p.neutral });
+            next++;
+        }
+        if (named.empty()) { return; }
+        int32_t capacity = named.back().value + 16;
+
+        // The definitions: a bigger block, the game's entries as they are, each new id a copy of
+        // its source with its own id and texts. The old block is left alone - the game's statics
+        // point into it.
+        auto bigger = static_cast<uint8_t*>(game.malloc(static_cast<size_t>(capacity) * PROPERTY_SIZE));
+        memset(bigger, 0, static_cast<size_t>(capacity) * PROPERTY_SIZE);
+        memcpy(bigger, defs.Data, static_cast<size_t>(defs.Num) * PROPERTY_SIZE);
+        for (const auto& n : named)
+        {
+            uint8_t* def = bigger + static_cast<size_t>(n.value) * PROPERTY_SIZE;
+            memcpy(def, defs.Data + static_cast<size_t>(n.source) * PROPERTY_SIZE, PROPERTY_SIZE);
+            def[0] = static_cast<uint8_t>(n.value);
+            std::wstring key = wide(n.id);
+            auto text = [&](const std::wstring& value, const std::wstring& textKey, size_t at)
+            {
+                if (value == L"-") { return; }
+                FText t{};
+                game.createText(&t, value.c_str(), L"ArmorProperties", textKey.c_str());
+                memcpy(def + at, &t, sizeof(t));
+            };
+            text(n.name, key, 0x20);
+            text(n.line, key + L"_description", 0x38);
+            say("%s registered as property %d, a copy of %d", n.id.c_str(), n.value, n.source);
+        }
+        header->Max = capacity;
+        header->Data = bigger;
+
+        uint8_t** holder = enumStatic("EArmorPropertyID");
+        uint8_t* uenum = nullptr;
+        for (int wait = 0; holder && wait < 600 && !uenum; wait++)
+        {
+            if (!readPointer(holder, uenum) || !uenum) { uenum = nullptr; Sleep(100); }
+        }
+        if (!uenum) { say("properties: the enum was not found; saves will not keep them"); }
+        else
+        {
+            auto names = reinterpret_cast<TArrayRaw*>(uenum + 0x40);
+            for (const auto& n : named)
+            {
+                if (names->Num >= names->Max)
+                {
+                    int32_t more = names->Max + 16;
+                    auto grown = static_cast<uint8_t*>(game.malloc(static_cast<size_t>(more) * 16));
+                    memcpy(grown, names->Data, static_cast<size_t>(names->Num) * 16);
+                    names->Data = grown;
+                    names->Max = more;
+                }
+                FName full = name(game, "EArmorPropertyID::" + n.id);
+                int64_t number = n.value;
+                memcpy(names->Data + static_cast<size_t>(names->Num) * 16, &full, 8);
+                memcpy(names->Data + static_cast<size_t>(names->Num) * 16 + 8, &number, 8);
+                names->Num++;
+                say("%s named in the enum as %d", n.id.c_str(), n.value);
+            }
+        }
+
+        // Gems do what their source does, on weapons too; everything else new is only a line.
+        for (const auto& n : named) { (n.active ? g_activeProperties : g_inertProperties).push_back(n.value); }
+        hookGemEffects(game);
+
+        // The side arrays, once the preload has sized them.
+        TArrayRaw* arrays[3] = {
+            reinterpret_cast<TArrayRaw*>(reinterpret_cast<uint8_t*>(header) - 0x30),
+            reinterpret_cast<TArrayRaw*>(reinterpret_cast<uint8_t*>(header) - 0x20),
+            reinterpret_cast<TArrayRaw*>(reinterpret_cast<uint8_t*>(header) - 0x10),
+        };
+        // Sized to 162 in the shipped game, not to the 39 properties - so usually they already
+        // have room for the new ids, and only the entries are written.
+        bool sized = false;
+        for (int wait = 0; wait < 3000 && !sized; wait++)
+        {
+            TArrayRaw now[3]{};
+            sized = true;
+            for (int i = 0; i < 3; i++) { sized = readArray(arrays[i], now[i]) && now[i].Num >= defs.Num && now[i].Data && sized; }
+            if (!sized && wait % 50 == 0)
+            {
+                say("properties: waiting for the icon arrays - %d/%d/%d entries (definitions %d)", now[0].Num, now[1].Num, now[2].Num, defs.Num);
+            }
+            if (!sized) { Sleep(200); }
+        }
+        if (!sized) { say("properties: the icon arrays were never sized; their icons are NOT set - do not open an item with one"); return; }
+        say("properties: icon arrays of %d/%d/%d entries", arrays[0]->Num, arrays[1]->Num, arrays[2]->Num);
+
+        // The class. A property's line is written with its class's numbers, and the class getter
+        // (93c790) takes the definition's cached one (+0xF8) or finds it through the asset finder by
+        // the id's name - which knows nothing of a new id. So the new id is given its source's class,
+        // once the game has loaded it, in its definition and in the class array.
+        for (const auto& n : named)
+        {
+            uint8_t* cls = nullptr;
+            for (int wait = 0; wait < 600 && !cls; wait++)
+            {
+                uint8_t* current = header->Data;
+                uint8_t* cached = nullptr;
+                readPointer(reinterpret_cast<uint8_t**>(current + static_cast<size_t>(n.source) * PROPERTY_SIZE + 0xF8), cached);
+                uint8_t* listed = nullptr;
+                readPointer(reinterpret_cast<uint8_t**>(arrays[2]->Data) + n.source, listed);
+                cls = cached ? cached : listed;
+                if (!cls) { Sleep(200); }
+            }
+            if (!cls) { say("%s: its source's class was never loaded; do NOT open an item with it", n.id.c_str()); continue; }
+            *reinterpret_cast<uint8_t**>(header->Data + static_cast<size_t>(n.value) * PROPERTY_SIZE + 0xF8) = cls;
+            say("%s: given its source's class %p", n.id.c_str(), cls);
+            if (!n.blueprint.empty()) { g_gradeClasses.push_back({ n.value, n.blueprint, n.factor, n.neutral, cls }); }
+        }
+        g_propertyClasses = arrays[2];
+        g_propertyDefs = header;                    // last: it tells the heartbeat the list is complete
+
+        // Own icons: the thunks wrapped before any mark goes in.
+        bool iconsHooked = false;
+        bool wantIcons = false;
+        for (const auto& n : named) { wantIcons = wantIcons || n.icon != "-"; }
+        if (wantIcons)
+        {
+            if (!game.load || !game.objectCount || !game.objectChunks || !game.textureClass || !game.materialClass)
+            {
+                say("properties: the object loader is not known; own icons NOT used - they show their source's");
+            }
+            else
+            {
+                g_gameKept = game;
+                g_game = &g_gameKept;
+                g_propertyIconArrays[0] = arrays[0];
+                g_propertyIconArrays[1] = arrays[1];
+                for (const auto& n : named)
+                {
+                    if (n.icon == "-") { continue; }
+                    size_t bar = n.icon.find('|');
+                    if (bar == std::string::npos) { say("%s: its icon field is not texture|material", n.id.c_str()); continue; }
+                    g_propertyIcons.push_back({ n.value, wide(n.icon.substr(0, bar)), wide(n.icon.substr(bar + 1)),
+                        reinterpret_cast<uint8_t**>(arrays[0]->Data)[n.source], reinterpret_cast<uint8_t**>(arrays[1]->Data)[n.source] });
+                }
+                iconsHooked = !g_propertyIcons.empty() && hookPropertyIconExecs(game, arrays[0], arrays[1]);
+                if (!iconsHooked) { say("properties: own icons NOT used - they show their source's"); }
+            }
+        }
+
+        for (auto* a : arrays)
+        {
+            auto old = reinterpret_cast<uint8_t**>(a->Data);
+            // In place when the array has room (the game made it 162 long); a bigger block if not.
+            uint8_t** side = old;
+            if (a->Num <= named.back().value)
+            {
+                side = static_cast<uint8_t**>(game.malloc(static_cast<size_t>(capacity) * 8));
+                memset(side, 0, static_cast<size_t>(capacity) * 8);
+                memcpy(side, old, static_cast<size_t>(a->Num) * 8);
+            }
+            for (const auto& n : named)
+            {
+                uint8_t* cls = *reinterpret_cast<uint8_t**>(header->Data + static_cast<size_t>(n.value) * PROPERTY_SIZE + 0xF8);
+                side[n.value] = a == arrays[2] ? (cls ? cls : old[n.source])
+                    : (iconsHooked && n.icon != "-") ? g_propertyMarks + n.value : old[n.source];
+            }
+            if (side != old)
+            {
+                a->Max = capacity;
+                a->Data = reinterpret_cast<uint8_t*>(side);
+            }
+        }
+        say("properties: icons, materials and classes set for %zu new id(s)", named.size());
+    }
+
     // ---------------------------------------------------------------- mob behaviour
     //
     // A mob's AI is built by a C++ switch on its EntityType (8b5a10: jump tables into one
@@ -2247,6 +3092,11 @@ namespace
         }
         if (!ready) { say("the game's code was never found; nothing was changed"); return 0; }
         noteCrashes();
+        // Properties on a thread of their own, started now: their names must be in the enum before
+        // a character's save is read at the main menu, and they wait on nothing the items need.
+        static Game propertyGame;
+        propertyGame = game;
+        CreateThread(nullptr, 0, [](LPVOID) -> DWORD { addProperties(propertyGame); return 0; }, nullptr, 0, nullptr);
         nameMobs(game);
         // The world watch (watchWorlds) found why custom mobs broke levels; it walks every object
         // once a second, so it is only started when MCDRebornWatch.txt sits beside the plugin.

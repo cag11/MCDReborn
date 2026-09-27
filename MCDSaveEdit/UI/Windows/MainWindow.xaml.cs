@@ -154,6 +154,7 @@ namespace MCDSaveEdit.UI
             weaponSkinsTabItem.Header = R.WEAPON_SKINS_TAB;
             mobSkinsTabItem.Header = R.MOB_SKINS_TAB;
             customItemsTabItem.Header = R.ITEMS_TAB;
+            gameModesTabItem.Header = R.MODES_TAB;
             modsTabItem.Header = R.MODS_TAB;
             mapsTabItem.Header = R.MAPS_TAB;
             musicTabItem.Header = R.MUSIC_TAB;

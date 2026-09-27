@@ -62,6 +62,9 @@
     <EmbeddedResource Include="Logic\TableAssets\*.uasset" />
     <EmbeddedResource Include="Logic\TableAssets\*.uexp" />
     <EmbeddedResource Include="Logic\TableAssets\*.umap" />
+    <!-- The in-game Gems panel, as cooked under /Game/MCDReborn: two Gems levels share a name, so
+         each file keeps its folder in its resource name. -->
+    <EmbeddedResource Include="Logic\GemsAssets\**\*.*" LogicalName="GemsAssets/%(RecursiveDir)%(Filename)%(Extension)" />
     <!-- The item plugin (ItemPlugin/), built with the C++ tools and carried here as it is: the
          game loads it as xinput1_3.dll (Steam, Launcher) or dsound.dll (Xbox app) to register items
          beyond the free slots. -->
