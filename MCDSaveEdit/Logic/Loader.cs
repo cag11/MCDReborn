@@ -116,7 +116,7 @@ namespace MCDSaveEdit.Logic
         /// Weapon mastery, enchantment levels IV/V), a payload, or the map table. Whatever is turned off
         /// asks this before taking the loader out with it.
         /// </summary>
-        public static bool stillNeeded() => Gems.isOn || Talents.isOn || Mastery.isOn || EnchantLevels.isOn
+        public static bool stillNeeded() => Gems.isOn || Talents.isOn || Mastery.isOn || EnchantLevels.isOn || Mythic.isOn
             || Payloads.installed().Count > 0 || MapTable.isInstalled;
 
         /// <summary>

@@ -722,6 +722,12 @@ namespace MCDSaveEdit.Logic
                 if (said.Length > 0) { result.Notes.Add(said); }
             }
             catch (Exception problem) { result.Notes.Add($"Enchantment levels IV and V could not be installed: {problem.Message}"); }
+            try
+            {
+                var said = Mythic.syncPanel();
+                if (said.Length > 0) { result.Notes.Add(said); }
+            }
+            catch (Exception problem) { result.Notes.Add($"Mythic items could not be installed: {problem.Message}"); }
         }
 
         public static Built build(IReadOnlyList<Design> designs, string? into = null, IReadOnlyList<Extra>? extras = null)
@@ -751,6 +757,8 @@ namespace MCDSaveEdit.Logic
             if (into == null && Talents.isOn) { properties.AddRange(Talents.properties()); }
             //And weapon mastery's four effects.
             if (into == null && Mastery.isOn) { properties.AddRange(Mastery.effects()); }
+            //And the Mythic lines, one per kind of gear.
+            if (into == null && Mythic.isOn) { properties.AddRange(Mythic.properties()); }
 
             if (designs.Count == 0 && extras.Count == 0 && enchantments.Count == 0 && mobs.Count == 0 && properties.Count == 0)
             {

@@ -35,6 +35,8 @@ namespace MCDSaveEdit.UI
             masteryOn.Content = R.MASTERY_ON;
             masteryWhy.Text = R.MASTERY_WHY;
             enchantLevelsOn.Content = R.ENCHANT_LEVELS_ON;
+            mythicOn.Content = R.MYTHIC_ON;
+            mythicWhy.Text = string.Format(R.MYTHIC_WHY, Mythic.EMERALDS.ToString("N0"), Mythic.GOLD.ToString("N0"));
             enchantLevelsWhy.Text = R.ENCHANT_LEVELS_WHY;
             apocalypsePlusOn.Content = R.STATS_APOC_PLUS;
             apocalypsePlusWhy.Text = R.STATS_APOC_PLUS_WHY;
@@ -52,6 +54,8 @@ namespace MCDSaveEdit.UI
             masteryOn.IsChecked = Mastery.isOn;
             masteryOn.IsEnabled = available && CustomSkins.ready;
             enchantLevelsOn.IsChecked = EnchantLevels.isOn;
+            mythicOn.IsChecked = Mythic.isOn;
+            mythicOn.IsEnabled = available && CustomSkins.ready;
             enchantLevelsOn.IsEnabled = CustomSkins.ready;
             apocalypsePlusOn.IsChecked = ApocalypsePlus.isOn;
             apocalypsePlusOn.IsEnabled = available;
@@ -148,6 +152,37 @@ namespace MCDSaveEdit.UI
             catch (Exception problem)
             {
                 Mastery.set(!on);
+                statusLabel.Text = string.Format(R.ITEMS_FAILED, problem.Message);
+            }
+            finally
+            {
+                IsEnabled = true;
+                show();
+            }
+        }
+
+        /// <summary>Mythic items on or off, as Weapon mastery: the items pak, the plugin's list and the forge rebuilt.</summary>
+        private async void mythicOn_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+            var on = mythicOn.IsChecked == true;
+            if (GameRunning.isUp) { Notices.warn(R.MODS_GAME_RUNNING); show(); return; }
+            if (!on && MessageBox.Show(R.MYTHIC_OFF_WARN, R.MODES_TAB, MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            {
+                show();
+                return;
+            }
+            IsEnabled = false;
+            statusLabel.Text = R.ITEMS_WORKING;
+            try
+            {
+                Mythic.set(on);
+                await Task.Run(() => CustomItems.build(CustomItems.load()));
+                statusLabel.Text = on ? R.MYTHIC_DONE : R.MYTHIC_REMOVED;
+            }
+            catch (Exception problem)
+            {
+                Mythic.set(!on);
                 statusLabel.Text = string.Format(R.ITEMS_FAILED, problem.Message);
             }
             finally

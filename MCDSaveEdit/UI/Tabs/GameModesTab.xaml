@@ -34,6 +34,11 @@
                           Checked="masteryOn_Changed" Unchecked="masteryOn_Changed"/>
                 <TextBlock x:Name="masteryWhy" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
 
+                <!-- Mythic items: awakened at the Mythic Forge in the Camp. -->
+                <CheckBox x:Name="mythicOn" FontWeight="Bold" Margin="0,24,0,0"
+                          Checked="mythicOn_Changed" Unchecked="mythicOn_Changed"/>
+                <TextBlock x:Name="mythicWhy" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
                 <!-- Enchantment levels IV and V: the game's badges and icons show them. -->
                 <CheckBox x:Name="enchantLevelsOn" FontWeight="Bold" Margin="0,24,0,0"
                           Checked="enchantLevelsOn_Changed" Unchecked="enchantLevelsOn_Changed"/>

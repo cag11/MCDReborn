@@ -214,6 +214,7 @@ namespace MCDSaveEdit.Logic
             => (Gems.isOn ? Gems.properties() : Array.Empty<Design>()).Concat(load())
                 .Concat(Talents.isOn ? Talents.properties() : Array.Empty<Design>())
                 .Concat(Mastery.isOn ? Mastery.properties() : Array.Empty<Design>())
+                .Concat(Mythic.isOn ? Mythic.properties() : Array.Empty<Design>())
                 .Where(d => GearTraits.ARMOR_PROPERTY_IDS.ContainsKey(d.Source))
                 .Select(d => string.Join("\t", "@property", d.Id,
                     GearTraits.ARMOR_PROPERTY_IDS[d.Source].ToString(System.Globalization.CultureInfo.InvariantCulture),
