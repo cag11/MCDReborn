@@ -10753,8 +10753,67 @@ namespace MCDSaveEdit
                             here = o < 0 ? 0 : ptr(here + o);
                         }
                         var own = parts.Length > 2 ? reflect.valueOf(at, "Level") : null;
-                        Console.WriteLine($"[path] {reflect.nameOf(at)} {at:X} (Level={own}) -> {parts[1]} = {(here == 0 ? "none" : reflect.nameOf(here) + " " + here.ToString("X"))}: "
+                        Console.WriteLine($"[path] {reflect.nameOf(at)} {at:X} (Level={own}) -> {parts[1]} = {(here == 0 ? "none" : reflect.nameOf(here) + " (" + reflect.kindOf(here) + ") " + here.ToString("X"))}: "
                             + (here == 0 ? "" : string.Join(", ", parts.Skip(2).Select(v => $"{v}={reflect.valueOf(here, v)}"))));
+                    }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_WIDGETTREE=<Class>[;<int var>=<value>] - the live widget tree of every object of a user widget
+            //class (optionally only those whose int variable has a value): each widget's name, kind,
+            //visibility, and a switcher's active page. Read-only.
+            var probeTreeLive = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_WIDGETTREE=", StringComparison.Ordinal));
+            if (probeTreeLive != null)
+            {
+                var parts = probeTreeLive["PROBE_WIDGETTREE=".Length..].Trim('"').Split(';');
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[tree] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, step => { })!;
+                    long ptr(long at) { var b = game.read(new IntPtr(at), 8); return b == null ? 0 : BitConverter.ToInt64(b, 0); }
+                    int i32(long at) { var b = game.read(new IntPtr(at), 4); return b == null ? 0 : BitConverter.ToInt32(b, 0); }
+                    int offsetOf(long obj, string field)
+                    {
+                        for (var k = ptr(obj + 0x10); k != 0; k = ptr(k + 0x40))
+                        {
+                            foreach (var f in reflect.fieldsOf(k)) { if (string.Equals(f.Name, field, StringComparison.OrdinalIgnoreCase)) { return f.Offset; } }
+                        }
+                        return -1;
+                    }
+                    long field(long obj, string name) { var o = obj == 0 ? -1 : offsetOf(obj, name); return o < 0 ? 0 : ptr(obj + o); }
+                    void walk(long widget, int depth)
+                    {
+                        if (widget == 0 || depth > 30) { return; }
+                        var extra = reflect.kindOf(widget)?.Contains("Switcher") == true ? $" page {reflect.valueOf(widget, "ActiveWidgetIndex")}" : "";
+                        Console.WriteLine($"[tree] {new string(' ', depth * 2)}{reflect.nameOf(widget)} ({reflect.kindOf(widget)}) vis {reflect.valueOf(widget, "Visibility")}{extra}");
+                        var slotsAt = offsetOf(widget, "Slots");
+                        if (slotsAt >= 0)
+                        {
+                            var slots = ptr(widget + slotsAt);
+                            var count = i32(widget + slotsAt + 8);
+                            for (var s = 0; s < Math.Min(count, 60); s++) { walk(field(ptr(slots + s * 8), "Content"), depth + 1); }
+                        }
+                        else
+                        {
+                            //A user widget inside: its own tree.
+                            var tree = field(widget, "WidgetTree");
+                            if (tree != 0 && depth > 0) { walk(field(tree, "RootWidget"), depth + 1); }
+                        }
+                    }
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var at = reflect.objectAt(i);
+                        if (at == 0 || reflect.kindOf(at) != parts[0] || reflect.nameOf(at)?.StartsWith("Default__") == true) { continue; }
+                        if (parts.Length > 1)
+                        {
+                            var want = parts[1].Split('=');
+                            if (reflect.valueOf(at, want[0]) != want[1]) { continue; }
+                        }
+                        Console.WriteLine($"[tree] === {reflect.nameOf(at)} {at:X}");
+                        walk(field(field(at, "WidgetTree"), "RootWidget"), 0);
                     }
                 }
                 Shutdown();

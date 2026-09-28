@@ -55,3 +55,49 @@ if __name__ == '__main__':
     out = sys.argv[1] if len(sys.argv) > 1 else '.'
     draw([glyph_I, glyph_V]).save(out + '/T_MCDRebornEnchantPlateIV.png')
     draw([glyph_V]).save(out + '/T_MCDRebornEnchantPlateV.png')
+
+
+#--- the small numerals of the upgrade tiers list (level_N_normal_text / _hover_text): flat, no shadow ---
+def draw_small(letters, fill, size=200):
+    top, bottom, slab, stroke = 82, 117, 8, 7
+
+    def small_I():
+        m = set()
+        for y in range(top, bottom + 1):
+            xs = range(0, 21) if (y < top + slab or y > bottom - slab) else range(7, 7 + stroke)
+            m |= {(x, y) for x in xs}
+        return m, 21
+
+    def small_V():
+        m = set(); W = 27
+        for y in range(top, top + slab):
+            m |= {(x, y) for x in range(0, 11)} | {(x, y) for x in range(W - 11, W)}
+        first, last = top + slab, bottom
+        for y in range(first, last + 1):
+            t = (y - first) / (last - first)
+            left = round(2 + (W / 2 - stroke / 2 - 2) * t)
+            m |= {(x, y) for x in range(left, left + stroke)}
+            m |= {(W - 1 - x, y) for x in range(left, left + stroke)}
+        return m, W
+
+    shapes = {'I': small_I, 'V': small_V}
+    parts = [shapes[c]() for c in letters]
+    gap = 7
+    width = sum(w for _, w in parts) + gap * (len(parts) - 1)
+    x0 = (size - width) // 2
+    im = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    for m, w in parts:
+        for x, y in m:
+            im.putpixel((x + x0, y), fill[:3] + ((141,) if y == top else (255,)))
+        x0 += w + gap
+    return im
+
+
+NORMAL, HOVER = (231, 217, 198, 255), (255, 255, 255, 255)
+
+if __name__ == '__main__':
+    import sys
+    out = sys.argv[1] if len(sys.argv) > 1 else '.'
+    for letters, name in (('IV', 'IV'), ('V', 'V')):
+        draw_small(letters, NORMAL).save(out + '/T_MCDRebornEnchantSmall%s.png' % name)
+        draw_small(letters, HOVER).save(out + '/T_MCDRebornEnchantSmall%sHover.png' % name)

@@ -8,9 +8,20 @@ level only knows I-III:
     UMG_EnchantmentSelectedWidget   the enchantment icons under an item: a text from GetLevelNumeral,
                                     which has nothing past III - blank
 
+and the enchantment scroll (UMG_EnchantmentInspectorContents2) says "Max Tier Reached" from III on.
+
 So a widget of ours looks every few frames: a badge at 4 or 5 gets our IV or V picture in its first
 slot, selected, and gets the game's own I back as soon as it shows 1-3 again; an icon at 4 or 5 gets
-"IV" or "V" as its text (the game writes its own again whenever the level changes).
+"IV" or "V" as its text (the game writes its own again whenever the level changes). A scroll whose
+enchantment is at III or IV shows the game's own UPGRADE button again, with our cost on it (dimmed when
+the hero cannot pay); a press on it (its ButtonSurface, as the menu takes the mouse from the player's
+input) rewrites the enchantment through the item's ReplaceEnchantment
+- level + 1, the cost added to its invested points, which the game takes from the hero's points and
+gives back on salvage. Costs as EnchantLevels.costOf in the app: IV 5 (7 powerful), V 8 (10 powerful).
+The scroll's UPGRADE TIERS list builds NumberOfLevels rows (3) from the game's own
+GetLevelEffectDescriptionForEnchantmentType, which computes a level's numbers from per-enchantment
+formulas rather than a table of three; it is set to 5 and the rows rebuilt (it makes them once, when it
+is made, and only ever adds), and the rows' small badges get IV and V as the big one does.
 
     /Game/MCDReborn/UI/EnchantLevels/T_MCDRebornEnchantPlateIV, V   our numerals (enchant_numerals.py)
     /Game/MCDReborn/UI/UMG_MCDRebornEnchantLevels                    the widget
@@ -35,8 +46,14 @@ from build_gems import Graph, typed_variable
 
 from unreal_engine.classes import (
     Actor,
+    Button,
     GameplayStatics,
+    PanelWidget,
     Image,
+    InventoryItem,
+    ItemStashComponent,
+    PlayerCharacter,
+    PlayerController,
     KismetMathLibrary,
     KismetTextLibrary,
     TextBlock,
@@ -59,6 +76,13 @@ PICTURES = os.path.join(HERE, 'enchantlevels')
 PLATE_STUB = '/Game/UI/Inventory/Inspector2/UMG_EnchantmentBigLevelPlate'
 BASE_STUB = '/Game/UI/Inventory/Enchantment2/UMG_EnchantmentWidgetBase'
 SELECTED_STUB = '/Game/UI/Inventory/Enchantment2/UMG_EnchantmentSelectedWidget'
+SCROLL_STUB = '/Game/UI/Inventory/Inspector2/UMG_EnchantmentInspectorContents2'
+SMALL_STUB = '/Game/UI/Inventory/Inspector2/UMG_EnchantmentSmallLevelPlate'
+TIERS_STUB = '/Game/UI/Inventory/Inspector2/UMG_EnchantmentLevelBreakdown'
+TIERS = 5
+BUTTON_STUB = '/Game/UI/Inventory/Inspector/UMG_TextButtonEnchant'
+TEXT_BUTTON_STUB = '/Game/UI/Common/Button/Types/UMG_TextButton'
+COST = {(4, False): 5, (4, True): 7, (5, False): 8, (5, True): 10}     # as EnchantLevels.costOf
 NO1_FOLDER = '/Game/UI/Materials/Inventory2/Enchantment/Inspector2'     # visual_plate_no1, the game's I
 
 EVERY = 5                                  # frames between looks
@@ -122,13 +146,56 @@ def build_stubs():
     def selected(made):
         member(made.WidgetTree, TextBlock, 'EnchantCountLabel')
 
+    def text_button(made):
+        typed_variable(made, 'ButtonSurface', PinCategory='object', PinSubCategoryObject=Button)
+
+    text_button_stub = stub(TEXT_BUTTON_STUB, UserWidget, text_button)
+
+    def button(made):
+        typed_variable(made, 'costText', PinCategory='object', PinSubCategoryObject=TextBlock)
+        typed_variable(made, 'MouseButton', PinCategory='object', PinSubCategoryObject=text_button_stub.GeneratedClass)
+
     plate_stub = stub(PLATE_STUB, UserWidget, plate)
     base_stub = stub(BASE_STUB, UserWidget, base)
     selected_stub = stub(SELECTED_STUB, base_stub.GeneratedClass, selected)
-    return plate_stub.GeneratedClass, base_stub.GeneratedClass, selected_stub.GeneratedClass
+    button_stub = stub(BUTTON_STUB, UserWidget, button)
+
+    def scroll(made):
+        typed_variable(made, 'item', PinCategory='object', PinSubCategoryObject=InventoryItem)
+        ue.blueprint_add_member_variable(made, 'index', 'int', False, '0')
+        typed_variable(made, 'UpgradeButton', PinCategory='object', PinSubCategoryObject=button_stub.GeneratedClass)
+        typed_variable(made, 'UpgradeButtonSwitcher', PinCategory='object', PinSubCategoryObject=WidgetSwitcher)
+        typed_variable(made, 'can_upgrade', PinCategory='object', PinSubCategoryObject=Widget)
+        typed_variable(made, 'UpgradeMaxedPanel', PinCategory='object', PinSubCategoryObject=Widget)
+        typed_variable(made, 'Powerful', PinCategory='object', PinSubCategoryObject=Widget)
+
+    scroll_stub = stub(SCROLL_STUB, UserWidget, scroll)
+
+    def small(made):
+        ue.blueprint_add_member_variable(made, 'Level', 'int', False, '0')
+        for name in ('NormalSwitcher', 'HighlightSwitcher'):
+            typed_variable(made, name, PinCategory='object', PinSubCategoryObject=WidgetSwitcher)
+        for name in ('Normal1', 'Highlight1'):
+            typed_variable(made, name, PinCategory='object', PinSubCategoryObject=Image)
+
+    def tiers(made):
+        ue.blueprint_add_member_variable(made, 'NumberOfLevels', 'int', False, '3')
+        typed_variable(made, 'Levels', PinCategory='object', PinSubCategoryObject=PanelWidget)
+        typed_variable(made, 'LevelWidgets', PinCategory='object', PinSubCategoryObject=UserWidget, ContainerType=1)
+        #The game's own: rows made (NumberOfLevels of them, added to Levels and LevelWidgets), then filled.
+        ue.blueprint_add_function(made, 'RecreateCounterWidgets')
+        ue.blueprint_add_function(made, 'UpdateData')
+
+    small_stub = stub(SMALL_STUB, UserWidget, small)
+    tiers_stub = stub(TIERS_STUB, UserWidget, tiers)
+    return (plate_stub.GeneratedClass, base_stub.GeneratedClass, selected_stub.GeneratedClass,
+            scroll_stub.GeneratedClass, button_stub.GeneratedClass, small_stub.GeneratedClass, tiers_stub.GeneratedClass,
+            text_button_stub.GeneratedClass)
 
 
-def build_widget(plate_class, base_class, selected_class, four, five, one):
+def build_widget(plate_class, base_class, selected_class, scroll_class, button_class, small_class, tiers_class,
+                 text_button_class, pictures):
+    four, five, one = pictures['four'], pictures['five'], pictures['one']
     there = on_disk(WIDGET, 'WidgetBlueprint')
     if there is not None:
         say('widget already there: ' + WIDGET)
@@ -139,12 +206,71 @@ def build_widget(plate_class, base_class, selected_class, four, five, one):
     widget.modify()
     widget.WidgetTree.RootWidget.Visibility = 3            # HitTestInvisible: draws nothing, takes no clicks
     ue.blueprint_add_member_variable(widget, 'Count', 'int', False, '0')
+    for name in ('Held', 'NowHeld'):
+        ue.blueprint_add_member_variable(widget, name, 'bool', False, 'false')
+    #Always empty: an array set needs an array wired in.
+    typed_variable(widget, 'Nothing', PinCategory='object', PinSubCategoryObject=UserWidget, ContainerType=1)
     ue.blueprint_mark_as_structurally_modified(widget)
     ue.compile_blueprint(widget)
 
     g = Graph(widget)
     tick = event(widget, UserWidget, 'Tick', 0, 0)
     g.loose = [(tick, 'then')]
+
+    #--- the enchantment scrolls: what one shows, what buying the next level costs -------------------
+    def each_scroll(body):
+        found = g.run(WidgetBlueprintLibrary.GetAllWidgetsOfClass, TopLevelOnly='false')
+        pin(found, 'WidgetClass').default_object = scroll_class
+        each = g.for_each((found, 'FoundWidgets'))
+        g.then(each, 'Exec', 'Completed')
+        after = list(g.loose)
+        g.loose = [(each, 'LoopBody')]
+        body(g.cast(scroll_class, (each, 'Array Element')))
+        g.loose = after
+
+    def of_scroll(scroll):
+        item = lambda: g.get('item', scroll_class, of=scroll)
+        index = lambda: g.get('index', scroll_class, of=scroll)
+        entry = lambda: g.breaks('EnchantmentData', g.element(
+            (g.breaks('InventoryItemData', g.get('Item', InventoryItem, of=item())), 'Enchantments'), index()))
+        level = lambda: (entry(), 'Level')
+        button = lambda: g.get('UpgradeButton', scroll_class, of=scroll)
+        powerful = lambda: g.call(Widget.IsVisible, self=g.get('Powerful', scroll_class, of=scroll))
+        pick = lambda a, b, first: g.call(KismetMathLibrary.SelectInt, A=a, B=b, bPickA=first)
+        cost = lambda: pick(pick(COST[(4, True)], COST[(4, False)], powerful()), pick(COST[(5, True)], COST[(5, False)], powerful()),
+                            g.math('EqualEqual_IntInt', level(), 3))
+        buyable = lambda: g.both(g.valid(item()), g.math('GreaterEqual_IntInt', index(), 0),
+                                 g.math('GreaterEqual_IntInt', level(), 3), g.math('LessEqual_IntInt', level(), 4))
+        return item, index, entry, level, button, cost, buyable
+
+    def points():
+        hero = g.cast(PlayerCharacter, g.call(UserWidget.GetOwningPlayerPawn))
+        return g.call(ItemStashComponent.AvailableEnchantmentPoints, self=g.get('ItemStashComponent', PlayerCharacter, of=hero))
+
+    #A press of the UPGRADE button of a scroll at III or IV buys the next level, once a press. Every frame.
+    #Its ButtonSurface is asked, not the player's mouse: the open menu takes the mouse from the player.
+    def buy_pass(scroll):
+        item, index, entry, level, button, cost, buyable = of_scroll(scroll)
+        surface = lambda: g.get('ButtonSurface', text_button_class, of=g.get('MouseButton', button_class, of=button()))
+        pressed = lambda: g.both(buyable(), g.call(Button.IsPressed, self=surface()))
+        g.either(pressed(), lambda: g.setter('NowHeld', 'true'), lambda: None)
+        have = points()
+
+        def buy():
+            old = entry()
+            fresh = g.makes('EnchantmentData', TypeID=(old, 'TypeID'), Level=g.math('Add_IntInt', level(), 1),
+                            Category=(old, 'Category'), Source=(old, 'Source'),
+                            InvestedPoints=g.math('Add_IntInt', (old, 'InvestedPoints'), cost()))
+            g.run(InventoryItem.ReplaceEnchantment, self=item(), Index=index(), Enchantment=fresh)
+
+        g.either(g.both(pressed(), g.call(KismetMathLibrary.Not_PreBool, A=g.get('Held')),
+                        g.math('GreaterEqual_IntInt', have, cost())),
+                 buy, lambda: None)
+
+    g.setter('NowHeld', 'false')
+    each_scroll(buy_pass)
+    g.setter('Held', g.get('NowHeld'))
+
     g.setter('Count', g.math('Add_IntInt', g.get('Count'), 1))
     now, later = g.branch(g.math('GreaterEqual_IntInt', g.get('Count'), EVERY))
     g.loose = now
@@ -170,6 +296,72 @@ def build_widget(plate_class, base_class, selected_class, four, five, one):
         g.either(g.math('EqualEqual_IntInt', level(), 4), lambda: picture_on(first(), four), lambda: picture_on(first(), five))
 
     g.either(g.math('GreaterEqual_IntInt', level(), 4), ours, lambda: picture_on(first(), one))
+    g.loose = after
+
+    #The scrolls: at III or IV, the game's UPGRADE button back, with our cost, dimmed when unaffordable.
+    def show_pass(scroll):
+        item, index, entry, level, button, cost, buyable = of_scroll(scroll)
+        have = points()
+
+        def offer():
+            #UpgradeButtonSwitcher's pages: 0 "Max Tier Reached", 1 the button (hidden at max). The button's
+            #page, shown; the Max Tier page is left as it is, for when the game shows it again at V.
+            g.run(WidgetSwitcher.SetActiveWidget, self=g.get('UpgradeButtonSwitcher', scroll_class, of=scroll), Widget=button())
+            g.run(Widget.SetVisibility, self=button(), InVisibility='Visible')
+            g.run(Widget.SetIsEnabled, self=button(), bInIsEnabled='true')
+            g.run(TextBlock.SetText, self=g.get('costText', button_class, of=button()),
+                  InText=g.call(KismetTextLibrary.Conv_IntToText, Value=cost()))
+            g.run(Widget.SetRenderOpacity, self=button(), InOpacity=g.call(
+                KismetMathLibrary.SelectFloat, A=1.0, B=0.45, bPickA=g.math('GreaterEqual_IntInt', have, cost())))
+
+        g.either(buyable(), offer, lambda: g.run(Widget.SetRenderOpacity, self=button(), InOpacity=1.0))
+
+    each_scroll(show_pass)
+
+    #The upgrade tiers lists: five rows, built by the game the next time each fills.
+    found = g.run(WidgetBlueprintLibrary.GetAllWidgetsOfClass, TopLevelOnly='false')
+    pin(found, 'WidgetClass').default_object = tiers_class
+    each = g.for_each((found, 'FoundWidgets'))
+    g.then(each, 'Exec', 'Completed')
+    after = list(g.loose)
+    g.loose = [(each, 'LoopBody')]
+    tiers = g.cast(tiers_class, (each, 'Array Element'))
+    remake = ue.find_object(tiers_class.get_path_name() + ':RecreateCounterWidgets')
+    refill = ue.find_object(tiers_class.get_path_name() + ':UpdateData')
+    if remake is None or refill is None:
+        raise Exception('the tiers stub has no RecreateCounterWidgets / UpdateData')
+
+    def rebuild():
+        g.setter('NumberOfLevels', TIERS, owner=tiers_class, of=tiers)
+        g.run(PanelWidget.ClearChildren, self=g.get('Levels', tiers_class, of=tiers))
+        g.setter('LevelWidgets', g.get('Nothing'), owner=tiers_class, of=tiers)
+        g.run(remake, self=tiers)
+        g.run(refill, self=tiers)
+
+    g.either(g.math('NotEqual_IntInt', g.get('NumberOfLevels', tiers_class, of=tiers), TIERS), rebuild, lambda: None)
+    g.loose = after
+
+    #Their rows' small badges: IV and V as the big badge has them, the game's I back below IV.
+    found = g.run(WidgetBlueprintLibrary.GetAllWidgetsOfClass, TopLevelOnly='false')
+    pin(found, 'WidgetClass').default_object = small_class
+    each = g.for_each((found, 'FoundWidgets'))
+    g.then(each, 'Exec', 'Completed')
+    after = list(g.loose)
+    g.loose = [(each, 'LoopBody')]
+    badge = g.cast(small_class, (each, 'Array Element'))
+    small_level = lambda: g.get('Level', small_class, of=badge)
+    normal = lambda: g.get('Normal1', small_class, of=badge)
+    hover = lambda: g.get('Highlight1', small_class, of=badge)
+
+    def small_ours():
+        for switcher in ('NormalSwitcher', 'HighlightSwitcher'):
+            g.run(WidgetSwitcher.SetActiveWidgetIndex, self=g.get(switcher, small_class, of=badge), Index=0)
+        g.either(g.math('EqualEqual_IntInt', small_level(), 4),
+                 lambda: (picture_on(normal(), pictures['small_four']), picture_on(hover(), pictures['small_four_hover'])),
+                 lambda: (picture_on(normal(), pictures['small_five']), picture_on(hover(), pictures['small_five_hover'])))
+
+    g.either(g.math('GreaterEqual_IntInt', small_level(), 4), small_ours,
+             lambda: (picture_on(normal(), pictures['small_one']), picture_on(hover(), pictures['small_one_hover'])))
     g.loose = after
 
     #The icons under an item.
@@ -241,11 +433,21 @@ def build_level(path, actor):
 
 
 def main():
-    four = texture(NUMERALS, 'T_MCDRebornEnchantPlateIV')
-    five = texture(NUMERALS, 'T_MCDRebornEnchantPlateV')
-    one = texture(NO1_FOLDER, 'visual_plate_no1')           # stand-in for the game's; never ships
-    plate_class, base_class, selected_class = build_stubs()
-    widget = build_widget(plate_class, base_class, selected_class, four, five, one)
+    pictures = {
+        'four': texture(NUMERALS, 'T_MCDRebornEnchantPlateIV'),
+        'five': texture(NUMERALS, 'T_MCDRebornEnchantPlateV'),
+        'small_four': texture(NUMERALS, 'T_MCDRebornEnchantSmallIV'),
+        'small_four_hover': texture(NUMERALS, 'T_MCDRebornEnchantSmallIVHover'),
+        'small_five': texture(NUMERALS, 'T_MCDRebornEnchantSmallV'),
+        'small_five_hover': texture(NUMERALS, 'T_MCDRebornEnchantSmallVHover'),
+        #Stand-ins for the game's own I's, which a badge gets back below IV. Never shipped.
+        'one': texture(NO1_FOLDER, 'visual_plate_no1'),
+        'small_one': texture(NO1_FOLDER, 'level_1_normal_text'),
+        'small_one_hover': texture(NO1_FOLDER, 'level_1_hover_text'),
+    }
+    plate_class, base_class, selected_class, scroll_class, button_class, small_class, tiers_class, text_button_class = build_stubs()
+    widget = build_widget(plate_class, base_class, selected_class, scroll_class, button_class, small_class, tiers_class,
+                          text_button_class, pictures)
     actor = build_actor(widget)
     for path in LEVELS:
         build_level(path, actor)
