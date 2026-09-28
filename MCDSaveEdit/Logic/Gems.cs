@@ -160,7 +160,7 @@ namespace MCDSaveEdit.Logic
         /// The game's own line for a property, "{0}" and all, so the number the game fills in stays
         /// where the game put it. Before the game's strings are loaded, a plain English one.
         /// </summary>
-        private static string describe(string source)
+        internal static string describe(string source)
         {
             var said = R.armorPropertyDescription(source);
             if (!string.IsNullOrWhiteSpace(said) && said != source && said != source + "_description") { return said; }

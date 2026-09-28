@@ -4610,4 +4610,26 @@ Yes brings back custom items, gems, talents and mastery exactly as they were, bu
     <value>Enchantment levels IV and V removed.</value>
     <comment>Switch turned off</comment>
   </data>
+  <data name="MYTHIC_ON" xml:space="preserve">
+    <value>Mythic items</value>
+    <comment>Game modes switch</comment>
+  </data>
+  <data name="MYTHIC_WHY" xml:space="preserve">
+    <value>Awaken any melee weapon, bow or armour at the Mythic Forge in the Camp for {0} emeralds and {1} gold: it gains a red Mythic line (+30% melee or ranged damage, or +20% damage reduction on armour), a red frame and a MYTHIC tag.</value>
+    <comment>Under the Mythic switch; {0} emeralds, {1} gold</comment>
+  </data>
+  <data name="MYTHIC_OFF_WARN" xml:space="preserve">
+    <value>Turn Mythic items off?
+
+The game forgets lines it does not know: every Mythic item loses its Mythic line (and the emeralds and gold paid for it) the next time a character is loaded.</value>
+    <comment>Confirm turning Mythic items off</comment>
+  </data>
+  <data name="MYTHIC_DONE" xml:space="preserve">
+    <value>Mythic items installed: the Mythic Forge stands in the Camp.</value>
+    <comment>Switch turned on</comment>
+  </data>
+  <data name="MYTHIC_REMOVED" xml:space="preserve">
+    <value>Mythic items removed.</value>
+    <comment>Switch turned off</comment>
+  </data>
 </root>

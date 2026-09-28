@@ -1348,6 +1348,11 @@ def build_tile_stub():
     put(stub.WidgetTree.RootWidget, padder, 0.0, 0.0, 100.0, 100.0)
     typed_variable(stub, 'InventoryItemSlot', PinCategory='object', PinSubCategoryObject=InventoryItemSlot)
     ue.blueprint_add_member_variable(stub, 'Hovered', 'bool', False, 'false')
+    #Its rarity frame (Mythic items redraw it): an inventory tile's border and corner glow, a worn slot's
+    #colour, and the game's own redraw of them.
+    #(Those three are not variables of the game's tile - build_mythic walks to them from SlotDefault, which is.)
+    typed_variable(stub, 'SlotDefault', PinCategory='object', PinSubCategoryObject=PanelWidget)
+    ue.blueprint_add_function(stub, 'UpdateFrameTextures')
     ue.blueprint_mark_as_structurally_modified(stub)
     ue.compile_blueprint(stub)
     keep(stub)

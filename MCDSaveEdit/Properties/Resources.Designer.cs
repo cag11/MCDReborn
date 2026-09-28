@@ -7897,6 +7897,36 @@ namespace MCDSaveEdit.Properties {
             }
         }
         
+        public static string MYTHIC_ON {
+            get {
+                return ResourceManager.GetString("MYTHIC_ON", resourceCulture);
+            }
+        }
+        
+        public static string MYTHIC_WHY {
+            get {
+                return ResourceManager.GetString("MYTHIC_WHY", resourceCulture);
+            }
+        }
+        
+        public static string MYTHIC_OFF_WARN {
+            get {
+                return ResourceManager.GetString("MYTHIC_OFF_WARN", resourceCulture);
+            }
+        }
+        
+        public static string MYTHIC_DONE {
+            get {
+                return ResourceManager.GetString("MYTHIC_DONE", resourceCulture);
+            }
+        }
+        
+        public static string MYTHIC_REMOVED {
+            get {
+                return ResourceManager.GetString("MYTHIC_REMOVED", resourceCulture);
+            }
+        }
+        
         public static string MODS_GAME_RUNNING {
             get {
                 return ResourceManager.GetString("MODS_GAME_RUNNING", resourceCulture);

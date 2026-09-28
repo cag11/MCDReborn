@@ -10753,8 +10753,17 @@ namespace MCDSaveEdit
                             here = o < 0 ? 0 : ptr(here + o);
                         }
                         var own = parts.Length > 2 ? reflect.valueOf(at, "Level") : null;
+                        string shown(long obj, string v)
+                        {
+                            var said = reflect.valueOf(obj, v);
+                            if (said == null || !said.Contains("StructProperty")) { return said ?? ""; }
+                            var o = offsetOf(obj, v);
+                            var b = o < 0 ? null : game.read(new IntPtr(obj + o), 16);
+                            return b == null ? said : string.Join(" ", Enumerable.Range(0, 4).Select(k => BitConverter.ToSingle(b, k * 4).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)))
+                                + " [bytes " + BitConverter.ToString(b, 0, 8) + "]";
+                        }
                         Console.WriteLine($"[path] {reflect.nameOf(at)} {at:X} (Level={own}) -> {parts[1]} = {(here == 0 ? "none" : reflect.nameOf(here) + " (" + reflect.kindOf(here) + ") " + here.ToString("X"))}: "
-                            + (here == 0 ? "" : string.Join(", ", parts.Skip(2).Select(v => $"{v}={reflect.valueOf(here, v)}"))));
+                            + (here == 0 ? "" : string.Join(", ", parts.Skip(2).Select(v => $"{v}={shown(here, v)}"))));
                     }
                 }
                 Shutdown();
@@ -10784,10 +10793,18 @@ namespace MCDSaveEdit
                         return -1;
                     }
                     long field(long obj, string name) { var o = obj == 0 ? -1 : offsetOf(obj, name); return o < 0 ? 0 : ptr(obj + o); }
+                    var brushStruct = reflect.find("SlateBrush", "ScriptStruct");
+                    var resourceAt = brushStruct == 0 ? -1 : reflect.fieldsOf(brushStruct).FirstOrDefault(f => f.Name == "ResourceObject")?.Offset ?? -1;
                     void walk(long widget, int depth)
                     {
                         if (widget == 0 || depth > 30) { return; }
                         var extra = reflect.kindOf(widget)?.Contains("Switcher") == true ? $" page {reflect.valueOf(widget, "ActiveWidgetIndex")}" : "";
+                        if (reflect.kindOf(widget)?.EndsWith("Image") == true && resourceAt >= 0)
+                        {
+                            var brushAt = offsetOf(widget, "Brush");
+                            var drawn = brushAt < 0 ? 0 : ptr(widget + brushAt + resourceAt);
+                            extra += $" draws {reflect.nameOf(drawn)} ({reflect.kindOf(drawn)})";
+                        }
                         Console.WriteLine($"[tree] {new string(' ', depth * 2)}{reflect.nameOf(widget)} ({reflect.kindOf(widget)}) vis {reflect.valueOf(widget, "Visibility")}{extra}");
                         var slotsAt = offsetOf(widget, "Slots");
                         if (slotsAt >= 0)
@@ -10995,6 +11012,48 @@ namespace MCDSaveEdit
                     using var sealedUp = await Logic.FileProcessHelper.Encrypt(json);
                     using (var output = File.Create(saveFile)) { await sealedUp!.CopyToAsync(output); }
                     Console.WriteLine("[ench] written");
+                }).GetAwaiter().GetResult();
+                Shutdown();
+                return;
+            }
+
+            //PROBE_UNMYTHIC=<save .dat>[;<item type>] - every Mythic line (MCDR_Mythic*) taken off the items (or
+            //only off items of that type, e.g. Emberjade's id), nothing refunded. Backed up first. WRITES.
+            var probeUnmythic = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_UNMYTHIC=", StringComparison.Ordinal));
+            if (probeUnmythic != null)
+            {
+                var parts = probeUnmythic["PROBE_UNMYTHIC=".Length..].Trim('"').Split(';');
+                var saveFile = parts[0];
+                if (Logic.GameRunning.isUp) { Console.WriteLine("[unmythic] the game is running; nothing written"); Shutdown(); return; }
+                Task.Run(async () =>
+                {
+                    MCDSaveEdit.Save.Models.Profiles.ProfileSaveFile? save;
+                    using (var file = File.OpenRead(saveFile))
+                    {
+                        DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file);
+                        using var plain = await Logic.FileProcessHelper.Decrypt(file);
+                        save = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Read(plain!);
+                    }
+                    if (save == null) { Console.WriteLine("[unmythic] the save could not be read; nothing written"); return; }
+                    var taken = 0;
+                    var items = (save.Items ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Item>()).Concat(save.StorageChestItems ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Item>());
+                    foreach (var item in items)
+                    {
+                        var lines = item.Armorproperties ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Armorproperty>();
+                        var mythic = lines.Where(l => l.Id != null && l.Id.StartsWith("MCDR_Mythic", StringComparison.Ordinal)).ToList();
+                        if (mythic.Count == 0) { continue; }
+                        if (parts.Length > 1 && item.Type != parts[1]) { Console.WriteLine($"[unmythic] {item.Type} is Mythic; left as it is"); continue; }
+                        item.Armorproperties = lines.Except(mythic).ToArray();
+                        Console.WriteLine($"[unmythic] {item.Type}{(item.EquipmentSlot != null ? " (" + item.EquipmentSlot + ")" : "")}: {string.Join(", ", mythic.Select(m => m.Id))} taken off");
+                        taken += mythic.Count;
+                    }
+                    if (taken == 0) { Console.WriteLine("[unmythic] no Mythic lines; nothing written"); return; }
+                    Console.WriteLine($"[unmythic] backed up to {Path.GetFileName(Logic.SaveBackup.backup(saveFile))}");
+                    using var json = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Write(save);
+                    json.Seek(0, SeekOrigin.Begin);
+                    using var sealedUp = await Logic.FileProcessHelper.Encrypt(json);
+                    using (var output = File.Create(saveFile)) { await sealedUp!.CopyToAsync(output); }
+                    Console.WriteLine($"[unmythic] written");
                 }).GetAwaiter().GetResult();
                 Shutdown();
                 return;
