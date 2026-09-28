@@ -59,6 +59,8 @@ from unreal_engine.classes import (
     K2Node_MakeArray,
     K2Node_SpawnActorFromClass,
     WidgetComponent,
+    StaticMeshComponent,
+    PrimitiveComponent,
     WrapBox,
     K2Node_Self,
     EdGraph,
@@ -1880,11 +1882,14 @@ def build_strip(pictures, path, holders, chain, hovered_of):
 
 
 def build_stall(pictures, actor_path=STALL_ACTOR, level_path=STALL_LEVEL, looks_path=STALL_LOOKS,
-                sign_path=STALL_SIGN, words='GEM MERCHANT', at=STALL_WHERE, facing=STALL_FACING, sign_height=330.0):
+                sign_path=STALL_SIGN, words='GEM MERCHANT', at=STALL_WHERE, facing=STALL_FACING, sign_height=330.0,
+                material=None):
     """
     The Gem Merchant's booth: an actor that draws the game's blue market booth where it stands, with
     a GEM MERCHANT sign over it the way the Camp names its own, and a Lobby level holding one.
     Any other prop of the game's, with words of its own over it, is the same thing with other arguments.
+    `material`, when given, goes on the prop's first mesh once it is spawned - the game's prop in
+    colours of our own.
     """
     there = on_disk(actor_path, 'Blueprint')
     if there is None:
@@ -1904,6 +1909,16 @@ def build_stall(pictures, actor_path=STALL_ACTOR, level_path=STALL_LEVEL, looks_
         where = page.graph_add_node_call_function(Actor.GetTransform, 200, 200)
         link(where, 'ReturnValue', spawn, 'SpawnTransform')
         link(begin, 'then', spawn, 'execute')
+        if material is not None:
+            g = Graph(actor)
+            g.x = 900
+            g.loose = [(spawn, 'then')]
+            found = g.call(Actor.GetComponentByClass, self=(spawn, 'ReturnValue'))
+            found[0].node_find_pin('ComponentClass').default_object = StaticMeshComponent
+            mcd_ui.reconstruct(found[0])
+            mesh = g.cast(StaticMeshComponent, found)
+            dressed = g.run(PrimitiveComponent.SetMaterial, self=mesh, ElementIndex=0)
+            dressed.node_find_pin('Material').default_object = material
 
         #The sign: screen space, so it faces the camera at a constant size - build_sign.py's way.
         made = ue.add_component_to_blueprint(actor, WidgetComponent, 'Sign')

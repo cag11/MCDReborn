@@ -10515,6 +10515,25 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_SAVEPNG=<game texture path>;<file> - one of the game's textures as a PNG, and its size. Read-only.
+            var probePng = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_SAVEPNG=", StringComparison.Ordinal));
+            if (probePng != null)
+            {
+                var parts = probePng["PROBE_SAVEPNG=".Length..].Trim('"').Split(';');
+                var picture = ImageResolver.instance.imageSource(parts[0]);
+                if (picture == null) { Console.WriteLine("[png] not found"); }
+                else
+                {
+                    Console.WriteLine($"[png] {picture.PixelWidth}x{picture.PixelHeight} {picture.Format}");
+                    var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+                    encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(picture));
+                    using var file = System.IO.File.Create(parts[1]);
+                    encoder.Save(file);
+                }
+                Shutdown();
+                return;
+            }
+
             //PROBE_EXPORTCLASSES=<pak path> - every export of a package with its class, named through the
             //import table (a widget blueprint's widgets and what kind each is). Read-only.
             var probeClasses = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_EXPORTCLASSES=", StringComparison.Ordinal));

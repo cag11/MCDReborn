@@ -62,9 +62,10 @@ from unreal_engine.classes import (
     WidgetBlueprintFactory,
     WidgetBlueprintLibrary,
     WorldFactory,
+    MaterialInstanceConstantFactoryNew,
     K2Node_Self,
 )
-from unreal_engine.structs import LinearColor, Vector2D, WidgetTransform
+from unreal_engine.structs import LinearColor, Vector2D, WidgetTransform, TextureParameterValue, MaterialParameterInfo
 
 WIDGET = '/Game/MCDReborn/UI/UMG_MCDRebornMastery'
 CHIP = '/Game/MCDReborn/UI/UMG_MCDRebornMasteryChip'
@@ -75,6 +76,24 @@ CHIP = '/Game/MCDReborn/UI/UMG_MCDRebornMasteryChip'
 INFO_STUB = '/Game/UI/Inventory/Inspector2/UMG_InventoryItemInspectInfo'
 BADGE = '/Game/MCDReborn/UI/UMG_MCDRebornMasteryBadge'
 BADGE_EVERY = 15                         # frames between a badge's looks at its item
+
+#The MASTERY prop in the Camp: Highblock Halls' armour statue, in gold, under a Camp sign; a click near it opens the
+#screen. Where it stands is written into its level again on install (Mastery.PROP).
+PROP_ACTOR = '/Game/MCDReborn/Actors/BP_MCDRebornMasteryProp'
+PROP_LEVEL = '/Game/MCDReborn/Lobby/MasteryProp'
+PROP_LOOKS = '/Game/Decor/Prefabs/ArmorStatue_HH/BP_ArmorStatue_HH'
+#The statue in gold: a material of our own whose parent is the statue's own (so the game's shaders,
+#blend mode and all, stay as they are) with its one texture swapped for ours. Ours ships as noise
+#and the app paints it on install with the game's own texture, gilded (Mastery.paintStatue).
+STATUE_PARENT = '/Game/Decor/Prefabs/ArmorStatue_HH/M_ArmorStatue_HH'     # stand-in; never ships
+STATUE_MATERIAL = '/Game/MCDReborn/Props/MI_MCDRebornMasteryStatue'
+STATUE_TEXTURE_NAME = 'T_MCDRebornMasteryStatue'
+STATUE_FOLDER = '/Game/MCDReborn/Props'
+STATUE_SLOT = '01 Base Texture'
+PROP_SIGN = '/Game/MCDReborn/UI/UMG_MCDRebornSign_Mastery'
+PROP_WHERE = (19045.0, 9542.0, 11402.0)             # where the user stood
+PROP_FACING = 180.0
+PROP_REACH = 250.0
 CHIP_GAP = 14.0
 ACTOR = '/Game/MCDReborn/Actors/BP_MCDRebornMastery'
 LEVELS = ['/Game/MCDReborn/Lobby/Mastery', '/Game/MCDReborn/Ingame/Mastery']
@@ -162,6 +181,45 @@ def import_pictures():
             keep(there)
         found.append(there)
     return found
+
+
+def build_statue_material():
+    """The armour statue's material with our texture in its one slot."""
+    there = on_disk(STATUE_MATERIAL, 'MaterialInstanceConstant')
+    if there is not None:
+        say('statue material already there: ' + STATUE_MATERIAL)
+        return there
+    path = '%s/%s' % (STATUE_FOLDER, STATUE_TEXTURE_NAME)
+    try:
+        texture = ue.load_object(ue.find_class('Texture2D'), '%s.%s' % (path, STATUE_TEXTURE_NAME))
+    except Exception:
+        texture = None
+    if texture is None:
+        made = ue.import_asset(os.path.join(PICTURES, STATUE_TEXTURE_NAME + '.png'), STATUE_FOLDER)
+        texture = made[0] if isinstance(made, list) else made
+        #As the game's: 64x64, drawn blocky. Kept whole and uncompressed, so the app can find its
+        #pixels and paint over them.
+        for field, value in (('Filter', 0), ('MipGenSettings', 13), ('CompressionSettings', 7), ('NeverStream', True)):
+            try:
+                setattr(texture, field, value)
+            except Exception as problem:
+                say('  statue texture %s not set: %s' % (field, problem))
+        keep(texture)
+
+    parent = on_disk(STATUE_PARENT, 'MaterialInstanceConstant')
+    if parent is None:
+        parent = MaterialInstanceConstantFactoryNew().factory_create_new(STATUE_PARENT)
+        keep(parent)
+    material = MaterialInstanceConstantFactoryNew().factory_create_new(STATUE_MATERIAL)
+    material.Parent = parent
+    material.TextureParameterValues = [TextureParameterValue(
+        ParameterInfo=MaterialParameterInfo(Name=STATUE_SLOT, Association=2, Index=-1), ParameterValue=texture)]
+    got = material.TextureParameterValues
+    say('statue material: parent %s, %d texture(s): %s' % (material.Parent.get_path_name(), len(got),
+        ', '.join('%s=%s' % (v.ParameterInfo.Name, v.ParameterValue.get_path_name() if v.ParameterValue else None) for v in got)))
+    keep(material)
+    say('statue material built: ' + STATUE_MATERIAL)
+    return material
 
 
 def stars_variable(widget, stars):
@@ -439,6 +497,9 @@ def build_tree(widget, stars):
     close = mcd_ui.button(wt, 'Close', 'CLOSE', body_face, 18, typeface=BODY_FACE, centred=True)
     close.ToolTipText = 'Close (J or Esc).'
     put(panel, close, PANEL_W - 190.0, 26.0, 150.0, 42.0)
+    #The hint beside the title, not in the footer: the page count there grows and ran into it.
+    put(panel, label(wt, 'Hint', '+2% damage a level, a star every five levels.',
+                     INK, body_face, 17, typeface=BODY_FACE), 500.0, 36.0, PANEL_W - 190.0 - 500.0 - 20.0, 28.0)
     for text, x in (('Level', 40.0), ('Weapon type', 150.0), ('Progress', 700.0), ('Bonus', 1060.0)):
         put(panel, label(wt, 'Head' + text, text, DIM, body_face, 16, typeface=BODY_FACE), x, 92.0, 300.0, 24.0)
 
@@ -468,9 +529,7 @@ def build_tree(widget, stars):
     for name, caption, x in (('Prev', '<', 40.0), ('Next', '>', 170.0)):
         button = mcd_ui.button(wt, name, caption, body_face, 20, typeface=BODY_FACE, centred=True)
         put(panel, button, x, foot, 110.0, 44.0)
-    put(panel, label(wt, 'PageText', 'Page 1 of 1', DIM, body_face, 18, variable=True, typeface=BODY_FACE), 300.0, foot + 10.0, 300.0, 28.0)
-    put(panel, label(wt, 'Hint', 'Mastery belongs to you, not the weapon: +2% damage a level, and every five levels a star.',
-                     DIM, body_face, 15, typeface=BODY_FACE), 560.0, foot + 12.0, PANEL_W - 600.0, 26.0)
+    put(panel, label(wt, 'PageText', 'Page 1 of 1', DIM, body_face, 18, variable=True, typeface=BODY_FACE), 300.0, foot + 10.0, 700.0, 28.0)
 
 
 def variables(widget, stars):
@@ -479,7 +538,8 @@ def variables(widget, stars):
                                 ('Tier', 'int', '0'), ('Has', 'bool', 'false'), ('Looked', 'bool', 'false'),
                                 ('Equipped', 'bool', 'false'), ('Key', 'string', ''), ('Seen', 'string', ''),
                                 ('Label', 'string', ''), ('Rem', 'int', '0'), ('Scan3', 'int', '1000'),
-                                ('EquippedKeys', 'string', ''), ('Secs', 'int', '0'), ('Made', 'bool', 'false')):
+                                ('EquippedKeys', 'string', ''), ('Secs', 'int', '0'), ('Made', 'bool', 'false'),
+                                ('PropScan', 'int', '0'), ('PropHere', 'bool', 'false')):
         ue.blueprint_add_member_variable(widget, name, kind, False, default)
     level_variables(widget)
     typed_variable(widget, 'Tiers', '(%s)' % ','.join('"%s"' % w for w in TIER_WORDS), PinCategory='string', ContainerType=1)
@@ -488,6 +548,7 @@ def variables(widget, stars):
     listed = lambda values: '(%s)' % ','.join('"%s"' % v for v in values)
     typed_variable(widget, 'Kinds', listed(kinds), PinCategory='string', ContainerType=1)
     typed_variable(widget, 'Balances', PinCategory='int', ContainerType=1)
+    typed_variable(widget, 'PropAt', PinCategory='struct', PinSubCategoryObject=ue.find_struct('Vector'))
     typed_variable(widget, 'FamilyKeys', listed(keys), PinCategory='string', ContainerType=1)
     typed_variable(widget, 'FamilyNames', listed(names), PinCategory='string', ContainerType=1)
     typed_variable(widget, 'CustomIds', listed(custom_ids), PinCategory='string', ContainerType=1)
@@ -499,7 +560,7 @@ def variables(widget, stars):
     ue.compile_blueprint(widget)
 
 
-def build_graph(widget, info_class, bullet_class, chip_class, tile_class, badge_class):
+def build_graph(widget, info_class, bullet_class, chip_class, tile_class, badge_class, prop_class):
     g = Graph(widget)
     family_count, custom_count = COUNTS['families']
     tick = event(widget, UserWidget, 'Tick', 0, 0)
@@ -637,6 +698,35 @@ def build_graph(widget, info_class, bullet_class, chip_class, tile_class, badge_
 
     g.either(g.math('GreaterEqual_IntInt', g.get('Scan3'), 60), make_balances, lambda: None)
 
+    #--- the MASTERY prop: whether it is here (the Camp) and where; a click near it opens the screen ---
+    g.section()
+    g.setter('PropScan', g.math('Add_IntInt', g.get('PropScan'), 1))
+
+    def prop_scan():
+        g.setter('PropScan', 0)
+        g.setter('PropHere', 'false')
+        props = g.run(GameplayStatics.GetAllActorsOfClass)
+        pin(props, 'ActorClass').default_object = prop_class
+        loop = g.for_each((props, 'OutActors'))
+        g.then(loop, 'Exec', 'Completed')
+        after = list(g.loose)
+        g.loose = [(loop, 'LoopBody')]
+        g.setter('PropAt', g.call(Actor.K2_GetActorLocation, self=(loop, 'Array Element')))
+        g.setter('PropHere', 'true')
+        g.loose = after
+
+    g.either(g.math('GreaterEqual_IntInt', g.get('PropScan'), 10), prop_scan, lambda: None)
+
+    def maybe_open():
+        under = g.call(PlayerController.GetHitResultUnderCursorByChannel, self=player(),
+                       TraceChannel='TraceTypeQuery1', bTraceComplex='false')
+        hit = g.call(GameplayStatics.BreakHitResult, out='Location', Hit=(under[0], 'HitResult'))
+        near = g.math('Less_FloatFloat', g.call(KismetMathLibrary.Vector_Distance, V1=hit, V2=g.get('PropAt')), PROP_REACH)
+        g.either(g.both(key('LeftMouseButton'), under, near),
+                 lambda: (g.setter('Open', 'true'), g.setter('Fresh', 0), g.setter('Page', 0)), lambda: None)
+
+    g.either(g.both(g.get('PropHere'), g.call(KismetMathLibrary.Not_PreBool, A=g.get('Open'))), maybe_open, lambda: None)
+
     #--- J opens and closes, Esc and the button close -------------------------------------------------
     g.section()
     g.either(key(KEY), lambda: (g.setter('Open', g.call(KismetMathLibrary.Not_PreBool, A=g.get('Open'))),
@@ -765,7 +855,7 @@ def build_graph(widget, info_class, bullet_class, chip_class, tile_class, badge_
     say('mastery graph built')
 
 
-def build_widget(stars, info_class, bullet_class, chip_class, tile_class, badge_class):
+def build_widget(stars, info_class, bullet_class, chip_class, tile_class, badge_class, prop_class):
     there = on_disk(WIDGET, 'WidgetBlueprint')
     if there is not None:
         say('mastery already there: ' + WIDGET)
@@ -775,7 +865,7 @@ def build_widget(stars, info_class, bullet_class, chip_class, tile_class, badge_
     widget = factory.factory_create_new(WIDGET)
     build_tree(widget, stars)
     variables(widget, stars)
-    build_graph(widget, info_class, bullet_class, chip_class, tile_class, badge_class)
+    build_graph(widget, info_class, bullet_class, chip_class, tile_class, badge_class, prop_class)
     keep(widget)
     say('mastery built: ' + WIDGET)
     return widget
@@ -832,7 +922,11 @@ def main():
     chip = build_chip(stars, info_class)
     tile_class = build_gems.build_tile_stub().GeneratedClass
     badge = build_badge(stars, tile_class)
-    widget = build_widget(stars, info_class, bullet_class, chip.GeneratedClass, tile_class, badge.GeneratedClass)
+    prop = build_gems.build_stall(None, actor_path=PROP_ACTOR, level_path=PROP_LEVEL, looks_path=PROP_LOOKS,
+                                  sign_path=PROP_SIGN, words='MASTERY', at=PROP_WHERE, facing=PROP_FACING,
+                                  sign_height=380.0, material=build_statue_material())
+    widget = build_widget(stars, info_class, bullet_class, chip.GeneratedClass, tile_class, badge.GeneratedClass,
+                          prop.GeneratedClass)
     actor = build_actor(widget)
     for path in LEVELS:
         build_level(path, actor)

@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 #nullable enable
 
 namespace MCDSaveEdit.Logic
@@ -208,9 +210,73 @@ namespace MCDSaveEdit.Logic
                 return "Weapon mastery works, but this build carries no mastery screens.";
             }
 
+            placeProp(entries);
+            paintStatue(entries);
             if (!Loader.isInstalled) { Loader.installBuiltIn(); }
             CustomSkins.writeModPak(PANEL_PREFIX, entries);
-            return "Weapon mastery installed: press J in the Camp or a mission for every weapon's mastery.";
+            return "Weapon mastery installed: press J in the Camp or a mission, or click the MASTERY statue in the Camp, for every weapon's mastery.";
+        }
+
+        /// <summary>
+        /// Where the MASTERY statue stands in the Camp (Unreal centimetres) and which way it
+        /// faces (yaw): where the user stood. Written into its cooked level on install, as the TALENTS
+        /// case is, so moving it needs no cook.
+        /// </summary>
+        public static readonly (float x, float y, float z, float yaw) PROP = (19045f, 9542f, 11402f, 180f);
+
+        /// <summary>The game's texture the MASTERY statue is gilded from.</summary>
+        private const string STATUE_TEXTURE = "/Dungeons/Content/Decor/Prefabs/ArmorStatue_HH/T_ArmorStatue_HH";
+
+        /// <summary>
+        /// The statue's gold: its texture ships as noise (Props/T_MCDRebornMasteryStatue) and is painted
+        /// here with the game's own iron armour texture, each pixel's brightness laid on a gold ramp -
+        /// the stars' colour. Alpha kept, so the statue's cut-outs stay cut out.
+        /// </summary>
+        private static void paintStatue(List<PakWriter.Entry> entries)
+        {
+            var head = entries.FindIndex(e => e.Path.EndsWith("/Props/T_MCDRebornMasteryStatue.uasset", StringComparison.OrdinalIgnoreCase));
+            var data = entries.FindIndex(e => e.Path.EndsWith("/Props/T_MCDRebornMasteryStatue.uexp", StringComparison.OrdinalIgnoreCase));
+            if (head < 0 || data < 0) { return; }
+            BitmapSource? picture = null;
+            try { picture = ImageResolver.instance.imageSource(STATUE_TEXTURE); }
+            catch (Exception) { }
+            if (picture == null) { Journal.note("mastery: the armour statue's texture was not found; the MASTERY statue is not gilded"); return; }
+            var why = CustomItems.repaint(entries[head].Data, entries[data].Data, null, gilded(picture), out var uexp, out _);
+            if (why != null) { Journal.note($"mastery: the MASTERY statue was not gilded - {why}"); return; }
+            entries[data] = new PakWriter.Entry(entries[data].Path, uexp);
+        }
+
+        private static BitmapSource gilded(BitmapSource picture)
+        {
+            var source = new FormatConvertedBitmap(picture, PixelFormats.Bgra32, null, 0);
+            int width = source.PixelWidth, height = source.PixelHeight, stride = width * 4;
+            var pixels = new byte[stride * height];
+            source.CopyPixels(pixels, stride, 0);
+            //Dark to light: the texture's iron runs from about 30 to 118 in brightness.
+            (double r, double g, double b) dark = (70, 40, 6), light = (255, 222, 110);
+            for (var i = 0; i < pixels.Length; i += 4)
+            {
+                var lum = (0.11 * pixels[i] + 0.59 * pixels[i + 1] + 0.3 * pixels[i + 2] - 28) / 90.0;
+                lum = Math.Clamp(lum, 0, 1);
+                pixels[i] = (byte)(dark.b + (light.b - dark.b) * lum);
+                pixels[i + 1] = (byte)(dark.g + (light.g - dark.g) * lum);
+                pixels[i + 2] = (byte)(dark.r + (light.r - dark.r) * lum);
+            }
+            return BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, pixels, stride);
+        }
+
+        private static void placeProp(List<PakWriter.Entry> entries)
+        {
+            var head = entries.FindIndex(e => e.Path.EndsWith("/Lobby/MasteryProp.umap", StringComparison.OrdinalIgnoreCase));
+            var data = entries.FindIndex(e => e.Path.EndsWith("/Lobby/MasteryProp.uexp", StringComparison.OrdinalIgnoreCase));
+            if (head < 0 || data < 0) { return; }
+            var package = CookedEdit.read(entries[head].Data, entries[data].Data);
+            var moved = CookedEdit.setVector(package, "RelativeLocation", PROP.x, PROP.y, PROP.z);
+            var turned = CookedEdit.setVector(package, "RelativeRotation", 0f, PROP.yaw, 0f);
+            if (moved != 1) { Journal.note($"mastery: the statue's level has {moved} position(s), not one; it stands where it was cooked"); }
+            if (turned != 1) { Journal.note($"mastery: the statue's level has {turned} rotation(s), not one; it faces as it was cooked"); }
+            entries[head] = new PakWriter.Entry(entries[head].Path, package.Header);
+            entries[data] = new PakWriter.Entry(entries[data].Path, package.Data);
         }
     }
 }
