@@ -31,6 +31,7 @@ namespace MCDSaveEdit.UI
         private readonly StackPanel _pluginPart;
         private readonly TextBlock _plugin;
         private readonly TextBlock _version;
+        private readonly StackPanel _multiplayerPart;
 
         private readonly DispatcherTimer _timer;
         private bool _looking;
@@ -68,6 +69,15 @@ namespace MCDSaveEdit.UI
             _pluginPart.Visibility = Visibility.Collapsed;
             row.Children.Add(_pluginPart);
 
+            //Multiplayer mode, in the accent colour: while it is on, nothing installs.
+            var multiplayer = new TextBlock { Text = R.STATUS_MULTIPLAYER };
+            _multiplayerPart = part("", multiplayer, Dock.Left);
+            multiplayer.SetResourceReference(TextBlock.ForegroundProperty, "Brush.Accent");
+            multiplayer.FontWeight = FontWeights.SemiBold;
+            _multiplayerPart.ToolTip = R.STATUS_MULTIPLAYER_WHY;
+            _multiplayerPart.Visibility = Visibility.Collapsed;
+            row.Children.Add(_multiplayerPart);
+
             _version = new TextBlock();
             var version = part("", _version, Dock.Right);
             version.Margin = new Thickness(0);
@@ -97,6 +107,7 @@ namespace MCDSaveEdit.UI
         /// <summary>Looks again now, rather than at the next tick - after an install, say.</summary>
         public void refresh()
         {
+            _multiplayerPart.Visibility = Multiplayer.isOn ? Visibility.Visible : Visibility.Collapsed;
             refreshPlugin();
             if (_looking) { return; }
             _looking = true;

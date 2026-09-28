@@ -291,6 +291,7 @@ namespace MCDSaveEdit.Logic
         /// <summary>A pak this app made goes back beside the game's own, where the app looks for it.</summary>
         private static void takeApp(string temp, string name, string paks, Func<string, bool> replace, ModArchive.Haul haul)
         {
+            Multiplayer.refuseWhileOn();
             var target = Path.Combine(paks, name);
             var existed = File.Exists(target);
             if (existed && !replace(name)) { haul.Skipped.Add(name); return; }

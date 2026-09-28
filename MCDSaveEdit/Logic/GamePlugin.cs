@@ -93,6 +93,7 @@ namespace MCDSaveEdit.Logic
         /// </summary>
         public static string install(IReadOnlyList<Item> items, string? paksFolder = null)
         {
+            Multiplayer.refuseWhileOn();
             var enchantments = CustomEnchantments.forPlugin();
             var mobs = CustomMobs.forPlugin();
             var folder = gameFolder(paksFolder)

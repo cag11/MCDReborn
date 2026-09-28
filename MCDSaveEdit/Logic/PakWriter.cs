@@ -51,6 +51,9 @@ namespace MCDSaveEdit.Logic
         {
             var list = new List<Entry>(entries);
             if (list.Count == 0) { throw new ArgumentException("A pak needs at least one file.", nameof(entries)); }
+            //Every pak this app puts into the game comes through here; none goes in while the game's
+            //mods are put aside for multiplayer.
+            if (Multiplayer.isInGame(outputPath)) { Multiplayer.refuseWhileOn(); }
 
             using var stream = File.Create(outputPath);
             using var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true);

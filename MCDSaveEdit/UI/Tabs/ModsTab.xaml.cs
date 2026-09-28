@@ -79,6 +79,8 @@ namespace MCDSaveEdit.UI
             exportZipButton.Content = R.MODS_EXPORT_ZIP;
             importZipButton.ToolTip = R.MODS_IMPORT_ZIP_WHY;
             exportZipButton.ToolTip = R.MODS_EXPORT_ZIP_WHY;
+            multiplayerOn.Content = R.MULTIPLAYER_ON;
+            multiplayerWhy.Text = R.MULTIPLAYER_WHY;
         }
 
         public void updateUI() => fillInstalled();
@@ -497,6 +499,60 @@ namespace MCDSaveEdit.UI
 
         #endregion
 
+        #region Multiplayer mode
+
+        private bool _filling;
+
+        /// <summary>
+        /// Every mod out of the game, or back in. Both need the game closed: it holds the paks and
+        /// the plugin open, and reads them only when it starts.
+        /// </summary>
+        private void multiplayerOn_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+            var on = multiplayerOn.IsChecked == true;
+            EventLogger.logEvent(on ? "multiplayerOn" : "multiplayerOff");
+            if (gameIsInTheWay()) { fillInstalled(); return; }
+
+            try
+            {
+                if (on)
+                {
+                    if (MessageBox.Show(R.MULTIPLAYER_ASK, R.MODS_TAB, MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                    {
+                        fillInstalled();
+                        return;
+                    }
+                    var result = Multiplayer.turnOn();
+                    var said = string.Format(R.MULTIPLAYER_DONE, result.Paks + result.Mods + result.Plugin, result.Backup ?? R.MULTIPLAYER_NO_SAVES);
+                    statusLabel.Text = said;
+                    Notices.done(said);
+                }
+                else
+                {
+                    var result = Multiplayer.turnOff();
+                    var said = string.Format(R.MULTIPLAYER_OFF_DONE, result.Paks + result.Mods + result.Plugin);
+                    if (result.Backup != null
+                        && MessageBox.Show(string.Format(R.MULTIPLAYER_RESTORE_ASK, result.Backup), R.MODS_TAB,
+                            MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                    {
+                        said += " " + string.Format(R.MULTIPLAYER_RESTORED, Multiplayer.restoreSaves(result.Backup));
+                    }
+                    statusLabel.Text = said;
+                    Notices.done(said);
+                }
+            }
+            catch (Exception problem)
+            {
+                statusLabel.Text = problem.Message;
+                Notices.error(problem.Message);
+            }
+            fillInstalled();
+            (Window.GetWindow(this) as MainWindow)?.appStatus.refresh();
+        }
+
+        #endregion
+
         #region The list
 
         private void fillInstalled()
@@ -504,6 +560,13 @@ namespace MCDSaveEdit.UI
             if (!IsInitialized) { return; }
 
             installedStack.Children.Clear();
+
+            //Multiplayer mode follows the disk: the shelf beside the loaded copy's paks is the mode.
+            var aside = CustomSkins.ready && Multiplayer.isOn;
+            _filling = true;
+            multiplayerOn.IsChecked = aside;
+            _filling = false;
+            multiplayerOn.IsEnabled = CustomSkins.ready;
 
             //These two need the paks folder and nothing else - not a save file, not a piece of
             //gear picked - so they follow the content rather than any selection.
@@ -531,6 +594,17 @@ namespace MCDSaveEdit.UI
             }
 
             if (!CustomSkins.ready) { installedCountLabel.Text = string.Empty; return; }
+
+            //Nothing goes in while the mods are aside: every install would be refused anyway.
+            if (aside)
+            {
+                importButton.IsEnabled = false;
+                importZipButton.IsEnabled = false;
+                installPayloadButton.IsEnabled = false;
+                installPayloadFolderButton.IsEnabled = false;
+                installLoaderButton.IsEnabled = false;
+                modsNoteLabel.Text = string.Format(R.MULTIPLAYER_NOTE, Multiplayer.shelved());
+            }
 
             //Anything this app drives from a checkbox is left out: it is managed there, and a
             //Remove button beside it would just be a second, contradictory control.

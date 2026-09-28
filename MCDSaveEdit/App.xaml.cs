@@ -10515,6 +10515,23 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_MULTIPLAYER=on|off - multiplayer mode turned on or off for the loaded copy (saves are
+            //copied on; never restored here). Writes: moves the mods.
+            var probeMultiplayer = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_MULTIPLAYER=", StringComparison.Ordinal));
+            if (probeMultiplayer != null)
+            {
+                try
+                {
+                    var r = probeMultiplayer.EndsWith("=on", StringComparison.Ordinal) ? Logic.Multiplayer.turnOn() : Logic.Multiplayer.turnOff();
+                    Console.WriteLine($"[mp] paks {r.Paks}, mods {r.Mods}, plugin {r.Plugin}, backup {r.Backup}; on now: {Logic.Multiplayer.isOn}");
+                    if (Logic.Multiplayer.isOn) try { Logic.CustomSkins.writeModPak("MultiplayerProbe", new[] { new Logic.PakWriter.Entry("Dungeons/Content/x.txt", new byte[] { 1 }) }); Console.WriteLine("[mp] write allowed"); }
+                    catch (Exception refused) { Console.WriteLine("[mp] write refused: " + refused.Message); }
+                }
+                catch (Exception problem) { Console.WriteLine("[mp] failed: " + problem.Message); }
+                Shutdown();
+                return;
+            }
+
             //PROBE_SAVEPNG=<game texture path>;<file> - one of the game's textures as a PNG, and its size. Read-only.
             var probePng = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_SAVEPNG=", StringComparison.Ordinal));
             if (probePng != null)

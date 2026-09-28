@@ -4532,4 +4532,66 @@ MCD Reborn reloads with its files. From then on mods, new items, Gems and Talent
 The game no longer knows mastery lines when it is off, and the next time it saves your characters it drops them: every weapon loses its mastery.</value>
     <comment>Question before turning mastery off</comment>
   </data>
+  <data name="MULTIPLAYER_ON" xml:space="preserve">
+    <value>Multiplayer mode (mods off)</value>
+    <comment>Mods tab checkbox</comment>
+  </data>
+  <data name="MULTIPLAYER_WHY" xml:space="preserve">
+    <value>Ticked, every mod is moved out of the game - this app's paks, everything in ~mods and the item plugin - so the game starts as shipped and online play works. Untick to put them all back. Close the game first either way.</value>
+    <comment>Under the multiplayer checkbox</comment>
+  </data>
+  <data name="MULTIPLAYER_ASK" xml:space="preserve">
+    <value>Put every mod aside for online play?
+
+Without its mods the game forgets what it does not know: a character played now loses its custom items, gem sockets, talent points and mastery. Your saves are copied aside first, and unticking offers that copy back. Safest is to play online with a character that has none of these.</value>
+    <comment>Confirm before turning multiplayer mode on</comment>
+  </data>
+  <data name="MULTIPLAYER_DONE" xml:space="preserve">
+    <value>Multiplayer mode is on: {0} mod file(s) put aside. Saves copied to {1}.</value>
+    <comment>Multiplayer mode turned on; {0} files, {1} backup folder</comment>
+  </data>
+  <data name="MULTIPLAYER_NO_SAVES" xml:space="preserve">
+    <value>no saves were found to copy</value>
+    <comment>Stands in for the backup folder when there were no saves</comment>
+  </data>
+  <data name="MULTIPLAYER_OFF_DONE" xml:space="preserve">
+    <value>Mods are back: {0} file(s) returned to the game.</value>
+    <comment>Multiplayer mode turned off</comment>
+  </data>
+  <data name="MULTIPLAYER_RESTORE_ASK" xml:space="preserve">
+    <value>Put back the saves copied when multiplayer mode went on?
+
+{0}
+
+Yes brings back custom items, gems, talents and mastery exactly as they were, but loses everything earned online since. No keeps your saves as they are now (the copy stays where it is).</value>
+    <comment>Offer to restore the save backup; {0} is its folder</comment>
+  </data>
+  <data name="MULTIPLAYER_RESTORED" xml:space="preserve">
+    <value>{0} save file(s) put back.</value>
+    <comment>Saves restored</comment>
+  </data>
+  <data name="MULTIPLAYER_BLOCKS" xml:space="preserve">
+    <value>Multiplayer mode is on, so nothing can be installed into the game. Untick it on the Installed Mods tab first.</value>
+    <comment>Refused install while mods are put aside</comment>
+  </data>
+  <data name="MULTIPLAYER_ALREADY" xml:space="preserve">
+    <value>The mods are already put aside.</value>
+    <comment>Turn on when already on</comment>
+  </data>
+  <data name="MULTIPLAYER_LEFT_BEHIND" xml:space="preserve">
+    <value>Some files could not be put back and are still in {0}. Close anything using them and untick again.</value>
+    <comment>Turn off failed partway</comment>
+  </data>
+  <data name="MULTIPLAYER_NOTE" xml:space="preserve">
+    <value>Multiplayer mode: {0} mod file(s) are put aside and the game starts without them.</value>
+    <comment>Mods tab note while multiplayer mode is on</comment>
+  </data>
+  <data name="STATUS_MULTIPLAYER" xml:space="preserve">
+    <value>Multiplayer mode</value>
+    <comment>Status bar, while mods are put aside</comment>
+  </data>
+  <data name="STATUS_MULTIPLAYER_WHY" xml:space="preserve">
+    <value>Multiplayer mode is on: every mod is out of the game and modding is disabled. Untick Multiplayer mode on the Installed Mods tab to continue modding.</value>
+    <comment>Status bar tooltip for multiplayer mode</comment>
+  </data>
 </root>
