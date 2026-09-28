@@ -661,7 +661,7 @@ namespace MCDSaveEdit.Logic
                 //- a camera, whatever comes next - and pulling it out from under those would
                 //break features the person never touched, silently, in a different part of the
                 //app.
-                if (Payloads.installed().Count == 0)
+                if (!Loader.stillNeeded())
                 {
                     Loader.remove();
                 }

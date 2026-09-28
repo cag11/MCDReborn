@@ -34,6 +34,11 @@
                           Checked="masteryOn_Changed" Unchecked="masteryOn_Changed"/>
                 <TextBlock x:Name="masteryWhy" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
 
+                <!-- Enchantment levels IV and V: the game's badges and icons show them. -->
+                <CheckBox x:Name="enchantLevelsOn" FontWeight="Bold" Margin="0,24,0,0"
+                          Checked="enchantLevelsOn_Changed" Unchecked="enchantLevelsOn_Changed"/>
+                <TextBlock x:Name="enchantLevelsWhy" Foreground="Gray" TextWrapping="Wrap" Margin="0,4,0,0"/>
+
                 <!-- Apocalypse+ 26 to 35: the item plugin opens them when the game starts. -->
                 <CheckBox x:Name="apocalypsePlusOn" FontWeight="Bold" Margin="0,24,0,0"
                           Checked="apocalypsePlusOn_Changed" Unchecked="apocalypsePlusOn_Changed"/>

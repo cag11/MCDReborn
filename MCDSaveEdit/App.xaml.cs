@@ -10722,6 +10722,95 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_PATH=<Class>;<object field>/<object field>...;<var>;<var>... - for every live object of the
+            //class, follows object fields (a/b/c) and prints the variables of what it reaches. Read-only.
+            var probePath = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_PATH=", StringComparison.Ordinal));
+            if (probePath != null)
+            {
+                var parts = probePath["PROBE_PATH=".Length..].Trim('"').Split(';');
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[path] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, step => { })!;
+                    long ptr(long at) { var b = game.read(new IntPtr(at), 8); return b == null ? 0 : BitConverter.ToInt64(b, 0); }
+                    int offsetOf(long obj, string field)
+                    {
+                        for (var k = ptr(obj + 0x10); k != 0; k = ptr(k + 0x40))
+                        {
+                            foreach (var f in reflect.fieldsOf(k)) { if (f.Name == field) { return f.Offset; } }
+                        }
+                        return -1;
+                    }
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var at = reflect.objectAt(i);
+                        if (at == 0 || reflect.kindOf(at) != parts[0] || reflect.nameOf(at)?.StartsWith("Default__") == true) { continue; }
+                        var here = at;
+                        foreach (var step in parts[1].Split('/', StringSplitOptions.RemoveEmptyEntries))
+                        {
+                            var o = here == 0 ? -1 : offsetOf(here, step);
+                            here = o < 0 ? 0 : ptr(here + o);
+                        }
+                        var own = parts.Length > 2 ? reflect.valueOf(at, "Level") : null;
+                        Console.WriteLine($"[path] {reflect.nameOf(at)} {at:X} (Level={own}) -> {parts[1]} = {(here == 0 ? "none" : reflect.nameOf(here) + " " + here.ToString("X"))}: "
+                            + (here == 0 ? "" : string.Join(", ", parts.Skip(2).Select(v => $"{v}={reflect.valueOf(here, v)}"))));
+                    }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_EFFECTS[=<name filter>] - every gameplay effect active on every ability system component:
+            //its class, level, stack count and each modifier's evaluated magnitude. Read-only.
+            var probeEffects = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_EFFECTS", StringComparison.Ordinal));
+            if (probeEffects != null)
+            {
+                var filter = probeEffects.Contains('=') ? probeEffects[(probeEffects.IndexOf('=') + 1)..] : "";
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[fx] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, step => { })!;
+                    long ptr(long at) { var b = game.read(new IntPtr(at), 8); return b == null ? 0 : BitConverter.ToInt64(b, 0); }
+                    int i32(long at) { var b = game.read(new IntPtr(at), 4); return b == null ? 0 : BitConverter.ToInt32(b, 0); }
+                    float f32(long at) { var b = game.read(new IntPtr(at), 4); return b == null ? 0 : BitConverter.ToSingle(b, 0); }
+                    int offsetOf(long obj, string field)
+                    {
+                        for (var k = ptr(obj + 0x10); k != 0; k = ptr(k + 0x40))
+                        {
+                            foreach (var f in reflect.fieldsOf(k)) { if (f.Name == field) { return f.Offset; } }
+                        }
+                        return -1;
+                    }
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var at = reflect.objectAt(i);
+                        if (at == 0 || reflect.kindOf(at)?.EndsWith("AbilitySystemComponent") != true || reflect.nameOf(at)?.StartsWith("Default__") == true) { continue; }
+                        var container = offsetOf(at, "ActiveGameplayEffects");
+                        if (container < 0) { continue; }
+                        var list = ptr(at + container + 0xE0);
+                        var count = i32(at + container + 0xE8);
+                        if (count <= 0 || count > 500) { continue; }
+                        var owner = ptr(at + 0x20);
+                        Console.WriteLine($"[fx] {reflect.nameOf(at)} ({reflect.kindOf(at)}) in {reflect.nameOf(owner)}: {count} effect(s)");
+                        for (var e = 0; e < count; e++)
+                        {
+                            var fx = list + e * 0x378;
+                            var def = ptr(fx + 0x18);
+                            var name = $"{reflect.nameOf(def)} ({reflect.kindOf(def)})";
+                            if (filter.Length > 0 && name.IndexOf(filter, StringComparison.OrdinalIgnoreCase) < 0) { continue; }
+                            var mods = ptr(fx + 0x18 + 0x1B8);
+                            var modCount = i32(fx + 0x18 + 0x1C0);
+                            var values = Enumerable.Range(0, Math.Clamp(modCount, 0, 8)).Select(m => f32(mods + m * 4).ToString("0.####", System.Globalization.CultureInfo.InvariantCulture));
+                            Console.WriteLine($"[fx]   {name}: level {f32(fx + 0x18 + 0x298):0.##}, stacks {i32(fx + 0x18 + 0x1C8)}, modifiers [{string.Join(", ", values)}]");
+                        }
+                    }
+                }
+                Shutdown();
+                return;
+            }
+
             //PROBE_TALENTICONS - the live Talents screen's Icons and Rings canvases: for the first children,
             //what each image draws (its texture), its tint, size, visibility and opacity. Read-only.
             if (_startupArguments.Contains("PROBE_TALENTICONS"))
@@ -10769,6 +10858,51 @@ namespace MCDSaveEdit
                         }
                     }
                 }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_ENCHANTLEVEL=<save .dat>[;<slot>;<enchantment>;<level>] - the equipped items' enchantments
+            //(id, level, invested points); given a slot (MeleeGear...), an enchantment id and a level, that
+            //one is set to the level. Backed up first. WRITES only with the three extra parts.
+            var probeEnchantLevel = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_ENCHANTLEVEL=", StringComparison.Ordinal));
+            if (probeEnchantLevel != null)
+            {
+                var parts = probeEnchantLevel["PROBE_ENCHANTLEVEL=".Length..].Trim('"').Split(';');
+                var saveFile = parts[0];
+                Task.Run(async () =>
+                {
+                    MCDSaveEdit.Save.Models.Profiles.ProfileSaveFile? save;
+                    using (var file = File.OpenRead(saveFile))
+                    {
+                        DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file);
+                        using var plain = await Logic.FileProcessHelper.Decrypt(file);
+                        save = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Read(plain!);
+                    }
+                    if (save == null) { Console.WriteLine("[ench] the save could not be read"); return; }
+                    Console.WriteLine($"[ench] level {Logic.ProfileExtensions.level(save)}, points unspent (app count): {Logic.ProfileExtensions.remainingEnchantmentPoints(save)}");
+                    var changed = false;
+                    foreach (var item in (save.Items ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Item>()).Where(i => i.EquipmentSlot != null))
+                    {
+                        foreach (var e in item.Enchantments ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Enchantment>())
+                        {
+                            if (parts.Length == 4 && item.EquipmentSlot == parts[1] && e.Id == parts[2])
+                            {
+                                e.Level = long.Parse(parts[3]);
+                                changed = true;
+                            }
+                            if (e.Id != "Unset") { Console.WriteLine($"[ench] {item.EquipmentSlot} {item.Type}: {e.Id} level {e.Level} invested {e.InvestedPoints}"); }
+                        }
+                    }
+                    if (!changed) { return; }
+                    if (Logic.GameRunning.isUp) { Console.WriteLine("[ench] the game is running; nothing written"); return; }
+                    Console.WriteLine($"[ench] backed up to {Path.GetFileName(Logic.SaveBackup.backup(saveFile))}");
+                    using var json = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Write(save);
+                    json.Seek(0, SeekOrigin.Begin);
+                    using var sealedUp = await Logic.FileProcessHelper.Encrypt(json);
+                    using (var output = File.Create(saveFile)) { await sealedUp!.CopyToAsync(output); }
+                    Console.WriteLine("[ench] written");
+                }).GetAwaiter().GetResult();
                 Shutdown();
                 return;
             }

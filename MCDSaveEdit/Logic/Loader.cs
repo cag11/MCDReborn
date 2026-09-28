@@ -112,6 +112,14 @@ namespace MCDSaveEdit.Logic
         public static bool isInstalled => installed() != null;
 
         /// <summary>
+        /// Whether anything still stands on the loader: a switch whose screens it loads (Gems, Talents,
+        /// Weapon mastery, enchantment levels IV/V), a payload, or the map table. Whatever is turned off
+        /// asks this before taking the loader out with it.
+        /// </summary>
+        public static bool stillNeeded() => Gems.isOn || Talents.isOn || Mastery.isOn || EnchantLevels.isOn
+            || Payloads.installed().Count > 0 || MapTable.isInstalled;
+
+        /// <summary>
         /// Other mods installed that replace the same actor this loader does.
         ///
         /// Sharing an anchor with the community's loader is the right call - it is the actor in

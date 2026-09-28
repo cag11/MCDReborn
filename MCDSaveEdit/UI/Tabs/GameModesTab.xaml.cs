@@ -34,6 +34,8 @@ namespace MCDSaveEdit.UI
             talentsWhy.Text = R.TALENTS_WHY;
             masteryOn.Content = R.MASTERY_ON;
             masteryWhy.Text = R.MASTERY_WHY;
+            enchantLevelsOn.Content = R.ENCHANT_LEVELS_ON;
+            enchantLevelsWhy.Text = R.ENCHANT_LEVELS_WHY;
             apocalypsePlusOn.Content = R.STATS_APOC_PLUS;
             apocalypsePlusWhy.Text = R.STATS_APOC_PLUS_WHY;
         }
@@ -49,6 +51,8 @@ namespace MCDSaveEdit.UI
             talentsOn.IsEnabled = available && CustomSkins.ready;
             masteryOn.IsChecked = Mastery.isOn;
             masteryOn.IsEnabled = available && CustomSkins.ready;
+            enchantLevelsOn.IsChecked = EnchantLevels.isOn;
+            enchantLevelsOn.IsEnabled = CustomSkins.ready;
             apocalypsePlusOn.IsChecked = ApocalypsePlus.isOn;
             apocalypsePlusOn.IsEnabled = available;
             _filling = false;
@@ -151,6 +155,26 @@ namespace MCDSaveEdit.UI
                 IsEnabled = true;
                 show();
             }
+        }
+
+        /// <summary>Enchantment levels IV and V on or off: only the in-game badges, so only their pak.</summary>
+        private void enchantLevelsOn_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+            var on = enchantLevelsOn.IsChecked == true;
+            if (GameRunning.isUp) { Notices.warn(R.MODS_GAME_RUNNING); show(); return; }
+            try
+            {
+                EnchantLevels.set(on);
+                var said = EnchantLevels.syncPanel();
+                statusLabel.Text = said.Length > 0 ? said : (on ? R.ENCHANT_LEVELS_DONE : R.ENCHANT_LEVELS_REMOVED);
+            }
+            catch (Exception problem)
+            {
+                EnchantLevels.set(!on);
+                statusLabel.Text = string.Format(R.ITEMS_FAILED, problem.Message);
+            }
+            show();
         }
 
         private void apocalypsePlusOn_Changed(object sender, RoutedEventArgs e)
