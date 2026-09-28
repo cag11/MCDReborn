@@ -10615,6 +10615,28 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_VARS=<Class>;<variable>;... - a live object's variables by name, for every object of that
+            //class (not the default). Read-only.
+            var probeVars = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_VARS=", StringComparison.Ordinal));
+            if (probeVars != null)
+            {
+                var parts = probeVars["PROBE_VARS=".Length..].Trim('"').Split(';');
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[vars] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, step => { })!;
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var at = reflect.objectAt(i);
+                        if (at == 0 || reflect.kindOf(at) != parts[0] || reflect.nameOf(at)?.StartsWith("Default__") == true) { continue; }
+                        Console.WriteLine($"[vars] {reflect.nameOf(at)} at {at:X}: " + string.Join(", ", parts.Skip(1).Select(v => $"{v}={reflect.valueOf(at, v)}")));
+                    }
+                }
+                Shutdown();
+                return;
+            }
+
             //PROBE_TALENTICONS - the live Talents screen's Icons and Rings canvases: for the first children,
             //what each image draws (its texture), its tint, size, visibility and opacity. Read-only.
             if (_startupArguments.Contains("PROBE_TALENTICONS"))
@@ -10666,6 +10688,51 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_RESTORESOCKETS=<save .dat> - a save whose socket lines the game wrote back as "Unset" (it
+            //was loaded by a copy of the game without the plugin's names): every "Unset" line becomes an
+            //Empty Socket again. Backed up first, written as the app writes a save. WRITES.
+            var probeRestore = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_RESTORESOCKETS=", StringComparison.Ordinal));
+            if (probeRestore != null)
+            {
+                var saveFile = probeRestore["PROBE_RESTORESOCKETS=".Length..].Trim('"');
+                if (Logic.GameRunning.isUp) { Console.WriteLine("[restore] the game is running; nothing written"); Shutdown(); return; }
+                Task.Run(async () =>
+                {
+                    MCDSaveEdit.Save.Models.Profiles.ProfileSaveFile? save;
+                    using (var file = File.OpenRead(saveFile))
+                    {
+                        DungeonTools.Save.File.SaveFileHandler.IsFileEncrypted(file);
+                        using var plain = await Logic.FileProcessHelper.Decrypt(file);
+                        save = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Read(plain!);
+                    }
+                    if (save == null) { Console.WriteLine("[restore] the save could not be read; nothing written"); return; }
+                    var restored = 0;
+                    var items = (save.Items ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Item>()).Concat(save.StorageChestItems ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Item>());
+                    foreach (var item in items)
+                    {
+                        var here = 0;
+                        foreach (var line in item.Armorproperties ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Armorproperty>())
+                        {
+                            if (line.Id != "Unset") { continue; }
+                            line.Id = Logic.Gems.SOCKET;
+                            line.Rarity = MCDSaveEdit.Save.Models.Enums.Rarity.Common;
+                            here++;
+                        }
+                        if (here > 0) { Console.WriteLine($"[restore] {item.Type}{(item.EquipmentSlot != null ? " (" + item.EquipmentSlot + ")" : "")}: {here} socket(s)"); }
+                        restored += here;
+                    }
+                    if (restored == 0) { Console.WriteLine("[restore] no Unset lines; nothing written"); return; }
+                    Console.WriteLine($"[restore] backed up to {Path.GetFileName(Logic.SaveBackup.backup(saveFile))}");
+                    using var json = await MCDSaveEdit.Save.Models.Profiles.ProfileParser.Write(save);
+                    json.Seek(0, SeekOrigin.Begin);
+                    using var sealedUp = await Logic.FileProcessHelper.Encrypt(json);
+                    using (var output = File.Create(saveFile)) { await sealedUp!.CopyToAsync(output); }
+                    Console.WriteLine($"[restore] {restored} socket(s) restored in {Path.GetFileName(saveFile)}");
+                }).GetAwaiter().GetResult();
+                Shutdown();
+                return;
+            }
+
             //PROBE_CURRENCIES=<save .dat> - every currency a character holds, as the save has them. Read-only.
             var probeCurrencies = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_CURRENCIES=", StringComparison.Ordinal));
             if (probeCurrencies != null)
@@ -10684,6 +10751,15 @@ namespace MCDSaveEdit
                         Console.WriteLine($"[currencies] {c.Type} = {c.Count}");
                     }
                     Console.WriteLine($"[currencies] found: {string.Join(", ", save?.CurrenciesFound ?? Array.Empty<string>())}");
+                    //And every item line of ours, by item: sockets, gems, mastery.
+                    var items = (save?.Items ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Item>()).Concat(save?.StorageChestItems ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Item>());
+                    var lines = items.SelectMany(i => i.Armorproperties ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Armorproperty>())
+                        .Where(p => p.Id != null && p.Id.StartsWith("MCDR_", StringComparison.Ordinal)).GroupBy(p => p.Id.Length > 12 ? p.Id.Substring(0, 12) : p.Id);
+                    foreach (var kind in lines) { Console.WriteLine($"[currencies] lines {kind.Key}*: {kind.Count()}"); }
+                    foreach (var item in items.Where(i => i.EquipmentSlot != null))
+                    {
+                        Console.WriteLine($"[currencies] worn {item.EquipmentSlot} {item.Type}: {string.Join(", ", (item.Armorproperties ?? Array.Empty<MCDSaveEdit.Save.Models.Profiles.Armorproperty>()).Select(p => p.Id))}");
+                    }
                 }
                 Shutdown();
                 return;

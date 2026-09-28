@@ -710,6 +710,12 @@ namespace MCDSaveEdit.Logic
                 if (said.Length > 0) { result.Notes.Add(said); }
             }
             catch (Exception problem) { result.Notes.Add($"Talents could not be installed: {problem.Message}"); }
+            try
+            {
+                var said = Mastery.syncPanel();
+                if (said.Length > 0) { result.Notes.Add(said); }
+            }
+            catch (Exception problem) { result.Notes.Add($"Weapon mastery could not be installed: {problem.Message}"); }
         }
 
         public static Built build(IReadOnlyList<Design> designs, string? into = null, IReadOnlyList<Extra>? extras = null)
@@ -719,7 +725,9 @@ namespace MCDSaveEdit.Logic
             var gems = into == null && Gems.isOn ? Gems.extras() : Array.Empty<Extra>();
             //And the talent tree's stores, the same way.
             var talents = into == null && Talents.isOn ? Talents.extras() : Array.Empty<Extra>();
-            extras = extras.Concat(gems).Concat(talents).ToList();
+            //And weapon mastery's, one per kind of weapon.
+            var mastery = into == null && Mastery.isOn ? Mastery.extras() : Array.Empty<Extra>();
+            extras = extras.Concat(gems).Concat(talents).Concat(mastery).ToList();
             var result = new Built();
             var paks = CustomSkins.paksFolder ?? throw new InvalidOperationException("The game's paks folder is not known.");
             var pakPath = into ?? Path.Combine(paks, CustomSkins.MOD_PREFIX + MOD_NAME + "_P.pak");
@@ -735,6 +743,8 @@ namespace MCDSaveEdit.Logic
             if (into == null && Gems.isOn) { properties.AddRange(Gems.properties().Where(p => p.Factor != null)); }
             //And the talent tree's, one per property it scales.
             if (into == null && Talents.isOn) { properties.AddRange(Talents.properties()); }
+            //And weapon mastery's four effects.
+            if (into == null && Mastery.isOn) { properties.AddRange(Mastery.effects()); }
 
             if (designs.Count == 0 && extras.Count == 0 && enchantments.Count == 0 && mobs.Count == 0 && properties.Count == 0)
             {
@@ -751,7 +761,7 @@ namespace MCDSaveEdit.Logic
             //Gems and the talent stores are currencies the game only knows once the plugin registers
             //them: an unregistered id has no name in the wallet, and every one of them then shares a
             //single balance (the talent stores and their count did, until they were listed here).
-            foreach (var currency in gems.Concat(talents))
+            foreach (var currency in gems.Concat(talents).Concat(mastery))
             {
                 var gold = gameItem(currency.Source) ?? throw new InvalidOperationException($"{currency.Source} is not a game item.");
                 pluginItems.Add(new GamePlugin.Item(currency.Id, gold.Id, extraFolder(gold, currency.Id), currency.Name, currency.Description));

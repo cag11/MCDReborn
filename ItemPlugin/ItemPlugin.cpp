@@ -2002,6 +2002,8 @@ namespace
         std::vector<uint8_t*> slots;
         std::vector<uint16_t> applied;
         std::vector<uint32_t> masks;
+        std::vector<uint8_t*> items;            // every inventory item the player owns, for mastery families
+        ULONGLONG lastSync = 0;
         int32_t liveAfter = -1;
         ULONGLONG lastCheck = 0, lastScan = 0;
     };
@@ -2192,13 +2194,395 @@ namespace
         }
     }
 
+    // ---------------------------------------------------------------- weapon mastery
+    //
+    // Melee weapons and bows level up as they are used. Everything is on the weapon, as property
+    // lines the game keeps and shows: a level line (MCDR_MasteryMelee01..25, MCDR_MasteryRanged01..25)
+    // and a progress line (MCDR_MasteryXp0..9, tenths of the way to the next level). "Used" is
+    // measured from the mission's running damage total (the game mode's +0x518 record, which the
+    // damage meter reads too): every beat in which it rose is a beat of use, credited to the bow
+    // while the ranged button is held (right mouse button or the right trigger, or in the last
+    // second) and to the melee weapon otherwise. The bonuses are four properties of this plugin's
+    // whose numbers are set from the worn weapons' levels, as the talents' are.
+    // "@mastery \t melee damage/level \t attack speed/tier \t ranged damage/level \t roll/tier \t seconds base \t seconds step"
+    constexpr int MASTERY_LEVELS = 25, MASTERY_STEPS = 10;
+    struct MasteryConfig { float meleeDamage = 0, meleeSpeed = 0, rangedDamage = 0, rangedRoll = 0, base = 60, step = 30; bool on = false; };
+    MasteryConfig g_mastery;
+    int g_masteryMelee[MASTERY_LEVELS + 1]{}, g_masteryRanged[MASTERY_LEVELS + 1]{}, g_masteryXp[MASTERY_STEPS]{};
+    int g_masteryEffects[4]{};                // melee damage, melee speed, ranged damage, roll speed
+    uint8_t* g_gameModeClass = nullptr;
+    uint8_t* g_gameMode = nullptr;
+    ULONGLONG g_gameModeLook = 0, g_lastRanged = 0, g_lastUse = 0;
+    double g_lastDamage = -1;
+
+    // Mastery is shared by a weapon FAMILY - every Claymore, the uniques too - so the app lists each
+    // family's item ids: "@masteryfamily \t m|r \t name \t id,id,...". A family's level is the highest
+    // any weapon of it owned has, and every weapon of it owned is kept at that level.
+    struct Family { bool melee; std::string name; std::vector<FName> ids; FName currency; };
+    std::vector<Family> g_families;
+    std::vector<std::string> g_familyLines;
+    uint8_t* g_inventoryItemClass = nullptr;
+
+    void readMasteryConfig()
+    {
+        FILE* file = _wfopen((g_folder + L"MCDRebornItems.txt").c_str(), L"rb");
+        if (!file) { return; }
+        static char line[65536];
+        while (fgets(line, sizeof(line), file))
+        {
+            if (strncmp(line, "@masteryfamily\t", 15) == 0) { g_familyLines.push_back(line + 15); continue; }
+            if (strncmp(line, "@mastery\t", 9) != 0) { continue; }
+            float v[6]{};
+            if (sscanf_s(line + 9, "%f\t%f\t%f\t%f\t%f\t%f", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5]) == 6)
+            {
+                g_mastery = { v[0], v[1], v[2], v[3], v[4], v[5], true };
+            }
+        }
+        fclose(file);
+    }
+
+    // The family lines into FNames: made on the plugin's own thread, where names are made.
+    void resolveFamilies(Game& game)
+    {
+        for (std::string line : g_familyLines)
+        {
+            while (!line.empty() && (line.back() == '\n' || line.back() == '\r')) { line.pop_back(); }
+            size_t a = line.find('\t'), b = line.find('\t', a == std::string::npos ? 0 : a + 1);
+            if (a == std::string::npos || b == std::string::npos) { continue; }
+            Family f{ line.substr(0, a) == "m", line.substr(a + 1, b - a - 1), {}, {} };
+            f.currency = name(game, "MCDR_Mastery_" + f.name);
+            size_t from = b + 1;
+            while (from < line.size())
+            {
+                size_t comma = line.find(',', from);
+                std::string id = line.substr(from, comma == std::string::npos ? std::string::npos : comma - from);
+                if (!id.empty()) { f.ids.push_back(name(game, id)); }
+                if (comma == std::string::npos) { break; }
+                from = comma + 1;
+            }
+            g_families.push_back(f);
+        }
+        say("mastery: %zu weapon families", g_families.size());
+    }
+
+    // Which family an item is, from its id (FInventoryItemData.ItemId.SerializedId, item +0x34), or -1.
+    int familyOf(uint8_t* item)
+    {
+        FName its{};
+        if (!item || !readBlock(item + 0x34, &its, 8)) { return -1; }
+        for (size_t f = 0; f < g_families.size(); f++)
+        {
+            for (const FName& id : g_families[f].ids) { if (id.Index == its.Index && id.Number == its.Number) { return static_cast<int>(f); } }
+        }
+        return -1;
+    }
+
+    template <typename NamedList> void resolveMastery(Game& game, const NamedList& named)
+    {
+        readMasteryConfig();
+        if (!g_mastery.on) { return; }
+        auto valueOf = [&](const std::string& id) { for (const auto& n : named) { if (n.id == id) { return n.value; } } return 0; };
+        char id[64];
+        int found = 0;
+        for (int level = 1; level <= MASTERY_LEVELS; level++)
+        {
+            sprintf_s(id, "MCDR_MasteryMelee%02d", level);  g_masteryMelee[level] = valueOf(id);
+            sprintf_s(id, "MCDR_MasteryRanged%02d", level); g_masteryRanged[level] = valueOf(id);
+            found += (g_masteryMelee[level] > 0) + (g_masteryRanged[level] > 0);
+        }
+        for (int step = 0; step < MASTERY_STEPS; step++) { sprintf_s(id, "MCDR_MasteryXp%d", step); g_masteryXp[step] = valueOf(id); found += g_masteryXp[step] > 0; }
+        const char* effects[4] = { "MCDR_MasteryMeleeDamage", "MCDR_MasteryMeleeSpeed", "MCDR_MasteryRangedDamage", "MCDR_MasteryRangedRoll" };
+        for (int i = 0; i < 4; i++) { g_masteryEffects[i] = valueOf(effects[i]); found += g_masteryEffects[i] > 0; }
+        resolveFamilies(game);
+        say("mastery: %d of %d lines and effects known", found, 2 * MASTERY_LEVELS + MASTERY_STEPS + 4);
+        if (found != 2 * MASTERY_LEVELS + MASTERY_STEPS + 4) { g_mastery.on = false; say("mastery: NOT on - some of its properties are missing"); }
+    }
+
+    bool derivesFrom(uint8_t* cls, uint8_t* base)
+    {
+        for (int step = 0; step < 12 && cls; step++)
+        {
+            if (cls == base) { return true; }
+            if (!readPointer(reinterpret_cast<uint8_t**>(cls + 0x40), cls)) { return false; }
+        }
+        return false;
+    }
+
+    // The mission's damage dealt so far, or -1: the game mode's +0x518 record, its first double.
+    double damageDealt()
+    {
+        if (!g_gameModeClass) { g_gameModeClass = findClass(*g_game, "DungeonsGameMode"); if (!g_gameModeClass) { return -1; } }
+        ULONGLONG now = GetTickCount64();
+        uint8_t* cls = nullptr;
+        bool still = g_gameMode && readPointer(reinterpret_cast<uint8_t**>(g_gameMode + 0x10), cls) && derivesFrom(cls, g_gameModeClass);
+        //Looked for only when the one known is gone (a new level), and then not more than every two
+        //seconds: the look walks every object there is.
+        if (!still && now - g_gameModeLook > 2000)
+        {
+            g_gameModeLook = now;
+            uint8_t* found = nullptr;
+            int32_t count = *g_game->objectCount;
+            uint8_t** chunks = *g_game->objectChunks;
+            for (int32_t i = 0; i < count; i++)
+            {
+                uint8_t* chunk = nullptr;
+                if (!readBlock(chunks + (i >> 16), &chunk, 8) || !chunk) { continue; }
+                uint8_t* object = nullptr;
+                if (!readBlock(chunk + static_cast<size_t>(i & 0xFFFF) * 0x18, &object, 8) || !object) { continue; }
+                uint32_t flags = 0;
+                if (!readBlock(object + 0x8, &flags, 4) || (flags & 0x10)) { continue; }          // not a default object
+                uint8_t* its = nullptr;
+                if (readPointer(reinterpret_cast<uint8_t**>(object + 0x10), its) && its != g_gameModeClass && derivesFrom(its, g_gameModeClass)) { found = object; }
+            }
+            if (found != g_gameMode) { g_lastDamage = -1; }
+            g_gameMode = found;
+        }
+        if (!g_gameMode) { return -1; }
+        uint8_t* x = nullptr; uint8_t* begin = nullptr; uint8_t* end = nullptr;
+        if (!readPointer(reinterpret_cast<uint8_t**>(g_gameMode + 0x518), x) || !x) { return -1; }
+        if (!readPointer(reinterpret_cast<uint8_t**>(x + 0x10), begin) || !readPointer(reinterpret_cast<uint8_t**>(x + 0x18), end)) { return -1; }
+        if (!begin || end <= begin || end - begin > 0x60 * 8) { return -1; }
+        double dealt = 0;
+        return readBlock(begin, &dealt, 8) && dealt >= 0 && dealt < 1e15 ? dealt : -1;
+    }
+
+    // The ranged button: the right mouse button, or a controller's right trigger.
+    struct PadState { DWORD packet; WORD buttons; BYTE leftTrigger, rightTrigger; SHORT lx, ly, rx, ry; };
+    using PadRead = DWORD(WINAPI*)(DWORD, PadState*);
+    bool rangedHeld()
+    {
+        if (GetAsyncKeyState(VK_RBUTTON) & 0x8000) { return true; }
+        static PadRead read = nullptr;
+        static bool looked = false;
+        if (!looked)
+        {
+            looked = true;
+            if (HMODULE xinput = LoadLibraryW(L"xinput1_4.dll")) { read = reinterpret_cast<PadRead>(GetProcAddress(xinput, "XInputGetState")); }
+        }
+        PadState pad{};
+        return read && read(0, &pad) == 0 && pad.rightTrigger > 40;
+    }
+
+    struct Mastered { int level = 0, step = 0, levelAt = -1, stepAt = -1; };
+
+    Mastered masteryOf(uint8_t* item, bool melee)
+    {
+        Mastered m;
+        TArrayRaw props{};
+        if (!item || !readBlock(item + 0x50, &props, sizeof(props))) { return m; }
+        auto lines = propertiesIn(props);
+        const int* levels = melee ? g_masteryMelee : g_masteryRanged;
+        for (int at = 0; at < static_cast<int>(lines.size()); at++)
+        {
+            int id = lines[at] & 0xFF;
+            for (int level = 1; level <= MASTERY_LEVELS; level++) { if (id == levels[level]) { m.level = level; m.levelAt = at; } }
+            for (int step = 0; step < MASTERY_STEPS; step++) { if (id == g_masteryXp[step]) { m.step = step; m.stepAt = at; } }
+        }
+        return m;
+    }
+
+    // One line of a weapon set to `id` (rarity `rarity`), or added when `at` is -1: in place when the
+    // array has room, else into a bigger block from the game's allocator (the old one is left be).
+    bool writeLine(uint8_t* item, int at, int id, uint8_t rarity)
+    {
+        auto array = reinterpret_cast<TArrayRaw*>(item + 0x50);
+        TArrayRaw now{};
+        if (!readBlock(array, &now, sizeof(now)) || now.Num < 0 || now.Num > 64) { return false; }
+        uint8_t entry[2] = { static_cast<uint8_t>(id), rarity };
+        if (at >= 0)
+        {
+            if (at >= now.Num || !now.Data) { return false; }
+            memcpy(now.Data + at * 2, entry, 2);
+            return true;
+        }
+        if (now.Num < now.Max && now.Data)
+        {
+            memcpy(now.Data + now.Num * 2, entry, 2);
+            array->Num = now.Num + 1;
+            return true;
+        }
+        int32_t room = now.Num + 4;
+        auto bigger = static_cast<uint8_t*>(g_game->malloc(static_cast<size_t>(room) * 2));
+        if (!bigger) { return false; }
+        memset(bigger, 0, static_cast<size_t>(room) * 2);
+        if (now.Data && now.Num > 0) { memcpy(bigger, now.Data, static_cast<size_t>(now.Num) * 2); }
+        memcpy(bigger + now.Num * 2, entry, 2);
+        array->Data = bigger;
+        array->Max = room;
+        array->Num = now.Num + 1;
+        return true;
+    }
+
+    void removeLine(uint8_t* item, int at)
+    {
+        auto array = reinterpret_cast<TArrayRaw*>(item + 0x50);
+        TArrayRaw now{};
+        if (!readBlock(array, &now, sizeof(now)) || at < 0 || at >= now.Num || !now.Data) { return; }
+        memmove(now.Data + at * 2, now.Data + (at + 1) * 2, static_cast<size_t>(now.Num - at - 1) * 2);
+        array->Num = now.Num - 1;
+    }
+
+    // Seconds of use to the next level from `level`.
+    float secondsFor(int level) { return g_mastery.base + g_mastery.step * static_cast<float>(level); }
+
+    // A family's level and tenths of the way to the next, from its seconds of use.
+    void levelOf(double seconds, int& level, int& step)
+    {
+        level = 0;
+        while (level < MASTERY_LEVELS && seconds >= secondsFor(level)) { seconds -= secondsFor(level); level++; }
+        step = level >= MASTERY_LEVELS ? 0 : (std::min)(MASTERY_STEPS - 1, static_cast<int>(seconds * MASTERY_STEPS / secondsFor(level)));
+    }
+
+    // A character's wallet balance for a currency, as the slot to read or write, or null when the
+    // character holds none of it yet. The balances: character +0xEE0 CharacterLazySaveComponent, +0x100
+    // CharacterSaveData, {FName, int32} entries between +0xF8 and +0x100.
+    int32_t* balanceSlot(uint8_t* character, const FName& currency)
+    {
+        uint8_t* held = nullptr; uint8_t* book = nullptr; uint8_t* begin = nullptr; uint8_t* end = nullptr;
+        if (!readPointer(reinterpret_cast<uint8_t**>(character + 0xEE0), held) || !held) { return nullptr; }
+        if (!readPointer(reinterpret_cast<uint8_t**>(held + 0x100), book) || !book) { return nullptr; }
+        if (!readPointer(reinterpret_cast<uint8_t**>(book + 0xF8), begin) || !readPointer(reinterpret_cast<uint8_t**>(book + 0x100), end)) { return nullptr; }
+        if (!begin || end <= begin || end - begin > 12 * 512) { return nullptr; }
+        for (uint8_t* at = begin; at + 12 <= end; at += 12)
+        {
+            FName its{};
+            if (readBlock(at, &its, 8) && its.Index == currency.Index && its.Number == currency.Number) { return reinterpret_cast<int32_t*>(at + 8); }
+        }
+        return nullptr;
+    }
+
+    int32_t familySeconds(uint8_t* character, int family)
+    {
+        int32_t* slot = balanceSlot(character, g_families[family].currency);
+        int32_t seconds = 0;
+        return slot && readBlock(slot, &seconds, 4) && seconds > 0 ? seconds : 0;
+    }
+
+    uint8_t rarityFor(int level) { return static_cast<uint8_t>(level >= 20 ? 2 : level >= 10 ? 1 : 0); }   // Common, Rare, Unique by tier
+
+    // A weapon's lines showing `level` and `step`: the level line written, added or taken off, the
+    // progress line likewise (none at the top level). Only what differs is written.
+    void setMastery(uint8_t* item, bool melee, int level, int step)
+    {
+        const int* levels = melee ? g_masteryMelee : g_masteryRanged;
+        Mastered m = masteryOf(item, melee);
+        if (m.level == level && (level >= MASTERY_LEVELS ? m.stepAt < 0 : (m.stepAt >= 0 && m.step == step))) { return; }
+        if (level > 0) { writeLine(item, m.levelAt, levels[level], rarityFor(level)); }
+        else if (m.levelAt >= 0) { removeLine(item, m.levelAt); }
+        m = masteryOf(item, melee);
+        if (level >= MASTERY_LEVELS) { if (m.stepAt >= 0) { removeLine(item, m.stepAt); } return; }
+        writeLine(item, m.stepAt, g_masteryXp[step], 0);
+    }
+
+    // Every weapon owned shows its family's mastery, which is the character's, not the weapon's.
+    void showFamilies(uint8_t* character, const std::vector<uint8_t*>& items)
+    {
+        for (uint8_t* item : items)
+        {
+            int f = familyOf(item);
+            if (f < 0) { continue; }
+            int32_t seconds = familySeconds(character, f);
+            Mastered m = masteryOf(item, g_families[f].melee);
+            if (seconds <= 1 && m.levelAt < 0 && m.stepAt < 0) { continue; }      // never used, never shown
+            int level = 0, step = 0;
+            levelOf(seconds, level, step);
+            setMastery(item, g_families[f].melee, level, step);
+        }
+    }
+
+    // The effect property `which` at `factor` of its source's number, added to the list when above none.
+    void addMasteryEffect(int which, float factor, std::vector<uint16_t>& list)
+    {
+        int value = g_masteryEffects[which];
+        if (value <= 0 || factor <= 0) { return; }
+        for (auto& grade : g_gradeClasses)
+        {
+            if (grade.value != value || !grade.ownDefault) { continue; }
+            float now = grade.neutral + (grade.was - grade.neutral) * factor;
+            if (now != grade.set) { *reinterpret_cast<float*>(grade.ownDefault + PROPERTY_NUMBER) = now; grade.set = now; }
+        }
+        list.push_back(static_cast<uint16_t>(value));
+    }
+
+    // Every beat: the use since the last credited to the family of the weapon being used - in the
+    // character's own balance for it, whole seconds at a time - the weapons' lines redrawn from those
+    // balances every second, and the worn weapons' bonuses added to the list, their levels to the key.
+    std::vector<double> g_familyUse;          // seconds of use not yet written, by family
+
+    void masteryBeat(Heart& h, uint8_t* character, uint8_t* melee, uint8_t* ranged, std::vector<uint16_t>& list, std::vector<uint32_t>& key)
+    {
+        ULONGLONG now = GetTickCount64();
+        if (g_familyUse.size() != g_families.size()) { g_familyUse.assign(g_families.size(), 0.0); }
+        if (rangedHeld()) { g_lastRanged = now; }
+        double dealt = damageDealt();
+        if (dealt >= 0)
+        {
+            if (g_lastDamage >= 0 && dealt > g_lastDamage && dealt - g_lastDamage < 1e12 && g_lastUse > 0)
+            {
+                double seconds = (std::min)(static_cast<double>(now - g_lastUse) / 1000.0, 0.5);
+                bool bow = now - g_lastRanged < 1000;
+                int f = familyOf(bow ? ranged : melee);
+                if (f >= 0) { g_familyUse[f] += seconds; }
+            }
+            g_lastDamage = dealt;
+        }
+        g_lastUse = now;
+        for (size_t f = 0; f < g_families.size(); f++)
+        {
+            if (g_familyUse[f] < 1.0) { continue; }
+            int32_t* slot = balanceSlot(character, g_families[f].currency);
+            if (!slot) { continue; }                                       // until the screen has made the balance
+            int32_t whole = static_cast<int32_t>(g_familyUse[f]);
+            int32_t had = 0;
+            readBlock(slot, &had, 4);
+            int before = 0, after = 0, step = 0;
+            levelOf(had, before, step);
+            *slot = had + whole;
+            g_familyUse[f] -= whole;
+            levelOf(had + whole, after, step);
+            if (after > before) { say("mastery: %s is now level %d", g_families[f].name.c_str(), after); }
+        }
+        if (now - h.lastSync > 1000) { h.lastSync = now; showFamilies(character, h.items); }
+
+        //Every ten seconds, what mastery sees: the damage total, the worn weapons' families, whether
+        //each has a balance yet, and the seconds waiting to be written.
+        static ULONGLONG told = 0;
+        if (now - told > 10000)
+        {
+            told = now;
+            int mf = familyOf(melee), rf = familyOf(ranged);
+            say("mastery: dealt %.0f, melee %s (balance %s), ranged %s (balance %s), %zu weapons owned, %zu with a family",
+                dealt, mf >= 0 ? g_families[mf].name.c_str() : (melee ? "unknown kind" : "none"),
+                mf >= 0 ? (balanceSlot(character, g_families[mf].currency) ? "yes" : "NOT YET") : "-",
+                rf >= 0 ? g_families[rf].name.c_str() : (ranged ? "unknown kind" : "none"),
+                rf >= 0 ? (balanceSlot(character, g_families[rf].currency) ? "yes" : "NOT YET") : "-",
+                h.items.size(), static_cast<size_t>(std::count_if(h.items.begin(), h.items.end(), [](uint8_t* i) { return familyOf(i) >= 0; })));
+        }
+
+        int meleeLevel = 0, rangedLevel = 0, step = 0;
+        int mf = familyOf(melee), rf = familyOf(ranged);
+        if (mf >= 0) { levelOf(familySeconds(character, mf), meleeLevel, step); }
+        if (rf >= 0) { levelOf(familySeconds(character, rf), rangedLevel, step); }
+        int meleeTier = (std::min)(meleeLevel / 5, 5), rangedTier = (std::min)(rangedLevel / 5, 5);
+        addMasteryEffect(0, g_mastery.meleeDamage * meleeLevel, list);
+        addMasteryEffect(1, g_mastery.meleeSpeed * meleeTier, list);
+        addMasteryEffect(2, g_mastery.rangedDamage * rangedLevel, list);
+        addMasteryEffect(3, g_mastery.rangedRoll * rangedTier, list);
+        key.push_back(0x4D000000u | (static_cast<uint32_t>(meleeLevel) << 8) | static_cast<uint32_t>(rangedLevel));
+    }
+
     void beat(uint8_t* character)
     {
         uint8_t* state = nullptr;
         if (!readPointer(reinterpret_cast<uint8_t**>(character + 0x350), state) || !state) { return; }   // players only
         if (!g_gradesLoaded) { loadGradeClasses(); }
-        auto& h = heartOf(character);
         ULONGLONG now = GetTickCount64();
+        //A hero left behind (the Camp's, once a mission has loaded) beats no more: forgotten, or the
+        //slots of the new one - found through "the only player there is" when the chain does not name
+        //them - were never found, and the mission ran with no weapons and no armour properties.
+        g_hearts.erase(std::remove_if(g_hearts.begin(), g_hearts.end(), [&](const Heart& old)
+            { return old.character != character && old.lastCheck != 0 && now - old.lastCheck > 5000; }), g_hearts.end());
+        auto& h = heartOf(character);
         if (now - h.lastCheck < 250) { return; }     // a gem set shows within a quarter second
         h.lastCheck = now;
 
@@ -2215,17 +2599,32 @@ namespace
                 if (belongsTo(s, character)) { h.slots.push_back(s); }
             }
             if (h.slots.empty() && g_hearts.size() == 1) { h.slots = everyone; }
+            //The weapons owned, for mastery families: inventory items whose outer chain is this player's.
+            if (g_mastery.on && !g_families.empty())
+            {
+                if (!g_inventoryItemClass) { g_inventoryItemClass = findClass(*g_game, "InventoryItem"); }
+                h.items.clear();
+                std::vector<uint8_t*> anyone;
+                if (g_inventoryItemClass) { for (uint8_t* item : objectsOf(*g_game, g_inventoryItemClass)) { anyone.push_back(item); if (belongsTo(item, character)) { h.items.push_back(item); } } }
+                //Items hang off something the chain does not name (the log said "0 weapons owned"):
+                //playing alone, every item there is is this player's, as for the equipment slots.
+                if (h.items.empty() && g_hearts.size() == 1) { h.items = anyone; }
+            }
         }
         if (!h.component) { return; }
 
         std::vector<uint16_t> list;
         float power = 0;
+        uint8_t* meleeItem = nullptr;
+        uint8_t* rangedItem = nullptr;
         for (uint8_t* slot : h.slots)
         {
             uint8_t type = 0; readBlock(slot + 0x2C, &type, 1);
             if (type != 14 && type != 15 && type != 16) { continue; }     // MeleeWeapon, RangedWeapon, Armor
             uint8_t* item = nullptr;
             if (!readPointer(reinterpret_cast<uint8_t**>(slot + 0x30), item) || !item) { continue; }
+            if (type == 14) { meleeItem = item; }
+            if (type == 15) { rangedItem = item; }
             TArrayRaw props{};
             if (!readBlock(item + 0x50, &props, sizeof(props))) { continue; }
             for (uint16_t p : propertiesIn(props))
@@ -2243,6 +2642,7 @@ namespace
             masks = talentMasks(character);
             addTalents(masks, list);
         }
+        if (g_mastery.on && !g_families.empty()) { masteryBeat(h, character, meleeItem, rangedItem, list, masks); }
 
         TArrayRaw live{};
         readBlock(h.component + 0x100, &live, sizeof(live));               // ArmorPropertiesComponent.properties
@@ -2459,6 +2859,7 @@ namespace
         // Gems do what their source does, on weapons too; everything else new is only a line.
         for (const auto& n : named) { (n.active ? g_activeProperties : g_inertProperties).push_back(n.value); }
         resolveTalents(game, named);
+        resolveMastery(game, named);
         hookGemEffects(game);
 
         // The side arrays, once the preload has sized them.

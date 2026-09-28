@@ -32,6 +32,8 @@ namespace MCDSaveEdit.UI
             gemsWhy.Text = R.ITEMS_GEMS_WHY;
             talentsOn.Content = R.TALENTS_ON;
             talentsWhy.Text = R.TALENTS_WHY;
+            masteryOn.Content = R.MASTERY_ON;
+            masteryWhy.Text = R.MASTERY_WHY;
             apocalypsePlusOn.Content = R.STATS_APOC_PLUS;
             apocalypsePlusWhy.Text = R.STATS_APOC_PLUS_WHY;
         }
@@ -45,6 +47,8 @@ namespace MCDSaveEdit.UI
             gemsOn.IsEnabled = available && CustomSkins.ready;
             talentsOn.IsChecked = Talents.isOn;
             talentsOn.IsEnabled = available && CustomSkins.ready;
+            masteryOn.IsChecked = Mastery.isOn;
+            masteryOn.IsEnabled = available && CustomSkins.ready;
             apocalypsePlusOn.IsChecked = ApocalypsePlus.isOn;
             apocalypsePlusOn.IsEnabled = available;
             _filling = false;
@@ -109,6 +113,37 @@ namespace MCDSaveEdit.UI
             catch (Exception problem)
             {
                 Talents.set(!on);
+                statusLabel.Text = string.Format(R.ITEMS_FAILED, problem.Message);
+            }
+            finally
+            {
+                IsEnabled = true;
+                show();
+            }
+        }
+
+        /// <summary>Weapon mastery on or off, as Talents: the items pak, the plugin's list and the screens rebuilt.</summary>
+        private async void masteryOn_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_filling) { return; }
+            var on = masteryOn.IsChecked == true;
+            if (GameRunning.isUp) { Notices.warn(R.MODS_GAME_RUNNING); show(); return; }
+            if (!on && MessageBox.Show(R.MASTERY_OFF_WARN, R.MODES_TAB, MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            {
+                show();
+                return;
+            }
+            IsEnabled = false;
+            statusLabel.Text = R.ITEMS_WORKING;
+            try
+            {
+                Mastery.set(on);
+                await Task.Run(() => CustomItems.build(CustomItems.load()));
+                statusLabel.Text = on ? R.MASTERY_DONE : R.MASTERY_REMOVED;
+            }
+            catch (Exception problem)
+            {
+                Mastery.set(!on);
                 statusLabel.Text = string.Format(R.ITEMS_FAILED, problem.Message);
             }
             finally

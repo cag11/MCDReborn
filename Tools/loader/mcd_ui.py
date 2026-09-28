@@ -167,11 +167,24 @@ def on_disk(path, kind):
     with this name already exists in the package", which is the registry and the disk disagreeing
     rather than anything being wrong.
     """
+    #The OBJECT, by its full path (package.name), first: find_asset hands back the PACKAGE of anything
+    #this session has loaded, and a brush or a class pin given a package draws or does nothing - the
+    #socket strips rebuilt after a crash came out with no pictures that way, as the talent icons had.
+    name = path.rsplit('/', 1)[1]
+    try:
+        wanted = ue.find_class(kind)
+        there = ue.load_object(wanted, '%s.%s' % (path, name))
+        if there is not None and there.is_a(wanted):
+            return there
+    except Exception:
+        pass
+    #Never a bare package: a load that failed can leave an empty one behind, which is not an asset.
     found = ue.find_asset(path)
-    if found is not None:
+    if found is not None and found.get_class().get_name() != 'Package':
         return found
     try:
-        return ue.load_object(ue.find_class(kind), path)
+        there = ue.load_object(ue.find_class(kind), path)
+        return there if there is not None and there.get_class().get_name() != 'Package' else None
     except Exception:
         return None
 

@@ -9955,5 +9955,49 @@ namespace MCDSaveEdit.Properties {
                 return ResourceManager.GetString("GAME_SAVES_NONE", resourceCulture);
             }
         }
+            /// <summary>
+        ///   Looks up a localized string for MASTERY_ON.
+        /// </summary>
+        public static string MASTERY_ON {
+            get {
+                return ResourceManager.GetString("MASTERY_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for MASTERY_WHY.
+        /// </summary>
+        public static string MASTERY_WHY {
+            get {
+                return ResourceManager.GetString("MASTERY_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for MASTERY_DONE.
+        /// </summary>
+        public static string MASTERY_DONE {
+            get {
+                return ResourceManager.GetString("MASTERY_DONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for MASTERY_REMOVED.
+        /// </summary>
+        public static string MASTERY_REMOVED {
+            get {
+                return ResourceManager.GetString("MASTERY_REMOVED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for MASTERY_OFF_WARN.
+        /// </summary>
+        public static string MASTERY_OFF_WARN {
+            get {
+                return ResourceManager.GetString("MASTERY_OFF_WARN", resourceCulture);
+            }
+        }
     }
 }

@@ -205,6 +205,7 @@ ARMOUR_EFFECTS = {
     'Diamond': 'a chance for attacks to miss you',
     'Skull': 'a chance to teleport away when hit',
 }
+MASTERY_PREFIX = 'Mastery'                     # Weapon mastery's lines, whose bullets are its own
 EMPTY_TIP = 'Empty socket. Click it, then click a gem to set it here.'
 
 
@@ -512,6 +513,7 @@ def variables(widget):
     ue.blueprint_add_member_variable(widget, 'Scan2', 'int', False, '0')
     ue.blueprint_add_member_variable(widget, 'Line', 'string', False, '')
     ue.blueprint_add_member_variable(widget, 'Matched', 'bool', False, 'false')
+    ue.blueprint_add_member_variable(widget, 'Has', 'bool', False, 'false')
     tips_variable(widget)
     ue.blueprint_add_member_variable(widget, 'InMission', 'bool', False, 'false')
     for name, default in (('Roll', '0'), ('Seen', '-1'), ('Found', '0'), ('ToastTime', '0'),
@@ -760,6 +762,45 @@ class Graph(object):
         me.loose = ends + list(me.loose)
 
 
+def for_range(g, first, last):
+    """A ForLoop from `first` to `last` inclusive; its 'Index' is the counter."""
+    x, y = g.at()
+    loop = g.page.graph_add_node(K2Node_MacroInstance, x, y)
+    loop.MacroGraphReference = GraphReference(MacroGraph=ue.load_object(
+        EdGraph, '/Engine/EditorBlueprintResources/StandardMacros.StandardMacros:ForLoop'))
+    loop.node_allocate_default_pins()
+    g.feed(loop, 'FirstIndex', first)
+    g.feed(loop, 'LastIndex', last)
+    return loop
+
+
+def looping(g, loop, body):
+    """Runs `body(index)` for each turn of `loop`, and carries on after it."""
+    g.then(loop, 'execute', 'Completed')
+    after = list(g.loose)
+    g.loose = [(loop, 'LoopBody')]
+    body((loop, 'Index'))
+    g.loose = after
+
+
+def unless_holding(g, panel, cls):
+    """
+    Carries on only when none of `panel`'s children is a `cls` (the widget's bool 'Has' is the
+    answer). Every child is looked at, not just the last: Gems and Weapon mastery both add to an
+    item tile, and "the last child is ours" was true for neither once the other had added.
+    """
+    g.setter('Has', 'false')
+    count = g.call(PanelWidget.GetChildrenCount, self=panel)
+
+    def one(k):
+        g.cast(cls, g.call(PanelWidget.GetChildAt, self=panel, Index=k))
+        g.setter('Has', 'true')
+
+    looping(g, for_range(g, 0, g.math('Subtract_IntInt', count, 1)), one)
+    yes, no = g.branch(g.call(KismetMathLibrary.Not_PreBool, A=g.get('Has')))
+    g.loose = yes
+
+
 def told(node, pin_name, rebuild=True):
     """
     Tells a wildcard node what was just connected to it - see add_settings_splice.py.
@@ -824,9 +865,7 @@ def build_graph(widget, tile_class, strip_class, bullet_class, inspector_class, 
         g.loose = [(loop, 'LoopBody')]
         tile = g.cast(tile_class, (loop, 'Array Element'))
         padder = g.get('ItemInfoPadder', tile_class, of=tile)
-        count = g.call(PanelWidget.GetChildrenCount, self=padder)
-        last = g.call(PanelWidget.GetChildAt, self=padder, Index=g.math('Subtract_IntInt', count, 1))
-        g.cast(strip_class, last, carry_on='CastFailed')
+        unless_holding(g, padder, strip_class)
 
         made = g.run(WidgetBlueprintLibrary.Create, OwningPlayer=g.call(UserWidget.GetOwningPlayer))
         pin(made, 'WidgetType').default_object = strip_class
@@ -850,9 +889,7 @@ def build_graph(widget, tile_class, strip_class, bullet_class, inspector_class, 
         g.loose = [(each, 'LoopBody')]
         inspector = g.cast(inspector_class, (each, 'Array Element'))
         canvas = g.get('WholeCanvas', inspector_class, of=inspector)
-        count = g.call(PanelWidget.GetChildrenCount, self=canvas)
-        last = g.call(PanelWidget.GetChildAt, self=canvas, Index=g.math('Subtract_IntInt', count, 1))
-        g.cast(dock_class, last, carry_on='CastFailed')
+        unless_holding(g, canvas, dock_class)
         made = g.run(WidgetBlueprintLibrary.Create, OwningPlayer=g.call(UserWidget.GetOwningPlayer))
         pin(made, 'WidgetType').default_object = dock_class
         dock = g.cast(dock_class, (made, 'ReturnValue'))
@@ -876,9 +913,7 @@ def build_graph(widget, tile_class, strip_class, bullet_class, inspector_class, 
         shop_tile = g.cast(shop_tile_class, (each_shop, 'Array Element'))
         holder = g.get('UMG_GenericSlotWidget', shop_tile_class, of=shop_tile)
         pad = g.get('ContentPadder', generic_class, of=holder)
-        pads = g.call(PanelWidget.GetChildrenCount, self=pad)
-        pad_last = g.call(PanelWidget.GetChildAt, self=pad, Index=g.math('Subtract_IntInt', pads, 1))
-        g.cast(shop_strip_class, pad_last, carry_on='CastFailed')
+        unless_holding(g, pad, shop_strip_class)
         made_shop = g.run(WidgetBlueprintLibrary.Create, OwningPlayer=g.call(UserWidget.GetOwningPlayer))
         pin(made_shop, 'WidgetType').default_object = shop_strip_class
         shop_strip = g.cast(shop_strip_class, (made_shop, 'ReturnValue'))
@@ -920,8 +955,10 @@ def build_graph(widget, tile_class, strip_class, bullet_class, inspector_class, 
                       InColorAndOpacity=g.call(KismetMathLibrary.MakeColor, R=1, G=1, B=1, A=1))
             g.either(g.call(KismetStringLibrary.StartsWith, SourceString=g.get('Line'), InPrefix=prefix),
                      paint, lambda: None)
-        #The dark diamond behind the bullet is right for a diamond and wrong behind a gem.
-        g.either(g.get('Matched'),
+        #The dark diamond behind the bullet is right for a diamond and wrong behind a gem - or
+        #behind a Mastery line's star, which Weapon mastery's own pass puts there.
+        mastery = g.call(KismetStringLibrary.StartsWith, SourceString=g.get('Line'), InPrefix=MASTERY_PREFIX)
+        g.either(g.math('BooleanOR', g.get('Matched'), mastery),
                  lambda: g.run(Widget.SetRenderOpacity, self=g.get('BulletShadow', bullet_class, of=line), InOpacity=0),
                  lambda: g.run(Widget.SetRenderOpacity, self=g.get('BulletShadow', bullet_class, of=line), InOpacity=1))
         g.loose = after

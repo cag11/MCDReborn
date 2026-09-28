@@ -4510,4 +4510,26 @@ MCD Reborn reloads with its files. From then on mods, new items, Gems and Talent
     <value>Saves: none found</value>
     <comment>Game version menu: no save folders on this PC</comment>
   </data>
+  <data name="MASTERY_ON" xml:space="preserve">
+    <value>Weapon mastery</value>
+    <comment>Checkbox on the Game modes tab</comment>
+  </data>
+  <data name="MASTERY_WHY" xml:space="preserve">
+    <value>Melee weapons and bows level up as you fight with them, up to Mastery 25. Every level adds 2% weapon damage; every five levels a star tier (bronze, silver, gold, platinum, full platinum) adds attack speed to melee weapons and roll speed to bows. The level shows as a star on the weapon's tile and a line under its name; press J in the game for every weapon's mastery. Takes effect the next time the game starts.</value>
+    <comment>Explanation under the checkbox</comment>
+  </data>
+  <data name="MASTERY_DONE" xml:space="preserve">
+    <value>Weapon mastery on. Start the game and fight - press J to see your weapons.</value>
+    <comment>Status after turning mastery on</comment>
+  </data>
+  <data name="MASTERY_REMOVED" xml:space="preserve">
+    <value>Weapon mastery off.</value>
+    <comment>Status after turning mastery off</comment>
+  </data>
+  <data name="MASTERY_OFF_WARN" xml:space="preserve">
+    <value>Turn weapon mastery off?
+
+The game no longer knows mastery lines when it is off, and the next time it saves your characters it drops them: every weapon loses its mastery.</value>
+    <comment>Question before turning mastery off</comment>
+  </data>
 </root>
