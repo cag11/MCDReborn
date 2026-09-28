@@ -416,6 +416,7 @@ namespace MCDSaveEdit.Logic
         public static InstalledMod installPak(string sourcePath, bool overwrite = false)
         {
             if (!File.Exists(sourcePath)) { throw new FileNotFoundException("No such file.", sourcePath); }
+            Multiplayer.refuseWhileOn();
             if (!looksLikePak(sourcePath, out _))
             {
                 throw new InvalidOperationException(

@@ -93,6 +93,7 @@ namespace MCDSaveEdit.Logic
         /// </summary>
         public static string install(IReadOnlyList<Item> items, string? paksFolder = null)
         {
+            Multiplayer.refuseWhileOn();
             var enchantments = CustomEnchantments.forPlugin();
             var mobs = CustomMobs.forPlugin();
             var folder = gameFolder(paksFolder)
@@ -140,6 +141,12 @@ namespace MCDSaveEdit.Logic
             {
                 lines.Add("# @property\tid\tsource EArmorPropertyID\tname\tline under the item's name\ticon (texture|material) - \"-\" keeps the source's\tactive: 1 does what its source does, 0 is only a line");
                 lines.AddRange(properties);
+            }
+            var mastery = Mastery.forPlugin();
+            if (mastery.Count > 0)
+            {
+                lines.Add("# @mastery\tmelee damage/level\tattack speed/tier\tranged damage/level\troll speed/tier (factors of each source's own)\tseconds base\tseconds step");
+                lines.AddRange(mastery);
             }
             var talents = Talents.forPlugin();
             if (talents.Count > 0)

@@ -31,6 +31,14 @@
             </StackPanel>
         </Grid>
 
+        <!-- Multiplayer mode: every mod put aside so online play works, and back. -->
+        <StackPanel DockPanel.Dock="Top" Margin="2,0,2,8">
+            <CheckBox x:Name="multiplayerOn" FontWeight="Bold" Content="*Multiplayer mode*"
+                      Checked="multiplayerOn_Changed" Unchecked="multiplayerOn_Changed"/>
+            <TextBlock x:Name="multiplayerWhy" TextWrapping="Wrap" Margin="20,2,0,0" FontSize="12"
+                       Foreground="{DynamicResource Brush.TextMuted}"/>
+        </StackPanel>
+
         <!-- Advanced.
 
              Everything on this row is for BUILDING a mod rather than installing one - the loader,

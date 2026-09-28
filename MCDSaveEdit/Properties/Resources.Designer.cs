@@ -7789,6 +7789,90 @@ namespace MCDSaveEdit.Properties {
         /// <summary>
         ///   Looks up a localized string similar to Minecraft Dungeons is running. Close it first: while it is o.
         /// </summary>
+        public static string MULTIPLAYER_ON {
+            get {
+                return ResourceManager.GetString("MULTIPLAYER_ON", resourceCulture);
+            }
+        }
+        
+        public static string MULTIPLAYER_WHY {
+            get {
+                return ResourceManager.GetString("MULTIPLAYER_WHY", resourceCulture);
+            }
+        }
+        
+        public static string MULTIPLAYER_ASK {
+            get {
+                return ResourceManager.GetString("MULTIPLAYER_ASK", resourceCulture);
+            }
+        }
+        
+        public static string MULTIPLAYER_DONE {
+            get {
+                return ResourceManager.GetString("MULTIPLAYER_DONE", resourceCulture);
+            }
+        }
+        
+        public static string MULTIPLAYER_NO_SAVES {
+            get {
+                return ResourceManager.GetString("MULTIPLAYER_NO_SAVES", resourceCulture);
+            }
+        }
+        
+        public static string MULTIPLAYER_OFF_DONE {
+            get {
+                return ResourceManager.GetString("MULTIPLAYER_OFF_DONE", resourceCulture);
+            }
+        }
+        
+        public static string MULTIPLAYER_RESTORE_ASK {
+            get {
+                return ResourceManager.GetString("MULTIPLAYER_RESTORE_ASK", resourceCulture);
+            }
+        }
+        
+        public static string MULTIPLAYER_RESTORED {
+            get {
+                return ResourceManager.GetString("MULTIPLAYER_RESTORED", resourceCulture);
+            }
+        }
+        
+        public static string MULTIPLAYER_BLOCKS {
+            get {
+                return ResourceManager.GetString("MULTIPLAYER_BLOCKS", resourceCulture);
+            }
+        }
+        
+        public static string MULTIPLAYER_ALREADY {
+            get {
+                return ResourceManager.GetString("MULTIPLAYER_ALREADY", resourceCulture);
+            }
+        }
+        
+        public static string MULTIPLAYER_LEFT_BEHIND {
+            get {
+                return ResourceManager.GetString("MULTIPLAYER_LEFT_BEHIND", resourceCulture);
+            }
+        }
+        
+        public static string MULTIPLAYER_NOTE {
+            get {
+                return ResourceManager.GetString("MULTIPLAYER_NOTE", resourceCulture);
+            }
+        }
+        
+        public static string STATUS_MULTIPLAYER {
+            get {
+                return ResourceManager.GetString("STATUS_MULTIPLAYER", resourceCulture);
+            }
+        }
+        
+        public static string STATUS_MULTIPLAYER_WHY {
+            get {
+                return ResourceManager.GetString("STATUS_MULTIPLAYER_WHY", resourceCulture);
+            }
+        }
+        
         public static string MODS_GAME_RUNNING {
             get {
                 return ResourceManager.GetString("MODS_GAME_RUNNING", resourceCulture);
@@ -9953,6 +10037,50 @@ namespace MCDSaveEdit.Properties {
         public static string GAME_SAVES_NONE {
             get {
                 return ResourceManager.GetString("GAME_SAVES_NONE", resourceCulture);
+            }
+        }
+            /// <summary>
+        ///   Looks up a localized string for MASTERY_ON.
+        /// </summary>
+        public static string MASTERY_ON {
+            get {
+                return ResourceManager.GetString("MASTERY_ON", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for MASTERY_WHY.
+        /// </summary>
+        public static string MASTERY_WHY {
+            get {
+                return ResourceManager.GetString("MASTERY_WHY", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for MASTERY_DONE.
+        /// </summary>
+        public static string MASTERY_DONE {
+            get {
+                return ResourceManager.GetString("MASTERY_DONE", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for MASTERY_REMOVED.
+        /// </summary>
+        public static string MASTERY_REMOVED {
+            get {
+                return ResourceManager.GetString("MASTERY_REMOVED", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string for MASTERY_OFF_WARN.
+        /// </summary>
+        public static string MASTERY_OFF_WARN {
+            get {
+                return ResourceManager.GetString("MASTERY_OFF_WARN", resourceCulture);
             }
         }
     }
