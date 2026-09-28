@@ -10515,6 +10515,25 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_EXPORTCLASSES=<pak path> - every export of a package with its class, named through the
+            //import table (a widget blueprint's widgets and what kind each is). Read-only.
+            var probeClasses = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_EXPORTCLASSES=", StringComparison.Ordinal));
+            if (probeClasses != null)
+            {
+                var package = Logic.CustomSkins.index!.extractPackage(probeClasses["PROBE_EXPORTCLASSES=".Length..].Trim('"'));
+                if (package != null)
+                {
+                    var uasset = package.Value.UAsset.ToArray();
+                    var exports = Logic.CookedPackage.readExports(uasset);
+                    var imports = Logic.CookedPackage.readImports(uasset);
+                    string nameOf(int index) => index < 0 && -index - 1 < imports.Count ? imports[-index - 1].ObjectName
+                        : index > 0 && index - 1 < exports.Count ? exports[index - 1].Name : "-";
+                    foreach (var e in exports) { Console.WriteLine($"[classes] {e.Name}: {nameOf(e.ClassIndex)} in {nameOf(e.Outer)}"); }
+                }
+                Shutdown();
+                return;
+            }
+
             //PROBE_EXPORTS=<pak path>[;<pak path>...] - a package's names and exports, and the
             //bytes of every Default__ export. Read-only; for seeing what a default object holds
             //before writing into one.
@@ -10610,6 +10629,36 @@ namespace MCDSaveEdit
                         Console.WriteLine($"[enchbp]   registry: {(patched == null ? "NOT patched" : $"{added} entries added from {made.GameFrom}")}");
                     }
                     catch (Exception e) { Console.WriteLine($"[enchbp] {design.Id} FAILED {e}"); }
+                }
+                Shutdown();
+                return;
+            }
+
+            //PROBE_ITEMLINES=<item id> - every live InventoryItem of that id: its outer and its property
+            //line ids (FInventoryItemData at +0x28: id name at +0x34, ArmorProperties at +0x50). Read-only.
+            var probeLines = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_ITEMLINES=", StringComparison.Ordinal));
+            if (probeLines != null)
+            {
+                var wantedId = probeLines["PROBE_ITEMLINES=".Length..].Trim('"');
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[lines] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, step => { })!;
+                    long ptr(long at) { var b = game.read(new IntPtr(at), 8); return b == null ? 0 : BitConverter.ToInt64(b, 0); }
+                    int i32(long at) { var b = game.read(new IntPtr(at), 4); return b == null ? 0 : BitConverter.ToInt32(b, 0); }
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var at = reflect.objectAt(i);
+                        if (at == 0 || reflect.kindOf(at) != "InventoryItem" || reflect.nameOf(at)?.StartsWith("Default__") == true) { continue; }
+                        if (reflect.nameAt(i32(at + 0x34)) != wantedId) { continue; }
+                        var data = ptr(at + 0x50);
+                        var count = i32(at + 0x58);
+                        var max = i32(at + 0x5C);
+                        var raw = count > 0 && count < 64 ? game.read(new IntPtr(data), count * 2) ?? Array.Empty<byte>() : Array.Empty<byte>();
+                        var ids = Enumerable.Range(0, raw.Length / 2).Select(k => $"{raw[k * 2]}/{raw[k * 2 + 1]}");
+                        Console.WriteLine($"[lines] {reflect.nameOf(at)} in {reflect.outerOf(at)}: {count} of {max}: {string.Join(" ", ids)}");
+                    }
                 }
                 Shutdown();
                 return;

@@ -2514,17 +2514,26 @@ namespace
         ULONGLONG now = GetTickCount64();
         if (g_familyUse.size() != g_families.size()) { g_familyUse.assign(g_families.size(), 0.0); }
         if (rangedHeld()) { g_lastRanged = now; }
+        //Time in a fight, not time a hit lands in: a hit keeps the fight going for a second and a half,
+        //credited to whichever weapon landed it. (Counting only the quarter seconds the damage total
+        //moved in gave a claymore six seconds for forty of fighting - it swings about once a second.)
+        static ULONGLONG lastHit = 0;
+        static bool hitByBow = false;
         double dealt = damageDealt();
         if (dealt >= 0)
         {
-            if (g_lastDamage >= 0 && dealt > g_lastDamage && dealt - g_lastDamage < 1e12 && g_lastUse > 0)
+            if (g_lastDamage >= 0 && dealt > g_lastDamage && dealt - g_lastDamage < 1e12)
             {
-                double seconds = (std::min)(static_cast<double>(now - g_lastUse) / 1000.0, 0.5);
-                bool bow = now - g_lastRanged < 1000;
-                int f = familyOf(bow ? ranged : melee);
-                if (f >= 0) { g_familyUse[f] += seconds; }
+                lastHit = now;
+                hitByBow = now - g_lastRanged < 1000;
             }
             g_lastDamage = dealt;
+        }
+        if (g_lastUse > 0 && lastHit > 0 && now - lastHit < 1500)
+        {
+            double seconds = (std::min)(static_cast<double>(now - g_lastUse) / 1000.0, 0.5);
+            int f = familyOf(hitByBow ? ranged : melee);
+            if (f >= 0) { g_familyUse[f] += seconds; }
         }
         g_lastUse = now;
         for (size_t f = 0; f < g_families.size(); f++)

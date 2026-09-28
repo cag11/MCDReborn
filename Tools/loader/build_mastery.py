@@ -40,6 +40,8 @@ from unreal_engine.classes import (
     DungeonsImage,
     GameplayStatics,
     Image,
+    Overlay,
+    OverlaySlot,
     InventoryItem,
     InventoryItemSlot,
     ItemStashComponent,
@@ -65,7 +67,15 @@ from unreal_engine.classes import (
 from unreal_engine.structs import LinearColor, Vector2D, WidgetTransform
 
 WIDGET = '/Game/MCDReborn/UI/UMG_MCDRebornMastery'
+CHIP = '/Game/MCDReborn/UI/UMG_MCDRebornMasteryChip'
+#The game's item details header: the name (ItemName, a TextBlock in a ScaleBox) sits in an Overlay,
+#ItemNameContainer; the power, rarity and tags are a row of their own above it. The chip goes into the
+#name's Overlay, pushed right by the name's own width, so it follows the name whatever its length and
+#never meets the tags however many an item has.
+INFO_STUB = '/Game/UI/Inventory/Inspector2/UMG_InventoryItemInspectInfo'
 BADGE = '/Game/MCDReborn/UI/UMG_MCDRebornMasteryBadge'
+BADGE_EVERY = 15                         # frames between a badge's looks at its item
+CHIP_GAP = 14.0
 ACTOR = '/Game/MCDReborn/Actors/BP_MCDRebornMastery'
 LEVELS = ['/Game/MCDReborn/Lobby/Mastery', '/Game/MCDReborn/Ingame/Mastery']
 ICONS = '/Game/MCDReborn/UI/Mastery'
@@ -189,7 +199,8 @@ def read_levels(g, item, base):
 
 
 def level_variables(widget):
-    for name, kind, default in (('Lvl', 'int', '0'), ('Step', 'int', '0'), ('Ranged', 'bool', 'false'), ('Base', 'int', '-1')):
+    for name, kind, default in (('Lvl', 'int', '0'), ('Step', 'int', '0'), ('Ranged', 'bool', 'false'), ('Base', 'int', '-1'),
+                                ('Weapon', 'bool', 'false')):
         ue.blueprint_add_member_variable(widget, name, kind, False, default)
 
 
@@ -231,7 +242,49 @@ def family_key(g, item, custom_count):
 
 #--- the tile badge ------------------------------------------------------------------------------------
 
+def build_info_stub():
+    """The game's item details (name, its container, the item), as far as the chip needs it. Never ships."""
+    there = on_disk(INFO_STUB, 'WidgetBlueprint')
+    if there is not None:
+        say('inspect info stub already there: ' + INFO_STUB)
+        return there
+    factory = WidgetBlueprintFactory()
+    factory.ParentClass = UserWidget
+    stub = factory.factory_create_new(INFO_STUB)
+    stub.modify()
+    box = Overlay('ItemNameContainer', stub.WidgetTree)
+    box.bIsVariable = True
+    put(stub.WidgetTree.RootWidget, box, 0.0, 0.0, 600.0, 60.0)
+    name = TextBlock('ItemName', stub.WidgetTree)
+    name.bIsVariable = True
+    box.AddChild(name)
+    typed_variable(stub, 'InspectedItem', PinCategory='object', PinSubCategoryObject=InventoryItem)
+    ue.blueprint_mark_as_structurally_modified(stub)
+    ue.compile_blueprint(stub)
+    keep(stub)
+    say('inspect info stub built: ' + INFO_STUB)
+    return stub
+
+
+def worn_item(g, slot_name):
+    """What the player wears in an equipment slot (MeleeGear, RangedGear), as an InventoryItem value."""
+    hero = g.call(UserWidget.GetOwningPlayerPawn)
+    stash = g.get('ItemStashComponent', PlayerCharacter, of=g.cast(PlayerCharacter, hero))
+    slots = g.call(ItemStashComponent.GetEquipmentSlots, self=stash)
+    x, y = g.at()
+    found = g.page.graph_add_node_call_function(BlueprintMapLibrary.Map_Find, x, y)
+    link(slots[0], slots[1], found, 'TargetMap')
+    told(found, 'TargetMap')
+    set_default(found, 'Key', slot_name)
+    return found
+
+
 def build_badge(stars, tile_class):
+    """
+    A weapon's mastery on its inventory tile: the tier's star and the level in its bottom left corner,
+    the plain star dimmed at 0. Not on the tiles of the weapons worn - those show their enchantment
+    points there - and not on anything but a melee weapon or a bow. Looks every BADGE_EVERY frames.
+    """
     there = on_disk(BADGE, 'WidgetBlueprint')
     if there is not None:
         say('badge already there: ' + BADGE)
@@ -243,12 +296,88 @@ def build_badge(stars, tile_class):
     wt = widget.WidgetTree
     wt.RootWidget.Visibility = 3                    # HitTestInvisible: the tile keeps its clicks
     body_face = stub_font(BODY_FONT)
-    #Top left of the tile: the sockets are top right.
-    build_gems.anchored(wt.RootWidget, image(wt, 'Star', stars[0], 26.0, variable=True), 0.0, 0.0, 4.0, 4.0)
-    build_gems.anchored(wt.RootWidget, label(wt, 'Level', '1', INK, body_face, 15, variable=True, typeface=BODY_FACE, outline=2),
-                        0.0, 0.0, 30.0, 6.0)
+    #Bottom left: the top left is where a tile shows its enchantment points, the bottom right its power.
+    build_gems.anchored(wt.RootWidget, image(wt, 'Star', stars[0], 26.0, variable=True), 0.0, 1.0, 4.0, -4.0)
+    build_gems.anchored(wt.RootWidget, label(wt, 'Level', '0', INK, body_face, 15, variable=True, typeface=BODY_FACE, outline=2),
+                        0.0, 1.0, 30.0, -6.0)
 
     typed_variable(widget, 'Tile', PinCategory='object', PinSubCategoryObject=tile_class)
+    stars_variable(widget, stars)
+    level_variables(widget)
+    ue.blueprint_add_member_variable(widget, 'Count', 'int', False, '0')
+    ue.blueprint_add_member_variable(widget, 'Worn', 'bool', False, 'false')
+    ue.blueprint_mark_as_structurally_modified(widget)
+    ue.compile_blueprint(widget)
+
+    g = Graph(widget)
+    tick = event(widget, UserWidget, 'Tick', 0, 0)
+    g.loose = [(tick, 'then')]
+    g.setter('Count', g.math('Add_IntInt', g.get('Count'), 1))
+    now, later = g.branch(g.math('GreaterEqual_IntInt', g.get('Count'), BADGE_EVERY))
+    g.loose = now
+    g.setter('Count', 0)
+    g.setter('Lvl', 0)
+    g.setter('Weapon', 'false')
+    g.setter('Worn', 'false')
+    slot = lambda: g.get('InventoryItemSlot', tile_class, of=g.get('Tile'))
+    item = lambda: g.get('Item', InventoryItemSlot, of=slot())
+
+    def read():
+        tag = g.call(KismetMathLibrary.Conv_ByteToInt, InByte=g.call(InventoryItem.GetTag, self=item()))
+        g.setter('Weapon', g.math('BooleanOR', g.math('EqualEqual_IntInt', tag, MELEE_TAG), g.math('EqualEqual_IntInt', tag, RANGED_TAG)))
+        for slot_name in ('MeleeGear', 'RangedGear'):
+            found = worn_item(g, slot_name)
+            worn = g.get('Item', InventoryItemSlot, of=(found, 'Value'))
+            same = g.both((found, 'ReturnValue'), g.valid(worn), g.call(KismetMathLibrary.EqualEqual_ObjectObject, A=worn, B=item()))
+            g.either(same, lambda: g.setter('Worn', 'true'), lambda: None)
+        read_levels(g, item, lambda: g.get('Base'))
+
+    ready = g.both(g.math('GreaterEqual_IntInt', g.get('Base'), 0), g.valid(g.get('Tile')))
+    g.either(ready, lambda: g.either(g.valid(slot()), lambda: g.either(g.valid(item()), read, lambda: None), lambda: None),
+             lambda: None)
+
+    def show():
+        g.run(Image.SetBrushFromTexture, self=g.get('Star'), Texture=g.element(g.get('Stars'), tier_of(g, g.get('Lvl'))),
+              bMatchSize='false')
+        g.run(Widget.SetRenderOpacity, self=g.get('Star'),
+              InOpacity=g.call(KismetMathLibrary.SelectFloat, A=1.0, B=0.45, bPickA=g.math('Greater_IntInt', g.get('Lvl'), 0)))
+        g.run(TextBlock.SetText, self=g.get('Level'), InText=g.call(KismetTextLibrary.Conv_IntToText, Value=g.get('Lvl')))
+        g.shows('Star', LOOKS)
+        g.shows('Level', LOOKS)
+
+    g.either(g.both(g.get('Weapon'), g.call(KismetMathLibrary.Not_PreBool, A=g.get('Worn'))), show,
+             lambda: (g.shows('Star', COLLAPSED), g.shows('Level', COLLAPSED)))
+    g.loose += later
+    ue.compile_blueprint(widget)
+    keep(widget)
+    say('badge built: ' + BADGE)
+    return widget
+
+
+def build_chip(stars, info_class):
+    """
+    A weapon's mastery right of its name in the item details: the tier's star and "Mastery N" - the
+    plain star dimmed at 0. Nothing for anything but a melee weapon or a bow. Every frame it reads the
+    shown item and moves itself to just past the name, so it follows both.
+    """
+    there = on_disk(CHIP, 'WidgetBlueprint')
+    if there is not None:
+        say('chip already there: ' + CHIP)
+        return there
+    factory = WidgetBlueprintFactory()
+    factory.ParentClass = UserWidget
+    widget = factory.factory_create_new(CHIP)
+    widget.modify()
+    wt = widget.WidgetTree
+    wt.RootWidget.Visibility = 3                    # HitTestInvisible: the details keep their clicks
+    body_face = stub_font(BODY_FONT)
+    put(wt.RootWidget, image(wt, 'Star', stars[0], 36.0, variable=True), 0.0, 2.0, 36.0, 36.0)
+    put(wt.RootWidget, label(wt, 'Level', '0', INK, body_face, 24, variable=True, typeface=BODY_FACE, outline=2),
+        40.0, 4.0, 60.0, 34.0)
+    wt.RootWidget.bIsVariable = True
+
+    typed_variable(widget, 'Info', PinCategory='object', PinSubCategoryObject=info_class)
+    typed_variable(widget, 'Placed', PinCategory='object', PinSubCategoryObject=OverlaySlot)
     stars_variable(widget, stars)
     level_variables(widget)
     ue.blueprint_mark_as_structurally_modified(widget)
@@ -258,24 +387,35 @@ def build_badge(stars, tile_class):
     tick = event(widget, UserWidget, 'Tick', 0, 0)
     g.loose = [(tick, 'then')]
     g.setter('Lvl', 0)
-    slot = lambda: g.get('InventoryItemSlot', tile_class, of=g.get('Tile'))
-    item = lambda: g.get('Item', InventoryItemSlot, of=slot())
-    ready = g.both(g.math('GreaterEqual_IntInt', g.get('Base'), 0), g.valid(g.get('Tile')))
-    g.either(ready, lambda: g.either(g.valid(slot()), lambda: g.either(g.valid(item()),
-             lambda: read_levels(g, item, lambda: g.get('Base')), lambda: None), lambda: None), lambda: None)
+    g.setter('Weapon', 'false')
+    item = lambda: g.get('InspectedItem', info_class, of=g.get('Info'))
+
+    def read():
+        tag = g.call(KismetMathLibrary.Conv_ByteToInt, InByte=g.call(InventoryItem.GetTag, self=item()))
+        g.setter('Weapon', g.math('BooleanOR', g.math('EqualEqual_IntInt', tag, MELEE_TAG), g.math('EqualEqual_IntInt', tag, RANGED_TAG)))
+        read_levels(g, item, lambda: g.get('Base'))
+
+    ready = g.both(g.math('GreaterEqual_IntInt', g.get('Base'), 0), g.valid(g.get('Info')))
+    g.either(ready, lambda: g.either(g.valid(item()), read, lambda: None), lambda: None)
 
     def show():
         g.run(Image.SetBrushFromTexture, self=g.get('Star'), Texture=g.element(g.get('Stars'), tier_of(g, g.get('Lvl'))),
               bMatchSize='false')
+        g.run(Widget.SetRenderOpacity, self=g.get('Star'),
+              InOpacity=g.call(KismetMathLibrary.SelectFloat, A=1.0, B=0.45, bPickA=g.math('Greater_IntInt', g.get('Lvl'), 0)))
         g.run(TextBlock.SetText, self=g.get('Level'), InText=g.call(KismetTextLibrary.Conv_IntToText, Value=g.get('Lvl')))
+        #Just past the name: its width as drawn, and a gap.
+        width = g.call(KismetMathLibrary.BreakVector2D, out='X', InVec=g.call(
+            Widget.GetDesiredSize, self=g.get('ItemName', info_class, of=g.get('Info'))))
+        g.either(g.valid(g.get('Placed')), lambda: g.run(OverlaySlot.SetPadding, self=g.get('Placed'), InPadding=g.makes(
+            'Margin', Left=g.math('Add_FloatFloat', width, CHIP_GAP), Top=0.0, Right=0.0, Bottom=0.0)), lambda: None)
         g.shows('Star', LOOKS)
         g.shows('Level', LOOKS)
 
-    g.either(g.math('Greater_IntInt', g.get('Lvl'), 0), show,
-             lambda: (g.shows('Star', COLLAPSED), g.shows('Level', COLLAPSED)))
+    g.either(g.get('Weapon'), show, lambda: (g.shows('Star', COLLAPSED), g.shows('Level', COLLAPSED)))
     ue.compile_blueprint(widget)
     keep(widget)
-    say('badge built: ' + BADGE)
+    say('chip built: ' + CHIP)
     return widget
 
 
@@ -359,7 +499,7 @@ def variables(widget, stars):
     ue.compile_blueprint(widget)
 
 
-def build_graph(widget, tile_class, bullet_class, badge_class):
+def build_graph(widget, info_class, bullet_class, chip_class, tile_class, badge_class):
     g = Graph(widget)
     family_count, custom_count = COUNTS['families']
     tick = event(widget, UserWidget, 'Tick', 0, 0)
@@ -398,25 +538,45 @@ def build_graph(widget, tile_class, bullet_class, badge_class):
     def attach_pass():
         g.setter('Scan', 0)
         found = g.run(WidgetBlueprintLibrary.GetAllWidgetsOfClass, TopLevelOnly='false')
-        pin(found, 'WidgetClass').default_object = tile_class
+        pin(found, 'WidgetClass').default_object = info_class
         loop = g.for_each((found, 'FoundWidgets'))
         g.then(loop, 'Exec', 'Completed')
         after = list(g.loose)
         g.loose = [(loop, 'LoopBody')]
-        tile = g.cast(tile_class, (loop, 'Array Element'))
+        info = g.cast(info_class, (loop, 'Array Element'))
+        box = g.get('ItemNameContainer', info_class, of=info)
+        unless_holding(g, box, chip_class)
+        made = g.run(WidgetBlueprintLibrary.Create, OwningPlayer=player())
+        pin(made, 'WidgetType').default_object = chip_class
+        chip = g.cast(chip_class, (made, 'ReturnValue'))
+        g.setter('Info', info, owner=chip_class, of=chip)
+        g.setter('Base', g.get('Base'), owner=chip_class, of=chip)
+        placed = (g.run(Overlay.AddChildToOverlay, self=box, Content=chip), 'ReturnValue')
+        g.run(OverlaySlot.SetHorizontalAlignment, self=placed, InHorizontalAlignment='HAlign_Left')
+        g.run(OverlaySlot.SetVerticalAlignment, self=placed, InVerticalAlignment='VAlign_Center')
+        g.setter('Placed', placed, owner=chip_class, of=chip)
+        g.loose = after
+
+        tiles = g.run(WidgetBlueprintLibrary.GetAllWidgetsOfClass, TopLevelOnly='false')
+        pin(tiles, 'WidgetClass').default_object = tile_class
+        each = g.for_each((tiles, 'FoundWidgets'))
+        g.then(each, 'Exec', 'Completed')
+        tiles_done = list(g.loose)
+        g.loose = [(each, 'LoopBody')]
+        tile = g.cast(tile_class, (each, 'Array Element'))
         padder = g.get('ItemInfoPadder', tile_class, of=tile)
         unless_holding(g, padder, badge_class)
-        made = g.run(WidgetBlueprintLibrary.Create, OwningPlayer=player())
-        pin(made, 'WidgetType').default_object = badge_class
-        badge = g.cast(badge_class, (made, 'ReturnValue'))
+        made_badge = g.run(WidgetBlueprintLibrary.Create, OwningPlayer=player())
+        pin(made_badge, 'WidgetType').default_object = badge_class
+        badge = g.cast(badge_class, (made_badge, 'ReturnValue'))
         g.setter('Tile', tile, owner=badge_class, of=badge)
         g.setter('Base', g.get('Base'), owner=badge_class, of=badge)
-        placed = (g.run(CanvasPanel.AddChildToCanvas, self=padder, Content=badge), 'ReturnValue')
-        g.run(CanvasPanelSlot.SetAnchors, self=placed,
+        on_tile = (g.run(CanvasPanel.AddChildToCanvas, self=padder, Content=badge), 'ReturnValue')
+        g.run(CanvasPanelSlot.SetAnchors, self=on_tile,
               InAnchors='(Minimum=(X=0.000000,Y=0.000000),Maximum=(X=1.000000,Y=1.000000))')
-        g.run(CanvasPanelSlot.SetOffsets, self=placed, InOffset='(Left=0.000000,Top=0.000000,Right=0.000000,Bottom=0.000000)')
-        g.run(CanvasPanelSlot.SetZOrder, self=placed, InZOrder=51)
-        g.loose = after
+        g.run(CanvasPanelSlot.SetOffsets, self=on_tile, InOffset='(Left=0.000000,Top=0.000000,Right=0.000000,Bottom=0.000000)')
+        g.run(CanvasPanelSlot.SetZOrder, self=on_tile, InZOrder=51)
+        g.loose = tiles_done
 
     g.either(g.both(known(), g.math('GreaterEqual_IntInt', g.get('Scan'), 10)), attach_pass, lambda: None)
 
@@ -605,7 +765,7 @@ def build_graph(widget, tile_class, bullet_class, badge_class):
     say('mastery graph built')
 
 
-def build_widget(stars, tile_class, bullet_class, badge_class):
+def build_widget(stars, info_class, bullet_class, chip_class, tile_class, badge_class):
     there = on_disk(WIDGET, 'WidgetBlueprint')
     if there is not None:
         say('mastery already there: ' + WIDGET)
@@ -615,7 +775,7 @@ def build_widget(stars, tile_class, bullet_class, badge_class):
     widget = factory.factory_create_new(WIDGET)
     build_tree(widget, stars)
     variables(widget, stars)
-    build_graph(widget, tile_class, bullet_class, badge_class)
+    build_graph(widget, info_class, bullet_class, chip_class, tile_class, badge_class)
     keep(widget)
     say('mastery built: ' + WIDGET)
     return widget
@@ -667,10 +827,12 @@ def build_level(path, actor):
 
 def main():
     stars = import_pictures()
-    tile_class = build_gems.build_tile_stub().GeneratedClass
+    info_class = build_info_stub().GeneratedClass
     bullet_class = build_gems.build_bullet_stub().GeneratedClass
+    chip = build_chip(stars, info_class)
+    tile_class = build_gems.build_tile_stub().GeneratedClass
     badge = build_badge(stars, tile_class)
-    widget = build_widget(stars, tile_class, bullet_class, badge.GeneratedClass)
+    widget = build_widget(stars, info_class, bullet_class, chip.GeneratedClass, tile_class, badge.GeneratedClass)
     actor = build_actor(widget)
     for path in LEVELS:
         build_level(path, actor)
