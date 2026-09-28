@@ -716,6 +716,12 @@ namespace MCDSaveEdit.Logic
                 if (said.Length > 0) { result.Notes.Add(said); }
             }
             catch (Exception problem) { result.Notes.Add($"Weapon mastery could not be installed: {problem.Message}"); }
+            try
+            {
+                var said = EnchantLevels.syncPanel();
+                if (said.Length > 0) { result.Notes.Add(said); }
+            }
+            catch (Exception problem) { result.Notes.Add($"Enchantment levels IV and V could not be installed: {problem.Message}"); }
         }
 
         public static Built build(IReadOnlyList<Design> designs, string? into = null, IReadOnlyList<Extra>? extras = null)

@@ -7873,6 +7873,30 @@ namespace MCDSaveEdit.Properties {
             }
         }
         
+        public static string ENCHANT_LEVELS_ON {
+            get {
+                return ResourceManager.GetString("ENCHANT_LEVELS_ON", resourceCulture);
+            }
+        }
+        
+        public static string ENCHANT_LEVELS_WHY {
+            get {
+                return ResourceManager.GetString("ENCHANT_LEVELS_WHY", resourceCulture);
+            }
+        }
+        
+        public static string ENCHANT_LEVELS_DONE {
+            get {
+                return ResourceManager.GetString("ENCHANT_LEVELS_DONE", resourceCulture);
+            }
+        }
+        
+        public static string ENCHANT_LEVELS_REMOVED {
+            get {
+                return ResourceManager.GetString("ENCHANT_LEVELS_REMOVED", resourceCulture);
+            }
+        }
+        
         public static string MODS_GAME_RUNNING {
             get {
                 return ResourceManager.GetString("MODS_GAME_RUNNING", resourceCulture);

@@ -4594,4 +4594,20 @@ Yes brings back custom items, gems, talents and mastery exactly as they were, bu
     <value>Multiplayer mode is on: every mod is out of the game and modding is disabled. Untick Multiplayer mode on the Installed Mods tab to continue modding.</value>
     <comment>Status bar tooltip for multiplayer mode</comment>
   </data>
+  <data name="ENCHANT_LEVELS_ON" xml:space="preserve">
+    <value>Enchantment levels IV and V</value>
+    <comment>Game modes switch</comment>
+  </data>
+  <data name="ENCHANT_LEVELS_WHY" xml:space="preserve">
+    <value>Enchantments can go past III to IV and V, and keep getting stronger (Cool Down IV cuts artifact cooldowns by 46%, where III cuts 38%). With this on, the game shows IV and V on the enchantment badges and icons instead of a wrong "I" or nothing.</value>
+    <comment>Under the enchantment levels switch</comment>
+  </data>
+  <data name="ENCHANT_LEVELS_DONE" xml:space="preserve">
+    <value>Enchantment levels IV and V installed.</value>
+    <comment>Switch turned on</comment>
+  </data>
+  <data name="ENCHANT_LEVELS_REMOVED" xml:space="preserve">
+    <value>Enchantment levels IV and V removed.</value>
+    <comment>Switch turned off</comment>
+  </data>
 </root>
