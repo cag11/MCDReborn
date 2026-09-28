@@ -10820,6 +10820,40 @@ namespace MCDSaveEdit
                 return;
             }
 
+            //PROBE_WATCH=<Class>;<seconds>;<var>;<var>... - every live object of the class, its variables read
+            //ten times a second for that long, printed whenever they change. Read-only.
+            var probeWatch = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_WATCH=", StringComparison.Ordinal));
+            if (probeWatch != null)
+            {
+                var parts = probeWatch["PROBE_WATCH=".Length..].Trim('"').Split(';');
+                var game = LiveEdit.GameProcess.open(out var why);
+                if (game == null) { Console.WriteLine($"[watch] the game is not open: {why}"); Shutdown(); return; }
+                using (game)
+                {
+                    var reflect = LiveEdit.Reflect.open(game, step => { })!;
+                    var found = new List<long>();
+                    for (var i = 0; i < reflect.Count; i++)
+                    {
+                        var at = reflect.objectAt(i);
+                        if (at != 0 && reflect.kindOf(at) == parts[0] && reflect.nameOf(at)?.StartsWith("Default__") != true) { found.Add(at); }
+                    }
+                    var last = new Dictionary<long, string>();
+                    var until = DateTime.Now.AddSeconds(double.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture));
+                    Console.WriteLine($"[watch] {found.Count} object(s), watching");
+                    while (DateTime.Now < until)
+                    {
+                        foreach (var at in found)
+                        {
+                            var now = string.Join(", ", parts.Skip(2).Select(v => $"{v}={reflect.valueOf(at, v)}"));
+                            if (!last.TryGetValue(at, out var was) || was != now) { Console.WriteLine($"[watch] {DateTime.Now:HH:mm:ss.f} {at:X}: {now}"); last[at] = now; }
+                        }
+                        System.Threading.Thread.Sleep(100);
+                    }
+                }
+                Shutdown();
+                return;
+            }
+
             //PROBE_EFFECTS[=<name filter>] - every gameplay effect active on every ability system component:
             //its class, level, stack count and each modifier's evaluated magnitude. Read-only.
             var probeEffects = _startupArguments.FirstOrDefault(a => a.StartsWith("PROBE_EFFECTS", StringComparison.Ordinal));

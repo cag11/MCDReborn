@@ -42,7 +42,7 @@ import unreal_engine as ue
 import mcd_ui
 from mcd_ui import say, keep, on_disk, pin, link, set_default, event
 import build_gems
-from build_gems import Graph, typed_variable
+from build_gems import Graph, typed_variable, set_fields
 
 from unreal_engine.classes import (
     Actor,
@@ -208,6 +208,12 @@ def build_widget(plate_class, base_class, selected_class, scroll_class, button_c
     ue.blueprint_add_member_variable(widget, 'Count', 'int', False, '0')
     for name in ('Held', 'NowHeld'):
         ue.blueprint_add_member_variable(widget, name, 'bool', False, 'false')
+    #The item's data being rewritten (Work, its enchantments WorkEnch), the enchantment as it was (Old)
+    #and what the next level costs (Cost), kept before anything changes.
+    typed_variable(widget, 'Work', PinCategory='struct', PinSubCategoryObject=ue.find_struct('InventoryItemData'))
+    typed_variable(widget, 'WorkEnch', PinCategory='struct', PinSubCategoryObject=ue.find_struct('EnchantmentData'), ContainerType=1)
+    typed_variable(widget, 'Old', PinCategory='struct', PinSubCategoryObject=ue.find_struct('EnchantmentData'))
+    ue.blueprint_add_member_variable(widget, 'Cost', 'int', False, '0')
     #Always empty: an array set needs an array wired in.
     typed_variable(widget, 'Nothing', PinCategory='object', PinSubCategoryObject=UserWidget, ContainerType=1)
     ue.blueprint_mark_as_structurally_modified(widget)
@@ -257,10 +263,22 @@ def build_widget(plate_class, base_class, selected_class, scroll_class, button_c
         have = points()
 
         def buy():
-            old = entry()
-            fresh = g.makes('EnchantmentData', TypeID=(old, 'TypeID'), Level=g.math('Add_IntInt', level(), 1),
-                            Category=(old, 'Category'), Source=(old, 'Source'),
-                            InvestedPoints=g.math('Add_IntInt', (old, 'InvestedPoints'), cost()))
+            #The item's ReplaceEnchantment only fills an option at level 0 (it returns false for one with
+            #points in it). So: the option as it is and the cost, kept; its level set to 0 in the item's
+            #data (as the Gems screen writes sockets: a copy, edited, written back); then
+            #ReplaceEnchantment with the next level - which writes it, marks the item modified, remakes
+            #its enchantments and tells the screens.
+            g.setter('Old', g.element((g.breaks('InventoryItemData', g.get('Item', InventoryItem, of=item())), 'Enchantments'), index()))
+            g.setter('Cost', cost())
+            g.setter('Work', g.get('Item', InventoryItem, of=item()))
+            g.setter('WorkEnch', (g.breaks('InventoryItemData', g.get('Work')), 'Enchantments'))
+            set_fields(g, 'EnchantmentData', g.element(g.get('WorkEnch'), index()), Level=0)
+            set_fields(g, 'InventoryItemData', g.get('Work'), Enchantments=g.get('WorkEnch'))
+            g.setter('Item', g.get('Work'), owner=InventoryItem, of=item())
+            old = lambda: g.breaks('EnchantmentData', g.get('Old'))
+            fresh = g.makes('EnchantmentData', TypeID=(old(), 'TypeID'), Level=g.math('Add_IntInt', (old(), 'Level'), 1),
+                            Category=(old(), 'Category'), Source=(old(), 'Source'),
+                            InvestedPoints=g.math('Add_IntInt', (old(), 'InvestedPoints'), g.get('Cost')))
             g.run(InventoryItem.ReplaceEnchantment, self=item(), Index=index(), Enchantment=fresh)
 
         g.either(g.both(pressed(), g.call(KismetMathLibrary.Not_PreBool, A=g.get('Held')),
